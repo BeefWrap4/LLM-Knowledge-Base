@@ -1,0 +1,10 @@
+# Obsidian workspace config (personal settings, don't commit)
+.obsidian/
+.obsidian*
+
+# Trash
+.trash/
+
+# OS
+.DS_Store
+Thumbs.db
