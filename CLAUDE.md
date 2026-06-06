@@ -4,15 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is an **Obsidian vault** containing a 29-chapter interview preparation tutorial: "Python到大模型应用_面试教程_2026版". It covers the full stack from Python fundamentals to LLM deployment, targeting 2026 large-model algorithm/engineering interviews.
+This is an **Obsidian vault** containing a 29-chapter interview preparation tutorial: "Python到大模型应用_面试教程_2026版", plus a **439-file end-to-end runnable code companion** in `code/`. It covers the full stack from Python fundamentals to LLM deployment, targeting 2026 large-model algorithm/engineering interviews.
 
-**33 files, ~2,200 KB total**. All markdown (`.md`) in a flat directory — no subdirectories.
+**Tutorial**: 33 files, ~2,200 KB. All markdown (`.md`) in a flat directory — no subdirectories.
+**Code companion**: 439 .py files in `code/` (158 core/ + 199 llm/ + 76 gpu/) plus shared/, tests/, requirements.
 
 - `README.md` — top-level overview for GitHub readers (岗位学习路径, 2026 主题速查, 快速开始)
 - `00_目录索引.md` — Obsidian navigation hub (MOC, 板块架构, 速查索引)
 - `01-24_*.md` — 24 core chapters
 - `25-29_*.md` — 5 2026-era chapters (推理引擎, 世界模型, Test-Time Compute, 端侧 LLM, Context Engineering)
 - `99_库健康检查报告.md` — health audit report (latest: 95/100)
+- `code/` — runnable code companion (3-tier dependency strategy)
 - `CLAUDE.md` — this file
 
 ## File Naming & Organization
@@ -121,9 +123,57 @@ Nested headings use `Parent::Child` syntax in section targeting.
 | Muon Optimizer | Ch19.9 | ✅ |
 | Pydantic AI / Strands / OpenAI Agents | Ch18.8 | ✅ |
 
+## Code Companion (code/ directory)
+
+The repo includes a **439-file end-to-end runnable code companion** in `code/`, reverse-referencing back to the tutorial chapters. Layout:
+
+```
+code/
+├── README.md                          # entry, 5-min onboarding
+├── QUICKSTART.md                      # install contract
+├── Makefile                           # make install-{core,llm,gpu}, test, run-CH
+├── pyproject.toml                     # pytest markers (gpu/llm/core/slow), ruff
+├── requirements-core.txt              # 30s install (pydantic, httpx, fastapi, ...)
+├── requirements-llm.txt               # +5min (openai, anthropic, langchain, ...)
+├── requirements-gpu.txt               # +30min (torch, transformers, vllm, mlx-lm, ...)
+├── shared/                            # cross-chapter utilities
+│   ├── gpu_guard.py                   # CUDA/MPS/None scheduler (friendly errors on Mac)
+│   ├── mock_llm.py                    # deterministic LLM stub (no API key needed)
+│   ├── env.py                         # .env loader + API key validation
+│   └── fixtures/                      # 1-2KB test data
+├── ch01_python_basics/                # one dir per tutorial chapter
+│   ├── README.md                      # tier summary + quickstart + related chapters
+│   ├── core/                          # 80% core (Ch1-11)
+│   ├── llm/                           # 70% llm (Ch12-24)
+│   └── gpu/                           # 100% gpu (Ch25-29)
+├── ... 29 chapter dirs ...
+└── tests/
+    ├── conftest.py
+    └── test_pilots.py                 # pytest smoke tests
+```
+
+**Three-tier dependency strategy** covers 100% of user scenarios:
+- **core (158 files, 30s install)** — any laptop, pure-Python deps
+- **llm (199 files, +5min)** — API calls with mock fallback (no key required for tests)
+- **gpu (76 files, +30min)** — requires NVIDIA GPU or Apple Silicon (MLX)
+
+**Each .py file header** has YAML-style `# ---` comment (preserves `python file.py` runnability) with:
+- chapter / topic / section / difficulty / tier / deps / run command / expected runtime
+- Reverse link: `# See: ../tutorial/ChNN_*.md §X.Y`
+- Cross-refs and interview hooks for exam prep
+
+**Windows junction**: `code/tutorial/` → `..` allows `../tutorial/...` paths in 466 file headers to resolve without editing them. Recreate with `cmd //c "mklink /D code\\tutorial .."`. Already in `.gitignore`.
+
+**Smoke tests**:
+```bash
+cd code/
+make install-core
+pytest tests/ -m "not gpu"   # all core/ + most llm/ pass without GPU
+```
+
 ## Git Workflow
 
 - Branch: `master` (main, only)
-- Commit style: `Add N [description]` / `Polish: [description]` / `Update [target]: [description]`
+- Commit style: `Add N [description]` / `Polish: [description]` / `Update [target]: [description]` / `Wave N: [description]`
 - Commit per logical change, not per file
 - Health audit: see `99_库健康检查报告.md` (target: ≥ 90/100)

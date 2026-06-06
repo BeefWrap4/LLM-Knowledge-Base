@@ -54,9 +54,10 @@ def dedupe_counter(data):
 
 
 methods = [dedupe_set, dedupe_dict_fromkeys, dedupe_loop, dedupe_counter]
+expected_unique = {1, 2, 3, 4, 5, 6, 9}  # 7 unique values in lst
 for method in methods:
     result = method(lst)
-    assert len(result) == 6, f"{method.__name__} 去重失败: {result}"
+    assert set(result) == expected_unique, f"{method.__name__} 去重失败: {result}"
     print(f"  {method.__name__:25s} → {result}")
 
 

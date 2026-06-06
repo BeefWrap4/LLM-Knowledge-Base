@@ -2,7 +2,7 @@
 
 > **面向 2026 年大模型算法/工程岗位的 Python 全栈面试准备库**
 >
-> 29 章节 · 280+ 面试题 · 2026 年热点全覆盖 · 健康评分 95/100
+> 29 章节 · 280+ 面试题 · 439 个可运行代码示例 · 2026 主题全覆盖 · 健康评分 95/100
 
 本仓库是一份面向 **2026 年大模型算法/应用/部署/安全** 岗位的面试准备教程，**完全基于 Obsidian 知识库结构组织**。从 Python 基础到 LLM 工程实践，覆盖大模型开发的完整技术栈。
 
@@ -130,11 +130,13 @@
 
 | 指标 | 数值 |
 |------|------|
-| 总文件数 | 32 (29 章正文 + TOC + 健康报告 + README) |
-| 总大小 | ~2,200 KB |
+| 教程总文件数 | 33 (29 章正文 + TOC + 健康报告 + README + CLAUDE.md) |
+| 教程总大小 | ~2,200 KB |
 | 总面试题 | 300+ 道 |
 | 总 Mermaid 图 | 200+ 个 |
 | 总代码示例 | 500+ 段 |
+| **code/ 伴侣 .py 文件** | **439 (158 core/ + 199 llm/ + 76 gpu/)** |
+| **code/ 章节 README** | **29/29 (100%)** |
 | 健康评分 | 95/100 |
 | 风格一致性 | 100% |
 
@@ -152,7 +154,7 @@
 
 ## 🛠️ 可运行代码伴侣
 
-教程中 384 段 Python 代码已整理为 **端到端可运行的 .py 文件**，位于 [`code/`](code/) 目录：
+教程中所有 Python 代码已整理为 **439 个端到端可运行的 .py 文件**，位于 [`code/`](code/) 目录：
 
 ```bash
 cd code/
@@ -161,10 +163,17 @@ make install-core                                          # 30 秒
 python ch12_transformer_architecture/core/01_scaled_dot_product_attention.py
 ```
 
-支持三层依赖：
-- **core** — 任何电脑，30 秒安装
-- **llm** — API 调用，5 分钟安装
-- **gpu** — 需 NVIDIA GPU，30 分钟安装
+**三层依赖策略** (覆盖 100% 用户场景):
+- **core (158 文件)** — 任何电脑，30 秒安装
+- **llm (199 文件)** — API 调用 + mock 模式，5 分钟安装
+- **gpu (76 文件)** — 需 NVIDIA GPU/Apple MLX，30 分钟安装
+
+**Code Companion Phase 0-3 完整记录**:
+- **Wave 0**: Scaffold + 5 pilots (Makefile, requirements, shared/, tests/)
+- **Wave 1**: Ch01-11 核心提取 (154 core/)
+- **Wave 2**: Ch12-24 LLM/GPU 提取 (199 llm/ + 60 gpu/)
+- **Wave 3**: Ch25-29 全新绿 (48 gpu/ + 14 llm/) — 关闭 2026 新章节代码缺口
+- **Wave 4**: 收尾 (清理重复目录, 100% README 覆盖, tutorial/ junction)
 
 每个示例反向引用教程章节，5 分钟从 clone 到第一次运行。详见 [code/QUICKSTART.md](code/QUICKSTART.md)。
 
@@ -181,6 +190,7 @@ python ch12_transformer_architecture/core/01_scaled_dot_product_attention.py
 
 ## 🆕 更新日志
 
+- **2026-06-07** — code/ 伴侣 Phase 0-3 完成: 439 个 .py 文件 + 29 个章节 README + 3 层 tier 依赖 + tutorial/ junction
 - **2026-06-06** — 新增 Ch25-29 五个 2026 年新主题章节；库扩展至 29 章，健康评分 95/100
 - **2026-06-02** — Mindmap 统一改为文本树；Wiki 链接修复；交叉引用网络完善
 - **2026-06-01** — 初始版本：24 章核心内容

@@ -36,3 +36,7 @@ htmlcov/
 # uv
 .venv/
 uv.lock
+
+# Local convenience junction (Windows mklink /D or ln -s)
+# Allows `../tutorial/...` paths in .py headers to resolve without editing 466 files
+tutorial/
