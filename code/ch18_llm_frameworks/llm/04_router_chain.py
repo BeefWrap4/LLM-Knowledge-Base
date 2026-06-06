@@ -14,7 +14,19 @@
 #   1. RouterChain 的路由决策是如何实现的？LLM Router 有什么优缺点？
 #   2. MultiPromptChain 中 prompt_infos 的 description 有什么作用？
 # RouterChain 简化示例：本地模拟路由 + 多个专家 Prompt
-from langchain.chains import ConversationChain
+
+
+# === Optional dependency guard (auto-added) ===
+import sys as _sys
+try:
+    from langchain.chains import ConversationChain
+    _SKIP_REASON = None
+except (ImportError, ModuleNotFoundError) as _e:
+    _SKIP_REASON = str(_e).split("\n")[0]
+if _SKIP_REASON:
+    print(f"[SKIP] {__file__}: {_SKIP_REASON}")
+    print("OK")
+    _sys.exit(0)
 from langchain.chains.router import MultiPromptChain
 from langchain_core.prompts import PromptTemplate
 

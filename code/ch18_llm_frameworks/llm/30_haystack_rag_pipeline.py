@@ -29,7 +29,7 @@ class ContextualCompressor:
     """模拟 @component 装饰的类"""
     def run(self, documents, query):
         # 简化版：截断过短 / 过长文档
-        compressed = [d for d in documents if 50 < len(d["content"]) < 2000]
+        compressed = [d for d in documents if 50 < len(d.content) < 2000]
         return {"documents": compressed}
 
 # ===== 2. 模拟 Document =====

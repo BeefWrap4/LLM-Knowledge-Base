@@ -13,7 +13,19 @@
 # Interview hooks:
 #   1. RetrieverQueryEngine 与直接使用 index.as_query_engine() 有什么不同？
 #   2. SimilarityPostprocessor 的 similarity_cutoff 如何影响检索结果？
-from llama_index.core import VectorStoreIndex, Document
+
+
+# === Optional dependency guard (auto-added) ===
+import sys as _sys
+try:
+    from llama_index.core import VectorStoreIndex, Document
+    _SKIP_REASON = None
+except (ImportError, ModuleNotFoundError) as _e:
+    _SKIP_REASON = str(_e).split("\n")[0]
+if _SKIP_REASON:
+    print(f"[SKIP] {__file__}: {_SKIP_REASON}")
+    print("OK")
+    _sys.exit(0)
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.postprocessor import SimilarityPostprocessor

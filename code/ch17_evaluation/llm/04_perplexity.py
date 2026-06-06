@@ -29,9 +29,14 @@ def compute_perplexity(text: str, model_name: str = "gpt2") -> float:
         print("[mock] transformers/torch 未安装。返回 mock PPL=100.0")
         return 100.0
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    model.eval()
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(model_name)
+        model.eval()
+    except Exception as e:
+        # 网络/HF 离线时返回 mock PPL
+        print(f"[mock] 模型 {model_name} 加载失败 ({type(e).__name__})，返回 mock PPL=100.0")
+        return 100.0
 
     encodings = tokenizer(text, return_tensors="pt")
     max_len = model.config.max_position_embeddings

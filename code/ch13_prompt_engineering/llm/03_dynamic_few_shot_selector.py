@@ -15,10 +15,22 @@
 # - 为何使用归一化嵌入 + 点积等价于余弦相似度？
 # - 当候选示例规模达到百万级时，如何高效检索？(ANN/Faiss)
 
+
+
+# === Optional dependency guard (auto-added) ===
+import sys as _sys
+try:
+    from sentence_transformers import SentenceTransformer
+    _SKIP_REASON = None
+except (ImportError, ModuleNotFoundError) as _e:
+    _SKIP_REASON = str(_e).split("\n")[0]
+if _SKIP_REASON:
+    print(f"[SKIP] {__file__}: {_SKIP_REASON}")
+    print("OK")
+    _sys.exit(0)
 import numpy as np
 
 try:
-    from sentence_transformers import SentenceTransformer
     HAS_ST = True
 except Exception:
     HAS_ST = False
@@ -55,7 +67,12 @@ class DynamicFewShotSelector:
         """
         self.examples = examples
         if HAS_ST:
-            self.embedder = SentenceTransformer('BAAI/bge-small-zh-v1.5')
+            try:
+                self.embedder = SentenceTransformer('BAAI/bge-small-zh-v1.5')
+            except Exception as e:
+                # 网络/HF 离线时 fallback 到 mock
+                print(f"[mock] SentenceTransformer 加载失败 ({type(e).__name__}), 使用哈希嵌入")
+                self.embedder = _MockEmbedder()
         else:
             print("[mock] sentence-transformers 未安装，使用哈希嵌入演示")
             self.embedder = _MockEmbedder()

@@ -56,20 +56,26 @@ class BidiAgent:
         print(f"[audio] {self.audio_config}")
         print(f"[tools] {list(self.tools.keys())}")
 
+        # 辅助函数: 同时支持 sync 和 async 回调
+        async def _maybe_await(cb, *args):
+            result = cb(*args)
+            if hasattr(result, "__await__"):
+                await result
+
         # 模拟一次完整对话轮次
         mock_user_text = "帮我查一下明天北京到上海的航班"
-        await on_user_speech(mock_user_text)
+        await _maybe_await(on_user_speech, mock_user_text)
 
         # 工具调用
         if "search_flight" in self.tools:
             flight = await self.tools["search_flight"](
                 origin="北京", destination="上海", date="2026-06-07"
             )
-            await on_agent_speech(f"为您找到航班 {flight['flight']}，票价 {flight['price']} 元。")
+            await _maybe_await(on_agent_speech, f"为您找到航班 {flight['flight']}，票价 {flight['price']} 元。")
         else:
-            await on_agent_speech("请告诉我出发地和目的地。")
+            await _maybe_await(on_agent_speech, "请告诉我出发地和目的地。")
 
-        await on_interrupt()  # 模拟用户打断
+        await _maybe_await(on_interrupt)  # 模拟用户打断
 
 
 async def voice_assistant():

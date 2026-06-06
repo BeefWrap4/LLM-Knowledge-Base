@@ -24,6 +24,7 @@ Human-in-the-Loop 实现模式
 """
 
 from enum import Enum
+from typing import Dict, List, Optional
 
 
 class HITLMode(Enum):

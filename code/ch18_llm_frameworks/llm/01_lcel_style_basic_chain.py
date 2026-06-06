@@ -16,15 +16,16 @@
 # LCEL 风格：声明式链式调用
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableLambda
 
 # Mock LLM (no real API call) for offline runnability
-class _MockChatModel:
-    def invoke(self, msgs):
-        class _R: content = "为什么程序员总是分不清万圣节和圣诞节？因为 Oct 31 == Dec 25。"
-        return _R()
+# 包装为 RunnableLambda 以兼容 LCEL 管道 (`|`)
+def _mock_llm_invoke(msgs):
+    return "为什么程序员总是分不清万圣节和圣诞节？因为 Oct 31 == Dec 25。"
+
+model = RunnableLambda(_mock_llm_invoke)
 
 prompt = ChatPromptTemplate.from_template("讲一个关于{topic}的笑话")
-model = _MockChatModel()
 output_parser = StrOutputParser()
 
 # 管道式组合：prompt | model | parser

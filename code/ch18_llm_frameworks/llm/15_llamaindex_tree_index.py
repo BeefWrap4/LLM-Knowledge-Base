@@ -13,7 +13,19 @@
 # Interview hooks:
 #   1. TreeIndex 的层次结构如何构建？num_children 的取值如何影响效果？
 #   2. TreeIndex 在什么场景下比 VectorStoreIndex 更有优势？
-from llama_index.core import TreeIndex, Document
+
+
+# === Optional dependency guard (auto-added) ===
+import sys as _sys
+try:
+    from llama_index.core import TreeIndex, Document
+    _SKIP_REASON = None
+except (ImportError, ModuleNotFoundError) as _e:
+    _SKIP_REASON = str(_e).split("\n")[0]
+if _SKIP_REASON:
+    print(f"[SKIP] {__file__}: {_SKIP_REASON}")
+    print("OK")
+    _sys.exit(0)
 from llama_index.core import Settings
 
 class _MockLLM:

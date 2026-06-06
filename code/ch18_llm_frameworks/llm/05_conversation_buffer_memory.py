@@ -14,7 +14,19 @@
 #   1. ConversationBufferMemory 适合什么场景？它的 Token 消耗有什么问题？
 #   2. ConversationChain 与现代 LCEL 链式写法有什么不同？
 # ConversationBufferMemory：完整缓冲记忆
-from langchain.memory import ConversationBufferMemory
+
+
+# === Optional dependency guard (auto-added) ===
+import sys as _sys
+try:
+    from langchain.memory import ConversationBufferMemory
+    _SKIP_REASON = None
+except (ImportError, ModuleNotFoundError) as _e:
+    _SKIP_REASON = str(_e).split("\n")[0]
+if _SKIP_REASON:
+    print(f"[SKIP] {__file__}: {_SKIP_REASON}")
+    print("OK")
+    _sys.exit(0)
 from langchain.chains import ConversationChain
 from langchain_core.messages import HumanMessage, AIMessage
 

@@ -105,8 +105,8 @@ if __name__ == "__main__":
     print(f"正确率对比: p={result1['p_value']:.4f}, 显著={result1['significant']}")
 
     # 示例2：连续指标（延迟）
-    lat_a = np.random.gauss(800, 100, size=200).tolist()
-    lat_b = np.random.gauss(820, 110, size=200).tolist()
+    lat_a = np.random.normal(800, 100, size=200).tolist()
+    lat_b = np.random.normal(820, 110, size=200).tolist()
     result2 = tester.welch_t_test(lat_a, lat_b)
     print(f"延迟对比: p={result2['p_value']:.4f}, 显著={result2['significant']}")
 

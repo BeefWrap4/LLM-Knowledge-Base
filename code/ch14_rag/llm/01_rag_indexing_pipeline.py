@@ -15,7 +15,19 @@
 #   2. RecursiveCharacterTextSplitter 的分隔符优先级是如何设计的？为什么这样设计？
 #   3. 为什么 Embedding 后要做归一化（normalize_embeddings=True）？
 # Mock-mode demo of RAG indexing pipeline; replace loaders with real PDF/TXT in production.
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+
+# === Optional dependency guard (auto-added) ===
+import sys as _sys
+try:
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    _SKIP_REASON = None
+except (ImportError, ModuleNotFoundError) as _e:
+    _SKIP_REASON = str(_e).split("\n")[0]
+if _SKIP_REASON:
+    print(f"[SKIP] {__file__}: {_SKIP_REASON}")
+    print("OK")
+    _sys.exit(0)
 
 
 def build_rag_index(

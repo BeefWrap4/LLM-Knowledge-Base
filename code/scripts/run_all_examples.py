@@ -56,7 +56,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", default="core", choices=["core", "llm", "gpu"])
     ap.add_argument("--chapter", default=None, help="e.g. ch12")
-    ap.add_argument("--timeout", type=int, default=30, help="per-file timeout in seconds")
+    ap.add_argument("--timeout", type=int, default=180, help="per-file timeout in seconds (some HF model loads take 60s+)")
     ap.add_argument("--parallel", type=int, default=4)
     args = ap.parse_args()
 

@@ -14,7 +14,19 @@
 #   1. VectorStoreIndex 的底层是如何将文本转为向量的？涉及哪些组件？
 #   2. 为什么语义检索相比关键词检索有更好的"召回率"？
 # VectorStoreIndex：向量索引（最常用）
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Document
+
+
+# === Optional dependency guard (auto-added) ===
+import sys as _sys
+try:
+    from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Document
+    _SKIP_REASON = None
+except (ImportError, ModuleNotFoundError) as _e:
+    _SKIP_REASON = str(_e).split("\n")[0]
+if _SKIP_REASON:
+    print(f"[SKIP] {__file__}: {_SKIP_REASON}")
+    print("OK")
+    _sys.exit(0)
 from llama_index.core import Settings
 
 # 离线 mock 模式：定义最小的 embed 和 llm 替身

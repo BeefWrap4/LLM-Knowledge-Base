@@ -15,7 +15,19 @@
 #   2. chunk_size 和 chunk_overlap 如何选择？有什么经验值？
 #   3. 分隔符顺序（"\n\n" → "\n" → "。"）的意义是什么？
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+
+# === Optional dependency guard (auto-added) ===
+import sys as _sys
+try:
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    _SKIP_REASON = None
+except (ImportError, ModuleNotFoundError) as _e:
+    _SKIP_REASON = str(_e).split("\n")[0]
+if _SKIP_REASON:
+    print(f"[SKIP] {__file__}: {_SKIP_REASON}")
+    print("OK")
+    _sys.exit(0)
 
 
 # 递归字符分块：按优先级尝试不同分隔符

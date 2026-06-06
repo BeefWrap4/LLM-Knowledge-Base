@@ -171,6 +171,7 @@ outputs:
 - 工具调用失败 → 重试 1 次 → 仍失败则返回降级报告
 ''', encoding="utf-8")
 
+    (tmp / "data-summary").mkdir(parents=True, exist_ok=True)
     (tmp / "data-summary" / "SKILL.md").write_text('''---
 name: data-summary
 description: 对 CSV 数据生成摘要

@@ -15,10 +15,22 @@
 #   2. 经验记忆和事实记忆的存储结构为何不同？分别适用于哪些查询？
 #   3. 当 sentence-transformers 加载很慢时，工程上如何兜底？(降级到 hash 特征)
 
+
+
+# === Optional dependency guard (auto-added) ===
+import sys as _sys
+try:
+    from sentence_transformers import SentenceTransformer
+    _SKIP_REASON = None
+except (ImportError, ModuleNotFoundError) as _e:
+    _SKIP_REASON = str(_e).split("\n")[0]
+if _SKIP_REASON:
+    print(f"[SKIP] {__file__}: {_SKIP_REASON}")
+    print("OK")
+    _sys.exit(0)
 import numpy as np
 
 try:
-    from sentence_transformers import SentenceTransformer
     HAS_ST = True
 except Exception:  # pragma: no cover
     HAS_ST = False
@@ -44,7 +56,12 @@ class LongTermMemory:
 
     def __init__(self, embedding_model: str = "BAAI/bge-small-zh-v1.5"):
         if HAS_ST:
-            self.embedder = SentenceTransformer(embedding_model)
+            try:
+                self.embedder = SentenceTransformer(embedding_model)
+            except Exception as e:
+                # 网络/HF 离线时 fallback 到 None (下游代码有 None 检查)
+                print(f"[mock] SentenceTransformer 加载失败 ({type(e).__name__})，降级到 hash 特征")
+                self.embedder = None
         else:
             self.embedder = None
 

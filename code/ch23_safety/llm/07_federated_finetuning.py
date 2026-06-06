@@ -24,7 +24,7 @@
 """
 
 import copy
-from typing import List
+from typing import List, Dict
 
 
 class FederatedFineTuning:
