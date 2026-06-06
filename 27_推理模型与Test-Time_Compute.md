@@ -206,6 +206,12 @@ graph TB
 
 ---
 
+## 27.6.5 本章小结
+
+> **章节小结**：Test-Time Compute (TTC) Scaling 是 2026 年最热的范式转变，让模型在推理时"思考更久"获得更高质量答案。OpenAI o3、DeepSeek-R1、Claude 4.5 Extended Thinking 引领了这一浪潮。核心技术包括：Reasoning Effort (low/medium/high) API、GRPO 去 Critic 化训练、RLVR 用可验证奖励、s1 的 budget forcing、PRM 引导搜索。DeepSeek-R1 蒸馏 (R1-Zero → R1 → 蒸馏到 Qwen) 是 2026 年最成功的训练配方。面试考点：TTC 与预训练 Scaling Law 区别、GRPO 与 PPO 区别、Reasoning Effort 设置、PRM 训练。
+
+---
+
 ## 27.7 推理模型的部署挑战
 
 | 挑战 | 原因 | 解决方案 |
@@ -302,7 +308,8 @@ Snell et al. 2024: 256× 推理计算可在 MATH 上提升 50%→90%。
 
 ## 📚 相关章节
 
-- [[12_Transformer与大模型原理]] — 模型架构基础
-- [[16_模型微调与推理优化]] — GRPO/对齐技术
-- [[17_大模型评估体系]] — 推理模型评估基准
-- [[25_推理引擎与高性能服务]] — 长思维链的推理优化
+- [[12_Transformer与大模型原理]] — 模型架构基础：推理模型仍基于 Transformer 架构，Self-Attention 与 KV Cache 是长思维链推理的底层支撑。
+- [[15_Agent智能体开发]] — Agent 与推理融合：ReAct/Reflexion 等 Agent 范式将推理模型作为决策大脑，实现多步工具调用推理。
+- [[16_模型微调与推理优化]] — 训练技术详解：GRPO、RLVR、SFT 蒸馏等推理模型训练方法属于微调与对齐工程范畴。
+- [[17_大模型评估体系]] — 推理能力评估：AIME/MATH/HumanEval 等基准用于衡量推理模型在不同 reasoning_effort 下的准确率。
+- [[25_推理引擎与高性能服务]] — 部署关键：vLLM/SGLang/TensorRT-LLM 对长 CoT 输出做 KV Cache 复用、连续批处理与 speculative decoding 优化。
