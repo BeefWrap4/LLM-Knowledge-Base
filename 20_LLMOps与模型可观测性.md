@@ -3723,11 +3723,12 @@ def cost_overrun_auto_rollback(controller, current_cost_per_hour: float, budget_
 - **20.6 模型监控与告警**：四维监控体系（金指标/LLM特有/质量/基础设施）；数据漂移检测从特征空间转向 Embedding 空间。
 - **20.7 CI/CD**：自动化评估门禁是 LLM CI/CD 的核心；金丝雀发布配合自动回滚保障生产安全。
 
-> 📚 **延伸阅读**：
-> - [[13_Prompt_Engineering]] — Prompt 设计的最佳实践
-> - [[14_RAG检索增强生成]] — RAG 系统的可观测性
-> - [[15_Agent智能体开发]] — Agent 的调试与监控
-> - [[16_模型微调与推理优化]] — 模型部署方案的监控指标
-> - [[25_推理引擎与高性能服务]] — vLLM/SGLang 推理引擎的 Prometheus 指标
-> - [[29_Context_Engineering]] — Token 成本与 Context Rot 监控
-> - [[28_端侧与边缘LLM]] — 端侧 LLM 的监控与可观测性挑战
+## 📚 相关章节
+
+- [[13_Prompt_Engineering]] — Prompt 设计的最佳实践
+- [[14_RAG检索增强生成]] — RAG 系统的可观测性
+- [[15_Agent智能体开发]] — Agent 的调试与监控
+- [[16_模型微调与推理优化]] — 模型部署方案的监控指标
+- [[25_推理引擎与高性能服务]] — vLLM/SGLang 推理引擎的 Prometheus 指标
+- [[29_Context_Engineering]] — Token 成本与 Context Rot 监控
+- [[28_端侧与边缘LLM]] — 端侧 LLM 的监控与可观测性挑战

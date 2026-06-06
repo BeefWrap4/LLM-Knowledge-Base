@@ -1498,6 +1498,23 @@ def wrapped_call(messages, **kwargs):
 
 ---
 
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| **CoT 思维链** | 通过"逐步思考"将高熵直接跳跃拆分为低熵多步推理；Zero-shot 加"请逐步思考"、Few-shot 给推理示例；本质是利用自回归分解条件概率 |
+| **Self-Consistency** | 同一 CoT Prompt 采样 N 条（通常 5-10），temperature>0 制造多样性，多数投票取最一致答案；提升数学/逻辑题准确率 10-20% |
+| **ReAct 框架** | Thought(思考) → Action(工具调用) → Observation(结果) 三段循环；解决"需要外部信息"的任务；需设置 max_steps 防止无限循环 |
+| **ToT 树状思考** | 将线性 CoT 扩展为树状搜索（BFS/DFS），通过 evaluate() 函数评估路径可行性并剪枝；适合 24 点/博弈/组合优化等需多路径探索场景 |
+| **Few-shot 示例数** | 2-5 个为佳；0→1 提升最大（+20-30%），5+ 易触发上下文溢出或模式过拟合；生产推荐"动态 Few-shot"按语义检索 |
+| **Temperature 调控** | T=0 几乎贪婪（代码/JSON 必备）；T=0.3-0.5 平衡（问答/摘要）；T=0.8+ 创意写作；T=0 不等于严格 greedy，需配合 seed 参数 |
+| **Top-p / Top-k 采样** | Top-p 取累积概率超过 p 的"核"（0.85-0.95），Top-k 仅保留概率最高的 k 个（40-50）；二者可联合使用（先 k 截断再 p 筛选） |
+| **Prompt 注入类型** | 直接注入（"忽略之前指令"）、间接注入（外部数据携带恶意指令）、目标劫持（绕过安全限制）三种主要形式 |
+| **Prompt 注入防御** | 五层防御：输入层（正则+敏感词）、架构层（Chat API role 隔离，最有效）、模型层（RLHF）、输出层（schema 校验）、应用层（最小权限） |
+| **Extended Thinking** | 2026 推理控制机制；Anthropic `budget_tokens`、OpenAI `reasoning_effort`、Gemini `thinkingBudget`；独立 thinking block 可单独计费 |
+
+---
+
 ## 📚 相关章节
 
 - [[12_Transformer与大模型原理]] — 理解 Transformer 和 In-Context Learning 原理是 Prompt 设计的理论基础

@@ -1290,6 +1290,23 @@ Python 并发编程
 
 ---
 
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| GIL 全局解释器锁 | CPython 互斥锁，同一时刻仅一个线程执行字节码；IO 操作时释放，默认 5ms 切换一次 |
+| nogil 模式（Python 3.13+） | 实验性自由线程模式，CPU 密集型多线程可真并行；底层用 biased reference counting + 线程本地分配器 |
+| 进程 multiprocessing | 独立内存空间，绕过 GIL 利用多核，适合 CPU 密集型；通信用 Queue/Pipe/Value+Lock，Windows 需 `if __name__ == "__main__"` 保护 |
+| 线程 threading | 共享进程内存，受 GIL 限制仅伪并行；适合 IO 密集型低并发；同步原语 Lock/RLock/Semaphore/Condition |
+| 协程 asyncio | 用户态轻量级，事件循环调度，单线程支持数万+并发；`async/await` 语法，高并发 IO 首选 |
+| 事件循环 Event Loop | 协程调度核心；Task 通过 `await` 挂起，IO 完成后回调到就绪队列；`create_task`/`gather`/`TaskGroup` 协作 |
+| 同步阻塞代码集成 | `loop.run_in_executor()` 或 `asyncio.to_thread()`（3.9+）放入线程池；CPU 密集用 `ProcessPoolExecutor` |
+| 并发选型决策 | CPU 密集 → `multiprocessing`；IO 高并发 → `asyncio`；IO 低并发 → `threading`；混合 → `asyncio` + executor |
+| GIL 释放时机 | 时间片到期（默认 5ms）、IO 操作、`time.sleep()` 等阻塞调用时主动释放 |
+| 进程/线程/协程切换开销 | 进程（最大，页表切换）> 线程（中，栈/寄存器切换）> 协程（极小，用户态切换，~1μs） |
+
+---
+
 ## 📚 相关章节
 
 - [[01_Python编程基础]] — 函数、变量作用域等前置知识

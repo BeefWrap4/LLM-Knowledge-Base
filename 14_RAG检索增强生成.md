@@ -2219,6 +2219,21 @@ graph TD
 
 ---
 
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| **文档分块（Chunking）** | 固定长度 / 递归字符 / 语义分块 / 结构感知 / Agentic；chunk_size 通用 512，overlap 取 10-20% |
+| **Embedding 选型** | 中文首选 BGE-M3（多粒度），英文首选 text-embedding-3-large 或 NV-Embed-v2 |
+| **向量索引（HNSW / IVF / PQ）** | HNSW O(log N) 千万级首选；IVF+PQ 亿级压缩；HNSW 召回率 >95%@Top10 |
+| **混合搜索（Hybrid Search）** | 稠密向量 + BM25 稀疏；RRF 融合公式 k=60；解决精确 ID / 专有名词召回 |
+| **Re-ranking（Cross-Encoder）** | 两阶段召回-精排：Bi-Encoder 召回 Top-100，Cross-Encoder 精排 Top-10；中文选 bge-reranker-v2-m3 |
+| **Query Rewriting** | 同义词扩展 / HyDE 假想文档 / 子查询分解；提升短查询和模糊表达检索效果 |
+| **Graph RAG** | 实体-关系抽取 → 知识图谱 → 多跳遍历；解决跨文档关联推理（如"Alice 老板的公司"） |
+| **Agentic RAG / RAG-as-a-Tool** | 2026 范式升级：Agent 自主规划检索策略，RAG 降级为标准 Tool；支持多步检索 + 自我校验 |
+| **多模态 RAG** | CLIP/SigLIP/ColQwen 统一图文空间；Layout-aware chunking 保留版面；Vision-RAG 跳过 OCR |
+| **RAG 评估指标** | Context Precision/Recall、Faithfulness >90%、Answer Relevance、LLM-as-Judge 自动打分 |
+
 ## 📚 相关章节
 
 - [[12_Transformer与大模型原理]] — 大模型架构与上下文学习能力，RAG 的理论基础

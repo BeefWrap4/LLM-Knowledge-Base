@@ -932,6 +932,23 @@ print(f"最热门品类: {df['category'].mode()[0]}")
 
 ---
 
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| **ndarray** | NumPy 核心数据结构；连续内存、同质 dtype、支持 SIMD 向量化；属性包括 `ndim`/`shape`/`dtype`/`strides` |
+| **广播机制** | 从右往左匹配维度；维度相等、为 1 或缺失才可广播；常见应用：数据标准化 `(X - mean) / std`、图像灰度化 |
+| **loc vs iloc** | `loc` 基于**标签**，切片**包含**结束位 `[start, end]`；`iloc` 基于**整数位置**，切片**不包含**结束位 `[start, end)`；单值用 `at`/`iat` 更快 |
+| **groupby 三剑客** | `agg` 聚合返回汇总；`transform` 返回与原表同形；`filter` 过滤整组；结合 `agg({col: [func1, func2]})` 可多列多函数 |
+| **apply vs map vs applymap** | `map` 用于 Series 逐元素映射（dict/函数）；`apply` 灵活支持 Series/DataFrame 按行/列；`applymap`（已弃用→`DataFrame.map`）逐元素；优先向量化避免 apply |
+| **缺失值处理** | 检测 `isnull().sum()`；删除 `dropna(subset=, thresh=)`；填充 `fillna(value/mean/ffill/bfill)`；插值 `interpolate()` |
+| **大数据集内存优化** | 下转 `int64→int32/int16`；`float64→float32`；低基数 `object→category`；分块 `read_csv(chunksize=)`；备选 Dask/Polars |
+| **数据清洗流程** | 缺失值 → 异常值（IQR / clip）→ 重复值（`drop_duplicates`）→ 类型转换 → 类别编码（One-Hot/Label）→ 标准化（StandardScaler） |
+| **Matplotlib 绘图骨架** | `fig, axes = plt.subplots(nrows, ncols)`；常用 `plot/scatter/bar/hist`；`tight_layout` 调整；`savefig(dpi, bbox_inches='tight')` |
+| **Seaborn 统计图** | `boxplot` 展示 5 数概括（Min/Q1/Median/Q3/Max + 1.5×IQR 异常值）；`heatmap` 看相关系数矩阵；`histplot(kde=True)` 分布+密度 |
+
+---
+
 ## 📚 相关章节
 
 - [[01_Python编程基础]] — 列表推导式、生成器等 NumPy/Pandas 操作的前置基础

@@ -804,6 +804,23 @@ fibonacci.cache_clear()  # 手动清空缓存
 
 ---
 
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| 引用计数（refcount） | 每个 PyObject 头部 8 字节计数器，归零即调用 `__del__` 并立即释放；`sys.getrefcount()` 需减 1 |
+| 标记-清除（Mark-Sweep） | 仅处理容器对象循环引用；DFS 标记根可达对象，未标记的循环对象在 Sweep 阶段回收 |
+| 分代回收阈值 | `gc.get_threshold()` 默认 `(700, 10, 10)`，分别对应第 0/1/2 代触发频率 |
+| 弱代假说 | 多数对象生命周期短，存活越久越可能继续存活，故老年代检查频率低 |
+| 循环引用破局 | 优先用 `weakref`/`WeakValueDictionary`；`__del__` 存在时 CPython 放弃回收 |
+| `__slots__` 优化 | 类声明固定属性可省去 `__dict__`，单实例内存节省约 50%，大规模场景收益显著 |
+| 生成器替代列表 | `yield` 惰性求值，按需产出数据，百万级数据可避免一次性分配大块内存 |
+| `lru_cache` 控量 | `@lru_cache(maxsize=N)` 限制缓存条目；`cache_info()` 监控命中率，`cache_clear()` 手动清空 |
+| `tracemalloc` 排查 | `take_snapshot()` 对比定位泄漏点；`compare_to(snap, 'lineno')` 输出按行号排序的 TOP 分配 |
+| `gc` 手动控制 | `gc.disable()` 用于性能关键路径，`gc.collect(gen)` 按代回收，`gc.DEBUG_SAVEALL` 把不可达对象存到 `gc.garbage` |
+
+---
+
 ## 📚 相关章节
 
 - [[01_Python编程基础]] — 数据类型的内存布局与引用计数基础

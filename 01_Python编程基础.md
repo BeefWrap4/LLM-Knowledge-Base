@@ -1462,6 +1462,23 @@ Python 编程基础
 
 > **章节小结**：本章从 Python 语言概览出发，覆盖了基础语法、四大核心数据结构、函数机制和异常处理。其中**字典哈希表原理**、**元组不可变性陷阱**、**默认参数延迟绑定**、**LEGB 规则**是面试中出现频率最高的考点，务必深入理解其底层机制。Python 3.13 的 **nogil 实验性模式** 和 Python 3.14 的 **REPL 改进** 是 2026 年面试中的新兴加分项，建议持续关注。
 
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| 变量与类型 | 动态类型；可变（list/dict/set） vs 不可变（int/str/tuple/bool）；小整数 -5~256 缓存复用 |
+| 运算符 | `is` 比地址（None 必须用 `is`），`==` 比值；`and/or` 短路求值；falsy 值集合 |
+| 流程控制 | 链式比较 `1<x<10`；`for-else` 循环未 break 才执行 else；`enumerate/zip/zip_longest` 并行遍历 |
+| 列表 List | 动态数组：append 均摊 O(1)，pop(0) O(n)；切片越界不报错；推导式独立作用域 |
+| 字典 Dict | 哈希表 O(1) 查找；3.6+ 紧凑字典保插入顺序；键必须可哈希；`get/setdefault/defaultdict/Counter` |
+| 集合 Set | 哈希表实现，O(1) 成员判断；支持交并差；`frozenset` 不可变可作键 |
+| 元组 Tuple | 浅层不可变 — 元素是可变对象时内容可改；元组拆包；单元素须加逗号 `(x,)` |
+| 函数参数 | 传对象引用；不可变不外溢、可变会外溢；默认参数定义时求值（用 `None` 哨兵避免陷阱） |
+| *args/**kwargs | 参数顺序：位置 → 默认 → *args → keyword-only → **kwargs；`*` 解包序列、`**` 解包字典 |
+| LEGB 规则 | Local → Enclosing → Global → Built-in；`global` 改全局、`nonlocal` 改外层；lambda 循环延迟绑定用默认参数捕获 |
+| 异常处理 | BaseException → Exception → 子类；`try-except-else-finally` 四段式；捕获顺序子类→父类；自定义异常继承 Exception |
+| 文件与上下文 | `with` 自动释放资源；`__enter__/__exit__` 自定义上下文管理器；编码 `utf-8` 显式指定 |
+
 ## 📚 相关章节
 
 - [[02_Python核心面试专题_可变性与拷贝]] — 深入理解 Python 对象的可变性与拷贝机制

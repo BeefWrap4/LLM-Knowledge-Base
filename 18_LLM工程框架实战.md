@@ -2496,6 +2496,23 @@ states = list(graph.get_state_history(config))
 
 ---
 
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| **LangChain (v1)** | LCEL 链式编排（`\| prompt \| llm \| parser`），回归基础集成层；`Chain / Tool / Memory / Retriever` 四大核心抽象；不再主导 Agent 框架。 |
+| **LangGraph** | 状态图（State + Node + Edge）驱动的 Agent 框架；支持循环、持久化（checkpoint）、人机协同（`interrupt`）；2026 年 v1.0 稳定，是复杂多步推理首选。 |
+| **LlamaIndex** | 围绕 `Document / Node / Index / QueryEngine` 的数据索引与检索框架；`Workflow` 事件驱动 API 适合构建 RAG 与企业知识库。 |
+| **Pydantic AI** | Pydantic v2 同源的 Pythonic 类型安全 Agent 框架；`pydantic-graph` 提供图编排；输出校验、依赖注入原生支持，推荐 FastAPI/SQLModel 团队首选。 |
+| **LLaMA-Factory** | 一体化模型微调工厂；支持 LoRA / QLoRA / 全参数微调，覆盖 100+ 模型；多模态微调与 vLLM 推理导出，CLI + WebUI 双模式。 |
+| **Dify** | 低代码 LLM 应用平台（BaaS+Y）；`DSL` 工作流引擎 + 内置知识库 + 工具节点 + RAG 管线；适合快速搭建生产级 AI 应用原型与中小团队落地。 |
+| **AutoGen** | 微软开源多 Agent 对话框架（v0.4 重写为 Actor Model）；`AssistantAgent / UserProxyAgent / GroupChat` 支持代码执行、人机协同与分布式部署。 |
+| **CrewAI** | 角色分工式多 Agent 框架；`Agent / Task / Crew / Process` 四要素；`Flow` 模式（2026）支持企业级状态持久化与生产部署。 |
+| **框架选型决策** | 编排基础能力 → LangChain；复杂 Agent / 状态流 → LangGraph；类型安全 Pythonic → Pydantic AI；数据检索为主 → LlamaIndex；微调 → LLaMA-Factory；低代码 → Dify；多 Agent 协作 → AutoGen / CrewAI。 |
+| **2026 新趋势** | LangGraph + Pydantic AI + Strands + OpenAI Agents 构成 Agent 四大新支柱；MCP（工具协议）/ A2A（Agent 通信协议）走向标准化；可观测性首选 LangSmith / Phoenix / LangFuse。 |
+
+---
+
 > **章节总结**：本章覆盖了 2026 年大模型应用开发领域的 7 大核心框架。记住：**没有银弹，只有最合适的工具**。LangChain 是瑞士军刀，LangGraph 是手术刀，LlamaIndex 是档案馆长，LLaMA-Factory 是模型工匠，Dify 是快速成型机，AutoGen 是圆桌会议，CrewAI 是项目团队。根据你的场景选择，并始终保持对新技术的好奇心。
 >
 > 📚 **相关章节**：

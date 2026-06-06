@@ -1105,6 +1105,23 @@ class CustomCopy:
 
 ---
 
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| `is` vs `==` | `is` 比较 `id()`（身份/内存地址），`==` 调用 `__eq__()`（值相等）；判断 `None` / `True` / `False` 必须用 `is` |
+| 小整数与字符串驻留 | CPython 缓存 `-5 ~ 256` 的整数，编译期常量字符串自动 intern；运行时拼接的字符串不驻留 |
+| 可变 vs 不可变类型 | 不可变：`int`/`float`/`str`/`bool`/`tuple`/`frozenset`/`bytes`；可变：`list`/`dict`/`set`/`bytearray`；不可变可作 dict 键 |
+| 浅拷贝三种方式 | `lst[:]` 切片、`list()` / `dict()` / `set()` 工厂方法、`copy.copy()`；只复制外层容器，嵌套对象共享引用 |
+| 深拷贝 `deepcopy` | 递归复制所有层级对象；通过 `memo` 字典避免循环引用无限递归；不可变对象（如纯元素 tuple）不会真正拷贝 |
+| `[[0]*3]*3` 陷阱 | 复制同一内层列表引用三次，修改任一行元素会影响所有行；正确写法是列表推导式 `[[0]*3 for _ in range(3)]` |
+| 默认参数 `[]` 陷阱 | 函数默认参数在定义时**只创建一次**，跨调用共享同一个列表对象；可变默认参数是 Python 经典面试坑 |
+| `+=` 副作用 | `lst += other` 是 `__iadd__`，原地修改；`lst = lst + other` 创建新对象；`tuple += (x,)` 等价于重新赋值 |
+| `type` vs `isinstance` | `type(obj) == cls` 不含继承链，`isinstance(obj, cls)` 沿 MRO 检查；优先用 `isinstance`（鸭子类型） |
+| 自定义拷贝行为 | 实现 `__copy__()` 控制浅拷贝；实现 `__deepcopy__(memo)` 控制深拷贝，配合 `memo[id(self)]` 处理自引用 |
+
+---
+
 ## 📚 相关章节
 
 - [[01_Python编程基础]] — 基础数据类型与引用语义的前置知识

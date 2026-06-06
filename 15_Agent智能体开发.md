@@ -4255,6 +4255,21 @@ graph TD
 
 ---
 
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| ReAct 框架 | Thought → Action → Observation 循环；推理与行动交织；通过 Prompt 模板让 LLM 输出可解析的 Action 指令 |
+| Function Calling | 模型原生能力；输出结构化 JSON 函数调用；比 ReAct 更可靠但需模型支持（GPT-4/Claude/Qwen） |
+| MCP 协议 | Anthropic 开放标准；Client-Server 架构；JSON-RPC 2.0 over stdio/SSE；动态工具发现（tools/list）；三大能力 Tools/Resources/Prompts |
+| Agent 记忆系统 | 短期记忆（Sliding Window 滑动窗口）+ 工作记忆（任务关键信息）+ 长期记忆（向量数据库 + 知识图谱） |
+| 多 Agent 协作模式 | 层级协作（Manager-Worker）+ 流水线（Pipeline）+ 去中心化（Hub 消息总线）；主流框架 AutoGen / MetaGPT / CrewAI |
+| A2A 协议 | Google 2025 推出；Agent ↔ Agent 通信；Agent Card 能力描述；Push Notification 异步状态更新；与 MCP 互补 |
+| Agent Teams | Claude 4.6 架构；Team Lead + Teammates 并行协作；Shared Task List + Mailbox 异步通信；持久性独立实例 |
+| Agent 安全防线 | 死循环防范（max_steps + 动作去重）+ 工具幻觉（Schema 校验 + 白名单）+ 上下文污染（截断重置）+ Token 爆炸（输出分页）+ Prompt Injection（输入过滤 + 权限隔离） |
+
+---
+
 ## 📚 相关章节
 
 - [[12_Transformer与大模型原理]] — Agent Teams、大模型工具调用能力与涌现能力
