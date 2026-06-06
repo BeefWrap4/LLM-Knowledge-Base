@@ -1776,6 +1776,434 @@ def choose_multi_agent_framework(scenario: str) -> str:
 
 ---
 
+## 18.8 2026年新框架 ⭐⭐⭐⭐⭐
+
+> **重要趋势**：2026年，**LangChain 已不再是 Agent 框架的中心**。随着专用 agent 框架的崛起，LangChain 团队自身也已将核心迁移到 LangGraph，LangChain v1 主要回归 LCEL 编排与基础集成层。新一代 agent 框架更强调**类型安全、协议标准化（MCP / A2A）、持久化执行、托管部署**。**LangGraph + Pydantic AI + Strands + OpenAI Agents** 已成为 2026 年 Agent 工程的"**四大新支柱**"。
+
+### 18.8.1 Pydantic AI — 类型安全的 Pythonic Agent 框架
+
+Pydantic AI 是 Pydantic 团队（与 `pydantic` v2 同源）推出的 agent 框架，主打"**Pythonic、类型安全、生产可用**"。它在 2025-2026 年快速崛起，成为 FastAPI / SQLModel 用户迁移 LLM 应用的首选。
+
+**核心特性**：
+- **类型安全 agents**：依赖注入、结果校验全部使用 Pydantic v2 模型，无需手写 `JSON Schema`
+- **MCP-native**：内置 Model Context Protocol 客户端，一行代码连接 MCP server
+- **A2A-native**：原生支持 Agent-to-Agent 协议，可发现远程 agent 并委托任务
+- **Durable Execution**：通过 `pydantic-graph` 内置图状态机，支持 checkpoint / resume / 时间旅行
+- **Logfire 集成**：开箱即用的可观测性（OpenTelemetry 兼容）
+
+```python
+"""
+Pydantic AI 实战：类型安全的研究助手
+"""
+from pydantic_ai import Agent, RunContext
+from pydantic import BaseModel, Field
+from dataclasses import dataclass
+import asyncio
+
+# ===== 1. 用 Pydantic 模型声明 Agent 输出 =====
+class ResearchReport(BaseModel):
+    """研究结果的结构化输出"""
+    summary: str = Field(description="一句话总结")
+    key_points: list[str] = Field(description="3-5 个关键点")
+    sources: list[str] = Field(description="引用来源列表")
+    confidence: float = Field(ge=0, le=1, description="置信度 0-1")
+
+# ===== 2. 通过依赖注入传递上下文 =====
+@dataclass
+class Deps:
+    user_id: str
+    api_key: str
+
+# ===== 3. 定义 Agent =====
+research_agent = Agent(
+    model="openai:gpt-4o",
+    result_type=ResearchReport,  # 强制结构化输出
+    system_prompt="你是一个严谨的研究助手，输出必须可验证。",
+    deps_type=Deps,
+)
+
+@research_agent.tool
+async def web_search(ctx: RunContext[Deps], query: str) -> str:
+    """联网搜索工具（自动注册为 LLM 可用工具）"""
+    # 真实场景：调 Serper / Tavily / Bing
+    return f"[{query}] 的模拟搜索结果：..."
+
+# ===== 4. 运行 =====
+async def main():
+    deps = Deps(user_id="alice", api_key="sk-...")
+    report: ResearchReport = await research_agent.run(
+        "请调研 2026 年 LangChain 的市场份额变化",
+        deps=deps,
+    )
+    # 类型安全：IDE 自动补全、运行时校验
+    print(report.summary, report.confidence, report.key_points)
+
+asyncio.run(main())
+```
+
+### 18.8.2 Strands Agents SDK — AWS 主推的多模型 Agent 框架
+
+Strands Agents SDK 是 AWS 2025 年开源的 agent 框架，定位"**多模型、生产级、模型无关**"。**Anthropic 官方推荐** Strands 作为 Claude Agent SDK 的 Python 实现范式，Bedrock AgentCore 也基于 Strands 思想构建。
+
+**核心特性**：
+- **AWS / Bedrock 深度集成**：原生支持 Claude 3.5/3.7、Nova、Llama 3、DeepSeek 等
+- **BidiAgent（双向流式 Agent）**：支持文本 + 工具调用的真正双向流（区别于传统 stream）
+- **Anthropic 推荐范式**：与 Anthropic 官方"Building Effective Agents"白皮书理念一致
+- **多协议支持**：内置 MCP、A2A 适配器
+- **Strands Tools 生态**：丰富的官方 / 社区工具集
+
+```python
+"""
+Strands Agents SDK 实战：双向流式研究 Agent
+"""
+from strands import Agent, tool
+from strands.models import BedrockModel
+from strands.tools.mcp import MCPClient
+from mcp import stdio_client, StdioServerParameters
+
+# ===== 1. 定义工具 =====
+@tool
+def get_weather(city: str) -> str:
+    """获取城市天气"""
+    return f"{city} 当前晴，25°C"
+
+# ===== 2. 加载 MCP Server =====
+mcp_client = MCPClient(lambda: stdio_client(
+    StdioServerParameters(command="uvx", args=["awslabs.aws-documentation-mcp-server"])
+))
+
+with mcp_client:
+    tools = [get_weather] + mcp_client.list_tools_sync()
+
+    # ===== 3. 选用 Bedrock 上的 Claude 3.7 =====
+    model = BedrockModel(
+        model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        temperature=0.7,
+    )
+
+    # ===== 4. 创建 BidiAgent（双向流式）=====
+    agent = Agent(
+        model=model,
+        tools=tools,
+        system_prompt="你可以使用 AWS 文档 MCP 工具和天气工具回答问题。",
+    )
+
+    # 双向流：边思考边输出，边调工具
+    stream = agent.stream_async("对比一下 AWS Bedrock 上 Claude 3.5 和 3.7 的差异")
+    async for event in stream:
+        if "data" in event:
+            print(event["data"], end="", flush=True)
+        elif "tool_use" in event:
+            print(f"\n[调用工具: {event['tool_use']['name']}]")
+```
+
+### 18.8.3 OpenAI Agents SDK — 官方出品的轻量级 Agent 运行时
+
+OpenAI Agents SDK（前身 OpenAI Swarm）是 OpenAI 2025 年开源的轻量级 agent 运行时，强调**多 agent handoff（交接）、会话管理、可观测 tracing**。2026 年发布的 v0.14.0 引入了 `SandboxAgent`、Realtime、持久化 sessions。
+
+**核心特性**：
+- **Multi-Agent Handoffs**：agent 之间无缝交接，类似客服转接
+- **SandboxAgent v0.14.0**：内置沙箱执行环境，agent 可安全运行不可信代码
+- **Realtime**：原生支持 Realtime API（gpt-realtime），处理语音流
+- **Sessions**：内置 SQLite / Redis session 持久化，断线可恢复
+- **Tracing**：深度集成 OpenAI Traces，可视化每步决策
+
+```python
+"""
+OpenAI Agents SDK 实战：多 agent 客服系统
+"""
+from agents import Agent, Runner, function_tool, handoff
+from agents.extensions.sandbox import SandboxAgent
+import asyncio
+
+# ===== 1. 定义工具 =====
+@function_tool
+def check_order(order_id: str) -> str:
+    """查询订单状态"""
+    return f"订单 {order_id} 状态：已发货，预计明天到达"
+
+# ===== 2. 定义专业 agent =====
+billing_agent = Agent(
+    name="Billing",
+    instructions="处理账单、退款、发票问题。如不确定请转交。",
+    model="gpt-4o",
+)
+
+tech_agent = Agent(
+    name="TechSupport",
+    instructions="处理技术问题：登录错误、功能 bug。",
+    model="gpt-4o",
+    tools=[check_order],
+)
+
+# ===== 3. 路由 agent：识别意图并 handoff =====
+triage_agent = Agent(
+    name="Triage",
+    instructions="根据用户问题分诊到 Billing 或 TechSupport。",
+    model="gpt-4o",
+    handoffs=[
+        handoff(billing_agent, tool_description_override="转账单客服"),
+        handoff(tech_agent,  tool_description_override="转技术支持"),
+    ],
+)
+
+# ===== 4. 运行（自动持久化 session）=====
+async def main():
+    result = await Runner.run(
+        triage_agent,
+        input="我的订单 #12345 一直没收到，我想退款。",
+        session_id="user-001",  # 持久化
+    )
+    print(f"最终回复: {result.final_output}")
+    print(f"执行轨迹: {result.trace.url}")  # OpenAI Traces 链接
+
+asyncio.run(main())
+```
+
+### 18.8.4 AG2 — ex-AutoGen 的现代化重写
+
+AG2 是 AutoGen 核心团队（Chi Wang 等）在 2025 年底启动的 **AutoGen 全面重写版本**。原 AutoGen 0.2.x 进入维护模式，AG2 1.0 主打**模块化、类型安全、与 LangGraph 互操作**。
+
+**核心特性**：
+- **ex-AutoGen rewrite**：保留 GroupChat、UserProxy 等核心抽象，API 全面现代化
+- **类型化 GroupChat**：发言者选择、消息流转全部强类型
+- **与 LangGraph 互操作**：可在 LangGraph 中调用 AG2 agent，反之亦然
+- **A2A 协议支持**：原生实现 Google A2A 规范
+
+```python
+"""
+AG2 实战：现代化多 Agent 协作
+"""
+from ag2 import AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager
+
+# 配置 LLM
+llm_config = {"model": "gpt-4o", "api_key": "sk-..."}
+
+# ===== 定义 Agents =====
+planner = AssistantAgent(
+    name="Planner",
+    system_message="你是项目规划师，拆解任务为子任务。",
+    llm_config=llm_config,
+)
+
+coder = AssistantAgent(
+    name="Coder",
+    system_message="你是 Python 专家，实现子任务代码。",
+    llm_config=llm_config,
+)
+
+reviewer = AssistantAgent(
+    name="Reviewer",
+    system_message="你是代码审查员，确保代码质量。",
+    llm_config=llm_config,
+)
+
+user = UserProxyAgent(
+    name="User",
+    code_execution_config={"work_dir": "coding"},
+    human_input_mode="NEVER",
+)
+
+# ===== GroupChat =====
+chat = GroupChat(
+    agents=[user, planner, coder, reviewer],
+    speaker_selection_method="round_robin",  # 确定性发言顺序
+    max_round=8,
+)
+manager = GroupChatManager(groupchat=chat, llm_config=llm_config)
+
+user.initiate_chat(manager, message="实现一个分布式任务调度系统")
+```
+
+### 18.8.5 Haystack 2.x — deepset 的 context-engineered pipeline 框架
+
+Haystack（deepset 公司）从 1.x 全面重写为 2.x，定位"**production-ready、context-engineered pipelines**"。2026 年 2.x 稳定，配合 **Hayhooks**（HTTP / gRPC API 包装器）+ **MCP Server** 提供端到端 RAG 部署方案。
+
+**核心特性**：
+- **Context-Engineered Pipelines**：显式建模 query rewriting、reranking、contextual compression
+- **Hayhooks**：将 pipeline 一键部署为 REST / gRPC 端点
+- **Hayhooks MCP Server**：把 pipeline 暴露为 MCP 工具，供 Claude / Cursor 直接调用
+- **强类型组件**：基于 dataclass 的 Component 协议
+
+```python
+"""
+Haystack 2.x 实战：context-engineered RAG pipeline
+"""
+from haystack import Pipeline, component, Document
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from hayhooks import deploy
+
+# ===== 1. 自定义 rerank 组件 =====
+@component
+class ContextualCompressor:
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document], query: str):
+        # 简化版：截断过短 / 过长文档
+        compressed = [d for d in documents if 50 < len(d.content) < 2000]
+        return {"documents": compressed}
+
+# ===== 2. 构建 pipeline =====
+pipe = Pipeline()
+pipe.add_component("retriever", InMemoryBM25Retriever(document_store=InMemoryDocumentStore()))
+pipe.add_component("compressor", ContextualCompressor())
+pipe.add_component("prompt_builder", ChatPromptBuilder(template="""
+Given context and answer the question.
+Context: {% for d in documents %}{{ d.content }}\n{% endfor %}
+Question: {{query}}
+"""))
+pipe.add_component("llm", OpenAIChatGenerator(model="gpt-4o"))
+
+pipe.connect("retriever.documents", "compressor.documents")
+pipe.connect("compressor.documents", "prompt_builder.documents")
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+# ===== 3. 一键部署为 MCP Server =====
+deploy(pipe, name="my_rag", mcp_server=True)  # 暴露为 MCP 工具
+```
+
+### 18.8.6 Smolagents — HuggingFace 极简 code-agents
+
+Smolagents 是 HuggingFace 2025 年推出的"**极简主义**"agent 框架。整个核心代码 < 1000 行，但功能完整。
+
+**核心特性**：
+- **Code Agents**：agent 直接写 Python 代码调用工具（区别于 JSON tool calls）
+- **HuggingFace 生态**：直接调用 Hub 上的模型、datasets、spaces
+- **极小依赖**：核心仅需 `transformers` + `tools`
+- **沙箱安全**：内置 `E2BSandbox` 隔离执行
+
+```python
+"""
+Smolagents 实战：极简 code-agent
+"""
+from smolagents import CodeAgent, HfApiModel, tool
+
+@tool
+def get_weather(city: str) -> str:
+    """获取天气"""
+    return f"{city}: 晴 25°C"
+
+# HuggingFace Inference API 上的 Qwen2.5
+model = HfApiModel(model_id="Qwen/Qwen2.5-72B-Instruct")
+
+agent = CodeAgent(
+    tools=[get_weather],
+    model=model,
+    max_steps=5,
+)
+
+# Agent 内部会写代码：result = get_weather("北京")
+result = agent.run("查询北京和上海的天气，并告诉我哪个更适合户外运动。")
+print(result)
+```
+
+### 18.8.7 Agno — ex-Phidata 的高性能多模态 Agent 平台
+
+Agno（原名 Phidata，2025 年改名）是**最快**的 Python agent 框架之一，benchmark 显示其 agent 启动时间比 LangGraph 快约 10x。
+
+**核心特性**：
+- **ex-Phidata**：原 Phidata 团队重写品牌
+- **极速启动**：agent 实例化 < 5 微秒
+- **多模态原生**：agent 可同时处理文本、图像、音频、视频
+- **内置 Memory + Knowledge**：开箱即用 RAG 和长期记忆
+
+```python
+"""
+Agno 实战：多模态研究助手
+"""
+from agno.agent import Agent
+from agno.models.openai import OpenAIChat
+from agno.tools.duckduckgo import DuckDuckGoTools
+from agno.knowledge.pdf import PDFKnowledgeBase
+from agno.vectordb.pgvector import PgVector
+from agno.storage.sqlite import SqliteStorage
+
+# 知识库 + 长期记忆
+knowledge = PDFKnowledgeBase(
+    path="./docs",
+    vector_db=PgVector(table_name="agno_docs", db_url="postgresql://..."),
+)
+storage = SqliteStorage(table_name="agent_sessions", db_file="sessions.db")
+
+agent = Agent(
+    name="Researcher",
+    model=OpenAIChat(id="gpt-4o"),
+    tools=[DuckDuckGoTools()],
+    knowledge=knowledge,
+    storage=storage,
+    markdown=True,
+    show_tool_calls=True,
+)
+
+# 多模态输入：文本 + 图像
+agent.run("分析这张图，并联网搜索相关最新研究", images=["./chart.png"])
+```
+
+### 18.8.8 Mastra — TypeScript 原生 AI 工程框架
+
+Mastra 是 2025 年出现的 **TypeScript 优先** agent 框架，定位"**AI 工程框架**"（区别于单纯 agent library），对前端 / 全栈 Node.js 工程师极其友好。
+
+**核心特性**：
+- **TypeScript 原生**：端到端类型推断、Zod 校验
+- **Next.js / Hono 集成**：与前端框架无缝对接
+- **内置 MCP / A2A**：标准协议支持
+- **Mastra Studio**：可视化 agent 调试器（类似 LangSmith）
+
+```typescript
+// Mastra 实战：TypeScript 多 agent 系统
+import { Agent, MCPClient } from "@mastra/core";
+import { openai } from "@ai-sdk/openai";
+import { z } from "zod";
+
+// 1. 定义输出 schema（Zod）
+const ReportSchema = z.object({
+  summary: z.string(),
+  keyPoints: z.array(z.string()),
+});
+
+// 2. 定义 agent
+const researcher = new Agent({
+  name: "Researcher",
+  model: openai("gpt-4o"),
+  instructions: "你是研究助手。",
+  outputSchema: ReportSchema,
+});
+
+// 3. MCP client：连接外部工具
+const mcp = new MCPClient({
+  servers: [{ command: "uvx", args: ["awslabs.aws-docs-mcp"] }],
+});
+
+// 4. 运行
+const result = await researcher.generate(
+  "调研 2026 年 TypeScript agent 框架趋势",
+  { tools: await mcp.getTools() }
+);
+console.log(result.object.summary); // 类型安全
+```
+
+### 18.8.9 四大新支柱：2026 选型决策
+
+> **核心结论**：2026 年不要再选 LangChain 作为"agent framework"——它已成为**编排与集成层**。真正构建 agent 时，从四大新支柱中按需选取：
+
+| 框架 | 类型安全 | MCP | A2A | Durable | 最适合 |
+|------|---------|-----|-----|---------|-------|
+| **LangGraph** | ⚠️ TypedDict | ✅ | ⚠️ 需适配 | ✅ Checkpoint | 复杂多步 agent / 人机协同 |
+| **Pydantic AI** | ✅✅ Pydantic v2 | ✅ 原生 | ✅ 原生 | ✅ pydantic-graph | 追求类型安全的 Python 团队 |
+| **Strands** | ✅ Type hints | ✅ | ✅ | ✅ | AWS / Bedrock 用户 |
+| **OpenAI Agents** | ✅ Python type | ⚠️ 第三方 | ⚠️ 第三方 | ✅ Sessions | OpenAI 生态重度用户 |
+| Haystack 2.x | ✅ dataclass | ✅ Hayhooks | ❌ | ⚠️ | RAG / 检索流水线 |
+| Smolagents | ⚠️ | ⚠️ | ❌ | ❌ | 极简实验、HuggingFace 用户 |
+| Agno | ✅ | ✅ | ⚠️ | ✅ | 高性能、多模态 |
+| Mastra | ✅✅ Zod | ✅ | ✅ | ⚠️ | TypeScript / 全栈团队 |
+| AG2 (ex-AutoGen) | ✅ | ⚠️ | ✅ | ⚠️ | 多 agent 协作 |
+
+> 📚 **相关章节**：详细 Agent 理论见 [[15_Agent智能体开发]]；MCP / A2A 协议见 [[17_LLM工程化与LLMOps]]。
+
+---
+
 ## 18.7 框架选型决策树 ⭐⭐⭐⭐⭐
 
 ### 18.7.1 场景化决策流程

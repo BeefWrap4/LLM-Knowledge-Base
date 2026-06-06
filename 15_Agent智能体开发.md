@@ -2901,7 +2901,1178 @@ Agent 记忆通常分三层：
 
 ---
 
-## 15.9 面试题精讲 🎯
+## 15.9 A2A协议与Skills生态 🆕
+
+> 2026年 Agent 生态进入"协议化、标准化"阶段。本节聚焦 2026 年最新趋势：A2A 协议被 Linux Foundation 接管成为开放标准、Skills 生态从 Anthropic 内部走向开放市场、Voice/实时双向 Agent 兴起、沙箱化代码执行、持久化执行（durable execution）以及 ACI（Agent-Computer Interface）设计原则。
+
+---
+
+### 15.9.1 A2A 协议：Agent Cards + JSON-RPC over HTTP/SSE
+
+A2A（Agent-to-Agent）协议在 2026 年完成重大演进：从 Google 单家项目升级为 **Linux Foundation 治理的开放标准**，类似当年 Kubernetes 从 CNCF 毕业的路径。
+
+#### 1. Agent Card：Agent 的"身份证"
+
+Agent Card 是描述 Agent 能力的标准 JSON 文档，托管在 `/.well-known/agent.json` 路径上：
+
+```json
+{
+  "name": "WeatherAgent",
+  "version": "1.0.0",
+  "description": "查询全球天气信息",
+  "url": "https://weather-agent.example.com",
+  "provider": {
+    "organization": "Example Corp",
+    "url": "https://example.com"
+  },
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "stateTransitionHistory": false
+  },
+  "skills": [
+    {
+      "id": "get_weather",
+      "name": "Get Weather",
+      "description": "获取指定城市的当前天气和预报",
+      "inputModes": ["text"],
+      "outputModes": ["text", "json"],
+      "examples": [
+        "北京今天天气怎么样？",
+        "明天上海会下雨吗？"
+      ]
+    }
+  ],
+  "securitySchemes": {
+    "bearer": {
+      "type": "http",
+      "scheme": "bearer",
+      "bearerFormat": "JWT"
+    }
+  }
+}
+```
+
+#### 2. JSON-RPC over HTTP/SSE 通信
+
+A2A 协议的核心传输基于 JSON-RPC 2.0，**HTTP 用于请求与响应，SSE（Server-Sent Events）用于流式输出**：
+
+```python
+"""
+A2A Client 简化实现
+展示 JSON-RPC over HTTP + SSE 流式通信
+"""
+import json
+import asyncio
+import httpx
+from typing import AsyncIterator
+
+
+class A2AClient:
+    """
+    A2A 协议客户端
+
+    核心能力：
+    1. 拉取 Agent Card（发现能力）
+    2. 发送任务（JSON-RPC over HTTP）
+    3. 订阅流式更新（SSE）
+    """
+
+    def __init__(self, agent_url: str, auth_token: str = None):
+        self.agent_url = agent_url.rstrip("/")
+        self.auth_token = auth_token
+        self._card = None
+
+    async def fetch_agent_card(self) -> dict:
+        """从 .well-known 路径拉取 Agent 能力描述"""
+        async with httpx.AsyncClient() as client:
+            url = f"{self.agent_url}/.well-known/agent.json"
+            headers = {}
+            if self.auth_token:
+                headers["Authorization"] = f"Bearer {self.auth_token}"
+            response = await client.get(url, headers=headers, timeout=10.0)
+            response.raise_for_status()
+            self._card = response.json()
+            return self._card
+
+    async def send_task(self, skill_id: str, message: str, session_id: str = None) -> dict:
+        """通过 JSON-RPC 2.0 发送任务到远程 Agent"""
+        rpc_request = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tasks/send",
+            "params": {
+                "skill": skill_id,
+                "message": {
+                    "role": "user",
+                    "parts": [{"type": "text", "text": message}],
+                },
+                "sessionId": session_id or self._new_session_id(),
+            }
+        }
+        async with httpx.AsyncClient() as client:
+            headers = {"Content-Type": "application/json"}
+            if self.auth_token:
+                headers["Authorization"] = f"Bearer {self.auth_token}"
+            response = await client.post(
+                f"{self.agent_url}/rpc",
+                json=rpc_request,
+                headers=headers,
+                timeout=60.0,
+            )
+            response.raise_for_status()
+            return response.json()
+
+    async def stream_task(self, skill_id: str, message: str) -> AsyncIterator[dict]:
+        """通过 SSE 订阅流式输出"""
+        rpc_request = {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tasks/sendSubscribe",
+            "params": {
+                "skill": skill_id,
+                "message": {
+                    "role": "user",
+                    "parts": [{"type": "text", "text": message}],
+                }
+            }
+        }
+        headers = {"Accept": "text/event-stream"}
+        if self.auth_token:
+            headers["Authorization"] = f"Bearer {self.auth_token}"
+
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST",
+                f"{self.agent_url}/rpc/stream",
+                json=rpc_request,
+                headers=headers,
+                timeout=None,
+            ) as response:
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        data = line[6:].strip()
+                        if data and data != "[DONE]":
+                            try:
+                                yield json.loads(data)
+                            except json.JSONDecodeError:
+                                continue
+
+    @staticmethod
+    def _new_session_id() -> str:
+        import uuid
+        return str(uuid.uuid4())
+
+
+async def main():
+    client = A2AClient("https://weather-agent.example.com", auth_token="xxx")
+    card = await client.fetch_agent_card()
+    print(f"Agent: {card['name']}, Skills: {[s['id'] for s in card['skills']]}")
+
+    result = await client.send_task("get_weather", "北京今天天气怎么样？")
+    print(f"Result: {result}")
+
+    async for event in client.stream_task("get_weather", "上海未来三天预报"):
+        print(f"Stream event: {event}")
+
+
+asyncio.run(main())
+```
+
+#### 3. Linux Foundation 治理演进
+
+```mermaid
+graph LR
+    subgraph "A2A 协议治理演进"
+        direction LR
+        A["2025年4月<br/>Google 首发 A2A<br/>作为厂商提案"]
+        B["2025年Q4<br/>50+ 厂商加入<br/>IBM 微软 Red Hat"]
+        C["2026年Q1<br/>捐给 Linux Foundation<br/>成立 A2A Working Group"]
+        D["2026年Q2<br/>v0.3 发布<br/>Agent Card 标准化"]
+
+        A --> B --> C --> D
+    end
+
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style C fill:#e8f5e9,stroke:#388e3c
+    style D fill:#f3e5f5
+```
+
+**关键意义**：
+- **厂商中立**：不再绑定单一公司，避免供应商锁定
+- **治理透明**：Working Group 决策公开，多方投票
+- **生态加速**：开源参考实现 + 合规测试套件，降低接入成本
+- **类比路径**：与 OpenAPI、Linux Foundation、Kubernetes 治理模式相同
+
+---
+
+### 15.9.2 Skills Marketplace：SKILL.md 开放标准
+
+2026 年 Skills 从 Anthropic 内部概念（Claude Skills）走向**开放市场和生态标准**。
+
+#### 1. SKILL.md 文件结构
+
+Anthropic 提出的开放标准 `SKILL.md`，使用 YAML Frontmatter 描述元信息，正文是 Markdown 文档：
+
+```markdown
+---
+name: code-review
+description: 对 Git diff 进行多维度代码审查，包括安全、性能、可读性
+version: 1.0.0
+author: community
+tags: [code-review, security, performance]
+license: MIT
+inputs:
+  - name: diff
+    type: string
+    description: Git diff 内容
+    required: true
+outputs:
+  - name: review_report
+    type: object
+    schema:
+      issues: array
+      summary: string
+      score: number
+---
+
+# Code Review Skill
+
+## 描述
+本 Skill 对 Git diff 进行多维度代码审查，输出结构化报告。
+
+## 适用场景
+- 提交前的自我审查
+- CI 流水线中的自动审查
+- Code Review 机器人的审查逻辑
+
+## 工具依赖
+- `read_file`: 读取 diff 文件
+- `search_pattern`: 搜索可疑模式
+- `language_detect`: 检测编程语言
+
+## 执行流程
+1. 解析 diff，识别变更的文件
+2. 对每个文件进行语言检测
+3. 加载对应语言的审查规则
+4. 执行多维度检查
+5. 汇总问题，输出结构化报告
+
+## 输出格式
+结构化 JSON 对象，包含 issues 数组、summary 文本、score 分数
+
+## 示例
+### 输入
+```diff
++ cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
+```
+
+### 输出
+```json
+{
+  "issues": [{
+    "file": "db.py",
+    "line": 1,
+    "severity": "critical",
+    "type": "security",
+    "message": "SQL 注入风险：应使用参数化查询"
+  }],
+  "score": 30
+}
+```
+
+## 回退策略
+- diff 格式无法解析 → 报告错误并跳过审查
+- 语言不支持 → 仅做通用检查
+- 工具调用失败 → 重试 1 次 → 仍失败则返回降级报告
+```
+
+#### 2. Skills 加载器实现
+
+```python
+"""
+Skills 加载器 - 从目录加载 SKILL.md 并提供给 Agent
+"""
+import yaml
+import re
+from pathlib import Path
+from dataclasses import dataclass, field
+from typing import Optional
+
+
+@dataclass
+class Skill:
+    """解析后的 Skill 对象"""
+    name: str
+    description: str
+    version: str
+    author: str
+    tags: list[str]
+    inputs: list[dict]
+    outputs: list[dict]
+    tools: list[str] = field(default_factory=list)
+    flow_steps: list[str] = field(default_factory=list)
+    raw_markdown: str = ""
+    file_path: str = ""
+
+
+class SkillLoader:
+    """
+    Skills Marketplace 加载器
+
+    使用示例：
+        loader = SkillLoader(skills_dir="./skills")
+        skill = loader.load("code-review")
+        loader.list_by_tag("security")
+    """
+
+    def __init__(self, skills_dir: str):
+        self.skills_dir = Path(skills_dir)
+        self._cache: dict[str, Skill] = {}
+
+    def load(self, skill_name: str) -> Skill:
+        """加载指定 Skill（带缓存）"""
+        if skill_name in self._cache:
+            return self._cache[skill_name]
+
+        skill_file = self.skills_dir / skill_name / "SKILL.md"
+        if not skill_file.exists():
+            raise FileNotFoundError(f"Skill not found: {skill_file}")
+
+        content = skill_file.read_text(encoding="utf-8")
+        skill = self._parse(content)
+        skill.file_path = str(skill_file)
+        self._cache[skill_name] = skill
+        return skill
+
+    def list_all(self) -> list[Skill]:
+        """列出目录下所有 Skill"""
+        skills = []
+        for sub in self.skills_dir.iterdir():
+            if sub.is_dir() and (sub / "SKILL.md").exists():
+                try:
+                    skills.append(self.load(sub.name))
+                except Exception:
+                    continue
+        return skills
+
+    def list_by_tag(self, tag: str) -> list[Skill]:
+        """按 tag 过滤"""
+        return [s for s in self.list_all() if tag in s.tags]
+
+    def _parse(self, content: str) -> Skill:
+        """解析 SKILL.md（YAML Frontmatter + Markdown 正文）"""
+        match = re.match(r"^---\n(.*?)\n---\n(.*)$", content, re.DOTALL)
+        if not match:
+            raise ValueError("SKILL.md 必须以 YAML frontmatter 开头")
+        yaml_text, markdown = match.groups()
+        meta = yaml.safe_load(yaml_text) or {}
+
+        tools = re.findall(r"`([a-z_]+)`\s*[:：]", markdown)
+        flow_steps = re.findall(r"^\d+\.\s+(.+)$", markdown, re.MULTILINE)
+
+        return Skill(
+            name=meta.get("name", ""),
+            description=meta.get("description", ""),
+            version=meta.get("version", "0.0.1"),
+            author=meta.get("author", "unknown"),
+            tags=meta.get("tags", []),
+            inputs=meta.get("inputs", []),
+            outputs=meta.get("outputs", []),
+            tools=tools,
+            flow_steps=flow_steps,
+            raw_markdown=markdown,
+        )
+
+
+def demo_skill_loader():
+    loader = SkillLoader(skills_dir="./skills")
+
+    print("=== All Skills ===")
+    for s in loader.list_all():
+        print(f"- {s.name} v{s.version}: {s.description}")
+
+    print("\n=== Security Skills ===")
+    for s in loader.list_by_tag("security"):
+        print(f"- {s.name}")
+
+    skill = loader.load("code-review")
+    print(f"\nLoaded: {skill.name}")
+    print(f"Tools: {skill.tools}")
+    print(f"Flow: {skill.flow_steps}")
+
+
+demo_skill_loader()
+```
+
+#### 3. Skills 生态与 Marketplace 流程
+
+```mermaid
+graph TB
+    subgraph "Skills Marketplace 生态"
+        direction TB
+
+        Dev["Skill 开发者<br/>编写 SKILL.md"]
+        Registry["Skills Registry<br/>marketplace.example.com<br/>搜索 版本管理 评分"]
+        CLI["Claude Code 与 Cursor<br/>CLI 工具"]
+        Agent["Agent 运行时"]
+        User["最终用户"]
+
+        Dev -->|"发布"| Registry
+        CLI -->|"搜索与安装"| Registry
+        Registry -->|"下载 SKILL.md"| CLI
+        CLI -->|"加载到"| Agent
+        User -->|"使用"| Agent
+        Agent -->|"调用"| CLI
+    end
+
+    style Registry fill:#fff3e0,stroke:#ff9800
+```
+
+**与 npm / PyPI 的类比**：
+
+| 维度 | npm 与 PyPI | Skills Marketplace |
+|------|------------|-------------------|
+| **包内容** | 代码库 | SKILL.md 声明式 |
+| **执行** | 解释或编译运行 | 由 LLM 解释执行 |
+| **版本管理** | semver | semver |
+| **依赖管理** | package.json 与 requirements.txt | Skills 间调用关系 |
+| **签名** | npm 签名 | 数字签名加来源审计 |
+
+---
+
+### 15.9.3 BidiAgent 与 Voice Agent：双向实时语音
+
+2026 年 Voice Agent 从"电话机器人"升级为"双向实时对话 Agent"（Bidi 即 Bidirectional，双向）。
+
+#### 1. Strands BidiAgent
+
+Strands Agents SDK 引入的 BidiAgent 支持**全双工语音**：
+
+```python
+"""
+Strands BidiAgent - 双向语音对话示例
+展示全双工音频流处理
+"""
+import asyncio
+from strands import BidiAgent
+from strands.voice import AudioConfig
+
+
+async def voice_assistant():
+    """
+    语音助手 BidiAgent
+    特性：
+    - 全双工：可被打断、随时插入
+    - 流式：边说边处理
+    - 多模态：语音加屏幕共享加工具调用
+    """
+    agent = BidiAgent(
+        model="claude-4.6-realtime",
+        voice="alloy",
+        system_prompt="""你是一个友好的语音助手，名字叫小音。
+        特点：
+        - 回答简洁，语音场景不宜超过 30 字每句
+        - 主动确认关键信息
+        - 被打断时立即停止当前回答""",
+        audio_config=AudioConfig(
+            input_sample_rate=16000,
+            output_sample_rate=24000,
+            vad_sensitivity=0.6,
+        ),
+    )
+
+    @agent.tool
+    async def search_flight(origin: str, destination: str, date: str) -> dict:
+        """查询航班信息"""
+        return {"flight": "CA1234", "price": 580, "duration": "2h30m"}
+
+    await agent.start_session(
+        on_user_speech=lambda text: print(f"用户: {text}"),
+        on_agent_speech=lambda text: print(f"小音: {text}"),
+        on_interrupt=lambda: print("[用户打断]"),
+    )
+
+
+asyncio.run(voice_assistant())
+```
+
+#### 2. OpenAI Realtime API
+
+OpenAI Realtime API（GA 版）提供原生双向语音支持，**WebSocket + Server VAD**：
+
+```python
+"""
+OpenAI Realtime API - 双向语音 Agent
+通过 WebSocket 维持长连接，实时交换音频流
+"""
+import asyncio
+import json
+import base64
+import websockets
+from websockets.client import connect
+
+
+class OpenAIRealtimeAgent:
+    """
+    OpenAI Realtime API 客户端
+
+    协议：WebSocket over HTTPS 即 wss
+    消息格式：JSON 事件流
+
+    核心事件：
+    - session.update: 配置会话
+    - conversation.item.create: 添加对话项
+    - response.audio.delta: 增量音频响应
+    - input_audio_buffer.speech_started: 用户开始说话
+    """
+
+    REALTIME_URL = "wss://api.openai.com/v1/realtime"
+
+    def __init__(self, api_key: str, model: str = "gpt-realtime"):
+        self.api_key = api_key
+        self.model = model
+        self.ws = None
+
+    async def connect(self):
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "OpenAI-Beta": "realtime=v1",
+        }
+        url = f"{self.REALTIME_URL}?model={self.model}"
+        self.ws = await connect(url, extra_headers=headers)
+
+        await self._send_event("session.update", {
+            "session": {
+                "modalities": ["text", "audio"],
+                "voice": "alloy",
+                "input_audio_format": "pcm16",
+                "output_audio_format": "pcm16",
+                "input_audio_transcription": {"model": "whisper-1"},
+                "turn_detection": {
+                    "type": "server_vad",
+                    "threshold": 0.5,
+                    "prefix_padding_ms": 300,
+                    "silence_duration_ms": 200,
+                },
+                "tools": [
+                    {
+                        "type": "function",
+                        "name": "get_weather",
+                        "description": "查询天气",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "city": {"type": "string"}
+                            },
+                            "required": ["city"]
+                        }
+                    }
+                ]
+            }
+        })
+
+    async def send_audio(self, audio_chunk: bytes):
+        """发送用户音频"""
+        await self._send_event("input_audio_buffer.append", {
+            "audio": base64.b64encode(audio_chunk).decode()
+        })
+
+    async def listen(self):
+        """监听服务器事件"""
+        async for message in self.ws:
+            event = json.loads(message)
+            event_type = event.get("type")
+
+            if event_type == "response.audio.delta":
+                yield {"type": "audio_chunk", "data": event.get("delta", "")}
+            elif event_type == "response.audio_transcript.delta":
+                yield {"type": "text", "data": event.get("delta", "")}
+            elif event_type == "input_audio_buffer.speech_started":
+                yield {"type": "user_started_speaking"}
+            elif event_type == "conversation.item.created":
+                item = event.get("item", {})
+                if item.get("type") == "function_call":
+                    yield {
+                        "type": "tool_call",
+                        "name": item["name"],
+                        "args": json.loads(item["arguments"]),
+                    }
+            elif event_type == "error":
+                yield {"type": "error", "data": event.get("error")}
+
+    async def _send_event(self, event_type: str, payload: dict):
+        event = {"type": event_type, **payload}
+        await self.ws.send(json.dumps(event))
+
+
+async def realtime_voice_demo():
+    agent = OpenAIRealtimeAgent(api_key="sk-xxx")
+    await agent.connect()
+
+    async for event in agent.listen():
+        if event["type"] == "audio_chunk":
+            pass
+        elif event["type"] == "text":
+            print(f"助手说: {event['data']}")
+        elif event["type"] == "user_started_speaking":
+            print("[用户开始说话，停止当前播放]")
+
+
+asyncio.run(realtime_voice_demo())
+```
+
+#### 3. BidiAgent 与传统 Voice Bot 对比
+
+| 维度 | 传统 Voice Bot 与 IVR | BidiAgent 与 Realtime |
+|------|----------------------|----------------------|
+| **对话模式** | 半双工 一问一答 | 全双工 可打断与并发 |
+| **延迟** | 1 到 3 秒 | 200 到 500ms |
+| **语音处理** | ASR 与 NLU 与 TTS 流水线 | 原生多模态 端到端 |
+| **打断** | 不支持 | 支持 VAD 加 Server 检测 |
+| **情绪感知** | 无 | 原生支持 声纹与节奏 |
+| **工具调用** | 切换到文字通道 | 语音中无缝调用 |
+
+---
+
+### 15.9.4 SandboxAgent：安全的代码执行环境
+
+2026 年 Agent 越来越多地涉及"执行代码"（Code Interpreter、Computer Use），**沙箱化执行**成为必备能力。OpenAI Agents SDK v0.14.0 引入 SandboxAgent 概念。
+
+```python
+"""
+SandboxAgent - 隔离的代码执行环境
+基于 OpenAI Agents SDK v0.14.0 沙箱模式
+"""
+from openai_agents import Agent, SandboxConfig
+import subprocess
+import tempfile
+import uuid
+import re
+
+
+# 1. 基础沙箱 Agent
+code_agent = Agent(
+    name="CodeExecutor",
+    instructions="""你是一个代码执行助手。分析用户需求，编写 Python 代码并执行。
+    约束：
+    - 只能使用白名单库：numpy, pandas, matplotlib, requests
+    - 单次执行超时 30 秒
+    - 内存限制 512MB
+    - 不允许访问网络，除白名单域名""",
+    sandbox=SandboxConfig(
+        mode="docker",
+        image="python:3.12-slim",
+        memory_limit="512m",
+        cpu_limit="1.0",
+        network="isolated",
+        allowed_domains=["pypi.org"],
+        timeout_seconds=30,
+        read_only_root=True,
+    ),
+    tools=["python_executor", "file_writer"],
+)
+
+
+# 2. 工具实现：受限容器内执行 Python
+def python_executor(code: str) -> str:
+    """
+    在隔离 Docker 容器中执行 Python 代码
+    """
+    container_name = f"sandbox-{uuid.uuid4().hex[:8]}"
+
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(code)
+            code_path = f.name
+
+        result = subprocess.run(
+            [
+                "docker", "run",
+                "--name", container_name,
+                "--rm",
+                "-m", "512m",
+                "--cpus", "1.0",
+                "--network", "none",
+                "-v", f"{code_path}:/tmp/code.py:ro",
+                "--read-only",
+                "--tmpfs", "/tmp:size=100m",
+                "python:3.12-slim",
+                "python", "/tmp/code.py",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        if result.returncode == 0:
+            return f"执行成功:\n{result.stdout}"
+        else:
+            return f"执行失败 (code={result.returncode}):\n{result.stderr}"
+
+    except subprocess.TimeoutExpired:
+        return "执行超时（30秒）"
+    finally:
+        subprocess.run(
+            ["docker", "rm", "-f", container_name],
+            capture_output=True, timeout=5,
+        )
+
+
+# 3. 多层防御深度
+class DefenseInDepth:
+    """
+    SandboxAgent 多层防御：
+    1. 静态分析：扫描危险 API
+    2. 资源限制：CPU 与内存与磁盘
+    3. 网络隔离：默认全断
+    4. 行为监控：异常行为检测
+    """
+
+    DANGEROUS_PATTERNS = [
+        r"\bos\.system\b",
+        r"\bsubprocess\b",
+        r"\beval\s*\(",
+        r"\bexec\s*\(",
+        r"\b__import__\b",
+        r"\bopen\s*\(.*['\"]/etc",
+        r"\bopen\s*\(.*['\"]/proc",
+    ]
+
+    @classmethod
+    def static_analysis(cls, code: str) -> tuple[bool, str]:
+        """静态分析代码安全性"""
+        for pattern in cls.DANGEROUS_PATTERNS:
+            if re.search(pattern, code):
+                return False, f"检测到危险 API: {pattern}"
+        return True, "静态分析通过"
+
+    @classmethod
+    def runtime_monitor(cls) -> dict:
+        """运行时资源监控配置"""
+        return {
+            "memory": "512m",
+            "cpu": "1.0",
+            "pids_limit": 100,
+            "network": "none",
+            "read_only_fs": True,
+            "no_new_privileges": True,
+            "cap_drop": ["ALL"],
+        }
+
+
+def demo_sandbox():
+    code = """
+import numpy as np
+arr = np.array([1, 2, 3, 4, 5])
+print(f"Mean: {arr.mean()}, Std: {arr.std()}")
+"""
+    safe, reason = DefenseInDepth.static_analysis(code)
+    print(f"Static analysis: {safe} ({reason})")
+    if safe:
+        result = python_executor(code)
+        print(f"Execution result: {result}")
+
+
+demo_sandbox()
+```
+
+**SandboxAgent 关键能力**：
+
+| 能力 | 说明 | 实现技术 |
+|------|------|---------|
+| **进程隔离** | 每次执行独立进程 | Docker 与 Firecracker 与 gVisor |
+| **资源限制** | CPU 与内存与磁盘配额 | cgroups |
+| **网络隔离** | 默认全断，按需放行 | Network namespace |
+| **文件系统** | 根目录只读 | Read-only mount |
+| **超时控制** | 强制 kill | subprocess timeout |
+| **审计追踪** | 所有执行记录 | 日志加 Trace ID |
+
+---
+
+### 15.9.5 Durable Execution：可恢复的 Agent 执行
+
+Pydantic AI 在 2026 年引入 **Durable Execution（持久化执行）** 概念。Agent 在执行过程中可能崩溃（网络断开、模型超时、进程被杀），传统实现会让所有进度丢失。Durable Execution 通过**事件溯源（Event Sourcing）+ 断点续传**让 Agent 可恢复。
+
+```python
+"""
+Pydantic AI Durable Execution - 持久化执行示例
+核心思想：每个步骤产生事件，事件持久化后可重放
+"""
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Optional
+import asyncio
+
+
+@dataclass
+class ResearchStep:
+    """研究流程中的一个步骤"""
+    step_id: str
+    name: str
+    status: str = "pending"
+    result: str = ""
+    started_at: str = ""
+    completed_at: str = ""
+
+
+class PostgresEventStore:
+    """简化的 Postgres 事件存储（实际中用真实 DB）"""
+
+    def __init__(self, connection_string: str, table_name: str = "agent_events"):
+        self.connection_string = connection_string
+        self.table_name = table_name
+        self._in_memory: dict[str, list[dict]] = {}
+
+    async def append_event(self, task_id: str, event_type: str, 
+                            payload: dict, checkpoint: dict = None) -> None:
+        """追加事件"""
+        event = {
+            "task_id": task_id,
+            "event_type": event_type,
+            "payload": payload,
+            "checkpoint": checkpoint,
+            "timestamp": datetime.now().isoformat(),
+        }
+        self._in_memory.setdefault(task_id, []).append(event)
+        # 实际实现中：INSERT INTO events ...
+
+    async def load_events(self, task_id: str) -> list[dict]:
+        """加载任务的所有历史事件"""
+        return self._in_memory.get(task_id, [])
+
+
+async def search_basic_info(topic: str) -> str:
+    await asyncio.sleep(1)
+    return f"基础信息: {topic} 的入门介绍..."
+
+
+async def deep_analysis(topic: str, context: dict) -> str:
+    await asyncio.sleep(2)
+    return f"深度分析: {topic} 的核心机制..."
+
+
+async def write_report(topic: str, context: dict) -> str:
+    await asyncio.sleep(1)
+    return f"完整报告: {topic} 的研究报告..."
+
+
+async def run_research_task(task_id: str, topic: str) -> list[ResearchStep]:
+    """
+    完整的耐久执行流程：
+    1. 检查是否有未完成的事件（恢复）
+    2. 如果没有，从头开始
+    3. 每步都持久化事件
+    """
+    event_store = PostgresEventStore(
+        connection_string="postgresql://...",
+    )
+
+    history = await event_store.load_events(task_id)
+    completed_ids: set[str] = set()
+    if history:
+        print(f"恢复任务 {task_id}，已执行 {len(history)} 个事件")
+        completed_ids = {
+            e["payload"].get("step_id")
+            for e in history
+            if e["event_type"] == "step_completed"
+        }
+
+    steps = [
+        ResearchStep(step_id="1", name="搜索基础信息"),
+        ResearchStep(step_id="2", name="深度分析"),
+        ResearchStep(step_id="3", name="撰写报告"),
+    ]
+    results: list[ResearchStep] = []
+
+    for step in steps:
+        if step.step_id in completed_ids:
+            print(f"步骤 {step.step_id} 已完成，跳过")
+            step.status = "completed"
+            results.append(step)
+            continue
+
+        await event_store.append_event(
+            task_id=task_id,
+            event_type="step_started",
+            payload={"step_id": step.step_id, "name": step.name},
+        )
+        step.status = "running"
+        step.started_at = datetime.now().isoformat()
+
+        try:
+            if step.step_id == "1":
+                step.result = await search_basic_info(topic)
+            elif step.step_id == "2":
+                step.result = await deep_analysis(topic, {})
+            elif step.step_id == "3":
+                step.result = await write_report(topic, {})
+
+            step.status = "completed"
+            step.completed_at = datetime.now().isoformat()
+
+            await event_store.append_event(
+                task_id=task_id,
+                event_type="step_completed",
+                payload={"step_id": step.step_id, "result": step.result},
+                checkpoint={"step_id": step.step_id, "status": "completed"},
+            )
+            results.append(step)
+            print(f"步骤 {step.step_id} 完成: {step.result[:50]}...")
+
+        except Exception as e:
+            await event_store.append_event(
+                task_id=task_id,
+                event_type="step_failed",
+                payload={"step_id": step.step_id, "error": str(e)},
+            )
+            raise
+
+    return results
+
+
+async def resume_interrupted_task(task_id: str):
+    """恢复中断的任务"""
+    return await run_research_task(task_id, "Python GIL")
+
+
+asyncio.run(resume_interrupted_task("task-001"))
+```
+
+**Durable Execution 与普通执行对比**：
+
+| 维度 | 普通执行 | Durable Execution |
+|------|---------|------------------|
+| **崩溃恢复** | 全部丢失，从头开始 | 恢复到上次 checkpoint |
+| **状态管理** | 内存 | 持久化事件日志 |
+| **可重放性** | 不支持 | 支持 事件溯源 |
+| **成本** | 低 | 中 每步都写日志 |
+| **适用场景** | 短任务与可重试 | 长任务与必须完成 |
+
+---
+
+### 15.9.6 ACI Design：Anthropic 的"Building Effective Agents"原则
+
+ACI（Agent-Computer Interface）是 Anthropic 在 2026 年提出的设计哲学，类比 HCI（人机交互）：**如何为 Agent 设计好的"工具接口"**。参考其论文《Building Effective Agents》。
+
+#### 1. 核心原则（五条）
+
+```
+┌────────────────────────────────────────────────────────┐
+│  ACI 设计五大原则（Anthropic 2026）                       │
+├────────────────────────────────────────────────────────┤
+│  1. 简单优于复杂                                         │
+│     - 能用单个工具就不用工具链                              │
+│     - 工具能返回丰富结果就别让 Agent 自己拼接              │
+├────────────────────────────────────────────────────────┤
+│  2. 明确优于隐含                                         │
+│     - 工具描述清楚，不要用魔法解决问题                     │
+│     - 参数文档完整，每个参数都有 example                   │
+├────────────────────────────────────────────────────────┤
+│  3. 上下文窗口友好                                       │
+│     - 工具返回尽量简洁，避免一次性返回 GB 级数据            │
+│     - 支持分页与分块与引用                                │
+├────────────────────────────────────────────────────────┤
+│  4. 错误信息可操作                                       │
+│     - 错误时返回建议，例如试试参数 X                       │
+│     - 不要让 Agent 猜测哪里错了                            │
+├────────────────────────────────────────────────────────┤
+│  5. 工具组合优于工具膨胀                                  │
+│     - 少量可组合的原子工具，优于大量专用工具                │
+│     - Unix 哲学：do one thing well                       │
+└────────────────────────────────────────────────────────┘
+```
+
+#### 2. 反模式与正模式对比
+
+```python
+# ============ 反模式 1：工具描述模糊 ============
+# 不好的工具定义
+bad_tool = {
+    "name": "process_data",
+    "description": "处理一些数据",
+    "parameters": {
+        "data": {"type": "object"},
+        "options": {"type": "object"},
+    }
+}
+
+# 改进后
+good_tool = {
+    "name": "filter_csv_rows",
+    "description": """根据列名和值过滤 CSV 数据行。
+    适用：用户说找出销售额大于 1000 的订单
+    不适用：复杂 SQL 查询，用 query_database""",
+    "parameters": {
+        "csv_path": {
+            "type": "string",
+            "description": "CSV 文件绝对路径",
+            "example": "/data/orders.csv",
+        },
+        "filter_column": {
+            "type": "string",
+            "description": "过滤列名",
+            "example": "amount",
+        },
+        "filter_operator": {
+            "type": "string",
+            "enum": [">", "<", "==", "!=", "in"],
+            "description": "比较操作符",
+        },
+        "filter_value": {
+            "description": "比较值，支持数字、字符串、列表",
+            "example": 1000,
+        },
+        "output_path": {
+            "type": "string",
+            "description": "过滤结果保存路径，可选，不传则返回内存数据",
+        },
+    },
+    "returns": "JSON: row_count 整数, output_path 字符串, preview 列表",
+    "errors": [
+        {"code": "FILE_NOT_FOUND", "message": "文件不存在，建议检查路径"},
+        {"code": "COLUMN_NOT_EXIST", "message": "列名不存在，可用 list_csv_columns 工具查询"},
+    ],
+}
+
+
+# ============ 反模式 2：返回数据过大 ============
+# 一次性返回整个 1GB 文件
+def read_full_file_bad(path: str) -> str:
+    return open(path).read()
+
+
+# 改进：分页加引用
+def read_file_with_pagination(path: str, start_line: int = 0,
+                               line_count: int = 100) -> dict:
+    """
+    分页读取文件
+
+    Returns:
+        {
+            "content": "前 100 行内容",
+            "next_start_line": 100,
+            "total_lines": 50000,
+            "has_more": True,
+        }
+    """
+    with open(path) as f:
+        lines = f.readlines()
+    return {
+        "content": "".join(lines[start_line:start_line + line_count]),
+        "next_start_line": start_line + line_count,
+        "total_lines": len(lines),
+        "has_more": start_line + line_count < len(lines),
+    }
+
+
+# ============ 反模式 3：工具膨胀 ============
+# 10 个专用工具
+bad_tools = [
+    "get_user_by_id", "get_user_by_email", "get_user_by_phone",
+    "get_active_users", "get_inactive_users", "get_recent_users",
+    "get_user_count", "get_user_paginated", "get_user_summary",
+    "search_users",
+]
+
+# 改进：少量可组合的原子工具
+good_tools = [
+    "query_users 带 filter 与 sort 与 page 与 page_size 参数",
+    "get_user_by_id 接收 id 参数",
+]
+```
+
+#### 3. ACI 设计 checklist
+
+```
+工具名称是否动词加名词，清晰表达功能
+描述是否包含适用场景和不适用场景
+每个参数是否有 example
+返回值是否结构化，JSON 而非大字符串
+大数据是否支持分页与分块
+错误信息是否包含修复建议
+是否有单元测试覆盖边界情况
+Agent 调用此工具的 token 消耗是否合理
+```
+
+---
+
+### 15.9.7 面试真题精讲
+
+**Q1：A2A 协议被 Linux Foundation 接管有什么意义？**
+
+**参考答案**：
+- **厂商中立**：避免被任何一家公司主导，类比 Kubernetes 捐给 CNCF
+- **生态加速**：开源参考实现 + 合规测试套件，降低接入成本
+- **治理透明**：多方 Working Group 决策，公开路线图
+- **企业信任**：大企业更愿意采用行业标准而非厂商提案
+
+---
+
+**Q2：SKILL.md 和传统代码包（npm/PyPI）有什么区别？**
+
+**参考答案**：
+- **声明式 vs 命令式**：SKILL.md 描述做什么与怎么做的方法论，由 LLM 解释执行；代码包是可直接运行的代码
+- **可移植性**：SKILL.md 跨模型与跨平台；代码包依赖具体运行时
+- **版本管理**：两者都用 semver，但 Skills 还要管理 prompt 版本
+
+---
+
+**Q3：为什么需要 BidiAgent？全双工语音难在哪？**
+
+**参考答案**：
+- **全双工不等于半双工**：半双工是一问一答，全双工是可被打断与并发说话
+- **技术难点**：
+  - **VAD 准确性**：在背景噪音中检测用户开始说话
+  - **打断处理**：检测到打断后立即停止 TTS，小于 200ms
+  - **并发安全**：用户说话时 Agent 思考和工具调用
+- **应用场景**：电话客服、语音助手、远程会议
+
+---
+
+**Q4：Durable Execution 适合所有 Agent 吗？**
+
+**参考答案**：
+- **适合**：长任务大于 5 分钟、必须完成的任务如订单处理、需要审计的场景
+- **不适合**：短任务小于 1 分钟、可重试任务如简单 Q&A、对延迟敏感的任务
+- **代价**：每步都写日志，token 和存储成本增加 10 到 30%
+
+---
+
+**Q5：ACI 设计和 API 设计有什么异同？**
+
+**参考答案**：
+
+| 维度 | API 设计 | ACI 设计 |
+|------|---------|---------|
+| **使用者** | 人类开发者 | LLM Agent |
+| **设计目标** | 性能、可用性、安全 | Token 效率、描述清晰、可组合 |
+| **复杂度** | 可接受复杂 专家用户 | 尽量简单 避免 Agent 理解错 |
+| **错误处理** | 抛出异常 | 返回可操作的错误信息 |
+| **文档** | OpenAPI | 工具描述加 example |
+
+**核心区别**：ACI 的"用户"是 LLM，需要考虑模型的注意力限制、token 成本、推理错误。
+
+---
+
+**Q6：SandboxAgent 为什么需要"多层防御"？单层不够吗？**
+
+**参考答案**：
+
+单层防御容易被绕过，需要 **Defense in Depth（深度防御）**：
+
+1. **静态分析**：在执行前扫描代码，但无法捕获所有漏洞
+2. **资源限制**：cgroups 限制 CPU/内存，但无法阻止逻辑漏洞
+3. **网络隔离**：默认断网，但模型可能通过白名单域名泄漏数据
+4. **行为监控**：运行时检测异常 syscall，但有性能开销
+5. **审计日志**：事后追溯，但无法实时阻断
+
+**类比**：飞机有黑匣子、备用引擎、应急降落伞，缺一不可。SandboxAgent 也需要多层防御才能在生产环境放心使用。
+
+---
+
+## 15.10 面试题精讲 🎯
 
 ### 🎯🆕 高频题7（2026年新题）：Function Calling、MCP、Skills、A2A 四者的关系是什么？怎么区分？
 

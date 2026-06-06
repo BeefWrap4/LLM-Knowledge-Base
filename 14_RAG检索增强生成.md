@@ -1570,7 +1570,292 @@ def cosine_similarity(a, b):
 
 ---
 
-## 14.9 RAG 评估与优化 ⭐⭐⭐⭐
+## 14.9 2026年新RAG模式 🆕 ⭐⭐⭐⭐⭐
+
+> **2026年最新趋势**：随着 ColPali、Contextual Retrieval、Long-context LLM 等技术成熟，RAG 正从"传统向量检索"向"多模态 + 上下文增强 + 延迟交互"演进。本节汇总 2025-2026 年最值得关注的 8 个 RAG 新方向，是 2026 年面试的**高阶加分项**。
+
+### 14.9.1 Vision-RAG：ColPali / ColQwen（无 OCR 文档图像检索）
+
+传统 RAG 必须先 OCR 提取文字，但 PDF 中的图表、公式、复杂排版往往在 OCR 阶段就丢失语义。**ColPali**（2024）与 **ColQwen**（基于 Qwen2-VL）提出**直接对文档图像做 Embedding**：
+
+- **核心思想**：将整页文档图像喂给 VLM，输出**多向量表示**（每个 patch 一个向量）
+- **检索方式**：ColBERT-style 延迟交互（late interaction），计算查询与图像块的最大相似度
+- **优势**：完全跳过 OCR，保留版式、图表、手写体等视觉信息
+- **代价**：存储成本高（每页约 1024 个向量），需专门的向量库
+
+```mermaid
+graph LR
+    A["PDF 页面图像"] --> B["ColQwen<br/>多向量编码<br/>每页约 1000 向量"]
+    Q["用户查询"] --> QB["查询编码<br/>单/多向量"]
+    B --> C["PLAID 索引<br/>HNSW + 压缩"]
+    QB --> C
+    C --> D["Top-K 页面<br/>+ 高亮 patch"]
+    D --> E["VLM 精读<br/>生成回答"]
+```
+
+```python
+# ColQwen Vision-RAG 简化示例
+from colpali_engine.models import ColQwen2, ColQwen2Processor
+import torch
+from PIL import Image
+
+# 1. 加载视觉-文档编码器
+model = ColQwen2.from_pretrained(
+    "vidore/colqwen2-v1.0",
+    torch_dtype=torch.bfloat16,
+    device="cuda",
+)
+processor = ColQwen2Processor.from_pretrained("vidore/colqwen2-v1.0")
+
+# 2. 编码文档图像（每页 PDF 转 PNG）
+page_images = [Image.open(f"page_{i}.png") for i in range(10)]
+batch = processor.process_images(page_images).to(model.device)
+with torch.no_grad():
+    doc_embeddings = model(**batch)  # [B_pages, P_patches, D_dim]
+
+# 3. 编码查询
+query_batch = processor.process_queries(["RAG 的核心思想是什么？"]).to(model.device)
+with torch.no_grad():
+    query_embeddings = model(**query_batch)  # [1, Q_tokens, D_dim]
+
+# 4. 延迟交互打分（max-sim 算子）
+scores = processor.score_multi_vector(query_embeddings, doc_embeddings)
+top_k_indices = scores[0].topk(3).indices.tolist()
+```
+
+### 14.9.2 Contextual Retrieval（Anthropic 2024）
+
+Anthropic 2024 年提出的 **Contextual Retrieval** 通过在 Embedding 前**为每个 chunk 注入上下文**，将检索失败率降低 **35%-49%**：
+
+- **传统问题**：chunk "年假 15 天"脱离上下文后，无法判断属于哪个公司、哪种员工
+- **解决方案**：用 LLM 给每个 chunk 生成 50-100 token 的上下文前缀，再合并 Embedding
+- **配合 BM25**：同时给稀疏检索也注入上下文，召回率再提升 5%
+- **代价**：索引阶段需要一次 LLM 调用（约 0.001$/chunk）
+
+```python
+# Contextual Retrieval 实现（Anthropic 官方推荐写法）
+from anthropic import Anthropic
+
+client = Anthropic()
+
+
+def add_context_to_chunk(chunk: str, full_document: str) -> str:
+    """为每个 chunk 注入 LLM 生成的上下文描述"""
+    prompt = f"""以下是文档的一个片段，请用 50-100 字简要说明这个片段的上下文，
+    使其脱离原文后仍能独立理解。包括：文档主题、关键实体、与上下文的关系。
+
+    完整文档（前 2000 字摘要）：
+    {full_document[:2000]}
+
+    目标片段：
+    {chunk}
+
+    上下文描述（简洁，不要重复片段内容）："""
+
+    response = client.messages.create(
+        model="claude-haiku-4-5",  # 用小模型即可
+        max_tokens=200,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    context = response.content[0].text
+    return f"[上下文：{context}]\n\n{chunk}"  # 合并后一起 Embedding
+```
+
+### 14.9.3 Late Chunking（jina.ai Contextual Chunking）
+
+jina.ai 提出的 **Late Chunking** 颠覆了"先切分再 Embedding"的传统流程：
+
+- **传统流程**：`文档 → 切 chunk → 每 chunk 独立 Embedding`（上下文丢失）
+- **Late Chunking**：`文档 → 整篇 Embedding → 按 token 位置切分`（保留全局上下文）
+
+**核心原理**：用 Long-Context Embedding 模型（如 jina-embeddings-v3，8K tokens）对整篇文档做一次编码，**每个 token 的 Embedding 都已包含完整上下文**；然后按 chunk 边界对 token Embedding 做 pooling，得到 chunk Embedding。
+
+```python
+# jina Late Chunking 示例
+import requests
+
+
+def late_chunking(document: str, chunk_size: int = 512) -> list[list[float]]:
+    response = requests.post(
+        "https://api.jina.ai/v1/embeddings",
+        headers={"Authorization": f"Bearer {JINA_API_KEY}"},
+        json={
+            "model": "jina-embeddings-v3",
+            "input": [document],  # 整篇文档
+            "task": "retrieval.passage",
+            "late_chunking": True,  # 开启 late chunking
+            "embedding_dim": 1024,
+        },
+    )
+    # 返回 [N_chunks, D] 矩阵
+    return response.json()["data"][0]["embeddings"]
+```
+
+### 14.9.4 ColBERTv2 / PLAID（Late-Interaction 范式）
+
+ColBERT 系列是**延迟交互范式**的代表：
+
+- **Bi-Encoder**：查询和文档各自编码 → 点积（快但精度低）
+- **Cross-Encoder**：查询和文档拼接 → 完整注意力（精确但不可索引）
+- **ColBERT / ColBERTv2 / PLAID**：**多向量独立编码 + 检索时 Max-Sim 打分**（折中方案）
+
+| 范式 | 编码方式 | 检索打分 | 速度 | 精度 | 索引可行性 |
+|------|---------|---------|------|------|----------|
+| Bi-Encoder | 独立 | 点积 | 极快 | 中 | ✅ |
+| Cross-Encoder | 联合 | 单次前向 | 极慢 | 极高 | ❌ |
+| **ColBERTv2/PLAID** | 独立 | **Max-Sim 延迟交互** | 中 | 高 | ✅（压缩后） |
+
+```python
+# ColBERTv2 / PLAID 检索示例
+from pylate import models, retrieve
+
+model = models.ColBERT(
+    model_name_or_path="lightonai/colbertv2.0",
+    device="cuda",
+)
+
+# 文档索引（每个文档产出多个 token-level 向量）
+documents = ["RAG 是检索增强生成", "ColBERT 是延迟交互模型"]
+documents_embeddings = model.encode(
+    documents, is_query=False, show_progress_bar=True
+)
+
+# PLAID 索引（多向量 + 压缩）
+index = retrieve.PLAID(
+    indexing_batch_size=128, index_folder="pylate_index"
+)
+index = index.add_documents(documents=documents, embeddings=documents_embeddings)
+
+# 查询
+query_embeddings = model.encode(
+    ["什么是 RAG？"], is_query=True, show_progress_bar=True
+)
+scores = index.retrieve(queries_embeddings=query_embeddings, k=5)
+```
+
+### 14.9.5 混合检索终极形态：BM25 + Dense + Cross-Encoder + RRF
+
+2026 年生产级 RAG 的**标配三段式**：
+
+1. **第一路 BM25**：精确关键词匹配（ID、型号、专有名词）
+2. **第二路 Dense**：语义相似度（召回更多可能相关的内容）
+3. **第三路 Cross-Encoder**：精排前 50-100 个候选
+4. **RRF 融合** BM25 + Dense → Cross-Encoder 精排 → Top-K
+
+| 检索层 | 召回目标 | 典型模型 | 候选规模 |
+|--------|---------|---------|---------|
+| **稀疏层** | 精确关键词 | BM25 / SPLADE / BGE-M3-sparse | Top-100 |
+| **稠密层** | 语义匹配 | BGE-M3 / text-embedding-3 / NV-Embed | Top-100 |
+| **精排层** | 交互精排 | bge-reranker-v2-m3 / Cohere Rerank 3.5 | Top-10 |
+
+### 14.9.6 Long-Context RAG vs 传统 RAG 权衡
+
+随着 Gemini 1.5（1M-2M tokens）、Claude 4.6（1M tokens）等长上下文模型成熟，"**把全文档塞进 Prompt**"成为 RAG 的替代方案。
+
+| 维度 | 传统 RAG | Long-Context RAG |
+|------|---------|-----------------|
+| **检索准确率** | 受限于分块和检索 | 100%（原文完整保留） |
+| **Token 成本** | 低（1K-10K 上下文） | 高（100K-2M 上下文） |
+| **延迟** | 低（向量检索 ms 级） | 高（首 token 5-30s） |
+| **多文档交叉** | 需要重排序融合 | 原生支持 |
+| **可解释性** | 高（可追溯来源） | 中（需引用标注） |
+| **适用规模** | 百万级文档 | 数十个文档（受限于 context window） |
+
+**面试回答要点**：
+
+- **小规模（<100 文档）**：Long-Context 更优，避免分块误差
+- **大规模（>10K 文档）**：必须用 RAG，Long-Context 不可行
+- **折中方案**：先用 RAG 召回 Top-20 文档，再喂入 Long-Context 模型精读
+
+### 14.9.7 MRL（Matryoshka Representation Learning）Embeddings
+
+MRL 让 Embedding 支持**可变维度截断**：
+
+- 训练时让模型学会在不同维度下都保留有效信息
+- 推理时可按需截断（如 1024 维 → 256 维，节省 75% 存储）
+- 短维度检索速度更快，长维度精度更高
+
+```python
+# MRL Embedding 使用（OpenAI text-embedding-3 系列原生支持）
+import openai
+
+response = openai.embeddings.create(
+    model="text-embedding-3-large",
+    input="RAG 是检索增强生成",
+    dimensions=512,  # 可选 256, 512, 1024, 3072
+)
+vector = response.data[0].embedding  # 512 维向量
+```
+
+### 14.9.8 2026 年主流 Reranker 选型
+
+| 模型 | 厂商 | 多语言 | 速度 | 精度 | 适用场景 |
+|------|------|--------|------|------|---------|
+| **Cohere Rerank 3.5** | Cohere | ✅ 100+ 语言 | API 调用 | SOTA | 生产首选，闭源 |
+| **bge-reranker-v2-m3** | BAAI | ✅ 多语言 | GPU 推理 | 高 | 开源首选，中文友好 |
+| **bge-reranker-v2-gemma** | BAAI | ✅ | 较慢 | 极高 | 高精度场景 |
+| **Jina Reranker v2** | Jina | ✅ 100+ 语言 | API 调用 | 高 | 多语言生产环境 |
+| **mxbai-rerank-large** | Mixedbread | 英文为主 | 极快 | 高 | 英文场景 |
+| **Qwen3-Reranker** | Alibaba | ✅ 中英 | 中 | 高 | 阿里生态集成 |
+
+```python
+# bge-reranker-v2-m3 重排序示例
+from FlagEmbedding import FlagReranker
+
+reranker = FlagReranker(
+    "BAAI/bge-reranker-v2-m3", use_fp16=True, device="cuda"
+)
+
+query = "什么是 RAG？"
+candidates = [
+    "RAG 是检索增强生成，结合检索与生成。",
+    "今天天气不错，适合出游。",
+    "RAG 通过向量检索为 LLM 提供外部知识。",
+]
+
+# 返回每个候选的相关性分数
+scores = reranker.compute_score([[query, c] for c in candidates])
+# scores = [0.95, 0.02, 0.89]
+```
+
+### 14.9.9 2026 年 RAG 模式选型决策树
+
+```mermaid
+graph TD
+    Q["新项目：选哪种 RAG 模式？"] --> M{"文档类型？"}
+    M -->|"纯文本"| T{"文档规模？"}
+    M -->|"PDF / 扫描件 / 图表"| V["ColPali/ColQwen<br/>Vision-RAG"]
+    M -->|"多模态混合"| MM["多模态 RAG<br/>CLIP + 文本"]
+
+    T -->|"<100 文档"| LC{"需要多跳推理？"}
+    T -->|"100-10K"| STD["标准 RAG<br/>Hybrid + Rerank"]
+    T -->|">10K 文档"| BIG["分布式 RAG<br/>Milvus + 分片"]
+
+    LC -->|"否"| LC1["Long-Context RAG<br/>塞进 Gemini/Claude"]
+    LC -->|"是"| GR["Graph RAG<br/>知识图谱"]
+```
+
+| 决策点 | 推荐方案 | 关键理由 |
+|--------|---------|---------|
+| **PDF 含复杂版式** | ColPali/ColQwen | OCR 会丢失图表信息 |
+| **大文档需要全局理解** | Long-Context RAG | 避免分块误差 |
+| **超大规模（>10K）** | Hybrid RAG + 分片索引 | 长上下文不可行 |
+| **多跳关联查询** | Graph RAG | 向量检索无法做关系推理 |
+| **实时性要求高** | 传统 RAG（向量检索） | 延迟 < 100ms |
+| **多语言混合** | bge-m3 + bge-reranker-v2-m3 | 单模型多语言支持 |
+
+### 14.9.10 2026 年新 RAG 模式面试金句
+
+1. **ColPali 的核心创新**："跳过 OCR，直接 Embedding 文档图像 —— 用 VLM 的多向量 + 延迟交互替代传统 OCR+文本检索 pipeline。"
+2. **Contextual Retrieval 的本质**："用 LLM 给每个 chunk 注入上下文，再做 Embedding —— 把 chunk 失去的上下文补回来。"
+3. **Late Chunking 的精髓**："先 Embedding 整篇文档，再按位置切分 —— 让每个 token 的 Embedding 都保留全局上下文。"
+4. **Long-Context vs RAG**："小规模选 Long-Context，大规模选 RAG；混合方案是 RAG 召回 + Long-Context 精读。"
+5. **MRL 的价值**："一个 Embedding 多种维度，按需截断 —— 牺牲少量精度换 75% 存储节省。"
+6. **Reranker 选型**："闭源选 Cohere Rerank 3.5，开源中文选 bge-reranker-v2-m3，多语言选 Jina Reranker v2。"
+
+---
+
+## 14.10 RAG 评估与优化 ⭐⭐⭐⭐
 
 ### 14.9.1 RAG 评估指标体系
 
@@ -1708,7 +1993,7 @@ faithfulness_score = 有依据的陈述数 / 总陈述数"""
 
 ---
 
-## 14.10 RAG 面试题精讲 🎯
+## 14.11 RAG 面试题精讲 🎯
 
 ### 🎯 高频题1：RAG 的完整工作流程是什么？
 
@@ -1888,7 +2173,7 @@ Agent（智能体）
 
 ---
 
-## 14.11 本章小结
+## 14.12 本章小结
 
 ```mermaid
 graph TD

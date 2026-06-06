@@ -2826,6 +2826,891 @@ $$\text{单次成本} = \frac{\text{输入Token} \times \text{输入单价} + \t
 
 ---
 
+## 20.10 OpenTelemetry GenAI 语义约定（2026年新）⭐⭐⭐⭐⭐
+
+> 🆕 **2026年新趋势**：随着 OpenTelemetry GenAI 语义约定（`gen_ai.*`）的正式稳定，以及 OpenInference 规范与 OTLP 协议的深度融合，大模型可观测性进入了"标准化 + 成本感知 SLO"的新阶段。本节讲解 2026 年大厂面试高频考点。
+
+### 20.10.1 背景：从私有 Trace 到 OTLP `gen_ai.*` 标准
+
+过去 LLM 可观测性高度依赖各厂商私有协议（LangSmith Trace、LangFuse Span），导致：
+
+- 跨厂商、跨框架的 Trace 难以对齐
+- 评估指标（cost / quality / safety）没有统一字段
+- 与现有 APM（Datadog / Grafana Tempo / Honeycomb）集成成本高
+
+2025-2026 年，**OpenTelemetry GenAI Semantic Conventions**（OTel `gen_ai.*` 命名空间）与 **OpenInference** 双轨成型：
+
+| 规范 | 主导方 | 核心特点 | 2026 状态 |
+|------|--------|---------|-----------|
+| **OTel GenAI SemConv** | CNCF OpenTelemetry | OTLP 原生、与 APM 无缝集成、`gen_ai.*` 标准化字段 | **Stable 1.x** |
+| **OpenInference** | Arize AI | LLM 专用 SpanKind、覆盖 RAG/Agent | 与 OTel 融合 |
+| **LangSmith/LangFuse 私有协议** | 各厂商 | 框架集成最深、UI 体验好 | 兼容 OTel 导出 |
+
+```mermaid
+graph TD
+    subgraph "应用层"
+        APP["LLM Application<br/>Agent / RAG / Chain"]
+    end
+    
+    subgraph "Instrumentation 层"
+        OTI["OTel GenAI<br/>Instrumentation<br/>(opentelemetry-instrumentation-openai)"]
+        OIF["OpenInference<br/>Instrumentor"]
+        MANUAL["Manual @trace<br/>gen_ai.* 属性"]
+    end
+    
+    subgraph "OTel SDK"
+        EXP["OTLP Exporter<br/>gRPC / HTTP"]
+        RES["Resource<br/>service.name=llm-app<br/>gen_ai.system=openai"]
+    end
+    
+    subgraph "后端 (任选)"
+        TEMPO["Grafana Tempo"]
+        HONEY["Honeycomb"]
+        DD["Datadog"]
+        LF["LangFuse (兼容)"]
+        JAEGER["Jaeger"]
+    end
+    
+    APP --> OTI
+    APP --> OIF
+    APP --> MANUAL
+    OTI --> EXP
+    OIF --> EXP
+    MANUAL --> EXP
+    EXP --> RES
+    EXP --> TEMPO
+    EXP --> HONEY
+    EXP --> DD
+    EXP --> LF
+    EXP --> JAEGER
+    
+    style OTI fill:#c8e6c9,stroke:#4caf50
+    style OIF fill:#fff3e0,stroke:#ff9800
+    style RES fill:#e3f2fd,stroke:#1976d2
+```
+
+### 20.10.2 OTLP `gen_ai.*` 核心字段
+
+OTel GenAI 语义约定对 LLM 调用进行了标准化建模，常用字段如下：
+
+| 字段 | 类型 | 含义 | 示例 |
+|------|------|------|------|
+| `gen_ai.system` | string | 模型提供商 | `openai` / `anthropic` / `azure.openai` |
+| `gen_ai.request.model` | string | 请求的模型 | `gpt-4o`、`claude-sonnet-4-6` |
+| `gen_ai.request.temperature` | double | 采样温度 | `0.7` |
+| `gen_ai.request.max_tokens` | int | 输出上限 | `2048` |
+| `gen_ai.usage.input_tokens` | int | prompt tokens | `1234` |
+| `gen_ai.usage.output_tokens` | int | completion tokens | `512` |
+| `gen_ai.usage.cached_input_tokens` | int | 缓存命中的 prompt tokens | `800` |
+| `gen_ai.response.finish_reason` | string | 结束原因 | `stop` / `length` / `tool_calls` / `content_filter` |
+| `gen_ai.response.model` | string | 实际响应模型（与请求可能不同） | `gpt-4o-2024-08-06` |
+| `gen_ai.response.id` | string | Provider 响应 ID | `chatcmpl-abc123` |
+| `gen_ai.tool.name` | string | Tool Call 工具名 | `search_knowledge_base` |
+| `gen_ai.tool.call.id` | string | 工具调用 ID | `call_xyz` |
+| `gen_ai.evaluation.score` | double | 评估器打分 | `0.92` |
+| `gen_ai.evaluation.name` | string | 评估器名 | `hallucination_judge` / `relevance` |
+| `gen_ai.retrieval.hit` | boolean | RAG 检索是否命中 | `true` |
+| `gen_ai.retrieval.documents` | int | 召回文档数 | `5` |
+| `gen_ai.retrieval.score_max` | double | Top-1 相似度 | `0.83` |
+| `gen_ai.cost.usd` | double | 单次调用美元成本 | `0.00234` |
+| `gen_ai.thinking.budget_tokens` | int | 思考预算（Claude / o-series） | `8192` |
+| `gen_ai.thinking.tokens_used` | int | 实际消耗的思考 token | `4231` |
+
+> 💡 **面试金句**：在 2026 年大厂面试中，要求候选人"基于 OTLP `gen_ai.*` 字段设计可观测性方案"已经逐渐替代了"LangSmith 如何使用"这类工具题。
+
+### 20.10.3 代码示例 1：OpenTelemetry SDK + GenAI 语义约定
+
+```python
+"""
+20.10.3 - OpenTelemetry GenAI 语义约定完整配置
+- 自动注入 gen_ai.* 属性
+- 手动附加 finish_reason、tool_calls、judge_scores
+- 通过 OTLP gRPC 导出到 Tempo / Honeycomb
+"""
+import os
+from opentelemetry import trace, metrics
+from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.sdk.metrics import MeterProvider, Counter, Histogram
+from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.semconv.gen_ai import (
+    GenAiAttributes,
+    GenAiOperationNameValues,
+)
+
+# ---------- 1. Resource：服务身份 ----------
+resource = Resource.create(
+    {
+        SERVICE_NAME: "qa-agent-prod",
+        SERVICE_VERSION: "v2.3.0",
+        ResourceAttributes.DEPLOYMENT_ENVIRONMENT: "production",
+        # 标识 LLM 系统
+        GenAiAttributes.GEN_AI_SYSTEM: "openai",
+    }
+)
+
+# ---------- 2. Tracer Provider + OTLP Exporter ----------
+provider = TracerProvider(resource=resource)
+otlp_exporter = OTLPSpanExporter(
+    endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://tempo:4317"),
+    headers={"x-api-key": os.getenv("OTEL_API_KEY", "")},
+    # 可选：启用 gzip 压缩降低网络开销
+    # compression=Compression.Gzip,
+)
+provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+trace.set_tracer_provider(provider)
+tracer = trace.get_tracer("qa-agent.instrumentation", "1.0.0")
+
+# ---------- 3. Meter Provider：成本 / Token / 延迟指标 ----------
+meter_provider = MeterProvider(
+    resource=resource,
+    metric_readers=[
+        OTLPMetricExporter(
+            endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://tempo:4317")
+        )
+    ],
+)
+metrics.set_meter_provider(meter_provider)
+meter = metrics.get_meter("qa-agent.metrics")
+
+# 三大核心指标
+llm_cost_histogram = meter.create_histogram(
+    name="gen_ai.cost.usd",
+    unit="usd",
+    description="LLM 调用成本（USD）",
+)
+llm_input_token_counter = meter.create_counter(
+    name="gen_ai.usage.input_tokens",
+    unit="tokens",
+    description="Prompt Token 用量",
+)
+llm_output_token_counter = meter.create_counter(
+    name="gen_ai.usage.output_tokens",
+    unit="tokens",
+    description="Completion Token 用量",
+)
+
+
+# ---------- 4. 业务封装：自动附加 gen_ai.* 属性 ----------
+class GenAITelemetry:
+    def __init__(self, tracer, meter):
+        self.tracer = tracer
+        self.meter = meter
+
+    def record_llm_call(
+        self,
+        model: str,
+        prompt: str,
+        response_text: str,
+        input_tokens: int,
+        output_tokens: int,
+        cost_usd: float,
+        finish_reason: str,
+        cached_input_tokens: int = 0,
+        thinking_budget_tokens: int | None = None,
+        thinking_tokens_used: int | None = None,
+        tool_calls: list[dict] | None = None,
+        retrieval: dict | None = None,
+        judge_scores: dict[str, float] | None = None,
+        user_id: str | None = None,
+        trajectory_id: str | None = None,
+    ) -> None:
+        """记录一次 LLM 调用，自动写满 OTel GenAI 语义约定。"""
+        with self.tracer.start_as_current_span(
+            f"{GenAiOperationNameValues.CHAT.value} {model}",
+            kind=trace.SpanKind.CLIENT,
+        ) as span:
+            # ---- 请求侧属性 ----
+            span.set_attribute(GenAiAttributes.GEN_AI_OPERATION_NAME, "chat")
+            span.set_attribute(GenAiAttributes.GEN_AI_REQUEST_MODEL, model)
+            span.set_attribute(GenAiAttributes.GEN_AI_REQUEST_TEMPERATURE, 0.7)
+            span.set_attribute(GenAiAttributes.GEN_AI_REQUEST_MAX_TOKENS, 2048)
+
+            # ---- 响应侧属性 ----
+            span.set_attribute(GenAiAttributes.GEN_AI_RESPONSE_MODEL, model)
+            span.set_attribute(GenAiAttributes.GEN_AI_RESPONSE_FINISH_REASONS, [finish_reason])
+
+            # ---- Token 与成本 ----
+            span.set_attribute(GenAiAttributes.GEN_AI_USAGE_INPUT_TOKENS, input_tokens)
+            span.set_attribute(GenAiAttributes.GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens)
+            if cached_input_tokens:
+                span.set_attribute(
+                    GenAiAttributes.GEN_AI_USAGE_CACHED_INPUT_TOKENS, cached_input_tokens
+                )
+            span.set_attribute(GenAiAttributes.GEN_AI_COST_USD, cost_usd)
+
+            # ---- 思考预算（Claude / o-series）----
+            if thinking_budget_tokens is not None:
+                span.set_attribute(
+                    GenAiAttributes.GEN_AI_THINKING_BUDGET_TOKENS, thinking_budget_tokens
+                )
+            if thinking_tokens_used is not None:
+                span.set_attribute(
+                    GenAiAttributes.GEN_AI_THINKING_TOKENS_USED, thinking_tokens_used
+                )
+
+            # ---- Tool Calls ----
+            for idx, tc in enumerate(tool_calls or []):
+                span.set_attribute(f"gen_ai.tool.name.{idx}", tc.get("name", ""))
+                span.set_attribute(f"gen_ai.tool.call.id.{idx}", tc.get("id", ""))
+                span.set_attribute(f"gen_ai.tool.arguments.{idx}", str(tc.get("arguments", {}))[:512])
+
+            # ---- RAG 检索 ----
+            if retrieval:
+                span.set_attribute(GenAiAttributes.GEN_AI_RETRIEVAL_HIT, retrieval.get("hit", False))
+                span.set_attribute(
+                    GenAiAttributes.GEN_AI_RETRIEVAL_DOCUMENTS, retrieval.get("documents", 0)
+                )
+                if "score_max" in retrieval:
+                    span.set_attribute(
+                        GenAiAttributes.GEN_AI_RETRIEVAL_SCORE_MAX, retrieval["score_max"]
+                    )
+
+            # ---- Judge 评估分数 ----
+            if judge_scores:
+                for name, score in judge_scores.items():
+                    span.set_attribute(f"gen_ai.evaluation.{name}", score)
+                    # 也写为 Span Event（便于聚合）
+                    span.add_event(
+                        "evaluation",
+                        attributes={
+                            "gen_ai.evaluation.name": name,
+                            "gen_ai.evaluation.score": score,
+                        },
+                    )
+
+            # ---- 业务标识 ----
+            if user_id:
+                span.set_attribute("enduser.id", user_id)
+            if trajectory_id:
+                span.set_attribute("gen_ai.agent.trajectory_id", trajectory_id)
+
+            # ---- 指标记录 ----
+            common_attrs = {
+                "gen_ai.system": "openai",
+                "gen_ai.response.model": model,
+            }
+            llm_cost_histogram.record(cost_usd, attributes=common_attrs)
+            llm_input_token_counter.add(input_tokens, attributes=common_attrs)
+            llm_output_token_counter.add(output_tokens, attributes=common_attrs)
+
+
+# ---------- 5. 使用示例 ----------
+telemetry = GenAITelemetry(tracer, meter)
+
+telemetry.record_llm_call(
+    model="claude-sonnet-4-6",
+    prompt="Explain quantum entanglement in 3 sentences.",
+    response_text="Quantum entanglement is ...",
+    input_tokens=128,
+    output_tokens=87,
+    cost_usd=0.001342,
+    finish_reason="end_turn",
+    cached_input_tokens=64,
+    thinking_budget_tokens=2048,
+    thinking_tokens_used=512,
+    tool_calls=[
+        {"name": "search_web", "id": "toolu_01A", "arguments": {"query": "entanglement"}}
+    ],
+    retrieval={"hit": True, "documents": 5, "score_max": 0.87},
+    judge_scores={"relevance": 0.92, "factuality": 0.88, "conciseness": 0.75},
+    user_id="u_12345",
+    trajectory_id="traj-abc-001",
+)
+```
+
+### 20.10.4 代码示例 2：OpenInference + OTLP 双规范导出
+
+OpenInference 在 RAG / Agent 场景下提供更细粒度的 SpanKind，二者可以并存导出：
+
+```python
+"""
+20.10.4 - OpenInference + OpenTelemetry 双规范
+- SpanKind: CHAIN / LLM / RETRIEVER / TOOL / AGENT / EMBEDDING
+- 通过 OTelSpanExporter 统一导出到 OTLP 后端
+"""
+from openinference.instrumentation.langchain import LangChainInstrumentor
+from openinference.instrumentation.openai import OpenAIInstrumentor
+from openinference.semconv.trace import (
+    SpanAttributes,
+    OpenInferenceSpanKindValues,
+)
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.resource import ResourceAttributes
+
+# 1. 初始化 OTel Provider
+resource = Resource.create(
+    {
+        ResourceAttributes.SERVICE_NAME: "rag-qa-service",
+        ResourceAttributes.SERVICE_VERSION: "1.4.0",
+    }
+)
+provider = TracerProvider(resource=resource)
+provider.add_span_processor(
+    BatchSpanProcessor(
+        OTLPSpanExporter(endpoint="http://otel-collector:4317")
+    )
+)
+trace.set_tracer_provider(provider)
+
+# 2. 自动 instrument LangChain / OpenAI 调用
+LangChainInstrumentor().instrument(tracer_provider=provider)
+OpenAIInstrumentor().instrument(tracer_provider=provider)
+
+
+# 3. 手动记录 RAG 检索 Span（OpenInference RETRIEVER Kind）
+def instrument_retrieval(query: str, top_k: int = 5):
+    tracer = trace.get_tracer("rag.retriever")
+    with tracer.start_as_current_span("vector_search") as span:
+        # OpenInference 语义约定
+        span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, "RETRIEVER")
+        span.set_attribute(SpanAttributes.RETRIEVAL_QUERY_TEXT, query)
+        span.set_attribute(SpanAttributes.RETRIEVAL_TOP_K, top_k)
+
+        # 业务执行
+        docs = vector_store.similarity_search(query, k=top_k)
+
+        # 检索结果属性
+        span.set_attribute(SpanAttributes.RETRIEVAL_DOCUMENT_COUNT, len(docs))
+        for i, d in enumerate(docs[:3]):  # 写入前3条
+            span.set_attribute(
+                f"{SpanAttributes.RETRIEVAL_DOCUMENTS}.{i}.document.id", d.metadata["id"]
+            )
+            span.set_attribute(
+                f"{SpanAttributes.RETRIEVAL_DOCUMENTS}.{i}.document.score", d.metadata["score"]
+            )
+            span.set_attribute(
+                f"{SpanAttributes.RETRIEVAL_DOCUMENTS}.{i}.document.content",
+                d.page_content[:256],
+            )
+
+        # 命中标记（OTel GenAI 也支持）
+        span.set_attribute("gen_ai.retrieval.hit", len(docs) > 0)
+        if docs:
+            span.set_attribute(
+                "gen_ai.retrieval.score_max", max(d.metadata["score"] for d in docs)
+            )
+        return docs
+
+
+# 4. 手动记录 Agent 决策 Span
+def instrument_agent_step(step_name: str, decision: str, observation: str):
+    tracer = trace.get_tracer("agent.react")
+    with tracer.start_as_current_span(f"agent.{step_name}") as span:
+        span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, "AGENT")
+        span.set_attribute("agent.step.name", step_name)
+        span.set_attribute("agent.decision", decision)
+        span.set_attribute("agent.observation", observation[:512])
+        return decision
+```
+
+### 20.10.5 in-prod Eval Pipeline 模式
+
+传统 Eval 是离线跑测试集，**in-prod eval（生产中评估）** 通过 OTLP 把线上 Trace 接入评估 Pipeline，是 2026 年大厂核心实践。
+
+```mermaid
+flowchart LR
+    PROD["🟢 生产流量<br/>Trace/Metric"] -->|OTLP gRPC| COL["📡 OTel Collector<br/>tail-sampling"]
+    COL -->|Filter: 1% 采样| EVAL["🧪 in-prod Eval<br/>Judge 模型"]
+    COL --> STORE["🗄️ Trace Storage<br/>Tempo / ClickHouse"]
+    EVAL -->|score| STORE
+    STORE --> DASH["📊 Grafana Dashboard<br/>gen_ai.evaluation.*"]
+    STORE --> ALERT["🚨 Alertmanager<br/>幻觉率 > 5% 告警"]
+    EVAL --> FB["🧠 反馈回路<br/>bad case 入训练集"]
+    
+    style PROD fill:#c8e6c9,stroke:#4caf50
+    style EVAL fill:#fff3e0,stroke:#ff9800
+    style FB fill:#e1bee7,stroke:#8e24aa
+```
+
+**典型流水线**（伪代码）：
+
+```python
+"""
+20.10.5 - in-prod Eval Pipeline 模式
+- 1% 流量做 Judge 评估
+- 评估分数回写 Trace 属性
+- 触发 bad case 自动入库
+"""
+import random
+from opentelemetry import trace
+
+JUDGE_PROBABILITY = 0.01  # 1% 流量跑 Judge
+tracer = trace.get_tracer("in-prod-eval")
+
+def with_judge(llm_call_span, response_text: str, query: str, ground_truth: str | None = None):
+    """在线上 Span 上挂载 Judge 评估"""
+    if random.random() > JUDGE_PROBABILITY:
+        return None  # 采样外，跳过
+
+    # 调用 Judge 模型（GPT-4o / Claude）评估
+    scores = {
+        "relevance": judge_relevance(query, response_text),
+        "hallucination": judge_hallucination(response_text, ground_truth),
+        "helpfulness": judge_helpfulness(query, response_text),
+    }
+
+    # 写回 Span（与原始 Span 同 TraceId）
+    for name, score in scores.items():
+        llm_call_span.set_attribute(f"gen_ai.evaluation.{name}", score)
+        llm_call_span.add_event(
+            f"judge.{name}",
+            attributes={
+                "gen_ai.evaluation.name": name,
+                "gen_ai.evaluation.score": score,
+                "gen_ai.evaluation.judge_model": "gpt-4o",
+            },
+        )
+
+    # 触发 bad case 入库
+    if scores["hallucination"] < 0.3:
+        bad_case_queue.put({
+            "trace_id": llm_call_span.get_span_context().trace_id,
+            "query": query,
+            "response": response_text,
+            "scores": scores,
+        })
+    return scores
+```
+
+### 20.10.6 成本遥测作为 SLO 维度（Cost Telemetry as SLO）
+
+2026 年业界主流做法是把 **Token × $/Token × Thinking Budget** 作为与延迟并列的 SLO 维度。
+
+**核心公式**：
+
+$$\text{单次成本} = \frac{\text{input\_tokens} \times P_i^{\text{model}} + \text{output\_tokens} \times P_o^{\text{model}} + \text{thinking\_tokens} \times P_t^{\text{model}}}{10^6}$$
+
+**SLI/SLO 模板**：
+
+| SLI | 计算 | SLO 目标 | 维度 |
+|-----|------|---------|------|
+| **P95 单次成本** | histogram_quantile(0.95, sum by (le) (rate(gen_ai.cost.usd_bucket[5m]))) | ≤ $0.05 | `gen_ai.request.model` |
+| **每小时总成本** | sum(increase(gen_ai.cost.usd_sum[1h])) | ≤ $budget | `service.name` |
+| **Cost/Request P99** | histogram_quantile(0.99, ...) | ≤ $0.20 | `gen_ai.agent.trajectory_id` |
+| **Token 利用率** | output_tokens / (input_tokens + output_tokens) | 0.3 ~ 0.7 | `gen_ai.system` |
+| **Thinking Budget 命中率** | 1 - count(thinking_tokens_used >= budget) / count(thinking_budget_tokens > 0) | ≥ 95% | `gen_ai.request.model` |
+
+```yaml
+# 20.10.6 - 成本 SLO PrometheusRule 示例
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: llm-cost-slos
+spec:
+  groups:
+    - name: llm.cost
+      interval: 30s
+      rules:
+        # SLO 1：单次成本 P95
+        - alert: LLMCostP95TooHigh
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le, gen_ai_request_model) (
+                rate(gen_ai_cost_usd_bucket[5m])
+              )
+            ) > 0.05
+          for: 10m
+          labels:
+            severity: warning
+            slo: cost-p95
+          annotations:
+            summary: "LLM 单次成本 P95 > $0.05"
+            runbook: "https://wiki.example.com/runbook/llm-cost-p95"
+
+        # SLO 2：每用户每小时成本熔断
+        - alert: LLMUserCostAnomaly
+          expr: |
+            sum by (enduser_id) (
+              increase(gen_ai_cost_usd_sum[1h])
+            ) > 5
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "用户 {{ $labels.enduser_id }} 1h 成本 > $5"
+
+        # SLO 3：Thinking Budget 命中率
+        - record: llm:thinking_budget_hit_ratio
+          expr: |
+            1 - (
+              sum(rate(gen_ai_thinking_tokens_used_count{
+                gen_ai_thinking_tokens_used >= gen_ai_thinking_budget_tokens
+              }[10m]))
+              /
+              sum(rate(gen_ai_thinking_budget_tokens_count[10m]))
+            )
+```
+
+### 20.10.7 Per-Trajectory Cost Attribution（按轨迹成本归因）
+
+Agent 应用的"一次请求"可能是 5-20 次 LLM 调用，需要把成本按 **trajectory（轨迹）** 归因：
+
+```python
+"""
+20.10.7 - Per-Trajectory 成本归因
+- 每次 Agent 任务生成唯一 trajectory_id
+- 所有子 Span 携带 trajectory_id 属性
+- 在 Tempo / Grafana 按 trajectory_id 聚合成本
+"""
+from contextlib import contextmanager
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
+import uuid
+
+class TrajectoryCostTracker:
+    def __init__(self):
+        self.tracer = trace.get_tracer("agent.trajectory")
+
+    @contextmanager
+    def trajectory(self, user_query: str, agent_name: str = "react-agent"):
+        """开启一条 Trajectory，所有子 Span 自动归因"""
+        trajectory_id = f"traj-{uuid.uuid4().hex[:12]}"
+        with self.tracer.start_as_current_span(
+            f"trajectory.{agent_name}",
+            attributes={
+                "gen_ai.agent.name": agent_name,
+                "gen_ai.agent.trajectory_id": trajectory_id,
+                "gen_ai.agent.user_query": user_query[:256],
+            },
+        ) as root:
+            cost_attrs = {"gen_ai.agent.trajectory_id": trajectory_id}
+            try:
+                yield trajectory_id, cost_attrs
+                root.set_status(Status(StatusCode.OK))
+            except Exception as e:
+                root.set_status(Status(StatusCode.ERROR, str(e)))
+                root.record_exception(e)
+                raise
+
+    def attribute_subspan(self, span, trajectory_id: str):
+        """给子 Span 注入 trajectory_id"""
+        span.set_attribute("gen_ai.agent.trajectory_id", trajectory_id)
+
+    def cost_summary(self, trajectory_id: str, spans: list) -> dict:
+        """汇总单条 Trajectory 的成本"""
+        total_cost = 0.0
+        total_input = 0
+        total_output = 0
+        total_thinking = 0
+        llm_calls = 0
+        tool_calls = 0
+
+        for s in spans:
+            if s.attributes.get("gen_ai.agent.trajectory_id") != trajectory_id:
+                continue
+            if s.attributes.get("openinference.span.kind") == "LLM":
+                llm_calls += 1
+                total_cost += s.attributes.get("gen_ai.cost.usd", 0)
+                total_input += s.attributes.get("gen_ai.usage.input_tokens", 0)
+                total_output += s.attributes.get("gen_ai.usage.output_tokens", 0)
+                total_thinking += s.attributes.get("gen_ai.thinking.tokens_used", 0)
+            elif s.attributes.get("openinference.span.kind") == "TOOL":
+                tool_calls += 1
+
+        return {
+            "trajectory_id": trajectory_id,
+            "llm_calls": llm_calls,
+            "tool_calls": tool_calls,
+            "total_cost_usd": round(total_cost, 6),
+            "total_input_tokens": total_input,
+            "total_output_tokens": total_output,
+            "total_thinking_tokens": total_thinking,
+            "cost_breakdown": {
+                "input": round(total_input / 1e6 * 3.0, 6),    # 假设 $3/M
+                "output": round(total_output / 1e6 * 15.0, 6),  # 假设 $15/M
+                "thinking": round(total_thinking / 1e6 * 15.0, 6),
+            },
+        }
+
+
+# 使用示例
+tracker = TrajectoryCostTracker()
+
+with tracker.trajectory("帮我写一个 Python 装饰器") as (traj_id, cost_attrs):
+    # 第 1 步 LLM 调用
+    telemetry.record_llm_call(
+        model="claude-sonnet-4-6",
+        ...,
+        trajectory_id=traj_id,
+    )
+    # 第 2 步 Tool 调用
+    span = tracer.start_span("tool.search_docs")
+    tracker.attribute_subspan(span, traj_id)
+    # ...
+    # 第 3 步 LLM 调用
+    telemetry.record_llm_call(
+        model="claude-haiku-4-5",  # 降级到小模型
+        ...,
+        trajectory_id=traj_id,
+    )
+```
+
+### 20.10.8 Thinking-Budget SLO（思考预算 SLO）
+
+Claude（`thinking.budget_tokens`）与 OpenAI o-series（`reasoning_effort`）都引入了"思考预算"机制，但容易出现"思考爆炸"问题（thinking_tokens >> output_tokens）。需要专门的 SLO 监控：
+
+```python
+"""
+20.10.8 - Thinking Budget SLO 监控
+- 跟踪 thinking_tokens_used / thinking_budget_tokens
+- 当 thinking_used ≥ budget 时判定为"思考超限"
+- 当 thinking_used 远小于 budget 时判定为"预算浪费"
+"""
+from opentelemetry import metrics, trace
+from opentelemetry.semconv.gen_ai import GenAiAttributes
+
+meter = metrics.get_meter("thinking-budget-slo")
+
+# 三个核心指标
+thinking_usage_hist = meter.create_histogram(
+    "gen_ai.thinking.tokens_used",
+    unit="tokens",
+    description="实际使用的思考 token",
+)
+thinking_budget_hist = meter.create_histogram(
+    "gen_ai.thinking.budget_tokens",
+    unit="tokens",
+    description="设定的思考预算",
+)
+thinking_overshoot_counter = meter.create_counter(
+    "gen_ai.thinking.overshoot",
+    unit="count",
+    description="思考超限次数（used >= budget）",
+)
+thinking_waste_counter = meter.create_counter(
+    "gen_ai.thinking.underuse",
+    unit="count",
+    description="思考预算浪费次数（used < 0.3 * budget）",
+)
+
+
+def record_thinking_usage(
+    model: str,
+    budget_tokens: int,
+    used_tokens: int,
+    span: trace.Span,
+):
+    """记录一次思考预算使用情况"""
+    attrs = {"gen_ai.request.model": model}
+
+    thinking_usage_hist.record(used_tokens, attributes=attrs)
+    thinking_budget_hist.record(budget_tokens, attributes=attrs)
+
+    utilization = used_tokens / max(budget_tokens, 1)
+    span.set_attribute("gen_ai.thinking.utilization_ratio", round(utilization, 3))
+
+    # SLO 判定
+    if utilization >= 1.0:
+        thinking_overshoot_counter.add(1, attributes=attrs)
+        span.set_attribute("gen_ai.thinking.slo_status", "overshoot")
+    elif utilization < 0.3:
+        thinking_waste_counter.add(1, attributes=attrs)
+        span.set_attribute("gen_ai.thinking.slo_status", "waste")
+    else:
+        span.set_attribute("gen_ai.thinking.slo_status", "healthy")
+```
+
+**SLO 指标**：
+
+| 指标 | 计算 | 推荐目标 |
+|------|------|---------|
+| **Overshoot Rate** | overshoot / total | ≤ 5% |
+| **Waste Rate** | underuse / total | ≤ 15% |
+| **Median Utilization** | histogram_quantile(0.5, utilization_ratio) | 0.5 ~ 0.8 |
+
+### 20.10.9 Cascade / Router 模型成本模式
+
+Cascade Router（级联路由器）先用便宜模型，复杂 case 升级到贵模型。需要**分段成本监控**：
+
+```mermaid
+graph LR
+    REQ["请求"] --> R{"Router<br/>轻量分类器"}
+    R -->|简单<br/>60%| M1["🟢 Tier 1<br/>Haiku 4 / Mini<br/>$0.25/M"]
+    R -->|中等<br/>30%| M2["🟡 Tier 2<br/>Sonnet 4<br/>$3/M"]
+    R -->|复杂<br/>10%| M3["🔴 Tier 3<br/>Opus 4<br/>$15/M"]
+    M1 --> RESP["响应"]
+    M2 --> RESP
+    M3 --> RESP
+    
+    R -->|fallback| FB["⚠️ Fallback<br/>Provider 失败时降级"]
+    
+    style M1 fill:#c8e6c9,stroke:#4caf50
+    style M2 fill:#fff9c4,stroke:#fbc02d
+    style M3 fill:#ffcdd2,stroke:#e53935
+```
+
+**关键 OTLP 属性**：
+
+```python
+"""
+20.10.9 - Cascade Router 成本模式
+- gen_ai.router.tier 标识路由层
+- gen_ai.router.upgrade_reason 记录升级原因
+"""
+def cascade_route(query: str, complexity: float) -> str:
+    """三档 Cascade Router"""
+    span = trace.get_current_span()
+    span.set_attribute("gen_ai.router.query_complexity", complexity)
+
+    if complexity < 0.3:
+        span.set_attribute("gen_ai.router.tier", "tier_1_cheap")
+        span.set_attribute("gen_ai.router.cost_per_1m_input", 0.25)
+        return "claude-haiku-4-5"
+    elif complexity < 0.7:
+        span.set_attribute("gen_ai.router.tier", "tier_2_mid")
+        span.set_attribute("gen_ai.router.cost_per_1m_input", 3.0)
+        return "claude-sonnet-4-6"
+    else:
+        span.set_attribute("gen_ai.router.tier", "tier_3_premium")
+        span.set_attribute("gen_ai.router.cost_per_1m_input", 15.0)
+        return "claude-opus-4-6"
+
+
+def record_upgrade(original_tier: str, upgraded_tier: str, reason: str):
+    """记录级联升级事件"""
+    span = trace.get_current_span()
+    span.add_event(
+        "cascade.upgrade",
+        attributes={
+            "gen_ai.router.from_tier": original_tier,
+            "gen_ai.router.to_tier": upgraded_tier,
+            "gen_ai.router.upgrade_reason": reason,  # low_confidence / tool_error / etc
+            "gen_ai.router.cost_delta_usd": compute_cost_delta(original_tier, upgraded_tier),
+        },
+    )
+```
+
+**SLO 关注点**：
+
+| 关注点 | 公式 | 目标 |
+|--------|------|------|
+| **Tier 1 命中率** | count(tier=1) / total | ≥ 55% |
+| **升级率** | count(upgrade) / total | ≤ 20% |
+| **加权成本** | Σ(tier_cost × tier_traffic) | ≤ target_blend_cost |
+
+### 20.10.10 Agent 回滚策略（Agent Rollback）
+
+Agent 应用相比传统应用，回滚挑战更大：可能涉及 Prompt 模板、Tool 定义、规划策略的多版本组合。**2026 年最佳实践是基于 GenAI 语义约定的多层回滚**：
+
+```python
+"""
+20.10.10 - Agent 多层回滚策略
+- Level 1：流量回切（秒级）
+- Level 2：Prompt 版本回滚（分钟级）
+- Level 3：Tool 白名单回滚（分钟级）
+- Level 4：模型版本回滚（分钟级）
+"""
+from enum import Enum
+from opentelemetry import trace
+
+class RollbackLevel(Enum):
+    TRAFFIC_SHIFT = 1        # 切回旧版本实例
+    PROMPT_VERSION = 2       # 回滚 Prompt 到上一个稳定版
+    TOOL_ALLOWLIST = 3       # 禁用高风险工具
+    MODEL_VERSION = 4        # 回滚到上一版本模型
+
+
+class AgentRollbackController:
+    def __init__(self, otlp_exporter):
+        self.tracer = trace.get_tracer("agent.rollback")
+        self.exporter = otlp_exporter
+
+    def detect_rollback_signal(self, span: trace.Span, signal: str, severity: float):
+        """检测回滚信号，写入 Span Event"""
+        span.add_event(
+            "rollback.signal",
+            attributes={
+                "rollback.signal.name": signal,  # hallucination_spike / tool_error_rate / cost_overrun
+                "rollback.signal.severity": severity,
+            },
+        )
+
+    def execute_rollback(
+        self,
+        level: RollbackLevel,
+        reason: str,
+        target_version: str | None = None,
+    ) -> dict:
+        """执行多层回滚"""
+        with self.tracer.start_as_current_span(f"rollback.{level.name}") as span:
+            span.set_attribute("rollback.level", level.value)
+            span.set_attribute("rollback.reason", reason)
+            span.set_attribute("rollback.target_version", target_version or "")
+
+            if level == RollbackLevel.TRAFFIC_SHIFT:
+                # 切流量到旧版本（Kubernetes/Service Mesh）
+                action = self._shift_traffic_to_old()
+            elif level == RollbackLevel.PROMPT_VERSION:
+                action = self._rollback_prompt_version(target_version)
+            elif level == RollbackLevel.TOOL_ALLOWLIST:
+                action = self._disable_risky_tools([
+                    "send_email", "execute_code", "delete_file"
+                ])
+            elif level == RollbackLevel.MODEL_VERSION:
+                action = self._rollback_model_version(target_version)
+            else:
+                action = "noop"
+
+            span.set_attribute("rollback.action", action)
+            return {"level": level.value, "action": action, "reason": reason}
+
+    def _shift_traffic_to_old(self) -> str:
+        return "k8s_traffic_shifted_to_v2.2.0"
+
+    def _rollback_prompt_version(self, version: str) -> str:
+        return f"prompt_registry_rollback_to_{version}"
+
+    def _disable_risky_tools(self, tools: list) -> str:
+        return f"tool_allowlist_disabled: {','.join(tools)}"
+
+    def _rollback_model_version(self, version: str) -> str:
+        return f"model_pinned_to_{version}"
+
+
+# SLO 联动：自动回滚触发
+def cost_overrun_auto_rollback(controller, current_cost_per_hour: float, budget_per_hour: float):
+    """当 1h 成本超预算 1.5x 时自动触发回滚"""
+    if current_cost_per_hour > budget_per_hour * 1.5:
+        controller.execute_rollback(
+            level=RollbackLevel.TRAFFIC_SHIFT,
+            reason=f"cost_overrun:{current_cost_per_hour:.2f}>{budget_per_hour:.2f}*1.5",
+            target_version="v2.2.0",  # 上一稳定版
+        )
+```
+
+**回滚决策表**：
+
+| 触发条件 | 等级 | 响应时间 | 目标版本 |
+|---------|------|---------|---------|
+| 错误率 > 5% | L1 Traffic | 30s | 上一 stable |
+| Hallucination Score < 0.5 | L2 Prompt | 2min | 上一版 Prompt |
+| 工具调用错误 > 10% | L3 Tool Allowlist | 1min | 仅白名单工具 |
+| 模型 P99 latency > 10s | L4 Model | 2min | 上一版模型 |
+
+### 20.10.11 面试实战建议
+
+**Q1：你们团队如何统一 LLM 可观测性的字段？**
+- 答：使用 OTel GenAI 语义约定（`gen_ai.*`），所有 LLM 调用强制注入 `gen_ai.usage.input_tokens` / `output_tokens` / `cost.usd` / `response.finish_reasons`，同时通过 `gen_ai.agent.trajectory_id` 关联 Agent 轨迹。配合 OpenInference 的 `SpanKind`（LLM/RETRIEVER/TOOL/AGENT）做 RAG/Agent 场景细分。
+
+**Q2：成本 SLO 怎么设？**
+- 答：把"单次调用成本 P95"和"每小时总成本"作为硬 SLO（写进 PrometheusRule 告警），把"Cost/Request P99"和"Thinking Budget 命中率"作为软 SLO（写进 Grafana Dashboard），用 burn-rate alert 防止成本爆炸。
+
+**Q3：Cascade Router 怎么监控？**
+- 答：每条 Span 写 `gen_ai.router.tier`（tier_1/tier_2/tier_3）和 `gen_ai.router.upgrade_reason`（low_confidence/tool_error/length_limit），计算"加权平均成本"和"升级率"两个关键指标，用这两个指标反推路由策略是否需要调优。
+
+**Q4：Agent 应用如何回滚？**
+- 答：采用 4 级回滚（流量切回 → Prompt 版本 → 工具白名单 → 模型版本），每级都基于 OTLP Span 事件触发，自动联动 SLO 告警。Prompt 版本通过 LangFuse Prompt Registry 或自建 Registry 管理，每次发布记录 trace_id 便于追溯。
+
+---
+
 ## 20.9 本章小结
 
 本章系统讲解了 LLMOps 与模型可观测性的核心知识体系：
