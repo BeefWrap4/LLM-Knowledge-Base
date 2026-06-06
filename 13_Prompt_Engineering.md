@@ -1503,3 +1503,5 @@ def wrapped_call(messages, **kwargs):
 - [[12_Transformer与大模型原理]] — 理解 Transformer 和 In-Context Learning 原理是 Prompt 设计的理论基础
 - [[14_RAG检索增强生成]] — RAG 系统中的 Prompt 组装策略与检索结果融合
 - [[15_Agent智能体开发]] — ReAct 模式是 Agent 的核心推理框架，Prompt 驱动工具调用
+- [[29_Context_Engineering]] — Context Engineering 包含但超越 Prompt Engineering，涵盖工具/记忆/状态管理
+- [[27_推理模型与Test-Time_Compute]] — Extended Thinking 是一种更高级的 Prompt 模式

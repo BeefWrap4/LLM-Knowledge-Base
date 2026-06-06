@@ -4261,3 +4261,7 @@ graph TD
 - [[13_Prompt_Engineering]] — ReAct 模式、CoT 推理是 Agent 的核心思维框架
 - [[14_RAG检索增强生成]] — Agent 通过 RAG 获取外部知识，RAG-as-a-Tool 架构
 - [[16_模型微调与推理优化]] — Agent 专用模型微调与推理加速部署
+- [[18_LLM工程框架实战]] — Pydantic AI/Strands/OpenAI Agents SDK 框架实战
+- [[17_大模型评估体系]] — Agent 评估方法与基准
+- [[25_推理引擎与高性能服务]] — Agent 推理服务化部署
+- [[29_Context_Engineering]] — Agent 上下文工程实践

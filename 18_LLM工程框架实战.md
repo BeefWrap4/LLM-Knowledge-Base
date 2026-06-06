@@ -2498,4 +2498,12 @@ states = list(graph.get_state_history(config))
 
 > **章节总结**：本章覆盖了 2026 年大模型应用开发领域的 7 大核心框架。记住：**没有银弹，只有最合适的工具**。LangChain 是瑞士军刀，LangGraph 是手术刀，LlamaIndex 是档案馆长，LLaMA-Factory 是模型工匠，Dify 是快速成型机，AutoGen 是圆桌会议，CrewAI 是项目团队。根据你的场景选择，并始终保持对新技术的好奇心。
 >
-> 📚 **相关章节**：[[13_Prompt_Engineering]] | [[14_RAG检索增强生成]] | [[15_Agent智能体开发]] | [[16_模型微调与推理优化]]
+> 📚 **相关章节**：
+> - [[13_Prompt_Engineering]] — Prompt 模板与 Few-shot 上下文组装
+> - [[14_RAG检索增强生成]] — RAG 系统的 Agent 化设计
+> - [[15_Agent智能体开发]] — Agent 基础与 ReAct 框架
+> - [[16_模型微调与推理优化]] — 模型微调与部署
+> - [[17_大模型评估体系]] — 框架选型后的评估
+> - [[20_LLMOps与模型可观测性]] — LangSmith/LangFuse 监控
+> - [[25_推理引擎与高性能服务]] — 框架与推理引擎的集成
+> - [[29_Context_Engineering]] — Context 设计与框架选型

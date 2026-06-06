@@ -3728,3 +3728,6 @@ def cost_overrun_auto_rollback(controller, current_cost_per_hour: float, budget_
 > - [[14_RAG检索增强生成]] — RAG 系统的可观测性
 > - [[15_Agent智能体开发]] — Agent 的调试与监控
 > - [[16_模型微调与推理优化]] — 模型部署方案的监控指标
+> - [[25_推理引擎与高性能服务]] — vLLM/SGLang 推理引擎的 Prometheus 指标
+> - [[29_Context_Engineering]] — Token 成本与 Context Rot 监控
+> - [[28_端侧与边缘LLM]] — 端侧 LLM 的监控与可观测性挑战

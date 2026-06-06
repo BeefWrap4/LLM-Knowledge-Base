@@ -2225,3 +2225,7 @@ graph TD
 - [[13_Prompt_Engineering]] — RAG 系统中 Prompt 模板设计与检索结果注入策略
 - [[15_Agent智能体开发]] — Agentic RAG：Agent 自主决策检索策略，RAG-as-a-Tool
 - [[16_模型微调与推理优化]] — Embedding 模型微调与 RAG 推理性能优化
+- [[18_LLM工程框架实战]] — LlamaIndex / LangChain / Haystack 框架实战
+- [[25_推理引擎与高性能服务]] — RAG 推理服务的 TTFT 优化
+- [[27_推理模型与Test-Time_Compute]] — 长 CoT 检索融合的推理模型
+- [[29_Context_Engineering]] — RAG 作为 Context 来源的工程实践

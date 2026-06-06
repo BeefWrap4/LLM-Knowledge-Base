@@ -290,7 +290,11 @@ result = pipe.run({
 
 ---
 
-## 29.10 本章速查表
+## 29.10 本章小结
+
+> **章节小结**：Context Engineering 是 Prompt Engineering 在 2026 年的自然演进，强调模型每步推理时所见**所有信息**（指令、知识、工具、状态）的管理。核心挑战是 Context Rot——即使 200K context，模型对中后段信息关注度仍持续下降。关键技术包括：LangGraph 持久化 checkpoint 解决长会话状态丢失；Sub-Agent 模式为每个子任务提供干净 Context；Compaction/Summarization 解决窗口溢出；Prompt Caching (Anthropic 5min/1hr) 节省 90% token 成本；Haystack 2.x 提供 context-engineered pipelines。Anthropic 明确指出："Context window is the most important resource"。面试考点：Context Engineering 与 Prompt Engineering 区别、Context Rot 现象、Sub-Agent 优缺点、Prompt Caching 最佳实践。
+
+## 29.11 本章速查表
 
 | 概念 | 关键点 |
 |------|--------|
@@ -307,8 +311,9 @@ result = pipe.run({
 
 ## 📚 相关章节
 
-- [[13_Prompt_Engineering]] — Prompt Engineering 基础
-- [[15_Agent智能体开发]] — Agent 上下文管理
-- [[14_RAG检索增强生成]] — RAG 作为 Context 来源
-- [[20_LLMOps与模型可观测性]] — Token 成本监控
-- [[18_LLM工程框架实战]] — Haystack/LangChain 框架
+- [[13_Prompt_Engineering]] — Prompt Engineering 基础，Context Engineering 的前置
+- [[15_Agent智能体开发]] — Agent 上下文管理，ReAct/Function Calling 的 Context 组装
+- [[14_RAG检索增强生成]] — RAG 作为 Context 来源，检索结果注入到 prompt
+- [[20_LLMOps与模型可观测性]] — Token 成本监控，Context 大小直接影响成本
+- [[18_LLM工程框架实战]] — Haystack/LangGraph 框架实现 context-engineered pipelines
+- [[25_推理引擎与高性能服务]] — 推理引擎如何高效管理 Context (KV Cache, Prefix Cache)
