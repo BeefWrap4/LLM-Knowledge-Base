@@ -1,12 +1,13 @@
 # ---
 # chapter: 12
-# topic: Scaled Dot-Product Attention (PyTorch 实现)
-# section: 12.2.5
-# difficulty: ⭐⭐⭐⭐
+# topic: Transformer与大模型原理
+# section: 12.2.5 Self-Attention PyTorch 实现
+# difficulty: ⭐⭐⭐⭐⭐
 # tier: core
-# deps: torch
+# deps: torch>=2.0
 # run: python 01_scaled_dot_product_attention.py
-# expected_runtime: <5s
+# expected_runtime: <5s (CPU)
+# expected_output: 注意力权重 shape (batch, n, n) 且每行和=1.0
 # ---
 #
 # See: ../tutorial/Ch12_Transformer与大模型原理.md §12.2.5
