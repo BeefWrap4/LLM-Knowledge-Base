@@ -1,0 +1,36 @@
+# Tier 3: GPU stack (+30分钟, ~8GB, 需要 NVIDIA GPU)
+# 用法: pip install -r requirements-gpu.txt
+
+-r requirements-llm.txt
+
+# PyTorch + Transformers
+torch>=2.4
+transformers>=4.45
+tokenizers>=0.20
+datasets>=3.0
+accelerate>=0.34
+peft>=0.12
+trl>=0.11
+bitsandbytes>=0.43
+optimum>=1.22
+
+# 推理引擎
+vllm>=0.6
+# sglang 单独装（依赖较重）
+# pip install sglang[all]>=0.3
+
+# 端侧 / Apple Silicon
+mlx-lm>=0.18
+
+# 强化学习
+# verl, AReaL, slime 单独装（按需）
+
+# Robotics / 具身
+# lerobot>=0.1
+
+# 向量库 (L1/L2/Index 完整)
+faiss-cpu>=1.9
+# faiss-gpu>=1.9  # GPU 版按需
+
+# 监控
+prometheus-client>=0.20

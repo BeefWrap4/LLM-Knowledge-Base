@@ -150,6 +150,24 @@
 └── README.md                         # 本文件
 ```
 
+## 🛠️ 可运行代码伴侣
+
+教程中 384 段 Python 代码已整理为 **端到端可运行的 .py 文件**，位于 [`code/`](code/) 目录：
+
+```bash
+cd code/
+python -m venv .venv && source .venv/Scripts/activate
+make install-core                                          # 30 秒
+python ch12_transformer_architecture/core/01_scaled_dot_product_attention.py
+```
+
+支持三层依赖：
+- **core** — 任何电脑，30 秒安装
+- **llm** — API 调用，5 分钟安装
+- **gpu** — 需 NVIDIA GPU，30 分钟安装
+
+每个示例反向引用教程章节，5 分钟从 clone 到第一次运行。详见 [code/QUICKSTART.md](code/QUICKSTART.md)。
+
 ## 📝 维护与贡献
 
 - 每月一次全库健康审计（见 `99_库健康检查报告.md`）

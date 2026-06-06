@@ -1,0 +1,46 @@
+[project]
+name = "llm-interview-code-companion"
+version = "1.0.0"
+description = "Runnable code companion for the LLM interview prep tutorial"
+requires-python = ">=3.10"
+readme = "README.md"
+
+# 注: 实际依赖通过 requirements-{core,llm,gpu}.txt 分层管理
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",                    # short summary
+    "--strict-markers",       # typo-proof markers
+    "--tb=short",             # compact tracebacks
+]
+markers = [
+    "gpu: requires GPU (skip in default CI)",
+    "llm: requires LLM API or mock_llm",
+    "core: pure stdlib or core tier deps",
+    "slow: takes >10s",
+]
+# pytest 自动添加 ../shared 到 path, 因 sys.path 注入
+# tests 用 sys.path.insert(0, ...) 加载
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = [".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "C4"]
+ignore = ["E501", "B008", "B904"]
+
+[tool.ruff.lint.per-file-ignores]
+"*/ch*_*/gpu/*" = ["E402", "F401"]  # gpu examples: imports, unused OK
+"*/tests/*" = ["B011", "E402"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_ignores = true
+warn_redundant_casts = true
+ignore_missing_imports = true  # 大量 third-party

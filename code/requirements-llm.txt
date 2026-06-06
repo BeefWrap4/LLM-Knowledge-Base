@@ -1,0 +1,31 @@
+# Tier 2: LLM SDKs (+5分钟, ~500MB, 不需 GPU)
+# 用法: pip install -r requirements-llm.txt
+
+-r requirements-core.txt
+
+# LLM 提供方 SDK
+openai>=1.40
+anthropic>=0.34
+google-generativeai>=0.7
+ollama>=0.2
+
+# 主流框架
+langchain>=0.3
+langchain-openai>=0.1
+langchain-anthropic>=0.2
+langchain-community>=0.3
+langgraph>=0.2
+langchain-text-splitters>=0.2
+llama-index>=0.11
+pydantic-ai>=0.1
+haystack-ai>=2.4
+
+# 数据 + 工具
+datasketch>=1.6
+fasttext>=0.9
+nltk>=3.9
+rouge-score>=0.1
+bert-score>=0.3
+sentence-transformers>=3.0
+sacremoses>=0.0.53
+sacrebleu>=2.4
