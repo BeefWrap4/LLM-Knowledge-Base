@@ -96,9 +96,11 @@ df['date'] = pd.to_datetime(df['date'])
 # 布尔值
 df['flag'] = df['flag'].astype(bool)
 
-# 稀疏矩阵（大量零值）
+# 稀疏矩阵（大量零值）— 只取数值列避免 object dtype
 from scipy.sparse import csr_matrix
-sparse_data = csr_matrix(df.values)  # 内存大幅减少
+numeric_df = df.select_dtypes(include=['int', 'float', 'bool'])
+sparse_data = csr_matrix(numeric_df.values)  # 内存大幅减少
+print(f"稀疏矩阵: shape={sparse_data.shape}, nnz={sparse_data.nnz}")
 
 
 if __name__ == "__main__":

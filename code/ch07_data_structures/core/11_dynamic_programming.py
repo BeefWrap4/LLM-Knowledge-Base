@@ -201,8 +201,11 @@ if __name__ == "__main__":
     assert longest_common_subsequence("abc", "def") == 0
 
     # 0/1 背包
-    assert knapsack([2, 3, 4, 5], [3, 4, 5, 6], 8) == 9
-    # 选 weights=[3,4] values=[4,5] -> 价值 9; 或 [5] + [3] -> 价值 6+3=9
+    # weights=[2,3,4,5], values=[3,4,5,6], capacity=8
+    #   最佳: 5+3=8 → value 6+4=10
+    assert knapsack([2, 3, 4, 5], [3, 4, 5, 6], 8) == 10
+    # weights=[1,2,3], values=[6,10,12], capacity=5
+    #   最佳: 2+3=5 → value 10+12=22
     assert knapsack([1, 2, 3], [6, 10, 12], 5) == 22
 
     # 编辑距离

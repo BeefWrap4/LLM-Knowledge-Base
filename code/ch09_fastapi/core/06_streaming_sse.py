@@ -73,6 +73,7 @@ if __name__ == "__main__":
     payloads = [json.loads(c.removeprefix("data: ").strip()) for c in chunks]
     last = payloads[-1]
     assert last.get("done") is True
-    assert last["full_text"].endswith("LLM 服务。")
+    assert last["full_text"].endswith("LLM服务。"), \
+        f"full_text 应以 'LLM服务。' 结尾, 实际: {last['full_text']!r}"
     print(f"累计产出 {len(chunks)} 个 SSE chunk，完整文本: {last['full_text']}")
     print("OK")

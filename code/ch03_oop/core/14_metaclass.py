@@ -77,10 +77,32 @@ class ValidateMeta(type):
         print(f"创建类: {name}")
 
         # 自动添加 __slots__（节省内存）
+        # 排除: dunder / 保留名 / 有类级默认值的属性 (后两者会与 slot 冲突)
         if "__slots__" not in namespace and bases == ():
-            attrs = [k for k in namespace if not k.startswith("__")]
+            reserved = {"name", "doc", "qualname", "module", "dict", "weakref"}
+            attrs = []
+            for k, v in namespace.items():
+                if k.startswith("__") or k in reserved:
+                    continue
+                if callable(v):
+                    continue  # 方法不放 slot
+                # 任何带类级默认值的属性都不能进 slot
+                attrs.append(k)
             if attrs:
-                namespace["__slots__"] = attrs
+                # 但如果 attrs 中含默认值的项, 与 class var 冲突, 需剔除
+                filtered = []
+                for k in attrs:
+                    v = namespace[k]
+                    # 严格标准: 若有非方法且非类级哨兵值, 跳过
+                    if isinstance(v, type(lambda: 0)) and v.__class__.__name__ == "function":
+                        filtered.append(k)
+                    elif hasattr(v, "__class__") and v.__class__.__module__ == "builtins":
+                        # 含类级默认值的内置类型, 跳过避免冲突
+                        continue
+                    else:
+                        filtered.append(k)
+                if filtered:
+                    namespace["__slots__"] = filtered
 
         # 强制方法命名规范
         for attr_name in namespace:

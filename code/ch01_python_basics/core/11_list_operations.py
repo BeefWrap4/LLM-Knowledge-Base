@@ -54,7 +54,7 @@ print(f"转置: {transposed}")
 # 面试陷阱：列表推导式的变量泄漏（Python 2 问题，Python 3 已修复）
 # Python 3 中推导式有自己的局部作用域
 x = 10
-[y for x in range(5)]
+[x for x in range(5)]
 print(f"x 仍然为: {x}")  # Python 3: 10（x 不变）；Python 2: 4（x 被修改）
 
 # ─────────────────────────────────────────────────────────────

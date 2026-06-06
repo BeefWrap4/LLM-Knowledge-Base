@@ -20,6 +20,15 @@
 from collections import deque
 
 
+# ========== 通用二叉树节点 ==========
+class TreeNode:
+    """二叉树节点 — 本文件所有 BFS/DFS 题共用."""
+    def __init__(self, val: int, left: "TreeNode | None" = None, right: "TreeNode | None" = None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+
 # ========== 面试高频题：二叉树层序遍历 ==========
 def level_order(root: TreeNode) -> list[list[int]]:
     """

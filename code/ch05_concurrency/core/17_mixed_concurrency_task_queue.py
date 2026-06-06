@@ -75,7 +75,7 @@ class _DummySession:
         return False
 
 
-@asyncio.coroutine if False else None  # 占位：保持原 docstring 风格
+# (原 @asyncio.coroutine 已删除 — Python 3.11+ 完全移除, 用 async def 替代)
 
 def aiohttp_helper():
     """如果安装了 aiohttp 则使用真 session，否则用 stub。"""

@@ -57,11 +57,12 @@ print()
 # 等价于：
 countdown = CountDown(3)
 iterator = iter(countdown)   # 调用 __iter__()
-print(next(iterator))        # 5 — 调用 __next__()
-print(next(iterator))        # 4
-print(next(iterator))        # 3
-print(next(iterator))        # 2
-print(next(iterator))        # 1
+for _ in range(5):           # 用 for 循环自动处理 StopIteration (PEP 479)
+    try:
+        print(next(iterator))  # 5, 4, 3, 2, 1
+    except StopIteration:
+        print("(iteration done)")
+        break
 # next(iterator)             # StopIteration
 
 # ─────────────────────────────────────────────────────────────

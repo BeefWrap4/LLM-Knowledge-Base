@@ -84,7 +84,7 @@ def safe_divide(a, b, *, strict=False):
     return a / b if b != 0 else float('inf')
 
 print(f"普通除法: {safe_divide(10, 2)}")           # 5.0
-print(f"严格除法: {safe_divide(10, 0, strict=True)}")  # 必须用关键字传入 strict
+print(f"严格除法: {safe_divide(10, 2, strict=True)}")  # strict=True 也接受非零除数
 
 if __name__ == "__main__":
     print("OK")

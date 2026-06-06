@@ -34,8 +34,9 @@ df = pd.DataFrame({
 fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
 # 1. 箱线图（Box Plot）— 面试常考：箱线图的含义
-df_melted = pd.melt(df, id_vars=['category'], value_vars=['value'])
-sns.boxplot(data=df, x='category', y='value', ax=axes[0, 0], palette='Blues')
+# 避免 melt 默认 value_name='value' 与原列名冲突
+df_melted = pd.melt(df, id_vars=['category'], value_vars=['value'], value_name='val')
+sns.boxplot(data=df_melted, x='category', y='val', ax=axes[0, 0], palette='Blues')
 axes[0, 0].set_title('Box Plot: 中位数、四分位数、异常值')
 
 # 2. 热力图（Correlation Heatmap）

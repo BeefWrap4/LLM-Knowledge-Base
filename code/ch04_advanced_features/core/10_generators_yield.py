@@ -129,7 +129,15 @@ squares_gen = (x**2 for x in range(1000000))    # 几乎不占内存
 
 # 可以直接用在需要迭代器的场景
 total = sum(x**2 for x in range(1000000))       # 高效！
-max_val = max(len(line) for line in open("file.txt"))
+
+# 用 tempfile 演示 max(... open(...)) 模式 (避免依赖外部 file.txt)
+import tempfile, os
+with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as tmp:
+    tmp.write("alpha\nbeta\ngamma\ndelta")
+    tmp_path = tmp.name
+max_val = max(len(line) for line in open(tmp_path, encoding="utf-8"))
+print(f"max line length: {max_val}")
+os.unlink(tmp_path)
 
 # ─────────────────────────────────────────────────────────────
 # yield from —— 委托子生成器
