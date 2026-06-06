@@ -19,6 +19,21 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
+# ========== 本地定义的简单模型 (与 03_nn_module_mlp.py 共享相同结构) ==========
+class MLPClassifier(nn.Module):
+    """简洁 MLP 分类器 — 避免跨文件 import."""
+    def __init__(self, input_dim, hidden_dim=128, num_classes=3):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(hidden_dim, num_classes),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
 # ========== 自定义数据集 ==========
 class MyDataset(Dataset):
     def __init__(self, X, y):

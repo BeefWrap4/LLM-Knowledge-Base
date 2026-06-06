@@ -2200,7 +2200,7 @@ console.log(result.object.summary); // 类型安全
 | Mastra | ✅✅ Zod | ✅ | ✅ | ⚠️ | TypeScript / 全栈团队 |
 | AG2 (ex-AutoGen) | ✅ | ⚠️ | ✅ | ⚠️ | 多 agent 协作 |
 
-> 📚 **相关章节**：详细 Agent 理论见 [[15_Agent智能体开发]]；MCP / A2A 协议见 [[17_LLM工程化与LLMOps]]。
+> 📚 **相关章节**：详细 Agent 理论见 [[15_Agent智能体开发]]；MCP / A2A 协议见 [[17_大模型评估体系]]。
 
 ---
 

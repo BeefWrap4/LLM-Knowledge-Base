@@ -1,4 +1,4 @@
-.PHONY: help install-core install-llm install-gpu install-all test test-llm test-gpu lint fmt clean run
+.PHONY: help install-core install-llm install-gpu install-all test test-llm test-gpu lint fmt clean run verify verify-xrefs run-all
 
 # ─────────────────────────────────────────────────────────
 # 安装
@@ -31,6 +31,19 @@ test-llm:  ## 跑 core + llm tier tests (用 mock_llm)
 
 test-gpu:  ## 跑全部 tests, 包括 gpu tier (需 NVIDIA GPU)
 	pytest tests/ -q --tb=short
+
+# ─────────────────────────────────────────────────────────
+# 同步验证 (Wave 5)
+# ─────────────────────────────────────────────────────────
+
+verify:  ## 教程↔代码 4 项检查 (wiki / README / code / smoke)
+	python scripts/verify_all.py
+
+verify-xrefs:  ## 只检查 wiki 链接完整性
+	python scripts/verify_xrefs.py
+
+run-all:  ## 跑完所有 core/ 例子 (TIER=core|llm|gpu, PARALLEL=8)
+	python scripts/run_all_examples.py --tier $${TIER:-core} --parallel $${PARALLEL:-8}
 
 # ─────────────────────────────────────────────────────────
 # 代码质量

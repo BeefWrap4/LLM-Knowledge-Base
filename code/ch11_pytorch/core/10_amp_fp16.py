@@ -15,6 +15,7 @@
 #  1. FP16 训练为何需要 Loss Scaling? 缩放因子过大/过小的影响?
 #  2. BF16 与 FP16 的指数位/尾数位差异, 为什么 BF16 不用 Loss Scaling?
 #  3. autocast 的粒度 (装饰器/with/模块级) 与 dtypes 决策策略?
+import torch
 from torch.cuda.amp import autocast, GradScaler
 
 # 混合精度训练（PyTorch）

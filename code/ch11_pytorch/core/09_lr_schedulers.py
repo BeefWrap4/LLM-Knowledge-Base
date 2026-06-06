@@ -15,6 +15,7 @@
 #  1. ReduceLROnPlateau 与其他 scheduler 在 step() 调用上有什么不同? (需要传 metric)
 #  2. CosineAnnealingWarmRestarts 的 T_0/T_mult 含义? 与 OneCycleLR 的对比?
 #  3. Warmup 阶段的作用是什么? 为什么 Transformer 训练必须有 warmup?
+import torch
 from torch.optim.lr_scheduler import (StepLR, CosineAnnealingLR,
                                        ReduceLROnPlateau, OneCycleLR)
 
