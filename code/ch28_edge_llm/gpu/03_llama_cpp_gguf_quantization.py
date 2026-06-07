@@ -1,21 +1,31 @@
 # ---
 # chapter: 28
-# topic: llama.cpp GGUF 量化与加载
+# topic: llama.cpp + GGUF 量化推理 (真实 llama.cpp)
 # section: 28.4 llama.cpp 多平台
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
 # deps: llama-cpp-python
 # run: python 03_llama_cpp_gguf_quantization.py
-# expected_runtime: <1s (mock mode)
-# expected_output: GGUF 量化等级对比 + 模拟 llama.cpp 加载
+# expected_runtime: 1-3s (loading) + ~10-30 tok/s (推理)
+# expected_output: 真实 llama-cpp-python 加载 GGUF + 生成
 # ---
 # See: ../tutorial/28_端侧与边缘LLM.md § 28.2.1, § 28.4
 # Interview hooks:
 #   1. GGUF 格式相比 PyTorch .bin 有什么核心优势?
 #   2. Q4_K_M 和 Q5_K_M 在端侧 7B 推理时怎么选?
 #   3. llama.cpp 的 mmap 加载机制如何实现秒级启动?
-"""llama.cpp GGUF 量化等级对比与加载演示 (mock 模式)."""
+"""llama.cpp + GGUF 量化等级对比 + 真实 llama-cpp-python 推理."""
 from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
+
+from shared._error_helper import raise_with_help
+
 
 # GGUF 量化类型: 精度 vs 模型大小 vs 适用场景
 QUANT_TABLE = [
@@ -54,33 +64,55 @@ def device_recommendation() -> None:
         print(f"{dev:<25} {mem:<8} {rec}")
 
 
-def mock_llama_cpp_load(model_path: str, n_ctx: int = 2048, n_gpu_layers: int = 35) -> dict:
-    """模拟 llama-cpp-python Llama() 构造. 真实使用需要 GGUF 文件."""
-    # 真实代码:
-    # from llama_cpp import Llama
-    # llm = Llama(
-    #     model_path="models/llama-3.2-3b-instruct.Q4_K_M.gguf",
-    #     n_ctx=2048,
-    #     n_gpu_layers=35,   # GPU 卸载层数, 0=纯CPU, 99=全GPU
-    #     n_threads=8,
-    # )
-    # output = llm("Q: Name the planets\nA:", max_tokens=64, stop=["\n"])
-    return {
-        "model_path": model_path,
-        "n_ctx": n_ctx,
-        "n_gpu_layers": n_gpu_layers,
-        "loaded": True,
-        "backend": "Metal/CUDA/Vulkan/CPU (auto-detect)",
-    }
-
-
 def main() -> None:
+    # 1. 量化等级参考表 (无需库, 教学用)
     print_quant_table()
     device_recommendation()
     print()
-    info = mock_llama_cpp_load("models/llama-3.2-3b-instruct.Q4_K_M.gguf")
-    print(f"加载结果: {info}")
-    print("\n💡 GGUF 优势: 单文件 + mmap + 跨平台 + 量化粒度细")
+
+    # 2. 真实 llama-cpp-python 调用
+    try:
+        from llama_cpp import Llama  # noqa: PLC0415
+    except ImportError as e:
+        raise_with_help(
+            f"无法 import llama_cpp: {e}",
+            "运行 `pip install llama-cpp-python`. "
+            "Windows 无 GPU 时装 CPU 版即可; macOS/Linux 可选 "
+            "`CMAKE_ARGS='-DGGML_METAL=ON' pip install` 编译 GPU 版.",
+        )
+
+    model_path = str(_code_root / "models" / "llama-3.2-3b-instruct-q4_k_m.gguf")
+    if not Path(model_path).exists():
+        raise_with_help(
+            f"找不到 GGUF 模型 {model_path}",
+            "运行 `make download-models-edge` 下载 GGUF 量化模型, "
+            "或手动从 https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF "
+            "下载 llama-3.2-3b-instruct-q4_k_m.gguf 到 code/models/ 目录.",
+        )
+
+    print(f"加载 GGUF: {model_path}")
+    llm = Llama(
+        model_path=model_path,
+        n_ctx=2048,           # 上下文窗口
+        n_threads=4,          # CPU 线程数 (macOS 推荐 = 物理核数)
+        n_gpu_layers=0,       # 0=纯CPU; Metal/MPS 用 -1; CUDA 用 -1
+        verbose=True,
+    )
+
+    # 3. 真实推理调用
+    prompt = "讲一个中文冷笑话"
+    print(f"\nPrompt: {prompt}")
+    response = llm(
+        prompt,
+        max_tokens=128,
+        temperature=0.7,
+        stop=["</s>", "\n\n"],
+    )
+    text = response["choices"][0]["text"]
+    print(f"llama.cpp response: {text}")
+
+    # 4. 资源清理
+    print("\n✅ GGUF 优势: 单文件 + mmap + 跨平台 + 量化粒度细 (加载时间 ≈ 50ms)")
 
 
 if __name__ == "__main__":
