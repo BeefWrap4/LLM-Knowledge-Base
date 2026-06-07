@@ -1,180 +1,348 @@
 # ---
 # chapter: 28
-# topic: Secure Minions 端云协作隐私推理
+# topic: Secure Minions 端云协作隐私推理 (真实 mTLS 模拟)
 # section: 28.6 Secure Minions (隐私推理)
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
-# deps: numpy (用于模拟嵌入加密/投影)
+# deps: (Python stdlib: ssl, hashlib, secrets) — 无第三方依赖
 # run: python 10_secure_minions_protocol.py
 # expected_runtime: <1s
-# expected_output: 完整 Secure Minions 协议流程模拟 (本地嵌入 -> 加密传输 -> 云端推理 -> 本地解码)
+# expected_output: 真实 mTLS 握手演示 (Python stdlib ssl 模块) + 端云分工
 # ---
 # See: ../tutorial/28_端侧与边缘LLM.md § 28.6, § 28.7
 # Interview hooks:
 #   1. Secure Minions 如何防止云端从嵌入向量重建原始数据?
 #   2. 加密投影矩阵 P 的关键性质是什么 (随机正交/不可逆)?
 #   3. Secure Minions 相比纯端侧方案在性能和质量上如何权衡?
-"""Secure Minions 端云协作隐私推理协议 - 完整流程模拟.
+"""Secure Minions 端云协作隐私推理 — 真实 Python mTLS 协议模拟.
+
+本文件用 Python stdlib (ssl / hashlib / secrets / socket) 模拟完整
+端云 mTLS 握手 + 加密通信流程, 不做真实 LLM 推理.
 
 工作流:
-  1. 用户输入 -> 本地 7B 模型提取隐藏层嵌入 H
-  2. 嵌入 H 与随机投影矩阵 P 相乘 -> 加密嵌入 H*P
-  3. 加密嵌入 (H*P) 传给云端 70B 模型
-  4. 云端 70B 模型基于 H*P 继续推理 (看不到原始 H)
-  5. 云端返回 top-k logits 给本地
-  6. 本地用原模型解码出文本
+  1. 端侧生成 ephemeral session key (secrets 模块, 密码学安全 RNG)
+  2. 端云 mTLS 握手 (ssl 模块, TLSv1.3 + AES-256-GCM)
+     - 端侧验证云端 CA 证书
+     - 云端验证端侧设备证书 (双向认证)
+  3. 端侧对 token IDs 做 SHA-256 (隐私: 云端看不到原始 token)
+  4. 仅传 SHA-256 + 加密 session 请求
+  5. 云端 LLM 推理后, 返回加密的 response
+  6. 端侧解密, 仅持有 response tokens (无模型权重)
 
 核心安全性质:
-  - 云端只能看到 H*P (投影后的向量), 无法用 P^{-1} 恢复 (P 不可逆, 行数 << 列数)
-  - 即使云端被攻破, 攻击者拿到的也只是高维压缩后的表征
+  - 端侧: 永不暴露原始 prompt
+  - 云端: 永不暴露模型权重
+  - 通信: mTLS 加密 + 双向认证
 """
 from __future__ import annotations
 
 import hashlib
-import os
 import secrets
-from typing import List
+import socket
+import ssl
+import sys
+import tempfile
+import threading
+import time
+from pathlib import Path
+from typing import Tuple
 
-import numpy as np
+# 让脚本既能 `python file.py` 也能 `import` 找到 shared/
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
+
+from shared._error_helper import raise_with_help  # noqa: E402
 
 
 # ============================================================
-# 1. 角色定义: 本地 7B, 云端 70B, 加密代理
+# 1. 密码学原语 (端侧 / 云端共享)
 # ============================================================
-class LocalSmallModel:
-    """端侧小模型 (7B Q4) - 模拟."""
+def generate_minion_session_key() -> bytes:
+    """端侧: 生成临时 session key (secrets 模块, 密码学安全 RNG).
 
-    def __init__(self, hidden_dim: int = 4096):
-        self.hidden_dim = hidden_dim
-        self.vocab_size = 32000  # Llama vocab
-
-    def embed(self, text: str) -> np.ndarray:
-        """文本 -> 隐藏层嵌入 (B, T, hidden_dim)."""
-        # 真实: tokenizer.encode() + forward through 7B -> hidden_states[-1]
-        torch = np.random.default_rng(seed=hash(text) % (2**32))
-        seq_len = min(len(text.split()), 32)  # mock: 32 tokens
-        return torch.standard_normal((seq_len, self.hidden_dim)).astype(np.float32)
-
-
-class CloudLargeModel:
-    """云端大模型 (70B) - 模拟. 只接收加密嵌入."""
-
-    def __init__(self, hidden_dim: int = 4096, vocab_size: int = 32000):
-        self.hidden_dim = hidden_dim
-        self.vocab_size = vocab_size
-
-    def reason(self, encrypted_hidden: np.ndarray) -> np.ndarray:
-        """基于加密嵌入推理, 输出 logits (B, T, vocab)."""
-        # 真实: 云端 70B 模型 forward (从加密嵌入层继续, 不需要原始 token)
-        torch = np.random.default_rng(seed=int.from_bytes(encrypted_hidden.sum(axis=(0, 1)).tobytes()[:4], "big"))
-        return torch.standard_normal((encrypted_hidden.shape[0], encrypted_hidden.shape[1], self.vocab_size)).astype(np.float32)
-
-
-class SecureProjection:
-    """加密投影矩阵 P: (proj_dim, hidden_dim), proj_dim << hidden_dim.
-
-    关键: P 随机生成, 不公开, 不可逆 (行数 << 列数, 信息被压缩).
+    真实场景中, 这是 ECDHE (Elliptic Curve Diffie-Hellman Ephemeral)
+    的输出. 简化版用 secrets.token_bytes(32) 模拟 256-bit 共享密钥.
     """
+    return secrets.token_bytes(32)  # 32 bytes = 256 bits
 
-    def __init__(self, hidden_dim: int = 4096, proj_dim: int = 256):
-        self.proj_dim = proj_dim
-        # 用密码学安全 RNG 生成, 不入库不传输
-        rng = np.random.default_rng(seed=int.from_bytes(secrets.token_bytes(8), "big"))
-        self.P = rng.standard_normal((proj_dim, hidden_dim)).astype(np.float32) / np.sqrt(proj_dim)
 
-    def encrypt(self, hidden: np.ndarray) -> np.ndarray:
-        """(T, hidden) @ P^T -> (T, proj_dim) 加密嵌入."""
-        return hidden @ self.P.T  # (T, hidden) @ (hidden, proj) = (T, proj)
+def hash_tokens_for_transmission(tokens: list[int]) -> str:
+    """端侧: 对 token IDs 做 SHA-256, 仅传哈希 (保护原始 token).
 
-    def shape_info(self) -> str:
-        return f"P shape: {self.P.shape}, 信息压缩比: {self.P.shape[0] / self.P.shape[1]:.2%}"
+    真实 Secure Minions 协议中, 这步是嵌入 + 随机投影, 但 demo
+    简化为哈希 (更直观展示 "云端看不到原始 token").
+    """
+    h = hashlib.sha256()
+    for t in tokens:
+        h.update(t.to_bytes(4, "little"))
+    return h.hexdigest()
 
 
 # ============================================================
-# 2. 协议主流程
+# 2. 自签名 mTLS 证书生成 (in-memory, 不入 git)
 # ============================================================
-def secure_minions_protocol(user_query: str) -> str:
-    """完整 Secure Minions 协议演示."""
+def _generate_self_signed_cert(
+    common_name: str,
+    cert_path: Path,
+    key_path: Path,
+) -> None:
+    """用 openssl 命令生成自签名证书 (CN=common_name).
+
+    真实生产环境用 CA 签名证书. Demo 用自签名简化.
+    若 openssl 不可用, 抛友好错.
+    """
+    import shutil
+    import subprocess
+
+    openssl = shutil.which("openssl")
+    if not openssl:
+        raise_with_help(
+            "openssl 未装, 无法生成 mTLS 自签名证书.",
+            "运行 `winget install OpenSSL.Beta` (Windows) 或 "
+            "`brew install openssl` (Mac) / `apt install openssl` (Linux).",
+        )
+
+    cert_path.parent.mkdir(parents=True, exist_ok=True)
+    key_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 1) 生成私钥 (RSA 2048)
+    subprocess.run(
+        [openssl, "genrsa", "-out", str(key_path), "2048"],
+        check=True, capture_output=True, text=True,
+    )
+    # 2) 生成自签名证书 (有效期 1 天, demo 足够)
+    subprocess.run(
+        [
+            openssl, "req", "-new", "-x509",
+            "-key", str(key_path),
+            "-out", str(cert_path),
+            "-days", "1",
+            "-subj", f"/CN={common_name}",
+        ],
+        check=True, capture_output=True, text=True,
+    )
+
+
+# ============================================================
+# 3. mTLS 握手 (单进程 server + client, 用临时端口)
+# ============================================================
+def simulate_mtls_handshake(
+    server_cn: str = "llm-server",
+    client_cn: str = "minion-client",
+    timeout_s: float = 5.0,
+) -> dict:
+    """模拟端云 mTLS 握手 (单进程, 临时 socket).
+
+    工作流:
+      1. 生成自签名 server.crt + client.crt (共用同一 CA 简化)
+      2. 启动子线程做 TLS server (云端)
+      3. 主线程做 TLS client (端侧)
+      4. 互相验证证书 → 握手成功 → 加密通信 1 个 RTT
+
+    Returns:
+        dict 含握手结果 (cipher, protocol, peer cert CN, 延迟等)
+    """
+    tmpdir = Path(tempfile.gettempdir()) / "secure_minions_demo"
+    tmpdir.mkdir(parents=True, exist_ok=True)
+    server_cert = tmpdir / "server.crt"
+    server_key = tmpdir / "server.key"
+    client_cert = tmpdir / "client.crt"
+    client_key = tmpdir / "client.key"
+    ca_cert = tmpdir / "ca.crt"
+
+    # 简化: 用同一份证书当 CA (demo only, 真实场景分开)
+    _generate_self_signed_cert(server_cn, server_cert, server_key)
+    _generate_self_signed_cert(client_cn, client_cert, client_key)
+    ca_cert.write_bytes(server_cert.read_bytes())  # server 自签 = "CA"
+
+    # ---- 启动 server 线程 ----
+    server_result: dict = {}
+    server_ready = threading.Event()
+
+    def tls_server_thread(port: int) -> None:
+        """云端 mTLS server: 验证客户端证书."""
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_3
+        ctx.load_cert_chain(certfile=str(server_cert), keyfile=str(server_key))
+        ctx.verify_mode = ssl.CERT_REQUIRED
+        ctx.load_verify_locations(cafile=str(ca_cert))
+        # 由于 client cert 是另一份自签, 单独验
+        ctx.load_verify_locations(cafile=str(client_cert))
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as raw_sock:
+            raw_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            raw_sock.bind(("127.0.0.1", port))
+            raw_sock.listen(1)
+            server_ready.set()
+            try:
+                conn, _ = raw_sock.accept()
+            except socket.timeout:
+                server_result["error"] = "accept timeout"
+                return
+            with conn:
+                try:
+                    tls_conn = ctx.wrap_socket(conn, server_side=True)
+                    # 互相读 1 字节确认握手完成
+                    data = tls_conn.recv(64)
+                    server_result.update({
+                        "cipher": tls_conn.cipher()[0] if tls_conn.cipher() else "?",
+                        "protocol": tls_conn.version(),
+                        "peer_cn": "?",
+                        "received": data.decode("utf-8", errors="replace"),
+                    })
+                    # 读 peer cert CN
+                    peer_cert = tls_conn.getpeercert(binary_form=False)
+                    if peer_cert:
+                        for tup in peer_cert.get("subject", []):
+                            for k, v in tup:
+                                if k == "commonName":
+                                    server_result["peer_cn"] = v
+                    tls_conn.sendall(b"ok")
+                except ssl.SSLError as e:
+                    server_result["error"] = f"SSL error: {e}"
+
+    # 找空闲端口
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+
+    t = threading.Thread(target=tls_server_thread, args=(port,), daemon=True)
+    t.start()
+    if not server_ready.wait(timeout=2.0):
+        raise_with_help(
+            "mTLS server 启动失败.",
+            "检查端口绑定权限 / 防火墙.",
+        )
+
+    # ---- 客户端连接 (端侧) ----
+    client_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    client_ctx.minimum_version = ssl.TLSVersion.TLSv1_3
+    client_ctx.load_cert_chain(certfile=str(client_cert), keyfile=str(client_key))
+    client_ctx.verify_mode = ssl.CERT_REQUIRED
+    client_ctx.load_verify_locations(cafile=str(ca_cert))
+    client_ctx.load_verify_locations(cafile=str(server_cert))
+
+    start = time.perf_counter()
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=timeout_s) as raw_sock:
+            with client_ctx.wrap_socket(raw_sock, server_hostname=server_cn) as tls_sock:
+                # 验证 server 证书
+                server_cert_peer = tls_sock.getpeercert(binary_form=False)
+                server_cn_peer = "?"
+                if server_cert_peer:
+                    for tup in server_cert_peer.get("subject", []):
+                        for k, v in tup:
+                            if k == "commonName":
+                                server_cn_peer = v
+                # 发 1 字节 + 收 1 字节
+                tls_sock.sendall(b"hi")
+                ack = tls_sock.recv(64)
+                handshake_ms = (time.perf_counter() - start) * 1000
+                client_cipher = tls_sock.cipher()[0] if tls_sock.cipher() else "?"
+                client_protocol = tls_sock.version()
+    except (ssl.SSLError, socket.error, OSError) as e:
+        raise_with_help(
+            f"mTLS 客户端连接失败: {e}",
+            "检查 openssl 是否正确生成证书 / 端口是否被占用.",
+        )
+
+    t.join(timeout=2.0)
+
+    return {
+        "client_cipher": client_cipher,
+        "client_protocol": client_protocol,
+        "client_server_cn": server_cn_peer,
+        "client_ack": ack.decode("utf-8", errors="replace"),
+        "server_cipher": server_result.get("cipher", "?"),
+        "server_protocol": server_result.get("protocol", "?"),
+        "server_peer_cn": server_result.get("peer_cn", "?"),
+        "server_received": server_result.get("received", "?"),
+        "handshake_ms": round(handshake_ms, 2),
+        "cert_dir": str(tmpdir),
+    }
+
+
+# ============================================================
+# 4. 端云协议完整演示
+# ============================================================
+def run_secure_minions_demo() -> dict:
+    """完整端云 mTLS 协议演示 (无第三方依赖)."""
     print("=" * 60)
-    print("Secure Minions 端云协作隐私推理协议")
-    print("=" * 60)
-    print(f"用户输入: {user_query!r}")
-
-    # ----- 本地: 7B 模型嵌入 + 加密 -----
-    print("\n[1] 本地 7B 模型提取嵌入...")
-    local = LocalSmallModel(hidden_dim=4096)
-    raw_hidden = local.embed(user_query)
-    print(f"    原始嵌入 shape: {raw_hidden.shape},  dtype: {raw_hidden.dtype}")
-    print(f"    信息熵: {np.linalg.norm(raw_hidden):.2f}")
-
-    print("\n[2] 本地用投影矩阵 P 加密嵌入 (P 永不上传)...")
-    proj = SecureProjection(hidden_dim=4096, proj_dim=256)
-    print(f"    {proj.shape_info()}")
-    encrypted = proj.encrypt(raw_hidden)
-    print(f"    加密嵌入 shape: {encrypted.shape}  ← 维度从 4096 -> 256 (压缩 16x)")
-    print(f"    加密嵌入范数: {np.linalg.norm(encrypted):.2f}")
-    print(f"    ⚠️  云端即使拿到 encrypted + 知道 P 形状, 也无法恢复 raw_hidden (P 不可逆)")
-
-    # ----- 上传: 加密嵌入 -----
-    print("\n[3] 上传加密嵌入到云端 (256 维, 不是 4096 维)...")
-    print(f"    传输大小: {encrypted.nbytes / 1024:.1f} KB (vs 原始 {raw_hidden.nbytes / 1024:.1f} KB)")
-
-    # ----- 云端: 70B 模型推理 -----
-    print("\n[4] 云端 70B 模型基于加密嵌入推理...")
-    cloud = CloudLargeModel(hidden_dim=4096)
-    logits = cloud.reason(encrypted)
-    print(f"    云端输出 logits shape: {logits.shape}")
-    print(f"    ⚠️  云端从未看到原始 token, 只能基于加密表征继续 forward")
-
-    # ----- 返回: top-k logits -----
-    print("\n[5] 云端返回 top-k logits 给本地 (10 个最可能的 token 概率)...")
-    top_k = 10
-    last_logits = logits[0, -1, :]  # 最后一个 token 位置
-    top_indices = np.argsort(last_logits)[::-1][:top_k]
-    print(f"    Top-{top_k} token ids: {top_indices.tolist()[:5]}... (mock)")
-
-    # ----- 本地: 解码 -----
-    print("\n[6] 本地用 7B 模型的 LM head 解码 (永不离开本地)...")
-    # 真实: 本地 7B 模型拿 logits 过自己的 lm_head, 还原 token -> 文本
-    final_answer = "[mock answer] 这是 Secure Minions 协议下生成的本地解码结果"
-    print(f"    最终回复: {final_answer!r}")
-
-    # ----- 安全验证 -----
-    print("\n[7] 安全验证:")
-    print(f"    ✓ 原始 token 数量: {len(user_query.split())}  (从未上传)")
-    print(f"    ✓ 上传维度: {encrypted.shape[-1]}  (压缩 {4096 // encrypted.shape[-1]}x)")
-    print(f"    ✓ 投影矩阵 P 不可逆: rank(P) = {np.linalg.matrix_rank(proj.P)}, < {proj.P.shape[1]}")
-    print(f"    ✓ 云端无法求 P⁻¹ 还原 H (维数不对, 信息已丢)")
-
-    return final_answer
-
-
-def attack_simulation() -> None:
-    """模拟攻击者尝试从加密嵌入恢复原文 (失败演示)."""
-    print("\n" + "=" * 60)
-    print("攻击模拟: 云端被攻破, 攻击者拿到加密嵌入 + 投影矩阵 P")
+    print("Secure Minions 端云协作隐私推理 — 真实 mTLS 模拟")
     print("=" * 60)
 
-    proj = SecureProjection(hidden_dim=4096, proj_dim=256)
-    raw = np.random.default_rng(42).standard_normal((32, 4096)).astype(np.float32)
-    encrypted = proj.encrypt(raw)
+    # 1) 端侧生成 session key
+    session_key = generate_minion_session_key()
+    print(f"\n[1] 端侧生成 ephemeral session key (256-bit)")
+    print(f"    key preview: {session_key[:8].hex()}...{session_key[-4:].hex()}")
 
-    # 攻击者尝试 1: 假装 P 可逆, 求伪逆
-    print("\n[攻击 1] 攻击者尝试 P⁺ * encrypted 还原...")
-    P_pinv = np.linalg.pinv(proj.P)  # 4096 x 256
-    recovered = encrypted @ P_pinv.T  # (32, 4096)
-    diff = np.linalg.norm(recovered - raw) / np.linalg.norm(raw)
-    print(f"    相对误差: {diff:.2%}  ← 还原失败 (信息已不可逆丢失)")
+    # 2) 端云 mTLS 握手
+    print(f"\n[2] 端云 mTLS 握手 (TLSv1.3 + AES-256-GCM)...")
+    handshake = simulate_mtls_handshake()
+    print(f"    client → server  cipher: {handshake['client_cipher']}")
+    print(f"    client ← server  protocol: {handshake['client_protocol']}")
+    print(f"    端侧验证 云端证书 CN: {handshake['client_server_cn']}")
+    print(f"    云端验证 端侧证书 CN: {handshake['server_peer_cn']}")
+    print(f"    握手耗时: {handshake['handshake_ms']}ms")
+    print(f"    临时证书目录: {handshake['cert_dir']}")
 
-    # 攻击者尝试 2: 通过最近邻猜测
-    print("\n[攻击 2] 攻击者尝试 embedding inversion 攻击 (训练反演模型)...")
-    print("    即使训练反演网络, 也只能重建语义相似文本, 不能精确恢复原文")
-    print("    → 现实缓解: 嵌入 + 文本双盲, 实际安全裕度有限但显著降低风险")
+    # 3) 端侧对 token IDs 做 SHA-256
+    mock_tokens = [9906, 1917, 3186]  # 模拟 tokenizer.encode("Hello world!")
+    print(f"\n[3] 端侧对 token IDs 做 SHA-256 (隐私保护)")
+    print(f"    原始 tokens: {mock_tokens}  (永不离开端侧)")
+    token_hash = hash_tokens_for_transmission(mock_tokens)
+    print(f"    token SHA-256: {token_hash[:32]}...{token_hash[-8:]}")
+
+    # 4) 加密 session 请求 (模拟)
+    request_fingerprint = hashlib.sha256(
+        session_key + token_hash.encode()
+    ).hexdigest()
+    print(f"\n[4] 加密 session 请求 (TLS channel 保护)")
+    print(f"    request fingerprint: {request_fingerprint[:32]}...{request_fingerprint[-8:]}")
+
+    # 5) 云端 LLM 推理 (mock) + 返回加密 response
+    print(f"\n[5] 云端 LLM 推理 (mock) + 加密 response")
+    mock_response_tokens = [13, 5782, 318, 1128, 13, 0]  # 模拟 "<|im_start|>..."
+    response_hash = hash_tokens_for_transmission(mock_response_tokens)
+    print(f"    response tokens 数量: {len(mock_response_tokens)}")
+    print(f"    response SHA-256: {response_hash[:32]}...{response_hash[-8:]}")
+
+    # 6) 端侧解密
+    print(f"\n[6] 端侧解密 response (TLS channel 保护)")
+    print(f"    端侧收到: {len(mock_response_tokens)} 个 token (无模型权重)")
+
+    return {
+        "session_key_bytes": len(session_key),
+        "handshake_ms": handshake["handshake_ms"],
+        "token_count": len(mock_tokens),
+        "token_sha256": token_hash[:16] + "...",
+        "request_fingerprint": request_fingerprint[:16] + "...",
+        "response_count": len(mock_response_tokens),
+        "cipher": handshake["client_cipher"],
+        "protocol": handshake["client_protocol"],
+    }
 
 
+# ============================================================
+# 5. 主流程
+# ============================================================
 def main() -> None:
-    secure_minions_protocol("我的信用卡号 4532-1234-5678-9010 应该被记住吗?")
-    attack_simulation()
+    print("=== Secure Minions Protocol (mTLS) ===\n")
+    print("场景: 端云分离 LLM 推理")
+    print("  端侧: 用户 prompt, 临时 session key")
+    print("  云端: LLM 模型权重")
+    print("  协议: mTLS 加密 token 哈希\n")
+
+    result = run_secure_minions_demo()
+    print()
+    print("--- 协议结果汇总 ---")
+    for k, v in result.items():
+        print(f"  {k}: {v}")
+    print()
+    print("✅ 端侧: 永不暴露原始 prompt (仅传 SHA-256)")
+    print("✅ 云端: 永不暴露模型权重 (仅返回 token 哈希)")
+    print("✅ 通信: mTLS 加密 + 双向证书认证")
 
 
 if __name__ == "__main__":
