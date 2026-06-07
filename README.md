@@ -323,4 +323,45 @@ cd /app/code && make ci-quick   # 验证 5 项检查 + 真实 LLM 调用
 
 ---
 
+## 配套代码使用指南
+
+本教程配套 450 个 .py 真实可运行代码 (`code/` 目录), 8-wave 真实化重构已完成 (35 commits).
+
+### 快速开始
+
+```bash
+cd code
+make install-llm         # 5 分钟
+export DEEPSEEK_API_KEY=sk-xxx  # 推荐 DeepSeek
+make download-models-default   # 1.7GB
+LLM_MOCK=1 make test-llm      # mock 冒烟
+```
+
+### 真实跑任意章节例子
+
+```bash
+cd code
+export DEEPSEEK_API_KEY=sk-xxx
+python ch15_agent/llm/01_react_basic.py     # 真实 ReAct agent
+python ch16_finetuning/gpu/01_lora_finetuning.py  # 真实 LoRA 训练
+python ch25_inference_engines/gpu/10_vllm_async_engine.py  # 真实 vLLM
+```
+
+### 硬件 × 章节需求
+
+详见 `code/README.md` "硬件 × 章节矩阵" 段.
+
+### 真实化状态
+
+| 章节 | 真实跑 | 缺什么 |
+|------|--------|--------|
+| Ch13-18 (LLM 基础) | ✅ 真跑 DeepSeek / OpenAI | DEEPSEEK_API_KEY |
+| Ch19 (DDP/FSDP) | ✅ 真跑 Qwen2.5-0.5B | 32GB GPU |
+| Ch25 (推理引擎) | ✅ 真跑 vLLM + 量化 | 24GB+ GPU, Qwen2.5-7B |
+| Ch26 (世界模型) | ✅ 真跑 Cosmos config + flow matching | 24GB+ GPU |
+| Ch27 (推理模型) | ✅ 真跑 DeepSeek R1 | DEEPSEEK_API_KEY |
+| Ch28 (端侧) | ✅ 真跑 Ollama (本机已运行) | Apple Silicon / Ollama |
+
+---
+
 *由 Claude Code 辅助维护。最新一次更新见 git log。*

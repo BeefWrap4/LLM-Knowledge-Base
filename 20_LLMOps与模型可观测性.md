@@ -3723,6 +3723,20 @@ def cost_overrun_auto_rollback(controller, current_cost_per_hour: float, budget_
 - **20.6 模型监控与告警**：四维监控体系（金指标/LLM特有/质量/基础设施）；数据漂移检测从特征空间转向 Embedding 空间。
 - **20.7 CI/CD**：自动化评估门禁是 LLM CI/CD 的核心；金丝雀发布配合自动回滚保障生产安全。
 
+## 20.x 配套代码真实化 (Wave 6 完成)
+
+本章所有 `.py` 例子已 W3 真实化: 真实 LangFuse v3 + OpenTelemetry + ClickHouse 后端 + 真实 DeepSeek 推理.
+
+```bash
+# 跑本章例子
+export DEEPSEEK_API_KEY=sk-xxx
+python ch20_llmops/llm/01_langfuse_trace.py        # LangFuse Trace
+python ch20_llmops/llm/05_prompt_ab_test.py        # Prompt A/B 测试
+python ch20_llmops/llm/10_cost_monitoring.py       # Token 成本监控
+```
+
+无 Key 缺权重: 友好 `RuntimeError` + `make llm-doctor-setup` 提示.
+
 ## 📚 相关章节
 
 - [[13_Prompt_Engineering]] — Prompt 设计的最佳实践

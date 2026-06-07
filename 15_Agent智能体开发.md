@@ -4267,6 +4267,21 @@ graph TD
 | A2A 协议 | Google 2025 推出；Agent ↔ Agent 通信；Agent Card 能力描述；Push Notification 异步状态更新；与 MCP 互补 |
 | Agent Teams | Claude 4.6 架构；Team Lead + Teammates 并行协作；Shared Task List + Mailbox 异步通信；持久性独立实例 |
 | Agent 安全防线 | 死循环防范（max_steps + 动作去重）+ 工具幻觉（Schema 校验 + 白名单）+ 上下文污染（截断重置）+ Token 爆炸（输出分页）+ Prompt Injection（输入过滤 + 权限隔离） |
+| 配套代码 | `ch15_agent/llm/*.py` 全部 W3 真实化, 真实 LangChain + DeepSeek + MCP | 需 `export DEEPSEEK_API_KEY=...` + 真实 API |
+
+## 15.x 配套代码真实化 (Wave 6 完成)
+
+本章所有 `.py` 例子已 W3 真实化: 真实 LangChain/LangGraph Agent + 真实 ReAct/Plan-Execute 框架 + 真实 MCP 工具调用.
+
+```bash
+# 跑本章例子
+export DEEPSEEK_API_KEY=sk-xxx
+python ch15_agent/llm/01_react_basic.py        # ReAct Agent
+python ch15_agent/llm/05_plan_execute.py       # Plan-Execute Agent
+python ch15_agent/llm/15_mcp_integration.py    # MCP 工具调用
+```
+
+无 Key 缺权重: 友好 `RuntimeError` + `make llm-doctor-setup` 提示.
 
 ---
 

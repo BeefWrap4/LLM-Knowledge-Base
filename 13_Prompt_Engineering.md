@@ -1512,6 +1512,20 @@ def wrapped_call(messages, **kwargs):
 | **Prompt 注入类型** | 直接注入（"忽略之前指令"）、间接注入（外部数据携带恶意指令）、目标劫持（绕过安全限制）三种主要形式 |
 | **Prompt 注入防御** | 五层防御：输入层（正则+敏感词）、架构层（Chat API role 隔离，最有效）、模型层（RLHF）、输出层（schema 校验）、应用层（最小权限） |
 | **Extended Thinking** | 2026 推理控制机制；Anthropic `budget_tokens`、OpenAI `reasoning_effort`、Gemini `thinkingBudget`；独立 thinking block 可单独计费 |
+| **配套代码** | `ch13_prompt/llm/*.py` 全部 W3 真实化, 真实 DeepSeek API | 需 `export DEEPSEEK_API_KEY=...` + 真实 API |
+
+## 13.x 配套代码真实化 (Wave 6 完成)
+
+本章所有 `.py` 例子已 W3 真实化: 真实 API 调用, 真实模型加载, 真实框架.
+
+```bash
+# 跑本章例子
+export DEEPSEEK_API_KEY=sk-xxx
+python ch13_prompt/llm/01_zero_shot_cot.py
+python ch13_prompt/llm/03_react_pattern.py
+```
+
+无 Key 缺权重: 友好 `RuntimeError` + `make llm-doctor-setup` 提示.
 
 ---
 

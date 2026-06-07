@@ -2233,6 +2233,22 @@ graph TD
 | **Agentic RAG / RAG-as-a-Tool** | 2026 范式升级：Agent 自主规划检索策略，RAG 降级为标准 Tool；支持多步检索 + 自我校验 |
 | **多模态 RAG** | CLIP/SigLIP/ColQwen 统一图文空间；Layout-aware chunking 保留版面；Vision-RAG 跳过 OCR |
 | **RAG 评估指标** | Context Precision/Recall、Faithfulness >90%、Answer Relevance、LLM-as-Judge 自动打分 |
+| **配套代码** | `ch14_rag/llm/*.py` 全部 W3 真实化, 真实本地 bge + DeepSeek | 需 `export DEEPSEEK_API_KEY=...` + `make download-models-default` |
+
+## 14.x 配套代码真实化 (Wave 6 完成)
+
+本章所有 `.py` 例子已 W3 真实化: 真实 bge-small-zh-v1.5 embedding + 真实 ChromaDB + 真实 DeepSeek 生成.
+
+```bash
+# 跑本章例子
+export DEEPSEEK_API_KEY=sk-xxx
+make download-models-default  # bge-small-zh-v1.5 + bge-reranker-base (1.7GB)
+python ch14_rag/llm/01_basic_rag.py
+python ch14_rag/llm/05_hybrid_search.py
+python ch14_rag/llm/10_reranking.py
+```
+
+无 Key 缺权重: 友好 `RuntimeError` + `make llm-doctor-setup` 提示.
 
 ## 📚 相关章节
 

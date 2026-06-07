@@ -306,6 +306,21 @@ result = pipe.run({
 | **LangGraph Checkpointer** | 持久化 state |
 | **Haystack 2.x** | context-engineered pipelines |
 | **Memory Layers** | 短/长/情景/程序记忆 |
+| **配套代码** | `ch29_context/llm/*.py` 全部 W3 真实化, 真实 LangGraph Checkpointer + Haystack 2.x | 需 `export DEEPSEEK_API_KEY=...` + 真实 API |
+
+## 29.x 配套代码真实化 (Wave 6 完成)
+
+本章所有 `.py` 例子已 W3 真实化: 真实 LangGraph 持久化 checkpoint + 真实 Haystack 2.x pipelines + 真实 Prompt Caching 5min/1hr 复用.
+
+```bash
+# 跑本章例子
+export DEEPSEEK_API_KEY=sk-xxx
+python ch29_context/llm/01_subagent_pattern.py      # Sub-Agent 干净 context
+python ch29_context/llm/05_compaction.py             # Compaction/Summarization
+python ch29_context/llm/10_prompt_caching.py        # Prompt Caching (Anthropic 5min/1hr)
+```
+
+无 Key 缺权重: 友好 `RuntimeError` + `make llm-doctor-setup` 提示.
 
 ---
 
