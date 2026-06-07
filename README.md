@@ -187,7 +187,7 @@ make ci                    # ~10min, push 前跑 (镜像 GitHub Actions)
 
 ## 🛠️ 可运行代码伴侣
 
-教程中所有 Python 代码已整理为 **439 个端到端可运行的 .py 文件**，位于 [`code/`](code/) 目录：
+教程中所有 Python 代码已整理为 **439 个端到端可运行的 .py 文件**, 位于 [`code/`](code/) 目录:
 
 ```bash
 cd code/
@@ -197,18 +197,39 @@ python ch12_transformer_architecture/core/01_scaled_dot_product_attention.py
 ```
 
 **三层依赖策略** (覆盖 100% 用户场景):
-- **core (158 文件)** — 任何电脑，30 秒安装
-- **llm (199 文件)** — API 调用 + mock 模式，5 分钟安装
-- **gpu (76 文件)** — 需 NVIDIA GPU/Apple MLX，30 分钟安装
+- **core (158 文件)** — 任何电脑, 30 秒安装
+- **llm (199 文件)** — API 调用 + mock 模式, 5 分钟安装
+- **gpu (76 文件)** — 需 NVIDIA GPU/Apple MLX, 30 分钟安装
 
-**Code Companion Phase 0-3 完整记录**:
-- **Wave 0**: Scaffold + 5 pilots (Makefile, requirements, shared/, tests/)
-- **Wave 1**: Ch01-11 核心提取 (154 core/)
-- **Wave 2**: Ch12-24 LLM/GPU 提取 (199 llm/ + 60 gpu/)
-- **Wave 3**: Ch25-29 全新绿 (48 gpu/ + 14 llm/) — 关闭 2026 新章节代码缺口
-- **Wave 4**: 收尾 (清理重复目录, 100% README 覆盖, tutorial/ junction)
+### 接入真实 LLM (Wave 14-A)
 
-每个示例反向引用教程章节，5 分钟从 clone 到第一次运行。详见 [code/QUICKSTART.md](code/QUICKSTART.md)。
+```bash
+cd code/
+cp .env.example .env        # 编辑填入 DEEPSEEK_API_KEY 或 KIMI_API_KEY
+python scripts/llm_doctor.py  # 验证 Key
+```
+
+支持 **DeepSeek / Kimi / SiliconFlow / OpenAI / Anthropic** 多厂商 (统一 OpenAI 兼容协议).
+详见 [`code/docs/API_KEYS.md`](code/docs/API_KEYS.md).
+
+### 下载教程所需模型 (Wave 14-B)
+
+```bash
+cd code/
+make download-models       # 国内源 (ModelScope), 默认下 bge-small + bge-reranker
+```
+
+详见 [`code/models/README.md`](code/models/README.md) 和 [`code/docs/MODELS.md`](code/docs/MODELS.md).
+
+### Docker 化部署 (Wave 14-C)
+
+```bash
+make -C code docker-build    # 构建镜像 (国内源加速)
+make -C code docker-llm      # 启动 app + Redis
+make -C code docker-bash     # 进容器
+```
+
+3 个 profile: `core` / `llm` (+Redis) / `gpu` (+pgvector). 详见 [`code/docs/DEPLOY.md`](code/docs/DEPLOY.md).
 
 ## 📝 维护与贡献
 
