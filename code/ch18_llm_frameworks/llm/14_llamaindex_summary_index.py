@@ -49,6 +49,17 @@ if USE_REAL_API:
             def complete(self, prompt, **kwargs):
                 return type("R", (), {"text": f"（mock）摘要：{prompt[-50:]}"})()
         Settings.llm = _MockLLM()
+
+    # Wave 29: 真实 embedding (本地 bge)
+    from pathlib import Path as _P
+    _bge_path = _P(__file__).resolve().parent.parent.parent / "models" / "bge-small-zh-v1.5"
+    if _bge_path.exists() and (_bge_path / "config.json").exists():
+        try:
+            from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+            Settings.embed_model = HuggingFaceEmbedding(model_name=str(_bge_path))
+            print(f"[embedding] 使用本地 bge: {_bge_path}")
+        except ImportError:
+            print("[WARN] llama_index.embeddings.huggingface 未装, 降级 mock embed")
 else:
     class _MockLLM:
         def complete(self, prompt, **kwargs):

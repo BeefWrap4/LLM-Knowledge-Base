@@ -54,6 +54,19 @@ if USE_REAL_API:
             def complete(self, prompt, **kwargs):
                 return type("R", (), {"text": f"（mock）回答：{prompt[-100:]}"})()
         Settings.llm = _MockLLM()
+
+    # Wave 29: 同时配置真实 embedding (本地 bge-small-zh, 避免 OpenAI API 调用)
+    from pathlib import Path as _P
+    _bge_path = _P(__file__).resolve().parent.parent.parent / "models" / "bge-small-zh-v1.5"
+    if _bge_path.exists() and (_bge_path / "config.json").exists():
+        try:
+            from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+            Settings.embed_model = HuggingFaceEmbedding(model_name=str(_bge_path))
+            print(f"[embedding] 使用本地 bge: {_bge_path}")
+        except ImportError:
+            print("[WARN] llama_index.embeddings.huggingface 未装, 降级 mock embed")
+    else:
+        print(f"[WARN] 本地 bge 不存在: {_bge_path}, 降级 mock embed (跑 setup_local.sh 下载)")
 else:
     # Mock 模式: 模拟 LLM 和 embed
     class _MockEmbed:
