@@ -83,6 +83,17 @@ PROVIDERS: dict[str, Provider] = {
         region="CN",
         free_tier="注册送 2000 万 tokens, 多模型路由",
     ),
+    "MiniMax": Provider(
+        name="MiniMax",
+        display_name="MiniMax (MiniMax, Codin Plan)",
+        base_url="https://api.MiniMax.com/v1",
+        default_chat="MiniMax-Text-01",
+        default_reasoner="MiniMax-Text-01",  # same model supports thinking via reasoning_effort param
+        api_style="openai",
+        env_key="MINIMAX_API_KEY",
+        region="CN",
+        free_tier="Codin Plan (key prefix sk-cp-): 编码优化订阅, ¥X/年起",
+    ),
     "openai": Provider(
         name="openai",
         display_name="OpenAI",

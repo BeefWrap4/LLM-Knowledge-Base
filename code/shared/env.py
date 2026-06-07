@@ -57,6 +57,8 @@ def get_api_key(provider: str = "openai") -> Optional[str]:
         "kimi": "KIMI_API_KEY",
         "moonshot": "KIMI_API_KEY",  # alias
         "siliconflow": "SILICONFLOW_API_KEY",
+        "MiniMax": "MINIMAX_API_KEY",
+        "abab": "MINIMAX_API_KEY",  # MiniMax 旧模型名 alias
     }
     env_var = key_map.get(provider.lower(), f"{provider.upper()}_API_KEY")
     return os.environ.get(env_var)
