@@ -24,7 +24,7 @@ REPO = CODE.parent
 
 
 def check_wiki_links() -> bool:
-    print("\n--- [1/4] Wiki link integrity ---")
+    print("\n--- [1/5] Wiki link integrity ---")
     r = subprocess.run([sys.executable, str(CODE / "scripts" / "verify_xrefs.py")],
                        capture_output=True, text=True, cwd=str(REPO))
     # Filter out the summary lines we want
@@ -35,7 +35,7 @@ def check_wiki_links() -> bool:
 
 
 def check_readme_coverage() -> bool:
-    print("\n--- [2/4] Chapter README coverage ---")
+    print("\n--- [2/5] Chapter README coverage ---")
     expected = 29
     actual = sum(1 for d in CODE.glob("ch*") if (d / "README.md").is_file())
     print(f"  Chapter READMEs: {actual}/{expected}")
@@ -46,7 +46,7 @@ def check_readme_coverage() -> bool:
 
 
 def check_code_health() -> bool:
-    print("\n--- [3/4] Code companion health ---")
+    print("\n--- [3/5] Code companion health ---")
     chapters = sorted(CODE.glob("ch*"))
     total_py = 0
     unhealthy = []
@@ -64,8 +64,20 @@ def check_code_health() -> bool:
     return total_py >= 400  # sanity check
 
 
+def check_sync_links() -> bool:
+    print("\n--- [4/5] Tutorial ↔ Code bidirectional sync ---")
+    r = subprocess.run([sys.executable, str(CODE / "scripts" / "sync_links.py")],
+                       capture_output=True, text=True, cwd=str(REPO))
+    # Extract the key summary lines
+    for line in r.stdout.splitlines():
+        if "教程章节总数" in line or "Code 例子含" in line or "教程章节有 code 覆盖" in line \
+           or line.startswith("=== PASS") or line.startswith("=== FAIL"):
+            print(f"  {line.strip()}")
+    return r.returncode == 0
+
+
 def check_smoke() -> bool:
-    print("\n--- [4/4] Smoke test sample (5 core/ files) ---")
+    print("\n--- [5/5] Smoke test sample (5 core/ files) ---")
     sample = [
         "ch01_python_basics/core/22_list_dict_basics.py",
         "ch02_mutability/core/01_is_vs_equals.py",
@@ -97,15 +109,17 @@ def main() -> int:
     r1 = check_wiki_links()
     r2 = check_readme_coverage()
     r3 = check_code_health()
-    r4 = check_smoke()
+    r4 = check_sync_links()
+    r5 = check_smoke()
 
     print("\n" + "=" * 60)
     print(f"  Wiki links:        {'PASS' if r1 else 'FAIL'}")
     print(f"  README coverage:   {'PASS' if r2 else 'FAIL'}")
     print(f"  Code health:       {'PASS' if r3 else 'FAIL'}")
-    print(f"  Smoke sample:      {'PASS' if r4 else 'FAIL'}")
+    print(f"  Sync links:        {'PASS' if r4 else 'FAIL'}")
+    print(f"  Smoke sample:      {'PASS' if r5 else 'FAIL'}")
     print("=" * 60)
-    return 0 if all([r1, r2, r3, r4]) else 1
+    return 0 if all([r1, r2, r3, r4, r5]) else 1
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-.PHONY: help install-core install-llm install-gpu install-all test test-llm test-gpu lint fmt clean run verify verify-xrefs run-all ci ci-quick ci-core ci-llm
+.PHONY: help install-core install-llm install-gpu install-all test test-llm test-gpu lint fmt clean run verify verify-xrefs sync-links run-all ci ci-quick ci-core ci-llm
 
 # ─────────────────────────────────────────────────────────
 # 安装
@@ -41,6 +41,9 @@ verify:  ## 教程↔代码 4 项检查 (wiki / README / code / smoke)
 
 verify-xrefs:  ## 只检查 wiki 链接完整性
 	python scripts/verify_xrefs.py
+
+sync-links:  ## 检查教程↔代码双向链接 (§X.Y ↔ # section: X.Y)
+	python scripts/sync_links.py
 
 run-all:  ## 跑完所有 core/ 例子 (TIER=core|llm|gpu, PARALLEL=8)
 	python scripts/run_all_examples.py --tier $${TIER:-core} --parallel $${PARALLEL:-8}
