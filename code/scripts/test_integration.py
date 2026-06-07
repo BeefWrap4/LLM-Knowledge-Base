@@ -19,6 +19,7 @@
 """
 import sys
 import time
+import os
 from pathlib import Path
 
 CODE = Path(__file__).resolve().parent.parent
@@ -49,9 +50,10 @@ def test_embedding():
 
 def test_redis(embeddings):
     """[2/4] Redis 16379 读写."""
-    print("\n[2/4] Redis (localhost:16379)...")
+    redis_host = os.environ.get("REDIS_HOST", "localhost")
+    print(f"\n[2/4] Redis ({redis_host}:16379)...")
     import redis
-    r = redis.Redis(host="localhost", port=16379, db=0, socket_connect_timeout=3)
+    r = redis.Redis(host=redis_host, port=16379, db=0, socket_connect_timeout=3)
     r.ping()
     print(f"  PING: ✓, version={r.info('server')['redis_version']}")
     # Write/read test
@@ -70,9 +72,10 @@ def test_redis(embeddings):
 
 def test_pgvector(embeddings):
     """[3/4] pgvector 向量检索 (cosine similarity)."""
-    print("\n[3/4] pgvector (localhost:15432)...")
+    pg_host = os.environ.get("PG_HOST", "localhost")
+    print(f"\n[3/4] pgvector ({pg_host}:15432)...")
     import psycopg2
-    c = psycopg2.connect(host="localhost", port=15432, user="llmkb", password="llmkb_test", dbname="vectordb")
+    c = psycopg2.connect(host=pg_host, port=15432, user="llmkb", password="llmkb_test", dbname="vectordb")
     c.autocommit = True
     cur = c.cursor()
     cur.execute("CREATE EXTENSION IF NOT EXISTS vector")

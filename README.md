@@ -5,6 +5,7 @@
 > 29 章节 · 280+ 面试题 · 439 个可运行代码示例 · 2026 主题全覆盖 · 健康评分 95/100
 
 [![Verify](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/verify.yml/badge.svg)](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/verify.yml)
+[![Integration](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/integration-test.yml/badge.svg)](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/integration-test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-green.svg)](https://www.python.org/)
 [![code passing](https://img.shields.io/badge/code-357%2F357-brightgreen.svg)]()
