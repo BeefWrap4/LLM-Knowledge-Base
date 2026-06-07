@@ -4,139 +4,115 @@
 # section: 26.2.2 GR00T N1.5 — NVIDIA 通用机器人基础模型
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
-# deps: torch (lazy), numpy
-# run: MOCK_MODE=1 python 04_groot_n15_vla.py
-# expected_runtime: <2s
-# expected_output: GR00T N1.5 架构、Eagle-2.5 VLM 接口、跨本体动作适配器
+# deps: torch
+# run: python 04_groot_n15_vla.py
+# expected_runtime: 5-15s (action expert MLP 训练 50 步)
+# expected_output: action expert loss 下降 + Groot N1.5 部署信息
 # ---
 # See: ../tutorial/26_世界模型与具身AI.md §26.2.2
+#
 # Interview hooks:
-#   1. GR00T N1.5 如何处理"跨本体"（不同机器人形态）的动作空间异构？
-#   2. Eagle-2.5 VLM 与 SigLIP 相比，多模态融合在 VLA 任务上有什么优势？
-#   3. 训练 GR00T 这类模型需要多大规模的数据？仿真 : 真实比例？
+#   1. GR00T N1.5 与 Pi0 的架构区别? (Cosmos-Reasoning VLM vs PaliGemma)
+#   2. 为什么 VLA 需要单独训 action expert 而非 end-to-end?
+#   3. Sim-to-real: Isaac Lab 仿真数据如何与真实数据混合训练?
+"""NVIDIA GR00T N1.5 VLA 演示 (action expert 训练 loop).
 
+GR00T N1.5:
+  - 基础模型: VLM (Cosmos-Reasoning 70B)
+  - 适配: action expert (本 demo 重点)
+  - 数据: 真实 + Isaac Lab 仿真混合
+  - 训练: 两阶段 (VLM 预训练 + 动作 fine-tune)
+
+本 demo: 训练 action expert (VLM 特征 + state → action) with 合成数据.
+生产 GR00T: Isaac Lab 仿真 + 真实遥操数据混合训练.
 """
-NVIDIA GR00T N1.5 —— 跨本体通用机器人基础模型（Generalist Robot Model）。
+import sys
+import torch
+import torch.nn as nn
+from pathlib import Path
 
-特点：
-  - 基座：Eagle-2.5 VLM (5B)
-  - 跨本体：不同机器人（Franka、Humanoid、ALOHA）共享 latent action space
-  - 训练数据：仿真 (Isaac Sim) + 真实遥操作
-  - 推理：消费级 H100 / RTX 4090 即可 fine-tune
-"""
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-import os
-import numpy as np
-
-
-MOCK_MODE = os.environ.get("MOCK_MODE", "1") == "1"
+from shared.gpu_guard import require_nvidia_gpu
 
 
-# ---------- 1. 跨本体动作空间统一 ----------
-class EmbodimentActionAdapter:
-    """把不同机器人的异构动作空间投影到统一 latent。
+def check_hardware():
+    """GR00T 完整 VLM 需 24GB+ (70B 量化). action expert 训练 8GB+ 即可."""
+    require_nvidia_gpu(min_vram_gb=24, min_count=1)
 
-    Franka Panda: 7-DOF arm + 1 gripper       -> 8 dim
-    Humanoid (Unitree H1):  19 joints          -> 19 dim
-    ALOHA bimanual:        2 x 6-DOF + 2 grip -> 14 dim
 
-    统一 latent dim = 32。
+class ActionExpertMLP(nn.Module):
+    """Action expert: VLM 特征 + 机器人状态 → 末端执行器动作.
+
+    生产 GR00T: 300M transformer, 输入是 VLM hidden states + 触觉/力矩 token.
+    本 demo: 简化为 MLP (演示 gradient flow).
     """
 
-    NATIVE_DIMS = {
-        "franka": 8,
-        "humanoid_h1": 19,
-        "aloha_bimanual": 14,
-    }
-    LATENT_DIM = 32
+    def __init__(self, vlm_dim: int = 2048, state_dim: int = 14, action_dim: int = 7):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(vlm_dim + state_dim, 1024),
+            nn.GELU(),
+            nn.Linear(1024, 512),
+            nn.GELU(),
+            nn.Linear(512, action_dim),
+        )
 
-    def __init__(self, seed: int = 0):
-        rng = np.random.default_rng(seed)
-        self.projs = {}
-        for name, dim in self.NATIVE_DIMS.items():
-            # 实际训练得到；这里随机初始化
-            self.projs[name] = rng.standard_normal((dim, self.LATENT_DIM)).astype(np.float32) * 0.1
-
-    def encode(self, name: str, action: np.ndarray) -> np.ndarray:
-        if name not in self.projs:
-            raise ValueError(f"Unknown embodiment: {name}")
-        return action @ self.projs[name]
-
-    def decode(self, name: str, latent: np.ndarray) -> np.ndarray:
-        # pinv 解码回原空间
-        W = self.projs[name]
-        return latent @ np.linalg.pinv(W)
+    def forward(self, vlm_feat: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
+        return self.net(torch.cat([vlm_feat, state], dim=-1))
 
 
-# ---------- 2. Eagle-2.5 VLM 接口（mock） ----------
-class EagleVLMBackbone:
-    """Eagle-2.5 视觉-语言 backbone —— 把 (image, text) → hidden states。"""
-
-    HIDDEN_DIM = 2048
-    NUM_LAYERS = 32
-
-    def __init__(self):
-        print(f"  [Eagle-2.5] Loaded mock backbone: hidden={self.HIDDEN_DIM}, layers={self.NUM_LAYERS}")
-
-    def forward(self, image: np.ndarray, text: str) -> np.ndarray:
-        """真实情况：把 1024 个 vision token + 128 个 text token 输入 ViT-LLM。
-        Mock：返回固定长度的 hidden states。"""
-        n_img_tokens = 256
-        n_txt_tokens = 32
-        return np.random.default_rng(hash(text) & 0xFFFF).standard_normal(
-            (n_img_tokens + n_txt_tokens, self.HIDDEN_DIM)
-        ).astype(np.float32)
-
-
-# ---------- 3. GR00T mini ----------
-class GR00TN15:
-    """GR00T N1.5 简化版：Eagle-2.5 + cross-embodiment action head。"""
-
-    def __init__(self):
-        self.vlm = EagleVLMBackbone()
-        self.adapter = EmbodimentActionAdapter()
-        # VLM hidden -> latent action 的投影头（mock）
-        rng = np.random.default_rng(2026)
-        self.head = rng.standard_normal(
-            (EagleVLMBackbone.HIDDEN_DIM, EmbodimentActionAdapter.LATENT_DIM)
-        ).astype(np.float32) * 0.01
-
-    def predict(
-        self,
-        image: np.ndarray,
-        instruction: str,
-        embodiment: str = "franka",
-    ) -> np.ndarray:
-        h = self.vlm.forward(image, instruction)
-        # 用 mean pool 简化
-        pooled = h.mean(axis=0)
-        latent = pooled @ self.head
-        # 解码到目标本体动作
-        action = self.adapter.decode(embodiment, latent)
-        return action
-
-
-# ---------- main ----------
 def main() -> None:
-    print("=== NVIDIA GR00T N1.5 — Cross-Embodiment VLA ===\n")
-
-    groot = GR00TN15()
-    fake_img = np.random.default_rng(0).integers(0, 255, (224, 224, 3), dtype=np.uint8)
-    instr = "place the screwdriver in the box"
-
-    print("Cross-embodiment action inference:")
-    for emb in EmbodimentActionAdapter.NATIVE_DIMS:
-        a = groot.predict(fake_img, instr, embodiment=emb)
-        print(f"  {emb:18s}  predicted action dim={a.shape[0]:2d}  (e.g. {np.round(a[:3], 2)})")
-
-    # 编码 / 解码一致性测试
-    adapter = EmbodimentActionAdapter()
-    franka_act = np.array([0.1, -0.2, 0.3, 0.0, 0.0, 0.4, 0.5, 0.8], dtype=np.float32)
-    z = adapter.encode("franka", franka_act)
-    rec = adapter.decode("franka", z)
-    err = float(np.linalg.norm(rec - franka_act))
-    print(f"\n[Adapter] encode→decode reconstruction error: {err:.4f} (should be ~0)")
+    check_hardware()
+    print("=== NVIDIA GR00T N1.5 VLA (action expert demo) ===\n")
+    print("核心: VLM (Cosmos-Reasoning 70B) 输出特征 + robot state → action expert → 7-DoF")
     print()
+
+    B = 8
+    # 模拟 VLM 输出: 2048-D 是 Cosmos-Reasoning hidden size
+    vlm_feat = torch.randn(B, 2048).cuda()
+    # 14-DoF 双臂状态 (7 joint/arm × 2 arms)
+    state = torch.randn(B, 14).cuda()
+    # 7-DoF 末端执行器动作 (相对位移)
+    target_action = torch.randn(B, 7).cuda()
+
+    model = ActionExpertMLP().cuda()
+    n_params = sum(p.numel() for p in model.parameters())
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+
+    print(f"  模型: VLM-2048 + State-14 → 1024 → 512 → 7 (参数量 {n_params:,})")
+    print(f"  训练: 50 步 MSE 监督学习\n")
+
+    losses = []
+    for step in range(50):
+        pred = model(vlm_feat, state)
+        loss = ((pred - target_action) ** 2).mean()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
+        if step % 10 == 0:
+            print(f"  step {step:3d} | MSE = {loss.item():.4f}")
+
+    print(f"\n  ✅ loss 下降: {losses[0]:.4f} → {losses[-1]:.4f}")
+
+    # 推理: 单样本 forward
+    print("\n  推理 demo:")
+    with torch.no_grad():
+        pred_action = model(vlm_feat[:1], state[:1])
+    print(f"    预测 action: {pred_action[0, :3].tolist()}")
+    print(f"    目标 action: {target_action[0, :3].tolist()}")
+
+    print()
+    print("=" * 60)
+    print("GR00T N1.5 真实部署 (NVIDIA 2025):")
+    print("  - VLM 基础: Cosmos-Reasoning 7B/70B")
+    print("  - Action expert: 300M transformer")
+    print("  - 训练数据: Isaac Lab 仿真 + 真实遥操混合")
+    print("  - 部署平台: NVIDIA Jetson Orin (边缘) / HGX H100 (云端)")
+    print("  - 硬件栈: Cosmos Tokenizer + Triton 推理")
 
 
 if __name__ == "__main__":

@@ -4,224 +4,168 @@
 # section: 26.5 具身数据工程 — 仿真 + 真实 + 视频预训练
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
-# deps: numpy, PIL (lazy)
-# run: MOCK_MODE=1 python 10_embodied_data_pipeline.py
-# expected_runtime: <3s
-# expected_output: 异构数据 schema 统一、LeRobotDataset 写入摘要、统计
+# deps: (无强依赖 — lerobot 可选, 缺则用简化实现)
+# run: python 10_embodied_data_pipeline.py
+# expected_runtime: 5-10s (合成数据生成 + LeRobot 格式示例)
+# expected_output: LeRobot 数据 schema + episode 帧样本
 # ---
 # See: ../tutorial/26_世界模型与具身AI.md §26.5
+#
 # Interview hooks:
-#   1. VLA 训练数据三大来源（真实、仿真、视频）的优缺点？配比经验？
-#   2. LeRobotDataset 的 Parquet + MP4 存储格式相对 HDF5 的优势？
-#   3. 时间对齐 (timestamp sync) 在多相机 + 力矩 + 触觉数据上有什么坑？
+#   1. LeRobot 数据格式的核心 schema? (parquet per episode + meta JSON + stats)
+#   2. 真实机器人数据如何归一化? (mean/std per feature, 存于 stats.safetensors)
+#   3. 仿真数据 (Isaac) 与真实数据如何混合? (域随机化 + 真实比例 1:3)
+"""具身数据 pipeline 演示 (LeRobot dataset 加载 + 转换).
 
+数据格式: LeRobotDataset (v2.0+)
+  - data/chunk-{N:03d}/episode_{M:06d}.parquet: 每 episode 一表
+  - meta/info.json: fps, robot_type, features
+  - meta/stats.safetensors: 各 feature 的 mean/std (归一化用)
+  - meta/episodes.jsonl: episode 元数据
+
+本 demo: 简化 LeRobot dataset schema + 生成合成 Aloha 数据样本.
+生产: 加载 HF Hub 上的 lerobot/* 数据集 (e.g. lerobot/aloha_sim_transfer_cube_human).
 """
-具身数据工程 —— 多源异构数据统一 pipeline。
-
-三大数据源：
-  A) 真实机器人遥操作 (Franka / ALOHA)
-  B) 仿真数据 (Isaac Sim / MuJoCo / ManiSkill)
-  C) 视频预训练 (Ego4D / Something-Something / Epic Kitchens)
-
-输出统一 schema (LeRobot v2.0)：
-  - frames  : 高频 (30Hz) 视频 + 触觉 → MP4 / 安全序列化
-  - states  : 低频 (10Hz) 关节角、夹爪、力矩 → Parquet
-  - actions : 低频 (10Hz) 目标关节角、夹爪开合 → Parquet
-  - tasks   : 自然语言指令 → Parquet
-"""
-
-import os
+import sys
 import json
-import math
-import time
-import numpy as np
+from pathlib import Path
+from typing import Iterator
+from dataclasses import dataclass, asdict
+
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
 
-MOCK_MODE = os.environ.get("MOCK_MODE", "1") == "1"
+@dataclass
+class EpisodeSample:
+    """单帧样本 (LeRobot schema 简化版)."""
+    timestamp: float
+    episode_index: int
+    frame_index: int
+    state: list       # 14-DoF 双臂状态
+    action: list      # 7-DoF 末端动作
+    image_shape: tuple = (3, 480, 640)  # 占位, 真实为 PNG/JPG bytes
+    language_instruction: str = ""
 
 
-# ---------- 1. 统一 Schema ----------
-UNIFIED_SCHEMA = {
-    "frame_id":        "int64",        # 全局连续编号
-    "episode_id":      "int32",        # 任务轨迹编号
-    "timestamp":       "float32",      # 相对 episode 起点的秒
-    "observation.image.front":    "uint8[H,W,3] @ 30Hz",
-    "observation.image.wrist":    "uint8[H,W,3] @ 30Hz",
-    "observation.state":          "float32[D_state] @ 10Hz",  # 关节角
-    "observation.velocity":       "float32[D_state] @ 10Hz",
-    "observation.tactile":        "float32[N_taxels] @ 30Hz",
-    "action":                     "float32[D_action] @ 10Hz",
-    "action.is_intervention":     "bool @ 10Hz",  # HIL-SERL 接管信号
-    "task":                       "string",  # 任务自然语言
-    "source":                     "string",  # "real" | "sim" | "video_pretrain"
-}
+class LeRobotLikeDataset:
+    """LeRobot 兼容的简化 dataset (不依赖 lerobot 库).
 
+    生产: from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
+    """
 
-def print_schema() -> None:
-    print("[Unified Schema] LeRobot v2.0 — 异构数据统一表示:")
-    for k, v in UNIFIED_SCHEMA.items():
-        print(f"  {k:38s} : {v}")
-    print()
-
-
-# ---------- 2. 多源 episode 适配器 ----------
-class EpisodeAdapter:
-    """把不同来源的 episode 转成统一 schema。"""
-
-    def __init__(self, source: str, hz_video: int = 30, hz_control: int = 10):
-        self.source = source
-        self.hz_v = hz_video
-        self.hz_c = hz_control
-        self.dt_v = 1.0 / hz_video
-        self.dt_c = 1.0 / hz_control
-
-    def adapt(self, raw_episode: dict) -> dict:
-        """raw_episode 结构因 source 而异；这里做归一化。"""
-        if self.source == "real":
-            return self._adapt_real(raw_episode)
-        elif self.source == "sim":
-            return self._adapt_sim(raw_episode)
-        elif self.source == "video_pretrain":
-            return self._adapt_video(raw_episode)
-        else:
-            raise ValueError(f"unknown source: {self.source}")
-
-    def _adapt_real(self, ep: dict) -> dict:
-        # 真实遥操作：含 2 路 wrist camera + 力矩
-        return {
-            "frames": ep["video"],            # (T_v, 2, H, W, 3)
-            "states": ep["joints"],           # (T_c, D)
-            "actions": ep["cmd"],             # (T_c, D)
-            "tactile": ep.get("tactile"),     # (T_v, N)
-            "task": ep["task"],
-            "source": "real",
-            "duration_s": ep["video"].shape[0] * self.dt_v,
+    def __init__(self, repo_id: str = "lerobot/aloha_sim_transfer_cube_human"):
+        self.repo_id = repo_id
+        self.fps = 50
+        self.robot_type = "aloha"
+        self.features = {
+            "observation.state": {"shape": (14,), "dtype": "float32", "names": ["joint_pos"] * 14},
+            "observation.images.top": {"shape": (3, 480, 640), "dtype": "uint8"},
+            "observation.images.wrist": {"shape": (3, 480, 640), "dtype": "uint8"},
+            "action": {"shape": (7,), "dtype": "float32", "names": ["x", "y", "z", "roll", "pitch", "yaw", "gripper"]},
         }
+        self.n_episodes = 50
+        self.episode_lengths = [200] * self.n_episodes  # 4 秒 @ 50Hz
 
-    def _adapt_sim(self, ep: dict) -> dict:
-        # Isaac Sim：完美 ground-truth，但 sim2real gap
-        return {
-            "frames": ep["rgb"],              # (T_v, 1, H, W, 3)
-            "states": ep["qpos"],             # (T_c, D)
-            "actions": ep["target_qpos"],     # (T_c, D)
-            "tactile": None,
-            "task": ep["task"],
-            "source": "sim",
-            "duration_s": ep["rgb"].shape[0] * self.dt_v,
-        }
+    def __len__(self) -> int:
+        return sum(self.episode_lengths)
 
-    def _adapt_video(self, ep: dict) -> dict:
-        # 视频预训练：只有图像，需要 inverse dynamics 提取伪 action
-        return {
-            "frames": ep["video"],
-            "states": None,
-            "actions": None,
-            "tactile": None,
-            "task": ep["task_text"],
-            "source": "video_pretrain",
-            "duration_s": ep["video"].shape[0] * self.dt_v,
-        }
+    @property
+    def total_frames(self) -> int:
+        return len(self)
 
+    @property
+    def total_duration_s(self) -> float:
+        return self.total_frames / self.fps
 
-# ---------- 3. 简易 LeRobot-style Writer ----------
-class LeRobotDatasetWriter:
-    """Parquet (states/actions) + 元数据 JSON 模拟写入。"""
-
-    def __init__(self, root: str = "/tmp/mock_lerobot_dataset"):
-        self.root = root
-        self.episodes = []
-        self.total_frames = 0
-
-    def add_episode(self, episode: dict) -> None:
-        if MOCK_MODE:
-            n_frames = int(episode["frames"].shape[0]) if episode.get("frames") is not None else 0
-            self.total_frames += n_frames
-            self.episodes.append({
-                "source": episode["source"],
-                "task": episode["task"],
-                "duration_s": round(episode["duration_s"], 2),
-                "n_frames": n_frames,
-            })
-
-    def summary(self) -> dict:
-        if not self.episodes:
-            return {}
-        sources = {}
-        for ep in self.episodes:
-            sources[ep["source"]] = sources.get(ep["source"], 0) + 1
-        return {
-            "n_episodes": len(self.episodes),
-            "total_frames": self.total_frames,
-            "sources": sources,
-            "total_duration_s": round(sum(e["duration_s"] for e in self.episodes), 2),
-        }
+    def __iter__(self) -> Iterator[EpisodeSample]:
+        rng_state = 0
+        for ep_idx in range(self.n_episodes):
+            # 简化的轨迹: state 缓慢变化 + 周期性 action
+            for step in range(self.episode_lengths[ep_idx]):
+                t = ep_idx * self.episode_lengths[0] + step
+                phase = (t / self.fps) * 2 * 3.14159
+                state = [0.1 * (i + 1) * (0.5 + 0.1 * (i * t % 7)) for i in range(14)]
+                action = [
+                    0.05 * (1 + i) * (0.3 + 0.1 * (i * (t + 1) % 5))
+                    for i in range(7)
+                ]
+                yield EpisodeSample(
+                    timestamp=t / self.fps,
+                    episode_index=ep_idx,
+                    frame_index=step,
+                    state=state,
+                    action=action,
+                    language_instruction="pick up the cube and place it in the bin",
+                )
 
 
-# ---------- 4. 模拟 pipeline ----------
-def demo_pipeline():
-    rng = np.random.default_rng(42)
-    writer = LeRobotDatasetWriter()
-
-    # 真实遥操作 5 个 episode
-    real_adapter = EpisodeAdapter(source="real")
-    for i in range(5):
-        ep = {
-            "video": rng.integers(0, 255, (90, 2, 224, 224, 3), dtype=np.uint8),  # 3s
-            "joints": rng.standard_normal((30, 7)).astype(np.float32),
-            "cmd":   rng.standard_normal((30, 7)).astype(np.float32),
-            "tactile": rng.standard_normal((90, 16)).astype(np.float32),
-            "task": f"real_episode_{i}",
-        }
-        writer.add_episode(real_adapter.adapt(ep))
-
-    # 仿真 50 个 episode（量大、便宜）
-    sim_adapter = EpisodeAdapter(source="sim")
-    for i in range(50):
-        ep = {
-            "rgb": rng.integers(0, 255, (60, 1, 224, 224, 3), dtype=np.uint8),
-            "qpos": rng.standard_normal((20, 7)).astype(np.float32),
-            "target_qpos": rng.standard_normal((20, 7)).astype(np.float32),
-            "task": f"sim_episode_{i}",
-        }
-        writer.add_episode(sim_adapter.adapt(ep))
-
-    # 视频预训练 1000 个 episode（Ego4D 风格）
-    video_adapter = EpisodeAdapter(source="video_pretrain")
-    for i in range(1000):
-        ep = {
-            "video": rng.integers(0, 255, (60, 1, 224, 224, 3), dtype=np.uint8),  # 2s
-            "task_text": f"video_pretrain_clip_{i}",
-        }
-        writer.add_episode(video_adapter.adapt(ep))
-
-    return writer.summary()
+def print_dataset_info(dataset: LeRobotLikeDataset) -> None:
+    print(f"Dataset: {dataset.repo_id}")
+    print(f"  robot_type : {dataset.robot_type}")
+    print(f"  fps        : {dataset.fps}")
+    print(f"  n_episodes : {dataset.n_episodes}")
+    print(f"  total frames: {dataset.total_frames:,}")
+    print(f"  total time : {dataset.total_duration_s:.1f} s")
+    print(f"  features   :")
+    for k, v in dataset.features.items():
+        print(f"    {k:30s} {v['shape']} {v['dtype']}")
 
 
-# ---------- 5. 训练配比分析 ----------
-def mixing_ratio_analysis(stats: dict) -> None:
-    total = stats["n_episodes"]
-    print("\n[Mixing ratio] 经验配比（GR00T N1.5 / Pi0.5 paper）:")
-    real_pct = stats["sources"].get("real", 0) / total * 100
-    sim_pct  = stats["sources"].get("sim", 0) / total * 100
-    vid_pct  = stats["sources"].get("video_pretrain", 0) / total * 100
-    print(f"  real:           {stats['sources'].get('real', 0):4d} ep  ({real_pct:5.1f}%)")
-    print(f"  sim:            {stats['sources'].get('sim', 0):4d} ep  ({sim_pct:5.1f}%)")
-    print(f"  video_pretrain: {stats['sources'].get('video_pretrain', 0):4d} ep  ({vid_pct:5.1f}%)")
-    print(f"\n  -> Real 数据稀少但 gold；Sim 量大但 sim2real gap；")
-    print(f"     Video 极多但需 inverse dynamics 提取伪 action。")
-
-
-# ---------- main ----------
 def main() -> None:
-    print("=== Embodied Data Pipeline (LeRobot v2.0) ===\n")
-    print_schema()
-    t0 = time.time()
-    stats = demo_pipeline()
-    dt = time.time() - t0
-    print(f"[Pipeline] ingested 1055 episodes in {dt*1000:.0f}ms (mock)")
-    print(f"[Pipeline] summary: {stats}")
-    mixing_ratio_analysis(stats)
+    print("=== 具身数据 pipeline (LeRobot 兼容 schema) ===\n")
+    dataset = LeRobotLikeDataset()
+    print_dataset_info(dataset)
     print()
+
+    # 演示: 拉取前 3 帧
+    print("步骤 1: 流式遍历前 3 帧 (生产用 LeRobotDataset[0] 随机访问)")
+    samples = []
+    for i, sample in enumerate(dataset):
+        if i >= 3:
+            break
+        samples.append(sample)
+        print(f"  ep={sample.episode_index} frame={sample.frame_index} t={sample.timestamp:.3f}s")
+        print(f"    state[0:3]  = {[round(x, 3) for x in sample.state[:3]]}")
+        print(f"    action[0:3] = {[round(x, 3) for x in sample.action[:3]]}")
+    print()
+
+    # 演示: episode 级元数据
+    print("步骤 2: Episode 元数据 (生产存于 meta/episodes.jsonl)")
+    meta = {
+        "repo_id": dataset.repo_id,
+        "fps": dataset.fps,
+        "robot_type": dataset.robot_type,
+        "total_episodes": dataset.n_episodes,
+        "total_frames": dataset.total_frames,
+        "features": dataset.features,
+    }
+    print(f"  meta: {json.dumps({k: v for k, v in meta.items() if k != 'features'}, indent=2)}")
+
+    # 演示: 归一化所需 stats
+    print("\n步骤 3: 归一化 stats (生产存于 meta/stats.safetensors)")
+    print("  生产: stats = compute_episode_stats(dataset)")
+    print("    normalized_state = (state - mean) / std")
+    print("    normalized_action = (action - mean) / std")
+    print("  作用: 训练时把 state/action 标准化到 N(0, 1), 提升优化稳定性")
+
+    print()
+    print("=" * 60)
+    print("生产 LeRobot 加载 (需 lerobot 库):")
+    print("  from lerobot.common.datasets.lerobot_dataset import LeRobotDataset")
+    print("  dataset = LeRobotDataset(")
+    print("      repo_id='lerobot/pusht',")
+    print("      root='./data',")
+    print("  )")
+    print()
+    print("HF Datasets 兼容加载:")
+    print("  from datasets import load_dataset")
+    print("  ds = load_dataset('lerobot/pusht', split='train')")
+    print()
+    print("Isaac Lab 仿真数据生成:")
+    print("  python -m isaaclab --task=Aloha-Transfer --num_envs=64 --headless")
+    print("  输出 HDF5 → 转 LeRobot parquet 格式")
 
 
 if __name__ == "__main__":

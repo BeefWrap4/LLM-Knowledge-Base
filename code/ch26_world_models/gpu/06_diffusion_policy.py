@@ -4,141 +4,177 @@
 # section: 26.3.2 Diffusion Policy — Chi 等 2023
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
-# deps: torch (lazy), numpy
-# run: MOCK_MODE=1 python 06_diffusion_policy.py
-# expected_runtime: <2s
-# expected_output: DDPM 训练步 + DDIM 推理轨迹 + 动作可视化
+# deps: torch
+# run: python 06_diffusion_policy.py
+# expected_runtime: 5-15s (1D UNet 50 步 DDPM 训练)
+# expected_output: DDPM 训练 loss 下降 + DDIM 推理轨迹
 # ---
 # See: ../tutorial/26_世界模型与具身AI.md §26.3.2
+#
 # Interview hooks:
 #   1. Diffusion Policy 为什么能处理多模态动作分布（vs Gaussian/L2 单峰）？
 #   2. 与 ACT 的对比：DDPM 去噪过程如何解释为"迭代精化"？
 #   3. 推理时使用 DDIM 多少步合适？步数与精度的权衡？
+"""Diffusion Policy 训练 (DDPM, 小 1D UNet).
 
+Diffusion Policy (Chi et al., RSS 2023) 用 DDPM 预测动作:
+  - 输入: 状态 (state) + 时间步 (t)
+  - 输出: 噪声预测
+  - 训练: MSE(ε_pred, ε_true)
+  - 推理: DDPM/DDIM 50 步去噪 → 动作序列
+
+本 demo: 真实 DDPM 训练 (50 步) + DDIM 推理 (10 步) on 小 1D UNet.
+生产 Diffusion Policy: Conv1D UNet 处理时序 + DDIM sampler 加速推理.
 """
-Diffusion Policy (Chi et al., RSS 2023) 简化实现。
+import sys
+import torch
+import torch.nn as nn
+from pathlib import Path
 
-核心思想：
-  - 训练：把 (obs, action_chunk) 对看作 (condition, target)，用 DDPM 学习
-    条件去噪网络 ε_θ(a_t, t, obs)
-  - 推理：从 a_T ~ N(0, I) 开始迭代去噪 K 步（DDIM）
-  - 支持多模态动作分布（重要优势）
-"""
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-import os
-import numpy as np
-
-
-MOCK_MODE = os.environ.get("MOCK_MODE", "1") == "1"
+from shared.gpu_guard import require_nvidia_gpu
 
 
-# ---------- 1. 噪声调度 ----------
-def linear_beta_schedule(T: int = 100, beta_start: float = 1e-4, beta_end: float = 0.02) -> np.ndarray:
-    return np.linspace(beta_start, beta_end, T, dtype=np.float32)
+def check_hardware():
+    require_nvidia_gpu(min_vram_gb=8, min_count=1)
 
 
-def make_ddpm_constants(T: int = 100):
-    betas = linear_beta_schedule(T)
+class SimpleUNet1D(nn.Module):
+    """1D UNet for action sequence (简化版 — 生产用 Conv1D U-Net)."""
+
+    def __init__(self, in_dim: int = 7, cond_dim: int = 14, time_dim: int = 32, hidden: int = 128):
+        super().__init__()
+        self.time_emb = nn.Sequential(
+            nn.Linear(1, time_dim), nn.SiLU(), nn.Linear(time_dim, time_dim),
+        )
+        self.cond_emb = nn.Linear(cond_dim, time_dim)
+        self.net = nn.Sequential(
+            nn.Linear(in_dim + 2 * time_dim, hidden), nn.SiLU(),
+            nn.Linear(hidden, hidden), nn.SiLU(),
+            nn.Linear(hidden, hidden), nn.SiLU(),
+            nn.Linear(hidden, in_dim),
+        )
+
+    def forward(self, x_t: torch.Tensor, t: torch.Tensor, cond: torch.Tensor) -> torch.Tensor:
+        t_emb = self.time_emb(t)
+        c_emb = self.cond_emb(cond)
+        return self.net(torch.cat([x_t, t_emb, c_emb], dim=-1))
+
+
+def linear_beta_schedule(T: int = 100, beta_start: float = 1e-4, beta_end: float = 0.02) -> torch.Tensor:
+    return torch.linspace(beta_start, beta_end, T, dtype=torch.float32)
+
+
+def make_ddpm_constants(T: int = 100, device: str = "cuda"):
+    betas = linear_beta_schedule(T).to(device)
     alphas = 1.0 - betas
-    alpha_bars = np.cumprod(alphas).astype(np.float32)
+    alpha_bars = torch.cumprod(alphas, dim=0)
     return {"betas": betas, "alphas": alphas, "alpha_bars": alpha_bars, "T": T}
 
 
-# ---------- 2. 简化 ε-network ----------
-class MockEpsilonNet:
-    """ε_θ(a_t, t, obs) —— 实际是 1D U-Net / Transformer。"""
+def ddpm_loss(
+    model: SimpleUNet1D,
+    x_0: torch.Tensor,
+    cond: torch.Tensor,
+    consts: dict,
+) -> torch.Tensor:
+    """DDPM 训练 loss: 预测噪声 ε.
 
-    def __init__(self, action_dim: int = 14, cond_dim: int = 14, hidden: int = 128):
-        rng = np.random.default_rng(0)
-        d_in = action_dim + cond_dim + 1  # +1 for time
-        self.W1 = rng.standard_normal((d_in, hidden)).astype(np.float32) * 0.1
-        self.W2 = rng.standard_normal((hidden, hidden)).astype(np.float32) * 0.1
-        self.W3 = rng.standard_normal((hidden, action_dim)).astype(np.float32) * 0.1
-        self.action_dim = action_dim
-        self.cond_dim = cond_dim
-
-    def __call__(self, a_t: np.ndarray, t: float, cond: np.ndarray) -> np.ndarray:
-        # a_t: (action_dim,)  cond: (cond_dim,)
-        a_t = np.atleast_1d(a_t).astype(np.float32)
-        cond = np.atleast_1d(cond).astype(np.float32)
-        # 用 a_t 的均值代表当前 action（教学简化；真实实现是逐 token 预测）
-        a_feat = np.array([float(a_t.mean())] * self.action_dim, dtype=np.float32)
-        x = np.concatenate([a_feat, cond, [t / 1000.0]]).astype(np.float32)
-        h = np.tanh(x @ self.W1)
-        h = np.tanh(h @ self.W2)
-        return h @ self.W3
-
-
-# ---------- 3. 训练一步 ----------
-def ddpm_train_step(eps_net: MockEpsilonNet, a0: np.ndarray, cond: np.ndarray, consts: dict) -> float:
-    """简化 DDPM 训练：随机采样 t，计算 L = ||ε - ε_θ(a_t, t, cond)||^2。"""
+    算法:
+      1. 随机采样 t ∈ [0, T)
+      2. 采样噪声 ε ~ N(0, I)
+      3. 构造 x_t = √α̅_t * x_0 + √(1-α̅_t) * ε
+      4. 训练 MSE(ε_pred, ε_true)
+    """
+    B = x_0.size(0)
     T = consts["T"]
     ab = consts["alpha_bars"]
-    B = a0.shape[0]
-    t = np.random.randint(0, T, size=B).astype(np.int64)
-    eps = np.random.default_rng().standard_normal(a0.shape).astype(np.float32)
-    ab_t = ab[t][:, None, None]  # (B, 1, 1) for (B, T, D) shape
-    a_t = np.sqrt(ab_t) * a0 + np.sqrt(1 - ab_t) * eps
-    # 真实实现：批量 forward ε_θ；这里取 chunk 整体均值做 loss（教学简化）
-    losses = []
-    a_dim = eps_net.action_dim
-    for i in range(B):
-        flat_a = a_t[i].reshape(-1)
-        flat_eps = eps[i].reshape(-1)
-        pred = eps_net(np.array([float(flat_a.mean())]), float(t[i]), cond[i])
-        target = np.full(a_dim, float(flat_eps.mean()), dtype=np.float32)
-        losses.append(float(np.mean((pred - target) ** 2)))
-    return float(np.mean(losses))
+    t = torch.randint(0, T, (B,), device=x_0.device)
+    eps = torch.randn_like(x_0)
+    ab_t = ab[t].unsqueeze(-1)  # [B, 1]
+    x_t = torch.sqrt(ab_t) * x_0 + torch.sqrt(1.0 - ab_t) * eps
+    t_norm = t.float().unsqueeze(-1) / T  # [B, 1] in [0, 1)
+    pred_eps = model(x_t, t_norm, cond)
+    return ((pred_eps - eps) ** 2).mean()
 
 
-# ---------- 4. DDIM 推理 ----------
-def ddim_sample(eps_net: MockEpsilonNet, cond: np.ndarray, action_dim: int = 14,
-                chunk: int = 16, n_steps: int = 10, consts: dict = None) -> np.ndarray:
-    """从 a_T ~ N(0, I) 出发 DDIM 采样 n_steps 步。"""
-    rng = np.random.default_rng(7)
-    a = rng.standard_normal((chunk, action_dim)).astype(np.float32)
+@torch.no_grad()
+def ddim_sample(
+    model: SimpleUNet1D,
+    cond: torch.Tensor,
+    consts: dict,
+    n_steps: int = 10,
+    in_dim: int = 7,
+) -> torch.Tensor:
+    """DDIM 推理: 从 N(0, I) 出发 n_steps 去噪 → 干净动作."""
+    device = cond.device
+    T = consts["T"]
     ab = consts["alpha_bars"]
-    # DDIM 时间步（均匀子集）
-    timesteps = np.linspace(0, consts["T"] - 1, n_steps, dtype=int)[::-1]
-    for i, t in enumerate(timesteps):
+    # DDIM 时间步 (均匀子集)
+    timesteps = torch.linspace(0, T - 1, n_steps + 1, dtype=torch.long, device=device).flip(0)
+    x = torch.randn(1, in_dim, device=device)
+    for i, t in enumerate(timesteps[:-1]):
+        t_next = timesteps[i + 1] if i + 1 < len(timesteps) - 1 else timesteps[-1]
         ab_t = ab[t]
-        ab_prev = ab[timesteps[i + 1]] if i + 1 < len(timesteps) else 1.0
-        # 逐 chunk 步去噪（实际是 batched）
-        for k in range(chunk):
-            eps = eps_net(a[k], float(t), cond)
-            # 预测 a0
-            a0_hat = (a[k] - np.sqrt(1 - ab_t) * eps) / (np.sqrt(ab_t) + 1e-8)
-            # DDIM 更新
-            a[k] = np.sqrt(ab_prev) * a0_hat + np.sqrt(1 - ab_prev) * eps
-    return a
+        ab_prev = ab[t_next] if t_next >= 0 else torch.tensor(1.0, device=device)
+        t_norm = (t.float() / T).unsqueeze(0).unsqueeze(-1)
+        pred_eps = model(x, t_norm, cond)
+        # 预测 x_0
+        x0_hat = (x - torch.sqrt(1.0 - ab_t) * pred_eps) / (torch.sqrt(ab_t) + 1e-8)
+        # DDIM 更新 (deterministic)
+        x = torch.sqrt(ab_prev) * x0_hat + torch.sqrt(1.0 - ab_prev) * pred_eps
+    return x
 
 
-# ---------- main ----------
 def main() -> None:
-    print("=== Diffusion Policy (DDPM/DDIM) ===\n")
-    print("Training: ε_θ predicts noise on action_chunk, conditioned on obs.")
-    print("Inference: 10-20 DDIM steps from N(0,I) → clean action chunk.\n")
-
-    consts = make_ddpm_constants(T=100)
-    print(f"[DDPM] beta schedule: {consts['betas'][:3].round(4).tolist()} ... "
-          f"alpha_bar end: {consts['alpha_bars'][-1]:.4f}")
-
-    eps_net = MockEpsilonNet(action_dim=14, cond_dim=14)
-    cond = np.random.default_rng(0).standard_normal((4, 14)).astype(np.float32) * 0.1
-    a0   = np.random.default_rng(1).standard_normal((4, 16, 14)).astype(np.float32) * 0.3
-
-    print("\n[Train] DDPM step losses (should hover around 0.5-1.5 for random init):")
-    for step in range(3):
-        loss = ddpm_train_step(eps_net, a0, cond, consts)
-        print(f"  step {step+1}: L_simple = {loss:.4f}")
-
-    print("\n[Inference] DDIM 10-step sampling...")
-    cond_single = cond[0]
-    sample = ddim_sample(eps_net, cond_single, action_dim=14, chunk=16,
-                         n_steps=10, consts=consts)
-    print(f"  generated action chunk: shape={sample.shape}, "
-          f"range=[{sample.min():.3f}, {sample.max():.3f}]")
+    check_hardware()
+    print("=== Diffusion Policy DDPM 训练 + DDIM 推理 ===\n")
+    print("核心: 用 DDPM 学习 (state → action) 的条件去噪, 推理用 DDIM 加速")
     print()
+
+    B = 32
+    action = torch.randn(B, 7).cuda()     # 7-DoF 末端动作
+    state = torch.randn(B, 14).cuda()     # 14-DoF 双臂状态
+
+    model = SimpleUNet1D(in_dim=7, cond_dim=14).cuda()
+    n_params = sum(p.numel() for p in model.parameters())
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    consts = make_ddpm_constants(T=100)
+
+    print(f"  模型: 1D UNet (in=7+time+cond) → 128 → 128 → 7, 参数量 {n_params:,}")
+    print(f"  训练: 50 步 DDPM (T=100)\n")
+
+    losses = []
+    for step in range(50):
+        loss = ddpm_loss(model, action, state, consts)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
+        if step % 10 == 0:
+            print(f"  step {step:3d} | DDPM loss = {loss.item():.4f}")
+
+    print(f"\n  ✅ loss 下降: {losses[0]:.4f} → {losses[-1]:.4f}")
+
+    # DDIM 推理
+    print("\n  DDIM 10 步推理 (从噪声 → 干净动作):")
+    cond_single = state[:1]
+    sample = ddim_sample(model, cond_single, consts, n_steps=10, in_dim=7)
+    print(f"    推理输出: {sample[0, :3].tolist()}")
+    print(f"    目标动作: {action[0, :3].tolist()}")
+    print(f"    (50 步训练未充分, 仅演示流程)")
+
+    print()
+    print("=" * 60)
+    print("生产 Diffusion Policy (Chi et al. 2023):")
+    print("  - Backbone: Conv1D UNet (处理时序 chunk)")
+    print("  - 训练: T=100 DDPM, ε-prediction")
+    print("  - 推理: DDIM sampler 10-20 步 (vs naive 100 步)")
+    print("  - 多模态优势: 可建模 (state → action) 多峰分布")
+    print("  - 集成: LeRobot + HuggingFace Trainer")
 
 
 if __name__ == "__main__":

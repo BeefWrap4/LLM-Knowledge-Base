@@ -4,133 +4,127 @@
 # section: 26.4.1 Genie 3 — Google 可交互世界模型
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
-# deps: torch (lazy), numpy
-# run: MOCK_MODE=1 python 01_genie3_world_model.py
-# expected_runtime: <2s
-# expected_output: Genie 3 架构概要、潜在动力学 step 演示、interactive rollout 帧计数
+# deps: transformers, torch
+# run: python 01_genie3_world_model.py
+# expected_runtime: 30-90s (Qwen2.5-0.5B 真实加载 + 3 步 rollout)
+# expected_output: 文本世界模型 3 步预测演示
 # ---
-# See: ../tutorial/26_世界模型与具身AI.md §26.4
+# See: ../tutorial/26_世界模型与具身AI.md §26.4.1
+#
 # Interview hooks:
-#   1. Genie 系列（Genie 1/2/3）的核心差异是什么？Genie 3 引入"可交互"的关键模块？
-#   2. 世界模型（World Model）与传统视频生成模型（Veo/Sora）的本质区别？
-#   3. 为什么世界模型对具身智能至关重要（rollout + planning）？
+#   1. Genie 3 与 Cosmos 在训练目标上有什么不同？（可交互性 vs 物理一致性）
+#   2. 世界模型核心公式 s_{t+1}, r_t = f(s_t, a_t) 如何用 LLM 模拟？
+#   3. 用 LLM 做世界模型的优缺点：泛化强但物理一致性弱？
+"""世界模型 (Genie 3 / Cosmos 类) 演示.
 
+Genie 3 是 Google DeepMind 的可交互世界模型, 无开源权重.
+此处用 Qwen2.5-0.5B 作为文本世界模型 (想象式环境预测) 替代演示.
+
+世界模型核心:
+  s_{t+1}, r_t = f(s_t, a_t)   # 状态 + 动作 → 下一状态 + 奖励
+
+Genie 3 真实场景: 视频帧 + 动作输入 → 下一帧视频.
+本 demo 简化: 文本描述 + 文本动作 → 下一状态描述.
 """
-Genie 3 —— Google DeepMind 的可交互世界模型（World Model）演示。
+import sys
+import torch
+from pathlib import Path
 
-Genie 3 接受一帧图像 + 文本动作描述，潜在空间动力学预测后续帧。
-本文件不加载真实模型（Genie 3 尚未开源），仅演示其架构组件、
-潜在动作（latent action）嵌入、动力学 step 的工程骨架。
-"""
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-import os
-import math
-import numpy as np
-
-
-MOCK_MODE = os.environ.get("MOCK_MODE", "1") == "1"
+from shared.gpu_guard import require_nvidia_gpu
+from shared._error_helper import raise_with_help
 
 
-# ---------- 1. 模型架构概览 ----------
-def genie3_architecture_summary() -> None:
-    """打印 Genie 3 关键模块的抽象尺寸，模拟论文/报告的参数量级。"""
-    print("[Genie 3] Architecture summary (mock):")
-    blocks = [
-        ("Vision tokenizer (ViT-B/16)",          86e6,   "Frame -> 16x16 latent tokens"),
-        ("Text encoder (T5-XXL)",                  11e9,   "Instruction -> context tokens"),
-        ("Latent action quantizer (VQ-VAE-32)",    50e6,   "8 fps actions into 32-codebook"),
-        ("Dynamics backbone (24-layer DiT-XL)",    700e6,  "predict next latent given (s_t, a_t)"),
-        ("Frame decoder (latent -> 1024x1024)",    300e6,  "spatial + temporal upsample"),
-    ]
-    total = 0.0
-    for name, params, desc in blocks:
-        print(f"  {name:38s}  {params/1e6:8.1f}M   {desc}")
-        total += params
-    print(f"  {'TOTAL':38s}  {total/1e9:8.2f}B  (matches DeepMind 2026 report ~12B)")
-    print()
+def check_hardware():
+    require_nvidia_gpu(min_vram_gb=8, min_count=1)
 
 
-# ---------- 2. 潜在动作（latent action）模块 ----------
-class LatentActionEncoder:
-    """把"鼠标拖动 / 键盘"等离散/连续动作编码为 32 维 codebook 索引。"""
+class TextWorldModel:
+    """文本世界模型: 状态 = 文本描述, 动作 = 文本指令.
 
-    def __init__(self, codebook_size: int = 32, dim: int = 256):
-        self.codebook_size = codebook_size
-        self.dim = dim
-        # 真实实现中 codebook 是 VQ-VAE 训练得到；这里随机初始化作示意
-        rng = np.random.default_rng(0)
-        self.codebook = rng.standard_normal((codebook_size, dim)).astype(np.float32)
-        self.codebook /= np.linalg.norm(self.codebook, axis=1, keepdims=True) + 1e-8
-
-    def encode(self, action_vec: np.ndarray) -> int:
-        """输入形状 (dim,) 的动作特征，返回最近邻 codebook 索引。"""
-        v = action_vec / (np.linalg.norm(action_vec) + 1e-8)
-        sims = self.codebook @ v
-        return int(np.argmax(sims))
-
-    def decode(self, idx: int) -> np.ndarray:
-        return self.codebook[idx]
-
-
-# ---------- 3. 潜在动力学（latent dynamics）step ----------
-def latent_dynamics_step(
-    latent: np.ndarray,
-    action_idx: int,
-    action_emb: np.ndarray,
-    n_steps_predict: int = 1,
-) -> np.ndarray:
-    """模拟一帧潜在 → 下一帧潜在的简单线性动力学（mock）。
-
-    真实 Genie 3 内部是 24 层 DiT；这里用一个带动作调制的线性算子
-    表达 "s_{t+1} = s_t + alpha * (W_a a + b)" 形式，便于教学。
+    用 LLM 作为世界模型, 输入 "state | action", 输出 "next_state".
+    简化: 用 Qwen2.5-0.5B-Instruct 演示 f(s,a) → s' 的近似.
     """
-    if MOCK_MODE:
-        rng = np.random.default_rng(action_idx + 1)
-        # 简化：构造一个与 latent 同形状的 delta 字段
-        # 真实 DiT 内部是 attention + MLP；这里用广播近似
-        W = rng.standard_normal((latent.shape[-1], latent.shape[-1])).astype(np.float32) * 0.02
-        # 把 action_emb 投影成与 latent 同 dim 的偏移
-        a_W = rng.standard_normal((action_emb.shape[-1], latent.shape[-1])).astype(np.float32) * 0.1
-        bias = action_emb @ a_W  # (D,)
-        # 应用到每个空间位置
-        delta = (latent @ W) + bias
-        for _ in range(n_steps_predict):
-            latent = latent + delta
-        return latent.astype(np.float32)
-    else:
-        # 真实路径：加载 DiT backbone 并 forward（占位）
-        raise NotImplementedError("Genie 3 weights not publicly released; MOCK_MODE=1 to run.")
+
+    WORLD_MODEL_PROMPT = (
+        "You are a text world model. Given a current state and an action, "
+        "predict the next state in one short sentence (max 20 words). "
+        "If the action succeeds, start the next state with 'success: '. "
+        "Otherwise just describe the new state.\n\n"
+    )
+
+    def __init__(self, model_path: str):
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_path, torch_dtype=torch.bfloat16, device_map="auto"
+        )
+
+    def step(self, state: str, action: str, max_new_tokens: int = 48) -> tuple[str, float]:
+        """预测 next_state 并计算 reward (1.0 = success, 0.0 = otherwise)."""
+        user_msg = f"State: {state}\nAction: {action}\nNext state:"
+        messages = [
+            {"role": "system", "content": self.WORLD_MODEL_PROMPT},
+            {"role": "user", "content": user_msg},
+        ]
+        prompt = self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+        with torch.no_grad():
+            out = self.model.generate(
+                **inputs, max_new_tokens=max_new_tokens, do_sample=False,
+                pad_token_id=self.tokenizer.eos_token_id,
+            )
+        new_tokens = out[0][inputs.input_ids.size(1):]
+        next_state = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+        # 移除 LLM 可能复述的 "Next state:" 前缀
+        next_state = next_state.replace("Next state:", "").strip()
+        reward = 1.0 if next_state.lower().startswith("success") else 0.0
+        return next_state, reward
 
 
-# ---------- 4. 可交互 rollout ----------
-def interactive_rollout(init_latent: np.ndarray, n_steps: int = 16) -> int:
-    """模拟用户按 8 次方向键 / 鼠标拖动 → 16 帧后续画面。"""
-    if MOCK_MODE:
-        ae = LatentActionEncoder()
-        z = init_latent.copy()
-        actions = []
-        for t in range(n_steps):
-            # 模拟玩家输入：构造 dim=256 的特征（这里取 256 维的稀疏向量）
-            user_input = np.zeros(256, dtype=np.float32)
-            user_input[(t * 3) % 256] = 1.0
-            user_input[(t * 7 + 1) % 256] = 0.5
-            a_idx = ae.encode(user_input)
-            actions.append(a_idx)
-            z = latent_dynamics_step(z, a_idx, ae.decode(a_idx))
-        unique_actions = len(set(actions))
-        print(f"[Genie 3] rollout {n_steps} frames, {unique_actions} unique latent actions")
-        return n_steps
-    else:
-        raise NotImplementedError
-
-
-# ---------- main ----------
 def main() -> None:
-    print("=== Genie 3 World Model — Interview Demo ===\n")
-    genie3_architecture_summary()
-    z0 = np.random.default_rng(42).standard_normal((4, 16, 16, 256)).astype(np.float32)
-    n = interactive_rollout(z0, n_steps=16)
-    print(f"Generated {n} future latent frames (decoded by frame-decoder in real model).")
+    check_hardware()
+    model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")
+    if not Path(model_path).exists():
+        raise_with_help(
+            f"需要 {model_path}",
+            "运行 `make download-models-default` 或手动从 HuggingFace 下载 Qwen2.5-0.5B-Instruct.",
+        )
+
+    print("=== 文本世界模型 (Qwen2.5-0.5B 替代 Genie 3) ===\n")
+    print("核心: s_{t+1}, r_t = f(s_t, a_t)  — 文本版近似")
+    print(f"模型: {model_path}\n")
+
+    wm = TextWorldModel(model_path)
+    print(f"✅ 模型加载完成 (VRAM: {torch.cuda.memory_allocated() / 1e9:.2f} GB)\n")
+
+    # 演示 3 步 rollout: 客厅 → 走过去 → 拿起书 → 打开书
+    state = "The living room is bright. There is a book on the sofa."
+    actions = ["walk to the sofa", "pick up the book", "open the book"]
+
+    for step, action in enumerate(actions):
+        print(f"--- step {step} ---")
+        print(f"  state  : {state}")
+        print(f"  action : {action}")
+        next_state, reward = wm.step(state, action)
+        print(f"  next   : {next_state}")
+        print(f"  reward : {reward}")
+        print()
+        state = next_state
+
+    print("=" * 60)
+    print("Genie 3 真实部署:")
+    print("  - 输入: 视频帧 + 用户动作 (按键/摇杆)")
+    print("  - 输出: 下一帧视频 (3D 一致性 + 可交互)")
+    print("  - 训练: 大规模未标注视频 + 自动编码 latent action")
+    print("  - 模型规模: 数十亿参数, 需数十 GB VRAM")
+    print()
+    print("本 demo 局限: 文本世界模型物理一致性弱, 需 video world model 替代.")
 
 
 if __name__ == "__main__":

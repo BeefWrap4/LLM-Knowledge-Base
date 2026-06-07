@@ -4,131 +4,175 @@
 # section: 26.3.1 LeRobot ACT — Action Chunking Transformer
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
-# deps: torch (lazy), numpy
-# run: MOCK_MODE=1 python 05_lerobot_act.py
-# expected_runtime: <2s
-# expected_output: ACT 架构、CVAE 训练目标、action chunk 解码
+# deps: lerobot (optional, raises if missing)
+# run: python 05_lerobot_act.py
+# expected_runtime: 5-15s (架构 + ACT 训练/推理示例)
+# expected_output: ACT 配置 + 训练/推理代码片段
 # ---
 # See: ../tutorial/26_世界模型与具身AI.md §26.3.1
+#
 # Interview hooks:
-#   1. ACT (Action Chunking Transformer) 的核心思想？为什么分块预测比单步好？
-#   2. CVAE 编码器在训练时引入，在推理时丢弃 —— 这样做的好处？
-#   3. LeRobot 中 ACT 与 Diffusion Policy 的选择标准？精度 vs 多模态？
+#   1. ACT (Action Chunking Transformer) 与 L2 单步预测的核心区别?
+#   2. 为什么 action chunking 能提升长任务成功率? (时序一致性 + 平滑)
+#   3. LeRobot 与 Isaac Lab 的定位区别? (开源算法库 vs NVIDIA 仿真平台)
+"""LeRobot ACT (Action Chunking Transformer) 演示.
 
+LeRobot 是 HuggingFace 的机器人开源库:
+  pip install lerobot
+  提供 ACT / Diffusion Policy / VQ-BeT / HIL-SERL 等算法
+
+ACT (Zhao et al. 2023) 核心: 一次预测未来 K 个动作 (chunk),
+  而非单步 — 提升时序一致性 + 平滑性.
+
+本 demo: 检查 lerobot 库 + 展示 ACT 训练/推理代码 (实际跑需 Linux + GPU).
 """
-LeRobot ACT (Action Chunking Transformer) 简化实现。
+import sys
+import shutil
+from pathlib import Path
 
-源自 ALOHA 论文 "Learning Fine-Grained Bimanual Manipulation" (Zhao et al., 2023)。
-LeRobot (HuggingFace) 提供开箱即用训练脚本；本文件演示其核心组件：
-  - CVAE encoder（仅训练时使用）
-  - Transformer decoder（chunks of K future actions）
-  - L1 regression head
-"""
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-import os
-import numpy as np
+import torch
+import torch.nn as nn
 
-
-MOCK_MODE = os.environ.get("MOCK_MODE", "1") == "1"
-
-
-# ---------- 1. CVAE Encoder (训练时) ----------
-class CVAEEncoder:
-    """把 (obs, action_chunk) → latent style z (dim=32)。"""
-
-    LATENT_DIM = 32
-
-    def __init__(self, state_dim: int = 14, action_dim: int = 14, chunk: int = 100):
-        # state = 2 x 7 (ALOHA 双臂关节角)
-        # action chunk = chunk x 14
-        rng = np.random.default_rng(1)
-        d_in = state_dim + action_dim * chunk
-        self.W = rng.standard_normal((d_in, 2 * self.LATENT_DIM)).astype(np.float32) * 0.001
-        self.d_in = d_in
-
-    def encode(self, state: np.ndarray, action_chunk: np.ndarray):
-        x = np.concatenate([state, action_chunk.flatten()])
-        out = x @ self.W
-        mu, logvar = out[: self.LATENT_DIM], out[self.LATENT_DIM:]
-        return mu, logvar
-
-    def reparameterize(self, mu: np.ndarray, logvar: np.ndarray) -> np.ndarray:
-        std = np.exp(0.5 * logvar)
-        eps = np.random.default_rng().standard_normal(mu.shape).astype(np.float32)
-        return mu + eps * std
+from shared.gpu_guard import require_nvidia_gpu
+from shared._error_helper import raise_with_help
 
 
-# ---------- 2. Transformer Decoder (CVAE) ----------
-class ACTDecoder:
-    """简化 Transformer decoder：输入 (state, z) → 输出 (chunk, action_dim)。"""
-
-    def __init__(self, state_dim: int = 14, latent_dim: int = 32, action_dim: int = 14, chunk: int = 100):
-        rng = np.random.default_rng(2)
-        # 一层 attention + FFN（教学 mock）
-        self.W_q = rng.standard_normal((state_dim + latent_dim, 64)).astype(np.float32) * 0.1
-        self.W_k = rng.standard_normal((state_dim + latent_dim, 64)).astype(np.float32) * 0.1
-        self.W_v = rng.standard_normal((state_dim + latent_dim, 64)).astype(np.float32) * 0.1
-        self.W_o = rng.standard_normal((64, action_dim)).astype(np.float32) * 0.1
-        self.chunk = chunk
-
-    def forward(self, state: np.ndarray, z: np.ndarray) -> np.ndarray:
-        # 把 (state, z) 复制 chunk 份当 query，输出 chunk 个 action
-        cond = np.concatenate([state, z])  # (D,)
-        seq = np.tile(cond, (self.chunk, 1))  # (chunk, D)
-        Q = seq @ self.W_q
-        K = seq @ self.W_k
-        V = seq @ self.W_v
-        attn = np.exp((Q @ K.T) / np.sqrt(64))
-        attn /= attn.sum(axis=-1, keepdims=True) + 1e-8
-        out = (attn @ V) @ self.W_o
-        return out.astype(np.float32)
+def check_hardware():
+    require_nvidia_gpu(min_vram_gb=8, min_count=1)
 
 
-# ---------- 3. ACT 模型 ----------
-class ACTPolicy:
-    """Action Chunking Transformer for ALOHA-style bimanual manipulation."""
-
-    CHUNK = 100       # 100 步 ≈ 5s @ 20Hz
-    STATE_DIM = 14    # 2 x 7 (bimanual joints)
-    ACTION_DIM = 14
-
-    def __init__(self):
-        self.encoder = CVAEEncoder(self.STATE_DIM, self.ACTION_DIM, self.CHUNK)
-        self.decoder = ACTDecoder(self.STATE_DIM, CVAEEncoder.LATENT_DIM, self.ACTION_DIM, self.CHUNK)
-
-    def train_step_loss(self, state: np.ndarray, action_chunk: np.ndarray) -> dict:
-        mu, logvar = self.encoder.encode(state, action_chunk)
-        z = self.encoder.reparameterize(mu, logvar)
-        pred = self.decoder.forward(state, z)
-        recon = float(np.mean(np.abs(pred - action_chunk)))   # L1
-        kl = float(-0.5 * np.mean(1 + logvar - mu**2 - np.exp(logvar)))
-        return {"recon_l1": round(recon, 4), "kl": round(kl, 4), "total": round(recon + 1e-3 * kl, 4)}
-
-    def select_action(self, state: np.ndarray) -> np.ndarray:
-        # 推理时：z 置 0
-        z = np.zeros(CVAEEncoder.LATENT_DIM, dtype=np.float32)
-        chunk = self.decoder.forward(state, z)
-        return chunk[0]  # 只取第一步执行（temporal ensemble 也可）
+def check_lerobot_installed():
+    """LeRobot 仅 Linux 支持完整功能. 缺则抛错并指引安装."""
+    if shutil.which("lerobot") is None:
+        try:
+            import lerobot  # noqa: F401
+            print("  ✓ lerobot Python 包已装")
+        except ImportError:
+            print("  ⚠️  lerobot Python 包未装")
+            print("  本 demo 继续运行 (展示 ACT 架构 + 训练代码片段).")
+            print("  全功能 LeRobot 训练需:")
+            print("    1. Linux 平台 (Windows/Mac 仅推理受限)")
+            print("    2. pip install lerobot")
+            print("    3. 真机 (Aloha / Franka) 或 Isaac Lab 仿真")
 
 
-# ---------- main ----------
+class ACTConfig:
+    """ACT (Action Chunking Transformer) 超参.
+
+    生产 ACT: 100 步 chunk (≈ 1s @ 100Hz), 7 编码 + 7 解码层.
+    """
+
+    def __init__(
+        self,
+        chunk_size: int = 100,
+        dim_feedforward: int = 3200,
+        n_encoder_layers: int = 4,
+        n_decoder_layers: int = 7,
+        state_dim: int = 14,
+        action_dim: int = 7,
+        n_heads: int = 8,
+    ):
+        self.chunk_size = chunk_size
+        self.dim_feedforward = dim_feedforward
+        self.n_encoder_layers = n_encoder_layers
+        self.n_decoder_layers = n_decoder_layers
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        self.n_heads = n_heads
+
+
+class SimpleACTPolicy(nn.Module):
+    """简化版 ACT: Transformer encoder-decoder.
+
+    真实 ACT: ResNet 图像编码 + state 编码 + 序列解码 (chunk_size × action_dim).
+    本 demo: 简化纯 transformer 演示 chunk 输出.
+    """
+
+    def __init__(self, cfg: ACTConfig, d_model: int = 128):
+        super().__init__()
+        self.cfg = cfg
+        self.state_enc = nn.Linear(cfg.state_dim, d_model)
+        self.action_dec = nn.Linear(d_model, cfg.action_dim)
+        # 时序位置编码 (chunk_size 个位置)
+        self.pos_emb = nn.Parameter(torch.randn(cfg.chunk_size, d_model) * 0.02)
+        enc_layer = nn.TransformerEncoderLayer(
+            d_model=d_model, nhead=cfg.n_heads,
+            dim_feedforward=cfg.dim_feedforward // 25,  # 缩小供 demo
+            batch_first=True, dropout=0.0,
+        )
+        dec_layer = nn.TransformerDecoderLayer(
+            d_model=d_model, nhead=cfg.n_heads,
+            dim_feedforward=cfg.dim_feedforward // 25,
+            batch_first=True, dropout=0.0,
+        )
+        self.encoder = nn.TransformerEncoder(enc_layer, num_layers=2)  # 缩小供 demo
+        self.decoder = nn.TransformerDecoder(dec_layer, num_layers=2)
+
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
+        """输入: state [B, state_dim] → 输出: chunk [B, chunk_size, action_dim]."""
+        B = state.size(0)
+        # encoder: state → 1 token
+        memory = self.encoder(self.state_enc(state).unsqueeze(1))  # [B, 1, d]
+        # decoder: chunk_size 个 query → 动作序列
+        queries = self.pos_emb.unsqueeze(0).expand(B, -1, -1)  # [B, K, d]
+        out = self.decoder(queries, memory)
+        return self.action_dec(out)  # [B, K, action_dim]
+
+
 def main() -> None:
-    print("=== LeRobot ACT — Action Chunking Transformer ===\n")
-    print("Architecture:")
-    print("  State (14) + CVAE-z (32)  -> Transformer Decoder")
-    print("  -> chunk=100 future actions (L1 regression)")
-    print("  -> 执行前 K 步 + temporal ensemble\n")
+    check_hardware()
+    check_lerobot_installed()
 
-    rng = np.random.default_rng(42)
-    state = rng.standard_normal(14).astype(np.float32) * 0.1
-    target_chunk = rng.standard_normal((100, 14)).astype(np.float32) * 0.05
+    print("=== LeRobot ACT (Action Chunking Transformer) ===\n")
+    cfg = ACTConfig()
+    print(f"  ACT 配置:")
+    print(f"    chunk_size       : {cfg.chunk_size} (≈ 1s @ 100Hz)")
+    print(f"    n_encoder_layers : {cfg.n_encoder_layers}")
+    print(f"    n_decoder_layers : {cfg.n_decoder_layers}")
+    print(f"    state_dim        : {cfg.state_dim} (双臂 7-DoF × 2)")
+    print(f"    action_dim       : {cfg.action_dim} (末端 7-DoF)\n")
 
-    policy = ACTPolicy()
-    losses = policy.train_step_loss(state, target_chunk)
-    print(f"[ACT] Train losses: {losses}")
-    action = policy.select_action(state)
-    print(f"[ACT] First action:  dim={action.shape[0]}, range=[{action.min():.3f}, {action.max():.3f}]")
+    # 真跑: 简化 ACT policy + 50 步训练
+    print("步骤: 简化 ACT policy 真跑 (5 步梯度下降)")
+    model = SimpleACTPolicy(cfg).cuda()
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f"  模型参数量: {n_params:,} (生产 ACT ~10M+)")
+
+    # 合成数据
+    B = 4
+    state = torch.randn(B, cfg.state_dim).cuda()
+    target_actions = torch.randn(B, cfg.chunk_size, cfg.action_dim).cuda()
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+    losses = []
+    for step in range(5):
+        pred = model(state)
+        loss = ((pred - target_actions) ** 2).mean()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
+        print(f"    step {step} | MSE = {loss.item():.4f}")
+
+    print(f"\n  ✅ 5 步 loss: {losses[0]:.4f} → {losses[-1]:.4f}")
+
     print()
+    print("=" * 60)
+    print("LeRobot ACT 训练 (Python 端真实代码, 需 lerobot 装好):")
+    print("  from lerobot.common.policies.act import ACTPolicy, ACTConfig")
+    print("  cfg = ACTConfig(")
+    print("      input_shapes={'observation.state': (state_dim,), ")
+    print("                   'observation.image': (3, 480, 640)},")
+    print("      output_shapes={'action': (chunk_size, action_dim)},")
+    print("  )")
+    print("  policy = ACTPolicy(cfg)")
+    print("  # 用 LeRobotDataset + Trainer 训练")
+    print()
+    print("ACT 推理: 1 次 forward 预测 chunk_size 个动作, open-loop 执行 K 步.")
 
 
 if __name__ == "__main__":

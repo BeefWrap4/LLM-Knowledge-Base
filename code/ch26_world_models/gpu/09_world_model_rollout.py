@@ -4,157 +4,166 @@
 # section: 26.4.3 世界模型驱动的 MPC / Planning
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
-# deps: numpy
-# run: MOCK_MODE=1 python 09_world_model_rollout.py
-# expected_runtime: <2s
-# expected_output: Dreamer-style rollout + CEM 规划 + 候选动作打分
+# deps: torch, numpy
+# run: python 09_world_model_rollout.py
+# expected_runtime: 5-15s (dynamics model 训练 + 100 步 rollout)
+# expected_output: dynamics loss 下降 + imagined rollout 轨迹
 # ---
 # See: ../tutorial/26_世界模型与具身AI.md §26.4.3
+#
 # Interview hooks:
 #   1. DreamerV3 与 Genie 3 在"潜空间动力学"上的核心差异？
 #   2. CEM (Cross-Entropy Method) 为什么适合 action sequence 规划？
 #   3. 世界模型 rollout 的 horizon 越深越好吗？compounding error 如何缓解？
+"""世界模型 rollout 演示 (在想象中训练策略).
 
+核心: 用世界模型预测未来状态, 在想象中训练策略 (model-based RL)
+  1. 真实环境收集数据 D = {(s, a, s', r)}
+  2. 训练世界模型 f(s, a) → Δs
+  3. 用 f 做想象 rollout: ŝ_0, â_0, ŝ_1, â_1, ... (无真实交互)
+  4. 在想象轨迹上训练策略 π(a|s)
+
+本 demo: 真训练 dynamics model (50 步) + 100 步 imagined rollout.
+生产: DreamerV3 / IRIS / Cosmos-1 在 latent space 做想象.
 """
-世界模型 (World Model) 驱动的规划 (Planning) 与 MPC (Model Predictive Control)。
-
-流程：
-  1) 在世界模型潜空间从当前状态 s_t 开始
-  2) CEM 采样 N 条候选动作序列
-  3) 在世界模型中 rollout K 步
-  4) 评分选 top-M，更新采样分布
-  5) 取最佳序列的第一步执行
-  6) 重复
-"""
-
-import os
+import sys
+import torch
+import torch.nn as nn
 import numpy as np
+from pathlib import Path
+
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
+
+from shared.gpu_guard import require_nvidia_gpu
 
 
-MOCK_MODE = os.environ.get("MOCK_MODE", "1") == "1"
+def check_hardware():
+    require_nvidia_gpu(min_vram_gb=8, min_count=1)
 
 
-# ---------- 1. 简化世界模型 (潜空间) ----------
-class LatentWorldModel:
-    """s_{t+1} = f(s_t, a_t)  +  r_t = R(s_t, a_t)  简化版。"""
+class DynamicsModel(nn.Module):
+    """动力学模型: f(s, a) → Δs (状态增量).
 
-    def __init__(self, state_dim: int = 32, action_dim: int = 7, hidden: int = 64, seed: int = 0):
-        rng = np.random.default_rng(seed)
-        self.W = rng.standard_normal((state_dim + action_dim, hidden)).astype(np.float32) * 0.1
-        self.V = rng.standard_normal((hidden, state_dim)).astype(np.float32) * 0.1
-        self.Rw = rng.standard_normal((state_dim + action_dim, 1)).astype(np.float32) * 0.1
-        self.s_dim, self.a_dim = state_dim, action_dim
+    生产: 在 latent space 预测, encoder/decoder 处理图像观测.
+    本 demo: 直接在 state space (14-DoF).
+    """
 
-    def step(self, s: np.ndarray, a: np.ndarray):
-        x = np.concatenate([s, a]).astype(np.float32)
-        h = np.tanh(x @ self.W)
-        s_next = s + h @ self.V
-        r = float(x @ self.Rw)
-        return s_next.astype(np.float32), r
+    def __init__(self, state_dim: int = 14, action_dim: int = 7, hidden: int = 128):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(state_dim + action_dim, hidden), nn.ReLU(),
+            nn.Linear(hidden, hidden), nn.ReLU(),
+            nn.Linear(hidden, hidden), nn.ReLU(),
+            nn.Linear(hidden, state_dim),
+        )
 
-    def rollout(self, s0: np.ndarray, actions: np.ndarray):
-        """actions: (horizon, action_dim) -> (s_traj, r_total)"""
-        s = s0.copy()
-        total_r = 0.0
-        for t in range(actions.shape[0]):
-            s, r = self.step(s, actions[t])
-            total_r += r
-        return s, total_r
+    def forward(self, s: torch.Tensor, a: torch.Tensor) -> torch.Tensor:
+        return self.net(torch.cat([s, a], dim=-1))
 
 
-# ---------- 2. CEM 规划器 ----------
-class CEMPlanner:
-    """Cross-Entropy Method 在动作序列空间搜索。"""
-
-    def __init__(self, horizon: int = 12, action_dim: int = 7, n_samples: int = 64,
-                 n_elite: int = 8, n_iters: int = 5, seed: int = 0):
-        self.H = horizon
-        self.A = action_dim
-        self.N = n_samples
-        self.K = n_elite
-        self.iters = n_iters
-        self.rng = np.random.default_rng(seed)
-
-    def plan(self, wm: LatentWorldModel, s0: np.ndarray) -> np.ndarray:
-        mu = np.zeros((self.H, self.A), dtype=np.float32)
-        sigma = np.ones((self.H, self.A), dtype=np.float32)
-        best_seq = None
-        for it in range(self.iters):
-            samples = self.rng.normal(mu, sigma, size=(self.N, self.H, self.A)).astype(np.float32)
-            scores = np.array([wm.rollout(s0, seq)[1] for seq in samples])
-            elite_idx = np.argsort(scores)[-self.K :]
-            elites = samples[elite_idx]
-            mu = elites.mean(axis=0)
-            sigma = elites.std(axis=0) + 1e-3
-            best_seq = elites[-1]  # 当前最佳
-        return best_seq
+def dynamics_loss(model: DynamicsModel, s: torch.Tensor, a: torch.Tensor, s_next: torch.Tensor) -> torch.Tensor:
+    """训练: 预测 Δs = s_{t+1} - s_t."""
+    pred = model(s, a)
+    target = s_next - s
+    return ((pred - target) ** 2).mean()
 
 
-# ---------- 3. MPC 闭环 ----------
-def mpc_loop(wm: LatentWorldModel, planner: CEMPlanner, s0: np.ndarray, n_steps: int = 20):
-    """Model Predictive Control：每步重新规划。"""
-    s = s0.copy()
-    history = [s.copy()]
-    actions_taken = []
-    for t in range(n_steps):
-        best_seq = planner.plan(wm, s)
-        a0 = best_seq[0]
-        s, _ = wm.step(s, a0)
-        history.append(s.copy())
-        actions_taken.append(a0)
-    return np.array(history), np.array(actions_taken)
+@torch.no_grad()
+def imagine_rollout(
+    model: DynamicsModel,
+    s0: torch.Tensor,
+    policy: nn.Module,
+    horizon: int = 100,
+) -> torch.Tensor:
+    """在想象中 rollout horizon 步, 收集轨迹."""
+    s = s0
+    traj = [s.cpu().numpy()]
+    for _ in range(horizon):
+        a = policy(s)
+        ds = model(s, a)
+        s = s + ds
+        traj.append(s.cpu().numpy())
+    return np.array(traj).squeeze(1)  # [T+1, state_dim]
 
 
-# ---------- 4. 任务：到达 latent target ----------
-class ReachingTask:
-    def __init__(self, state_dim: int = 32, target: np.ndarray = None):
-        self.dim = state_dim
-        self.target = target if target is not None else np.ones(state_dim, dtype=np.float32)
+class SimplePolicy(nn.Module):
+    """随机策略 (生产用 SAC/PPO + imagination gradient)."""
 
-    def true_reward(self, s: np.ndarray, a: np.ndarray) -> float:
-        # 真实环境奖励：负距离 - 控制代价
-        dist = float(np.linalg.norm(s - self.target))
-        return -dist - 0.01 * float(np.sum(a ** 2))
+    def __init__(self, state_dim: int = 14, action_dim: int = 7):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(state_dim, 64), nn.ReLU(),
+            nn.Linear(64, action_dim), nn.Tanh(),
+        )
+
+    def forward(self, s: torch.Tensor) -> torch.Tensor:
+        return self.net(s) * 0.1  # 小动作
 
 
-# ---------- main ----------
 def main() -> None:
-    print("=== World-Model-Driven MPC (CEM Planner) ===\n")
-
-    state_dim = 32
-    wm = LatentWorldModel(state_dim=state_dim, action_dim=7, seed=0)
-    planner = CEMPlanner(horizon=12, action_dim=7, n_samples=64, n_elite=8, n_iters=4, seed=0)
-    task = ReachingTask(state_dim=state_dim, target=np.ones(state_dim, dtype=np.float32))
-
-    s0 = np.zeros(state_dim, dtype=np.float32)  # 起点
-    print(f"[Setup] state_dim={state_dim}, horizon=12, CEM samples=64, elite=8")
-    print(f"        target = {task.target[:4].tolist()} ... (32-dim one-hot-ish)\n")
-
-    # 1) 开环规划
-    best_seq = planner.plan(wm, s0)
-    s_final, total_r = wm.rollout(s0, best_seq)
-    print(f"[Open-loop] plan+rollout in WM:  total_r = {total_r:+.3f}")
-    print(f"            s_final[0:4] = {s_final[:4].round(2).tolist()}")
-
-    # 2) 闭环 MPC
-    traj, acts = mpc_loop(wm, planner, s0, n_steps=20)
-    dists = [float(np.linalg.norm(traj[t] - task.target)) for t in range(0, 21, 4)]
-    print(f"\n[MPC loop] 20 steps closed-loop, dist-to-target every 4 steps:")
-    for t, d in zip(range(0, 21, 4), dists):
-        print(f"  t={t:2d}  ||s-target|| = {d:.3f}")
-    print(f"  final dist = {dists[-1]:.3f}  (started at {dists[0]:.3f})")
-
-    # 3) 真实环境验证（用 wm 代理）—— 衡量 compounding error
-    real_rewards = []
-    s = s0.copy()
-    for t in range(20):
-        a = acts[t]
-        s, r_wm = wm.step(s, a)
-        # 同时计算"真实"奖励（用同一个 wm 作为代理，因为我们没有 ground-truth env）
-        real_rewards.append(r_wm)
-    print(f"\n[Compounding] WM rollout total_r over 20 steps: {sum(real_rewards):+.3f}")
-    print(f"               (in real deploy, horizon>10 usually shows ~10% error growth)")
+    check_hardware()
+    print("=== 世界模型 Rollout 演示 (Dreamer-style imagination) ===\n")
+    print("核心: 训练 dynamics model + 在想象中 rollout (无真实交互)")
     print()
+
+    # 1. 训练动力学模型
+    print("步骤 1: 训练 dynamics model (50 步 MSE)")
+    B = 64
+    state = torch.randn(B, 14).cuda()
+    action = torch.randn(B, 7).cuda() * 0.1
+    next_state = state + torch.randn(B, 14).cuda() * 0.05  # 简化: 小随机扰动
+
+    model = DynamicsModel().cuda()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    n_params = sum(p.numel() for p in model.parameters())
+
+    losses = []
+    for step in range(50):
+        loss = dynamics_loss(model, state, action, next_state)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
+        if step % 10 == 0:
+            print(f"  step {step:3d} | dynamics loss = {loss.item():.6f}")
+    print(f"  ✅ 参数量 {n_params:,}, loss 下降: {losses[0]:.6f} → {losses[-1]:.6f}\n")
+
+    # 2. 想象 rollout 100 步
+    print("步骤 2: 想象 rollout 100 步 (无真实交互)")
+    policy = SimplePolicy().cuda()
+    s0 = torch.randn(1, 14).cuda()
+    traj = imagine_rollout(model, s0, policy, horizon=100)
+    print(f"  ✅ rollout 完成, 轨迹 shape: {traj.shape} (T+1, state_dim)")
+    print(f"  起点 |s|={np.linalg.norm(traj[0]):.3f}")
+    print(f"  终点 |s|={np.linalg.norm(traj[-1]):.3f}")
+    print(f"  累积位移 = {np.linalg.norm(traj[-1] - traj[0]):.3f}")
+
+    # 3. Compounding error 分析
+    print("\n步骤 3: Compounding error 分析 (horizon 越深误差越大)")
+    real_states = [s0.cpu().numpy()]
+    s = s0
+    for t in range(100):
+        a = policy(s)
+        # "真实" 转移: 与训练数据同分布
+        ds_real = torch.randn(1, 14).cuda() * 0.05
+        s = s + ds_real
+        real_states.append(s.cpu().numpy())
+    real_traj = np.array(real_states).squeeze(1)
+    # 对比 imagined vs "真实"
+    err_per_step = np.linalg.norm(traj - real_traj, axis=1)
+    print(f"  误差 (L2) 每 20 步: " + ", ".join(
+        f"t={t}→{err_per_step[t]:.3f}" for t in [0, 20, 40, 60, 80, 100]
+    ))
+
+    print()
+    print("=" * 60)
+    print("生产世界模型 (Cosmos / Genie / DreamerV3):")
+    print("  - Transformer-based 动力学预测 (latent space)")
+    print("  - 联合训练 latent dynamics + reward model")
+    print("  - 在想象中训练 SAC/PPO 策略 (节省真实交互 100x+)")
+    print("  - 应用: 机器人 sim-to-real, 自动驾驶, 游戏 AI")
 
 
 if __name__ == "__main__":

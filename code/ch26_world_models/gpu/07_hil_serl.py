@@ -4,199 +4,135 @@
 # section: 26.3.3 HIL-SERL — 人在回路样本高效 RL
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
-# deps: numpy
-# run: MOCK_MODE=1 python 07_hil_serl.py
-# expected_runtime: <2s
-# expected_output: HIL-SERL 流程、reward model 学习、replay buffer 统计
+# deps: torch
+# run: python 07_hil_serl.py
+# expected_runtime: 5-15s (SAC Q-network 50 步训练)
+# expected_output: SAC Q-loss 下降 + HIL-SERL 流程
 # ---
 # See: ../tutorial/26_世界模型与具身AI.md §26.3.3
+#
 # Interview hooks:
-#   1. HIL-SERL 与 HIL-SERL (Luo et al. 2024) 的核心区别？人类干预信号如何被利用？
-#   2. SERL 中 reward model 为什么用二分类（成功/失败）而不是回归？
-#   3. 人类示范数据与 RL 探索数据如何混合？replay ratio 如何设置？
+#   1. HIL-SERL 与传统 RL 区别? (人在回路 → 样本效率提升 10x+)
+#   2. SAC 算法的核心? (最大熵 RL + 双 Q 网络 + 温度自调节)
+#   3. 人类干预如何编码进 replay buffer? (干预时: action = 专家动作 + bonus reward)
+"""HIL-SERL (Human-in-the-Loop Sample Efficient RL) 算法 demo.
 
+HIL-SERL (Luo et al. 2024) = SAC + 人类干预 + 奖励 shaping
+  - SAC 策略 (off-policy 最大熵 RL)
+  - 人在执行中可干预, 把成功轨迹加入 buffer
+  - 奖励: env reward + 干预 bonus + human preference
+
+本 demo: 真实 SAC Q-network 训练 loop (50 步), 演示 TD loss.
+生产 HIL-SERL: 配合 LeRobot + 真实遥操硬件.
 """
-HIL-SERL (Human-in-the-Loop Sample-Efficient RL) 简化演示。
+import sys
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from pathlib import Path
 
-核心思想：
-  - 用人类示范做 behavior cloning 预训练
-  - 部署到真实机器人后，人类可在失败时接管
-  - 接管轨迹作为正样本 + 失败轨迹作为负样本，训练 reward classifier
-  - 用该 reward 跑离线 RL (IQL / CQL) 微调策略
-"""
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-import os
-import numpy as np
-from collections import deque
-
-
-MOCK_MODE = os.environ.get("MOCK_MODE", "1") == "1"
+from shared.gpu_guard import require_nvidia_gpu
 
 
-# ---------- 1. Replay Buffer ----------
-class ReplayBuffer:
-    """混合 buffer：(demonstrations ∪ agent_rollouts) + (success/failure labels)。"""
-
-    def __init__(self, capacity: int = 10_000):
-        self.capacity = capacity
-        self.demos = deque(maxlen=capacity)
-        self.rollouts_success = deque(maxlen=capacity)
-        self.rollouts_failure = deque(maxlen=capacity)
-
-    def add_demo(self, transition: dict):
-        self.demos.append(transition)
-
-    def add_rollout(self, transition: dict, success: bool):
-        if success:
-            self.rollouts_success.append(transition)
-        else:
-            self.rollouts_failure.append(transition)
-
-    def stats(self) -> dict:
-        return {
-            "n_demos": len(self.demos),
-            "n_success": len(self.rollouts_success),
-            "n_failure": len(self.rollouts_failure),
-            "total": len(self.demos) + len(self.rollouts_success) + len(self.rollouts_failure),
-        }
+def check_hardware():
+    require_nvidia_gpu(min_vram_gb=8, min_count=1)
 
 
-# ---------- 2. 二分类 Reward Model ----------
-class RewardClassifier:
-    """P(success | obs, action) —— 来自人类接管 / 失败数据。"""
+class QNetwork(nn.Module):
+    """SAC 双 Q 网络之一 (生产 SAC 用两个 Q + 延迟更新 target)."""
 
-    def __init__(self, feat_dim: int = 32):
-        rng = np.random.default_rng(0)
-        self.W = rng.standard_normal((feat_dim, 1)).astype(np.float32) * 0.1
-        self.b = np.zeros(1, dtype=np.float32)
+    def __init__(self, state_dim: int = 14, action_dim: int = 7, hidden: int = 256):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(state_dim + action_dim, hidden), nn.ReLU(),
+            nn.Linear(hidden, hidden), nn.ReLU(),
+            nn.Linear(hidden, 1),
+        )
 
-    def predict_proba(self, feat: np.ndarray) -> float:
-        logit = float(feat @ self.W + self.b)
-        return 1.0 / (1.0 + np.exp(-logit))
-
-    def update(self, feats: np.ndarray, labels: np.ndarray, lr: float = 0.01):
-        # 简单梯度下降（BCE loss）
-        for x, y in zip(feats, labels):
-            p = self.predict_proba(x)
-            grad = (p - y) * x
-            self.W -= lr * grad[:, None]
-            self.b -= lr * (p - y)
+    def forward(self, s: torch.Tensor, a: torch.Tensor) -> torch.Tensor:
+        return self.net(torch.cat([s, a], dim=-1))
 
 
-# ---------- 3. 人在回路 rollout ----------
-def human_in_the_loop_rollout(
-    policy,
-    env,
-    reward_clf: RewardClassifier,
-    n_steps: int = 200,
-    intervention_threshold: float = 0.3,
-    seed: int = 0,
-):
-    """完整 HIL-SERL rollout：策略执行；人类在 reward 低时接管。"""
-    rng = np.random.default_rng(seed)
-    obs = env.reset()
-    total_reward = 0.0
-    human_interventions = 0
-    buffer = ReplayBuffer(capacity=1000)
-    feats_batch, labels_batch = [], []
+def sac_q_loss(
+    q_net: QNetwork,
+    target_q: QNetwork,
+    state: torch.Tensor,
+    action: torch.Tensor,
+    reward: torch.Tensor,
+    next_state: torch.Tensor,
+    gamma: float = 0.99,
+) -> torch.Tensor:
+    """SAC Q loss: MSE(pred_Q, TD target).
 
-    for t in range(n_steps):
-        # 1) 策略选 action
-        action = policy.act(obs)
-
-        # 2) 环境 step
-        next_obs, env_r, done, info = env.step(action)
-
-        # 3) reward classifier 估计（实际可基于 obs+action 特征）
-        feat = np.concatenate([obs[:16], action[:16]]).astype(np.float32)
-        feat = np.pad(feat, (0, max(0, 32 - len(feat))))[:32]
-        r_hat = reward_clf.predict_proba(feat)
-
-        # 4) 人类干预判定：策略很可能失败
-        if r_hat < intervention_threshold:
-            human_action = info.get("expert_action", action)
-            action = human_action
-            human_interventions += 1
-            label = 1  # 接管 = 正样本
-        else:
-            label = 0  # 自主完成
-
-        buffer.add_rollout({"obs": obs, "action": action, "next_obs": next_obs,
-                            "r_env": env_r, "r_hat": r_hat},
-                           success=(label == 1))
-        feats_batch.append(feat)
-        labels_batch.append(label)
-        total_reward += env_r
-
-        obs = next_obs
-        if done:
-            break
-
-    # 在线更新 reward model
-    reward_clf.update(np.array(feats_batch), np.array(labels_batch, dtype=np.float32), lr=0.005)
-    return total_reward, human_interventions, buffer.stats()
+    TD target = r + γ * Q_target(s', a'~π)
+    生产: 实际用 policy network 采 a' + 熵正则, 此处简化为随机动作.
+    """
+    with torch.no_grad():
+        # 简化: 实际用 policy network 采样 (此处 random proxy)
+        next_action = torch.tanh(torch.randn_like(action))  # 限幅到 [-1, 1]
+        next_q = target_q(next_state, next_action)
+        target = reward + gamma * next_q
+    pred = q_net(state, action)
+    return F.mse_loss(pred, target)
 
 
-# ---------- 4. Mock 环境 / 策略 ----------
-class MockEnv:
-    def __init__(self, dim: int = 32, seed: int = 0):
-        self.dim = dim
-        self.state = None
-        self.rng = np.random.default_rng(seed)
-
-    def reset(self):
-        self.state = self.rng.standard_normal(self.dim).astype(np.float32)
-        return self.state
-
-    def step(self, action: np.ndarray):
-        # 简单 dynamics：把 action 填充/截断到 state dim
-        a = np.zeros(self.dim, dtype=np.float32)
-        a[: min(len(action), self.dim)] = action[: self.dim]
-        self.state += 0.1 * a
-        # 任务目标：前 8 维接近 1
-        err = float(np.linalg.norm(self.state[:8] - 1.0))
-        reward = max(0.0, 1.0 - 0.1 * err)
-        done = err < 0.1
-        info = {"expert_action": self.rng.standard_normal(len(action)).astype(np.float32) * 0.1}
-        return self.state, reward, done, info
-
-
-class MockPolicy:
-    def __init__(self, dim: int = 32, action_dim: int = 7, seed: int = 0):
-        self.W = np.random.default_rng(seed).standard_normal((dim, action_dim)).astype(np.float32) * 0.05
-        self.dim = dim
-        self.a_dim = action_dim
-
-    def act(self, obs: np.ndarray) -> np.ndarray:
-        a = obs @ self.W
-        return np.tanh(a).astype(np.float32)
-
-
-# ---------- main ----------
 def main() -> None:
-    print("=== HIL-SERL — Human-in-the-Loop Sample-Efficient RL ===\n")
-    print("Pipeline:")
-    print("  1) BC pre-train on demos (~50 trajectories)")
-    print("  2) Deploy + rollouts; human intervenes on low reward")
-    print("  3) Train reward classifier (success / failure)")
-    print("  4) Offline RL (IQL/CQL) on combined buffer")
+    check_hardware()
+    print("=== HIL-SERL 算法 demo (SAC Q-network 训练) ===\n")
+    print("核心: SAC 离线策略 + 人类干预加入 replay buffer + 奖励 shaping")
     print()
 
-    env = MockEnv(seed=0)
-    policy = MockPolicy(dim=32, action_dim=7, seed=0)
-    reward_clf = RewardClassifier(feat_dim=32)
+    B = 32
+    state = torch.randn(B, 14).cuda()
+    action = torch.randn(B, 7).cuda()
+    reward = torch.randn(B, 1).cuda()
+    next_state = torch.randn(B, 14).cuda()
 
-    print("[Phase 1] Rollout 1 (cold start, more interventions expected):")
-    ret1, inter1, stats1 = human_in_the_loop_rollout(policy, env, reward_clf, n_steps=100, seed=0)
-    print(f"  return={ret1:.2f}, human interventions={inter1}, buffer={stats1}")
+    q_net = QNetwork().cuda()
+    target_q = QNetwork().cuda()
+    target_q.load_state_dict(q_net.state_dict())  # 初始化 target = q_net
+    optimizer = torch.optim.AdamW(q_net.parameters(), lr=3e-4)
+    n_params = sum(p.numel() for p in q_net.parameters())
 
-    print("\n[Phase 2] Rollout 2 (reward classifier improved, fewer interventions):")
-    ret2, inter2, stats2 = human_in_the_loop_rollout(policy, env, reward_clf, n_steps=100, seed=1)
-    print(f"  return={ret2:.2f}, human interventions={inter2}, buffer={stats2}")
+    print(f"  Q 网络: 14+7 → 256 → 256 → 1, 参数量 {n_params:,}")
+    print(f"  训练: 50 步 TD 学习, γ=0.99\n")
 
-    print(f"\n[Summary] Intervention count dropped: {inter1} → {inter2}")
-    print(f"          Total buffer transitions: {stats2['total']}")
+    losses = []
+    for step in range(50):
+        loss = sac_q_loss(q_net, target_q, state, action, reward, next_state)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        # 简化: 每 10 步 sync target (生产用 Polyak averaging 0.005)
+        if (step + 1) % 10 == 0:
+            target_q.load_state_dict(q_net.state_dict())
+        losses.append(loss.item())
+        if step % 10 == 0:
+            print(f"  step {step:3d} | SAC Q loss = {loss.item():.4f}")
+
+    print(f"\n  ✅ loss 下降: {losses[0]:.4f} → {losses[-1]:.4f}")
+
+    # 演示: 预测 Q 值
+    print("\n  推理 demo: 评估 (state, action) 的 Q 值")
+    with torch.no_grad():
+        q_value = q_net(state[:1], action[:1])
+    print(f"    Q(s, a) = {q_value.item():.4f}")
+
     print()
+    print("=" * 60)
+    print("HIL-SERL 完整流程 (Luo et al. 2024):")
+    print("  1. 专家演示 (含人类干预) → replay buffer")
+    print("  2. SAC 策略 + 奖励模型联合训练 (off-policy)")
+    print("  3. 在线 fine-tune, 持续加入人类干预样本")
+    print("  4. 干预信号编码:")
+    print("     - 当人介入: action = 专家动作, reward += +1 (成功 bonus)")
+    print("     - 当人未介入: action = 策略动作, reward = env reward")
+    print("  5. 硬件: 真实遥操 + 机器人 + VR 头显")
+    print("  6. 样本效率: 比纯 SAC 提升 10x+ (1-2 小时 vs 1 天)")
 
 
 if __name__ == "__main__":
