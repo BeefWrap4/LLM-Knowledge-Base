@@ -90,6 +90,7 @@ def test_get_default_provider_with_deepseek_key():
     with patch.dict(os.environ, {
         "DEEPSEEK_API_KEY": "sk-test-xxx",
         "LLM_PROVIDER": "deepseek",
+        "LLM_MOCK": "",  # W1.5 修复: 显式清掉全局 LLM_MOCK
     }, clear=False):
         assert get_default_provider().name == "deepseek"
 
@@ -101,6 +102,7 @@ def test_get_default_provider_respects_env_override():
         "DEEPSEEK_API_KEY": "sk-1",
         "KIMI_API_KEY": "sk-2",
         "LLM_PROVIDER": "kimi",
+        "LLM_MOCK": "",  # W1.5 修复
     }, clear=False):
         assert get_default_provider().name == "kimi"
 
@@ -131,7 +133,10 @@ def test_unified_client_no_key_with_mock_env_works():
 def test_unified_client_with_key_not_mock():
     """有 API Key 时 UnifiedClient 不降级."""
     from shared.llm_client import UnifiedClient
-    with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "sk-test-xxx"}, clear=False):
+    with patch.dict(os.environ, {
+        "DEEPSEEK_API_KEY": "sk-test-xxx",
+        "LLM_MOCK": "",  # W1.5 修复
+    }, clear=False):
         c = UnifiedClient(provider="deepseek")
         assert c.is_mock is False
         assert c.api_key == "sk-test-xxx"
@@ -206,6 +211,7 @@ def test_make_chat_model_default_provider():
     with patch.dict(os.environ, {
         "DEEPSEEK_API_KEY": "sk-test",
         "LLM_PROVIDER": "deepseek",
+        "LLM_MOCK": "",  # W1.5 修复
     }, clear=False):
         llm = make_chat_model()
         # langchain ChatOpenAI 实例

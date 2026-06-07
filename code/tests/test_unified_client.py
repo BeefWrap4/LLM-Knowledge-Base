@@ -111,6 +111,7 @@ def test_get_default_provider_no_key_raises(monkeypatch):
               "SILICONFLOW_API_KEY", "MINIMAX_API_KEY", "ANTHROPIC_API_KEY"]:
         monkeypatch.delenv(k, raising=False)
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.delenv("LLM_MOCK", raising=False)  # W1 修复: 不让全局 LLM_MOCK 短路抛错路径
     with pytest.raises(RuntimeError, match="缺 API Key"):
         get_default_provider()
 
@@ -122,6 +123,7 @@ def test_get_default_provider_explicit_mock_returns_mock(monkeypatch):
               "SILICONFLOW_API_KEY", "MINIMAX_API_KEY", "ANTHROPIC_API_KEY"]:
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("LLM_PROVIDER", "mock")
+    monkeypatch.delenv("LLM_MOCK", raising=False)  # W1 修复
     p = get_default_provider()
     assert p.name == "mock"
 
@@ -134,6 +136,7 @@ def test_get_default_provider_explicit_provider_no_key_raises(monkeypatch):
               "SILICONFLOW_API_KEY", "MINIMAX_API_KEY", "ANTHROPIC_API_KEY"]:
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("LLM_PROVIDER", "deepseek")
+    monkeypatch.delenv("LLM_MOCK", raising=False)  # W1 修复
     with pytest.raises(RuntimeError, match="缺 API Key"):
         get_default_provider()
 
@@ -146,5 +149,6 @@ def test_get_default_provider_with_key_succeeds(monkeypatch):
               "SILICONFLOW_API_KEY", "MINIMAX_API_KEY", "ANTHROPIC_API_KEY"]:
         monkeypatch.delenv(k, raising=False)
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.delenv("LLM_MOCK", raising=False)  # W1 修复
     p = get_default_provider()
     assert p.name == "deepseek"
