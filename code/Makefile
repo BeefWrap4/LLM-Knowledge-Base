@@ -1,4 +1,4 @@
-.PHONY: help install-core install-llm install-gpu install-all test test-llm test-gpu lint fmt clean run verify verify-xrefs sync-links run-all ci ci-quick ci-core ci-llm download-models llm-doctor docker-build docker-up docker-down docker-bash docker-llm docker-gpu setup-local integration-test
+.PHONY: help install-core install-llm install-gpu install-all test test-llm test-llm-mock test-gpu lint fmt clean run verify verify-xrefs sync-links run-all ci ci-quick ci-core ci-llm ci-real download-models download-models-list download-models-default download-models-llm download-models-gpu download-models-edge llm-doctor llm-doctor-setup llm-doctor-check docker-build docker-up docker-down docker-bash docker-llm docker-gpu setup-local integration-test
 
 # ─────────────────────────────────────────────────────────
 # 安装
@@ -26,8 +26,11 @@ install-all:  ## 安装所有 tier
 test:  ## 跑 core tier smoke tests (默认, 笔记本 CI)
 	pytest tests/ -m "not gpu" -q --tb=short
 
-test-llm:  ## 跑 core + llm tier tests (用 mock_llm)
-	pytest tests/ -m "not gpu" -q --tb=short
+test-llm:  ## 跑 core + llm tier tests (mock 模式, 无需 API Key)
+	LLM_MOCK=1 pytest tests/ -m "not gpu" -q --tb=short
+
+test-llm-mock:  ## 跑 core + llm tier tests (强制 LLM_MOCK=1, 显式 mock 模式)
+	LLM_MOCK=1 pytest tests/ -m "not gpu" -q --tb=short
 
 test-gpu:  ## 跑全部 tests, 包括 gpu tier (需 NVIDIA GPU)
 	pytest tests/ -q --tb=short
@@ -74,8 +77,8 @@ ci-quick:  ## 仅 quick 检查 (wiki / README / smoke) — <30s
 ci-core:  ## 仅 core tier — ~30s
 	python scripts/run_all_examples.py --tier core --parallel 4 --timeout 60
 
-ci-llm:  ## 仅 llm tier — ~3 min
-	python scripts/run_all_examples.py --tier llm --parallel 4 --timeout 180
+ci-llm:  ## 仅 llm tier — ~3 min (mock 模式, 无需 API Key)
+	LLM_MOCK=1 python scripts/run_all_examples.py --tier llm --parallel 4 --timeout 180
 
 # ─────────────────────────────────────────────────────────
 # Docker (Wave 14-C)
@@ -149,3 +152,35 @@ clean:  ## 清理缓存
 	rm -rf .pytest_cache/ .ruff_cache/ .mypy_cache/ __pycache__/ */__pycache__/ */*/__pycache__/
 	find . -name "*.pyc" -delete
 	find . -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+
+# ─────────────────────────────────────────────────────────
+# LLM Doctor (Wave 28)
+# ─────────────────────────────────────────────────────────
+
+llm-doctor-setup:  ## 交互式配置 API Key
+	python scripts/llm_doctor.py --setup
+
+llm-doctor-check:  ## 测试已配置 Key
+	python scripts/llm_doctor.py --check
+
+ci-real:  ## 夜间跑真实 API (需 DEEPSEEK_API_KEY)
+	python scripts/run_all_examples.py --tier llm-real --parallel 1 --timeout 300
+
+# ─────────────────────────────────────────────────────────
+# 模型下载 (Wave 28)
+# ─────────────────────────────────────────────────────────
+
+download-models-list:  ## 列出可下载的模型
+	python scripts/download_models.py --list
+
+download-models-default:  ## 下载默认必装模型 (embedding + reranker + qwen0.5b, ~1.7GB)
+	python scripts/download_models.py --default
+
+download-models-llm:  ## 下载 7B/8B LLM (vLLM 用, ~31GB)
+	python scripts/download_models.py --tier llm-medium
+
+download-models-gpu:  ## 下载 GPU 例子用模型 (cosmos / pi0 / r1-distill, ~25GB)
+	python scripts/download_models.py --tier world-model --tier vla --tier reasoner
+
+download-models-edge:  ## 下载端侧模型 (MLX / GGUF, ~7GB)
+	python scripts/download_models.py --tier edge
