@@ -1,0 +1,4 @@
+# 忽略所有模型权重 (大文件), 仅保留 README.md
+*
+!.gitignore
+!README.md
