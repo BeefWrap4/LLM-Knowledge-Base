@@ -1,3 +1,9 @@
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
+
 # ---
 # chapter: 18
 # topic: LLM工程框架实战
@@ -27,23 +33,28 @@ if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
     print("OK")
     _sys.exit(0)
+import os
 from langchain.chains import ConversationChain
 from langchain_core.messages import HumanMessage, AIMessage
 
-class _MockChatModel:
-    def invoke(self, msgs):
-        # 模拟"记住"用户姓名和年龄
-        joined = " ".join([m.content for m in msgs if hasattr(m, 'content')])
-        if "你叫什么" in joined or "名字" in joined:
-            text = "您叫张三。"
-        elif "几岁" in joined or "年龄" in joined:
-            text = "您今年 30 岁。"
-        else:
-            text = "好的，我记住了。"
-        class _R: content = text
-        return _R()
-
-llm = _MockChatModel()
+# Wave 20: 优先真实 LLM, 缺 key 降级 mock (mock 行为: 模拟"记住"姓名年龄)
+USE_REAL_API = os.environ.get("USE_REAL_API") == "1"
+if USE_REAL_API:
+    from shared.chatmodel_factory import make_chat_model
+    llm = make_chat_model()  # 默认厂商
+else:
+    class _MockChatModel:
+        def invoke(self, msgs):
+            joined = " ".join([m.content for m in msgs if hasattr(m, 'content')])
+            if "你叫什么" in joined or "名字" in joined:
+                text = "您叫张三。"
+            elif "几岁" in joined or "年龄" in joined:
+                text = "您今年 30 岁。"
+            else:
+                text = "好的，我记住了。"
+            class _R: content = text
+            return _R()
+    llm = _MockChatModel()
 memory = ConversationBufferMemory(return_messages=True)
 
 conversation = ConversationChain(

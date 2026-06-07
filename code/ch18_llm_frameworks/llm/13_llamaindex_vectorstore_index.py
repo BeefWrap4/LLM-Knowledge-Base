@@ -1,3 +1,9 @@
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
+
 # ---
 # chapter: 18
 # topic: LLM工程框架实战
@@ -27,20 +33,33 @@ if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
     print("OK")
     _sys.exit(0)
+import os
 from llama_index.core import Settings
 
-# 离线 mock 模式：定义最小的 embed 和 llm 替身
-class _MockEmbed:
-    def get_text_embedding(self, text):
-        # 用长度作为简化的"向量"维度
-        return [float(len(text))] * 8
-
-class _MockLLM:
-    def complete(self, prompt, **kwargs):
-        return type("R", (), {"text": f"（mock）回答基于以下知识：{prompt[-200:]}..."})()
-
-Settings.embed_model = _MockEmbed()
-Settings.llm = _MockLLM()
+# Wave 20: 优先真实 LLM + embedding, 缺 key 降级 mock
+USE_REAL_API = os.environ.get("USE_REAL_API") == "1"
+if USE_REAL_API:
+    # 真实 LLM (默认厂商)
+    from shared.chatmodel_factory import make_chat_model
+    real_llm = make_chat_model(framework="llama_index")
+    if real_llm is not None:
+        Settings.llm = real_llm
+    else:
+        print("[mock] UnifiedClient 无 Key, 降级 mock")
+        class _MockLLM:
+            def complete(self, prompt, **kwargs):
+                return type("R", (), {"text": f"（mock）回答：{prompt[-100:]}"})()
+        Settings.llm = _MockLLM()
+else:
+    # Mock 模式: 模拟 LLM 和 embed
+    class _MockEmbed:
+        def get_text_embedding(self, text):
+            return [float(len(text))] * 8
+    class _MockLLM:
+        def complete(self, prompt, **kwargs):
+            return type("R", (), {"text": f"（mock）回答基于以下知识：{prompt[-200:]}..."})()
+    Settings.embed_model = _MockEmbed()
+    Settings.llm = _MockLLM()
 
 # 加载文档（这里使用内存构造的 Document 列表，不依赖目录）
 documents = [

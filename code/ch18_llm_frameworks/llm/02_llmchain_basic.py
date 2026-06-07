@@ -1,3 +1,9 @@
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
+
 # ---
 # chapter: 18
 # topic: LLM工程框架实战
@@ -27,13 +33,19 @@ if _SKIP_REASON:
     print("OK")
     _sys.exit(0)
 from langchain_core.prompts import PromptTemplate
+import os
 
-class _MockChatModel:
-    def invoke(self, msgs):
-        class _R: content = "这款智能手表专为运动爱好者打造——实时心率、GPS轨迹、50米防水，让每一次奔跑都更专业。"
-        return _R()
-
-llm = _MockChatModel()
+# Wave 20: 优先真实 LLM, 缺 key 降级 mock
+USE_REAL_API = os.environ.get("USE_REAL_API") == "1"
+if USE_REAL_API:
+    from shared.chatmodel_factory import make_chat_model
+    llm = make_chat_model()  # 默认厂商 (deepseek)
+else:
+    class _MockChatModel:
+        def invoke(self, msgs):
+            class _R: content = "这款智能手表专为运动爱好者打造——实时心率、GPS轨迹、50米防水，让每一次奔跑都更专业。"
+            return _R()
+    llm = _MockChatModel()
 
 prompt = PromptTemplate(
     input_variables=["product", "audience"],
