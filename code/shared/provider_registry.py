@@ -144,14 +144,29 @@ def get_default_provider() -> Provider:
     """从环境变量推断默认厂商.
 
     优先级:
-      1. LLM_PROVIDER 环境变量
-      2. 第一个有 Key 的国内厂商 (deepseek → kimi → siliconflow)
-      3. 第一个有 Key 的海外厂商 (openai → anthropic)
-      4. mock (最后兜底)
+      1. LLM_MOCK=1 → mock (CI/离线 短路, 不需 Key)
+      2. LLM_PROVIDER 环境变量 (显式选 mock 也允许, 但其他厂商需有 Key)
+      3. 第一个有 Key 的国内厂商 (deepseek → kimi → siliconflow)
+      4. 第一个有 Key 的海外厂商 (openai → anthropic)
+      5. 抛 RuntimeError (不再降级 mock)
     """
+    from shared._error_helper import raise_with_help
+
+    # LLM_MOCK=1 是 CI 短路标志: 任何缺 Key 场景下返回 mock 而不抛错
+    if os.environ.get("LLM_MOCK") == "1":
+        return PROVIDERS["mock"]
+
     env_choice = os.environ.get("LLM_PROVIDER", "").strip().lower()
     if env_choice and env_choice in PROVIDERS:
-        return PROVIDERS[env_choice]
+        p = PROVIDERS[env_choice]
+        if p.name == "mock":
+            return p  # 用户显式选 mock
+        if not p.has_key():
+            raise_with_help(
+                f"LLM_PROVIDER={env_choice} 但缺 API Key (env {p.env_key}).",
+                "运行 `make llm-doctor` 诊断; 或 `export LLM_MOCK=1`.",
+            )
+        return p
 
     for p in list_providers():
         if p.region == "CN" and p.has_key():
@@ -159,7 +174,11 @@ def get_default_provider() -> Provider:
     for p in list_providers():
         if p.region == "US" and p.has_key():
             return p
-    return PROVIDERS["mock"]
+
+    raise_with_help(
+        "未配置任何 LLM 厂商: 缺 API Key.",
+        "运行 `make llm-doctor` 诊断; 或 `export LLM_MOCK=1` 用 mock (仅 CI).",
+    )
 
 
 def available_providers() -> list[Provider]:

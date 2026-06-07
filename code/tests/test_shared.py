@@ -69,10 +69,18 @@ def test_get_provider_known():
 
 
 def test_get_default_provider_no_key_returns_mock():
-    """无 API Key 时默认厂商是 mock."""
+    """无 API Key + 无 LLM_MOCK → 抛 RuntimeError (不再静默降级 mock)."""
     from shared.provider_registry import get_default_provider
     # 清空所有可能存在的 Key
     with patch.dict(os.environ, {}, clear=True):
+        with pytest.raises(RuntimeError, match="缺 API Key"):
+            get_default_provider()
+
+
+def test_get_default_provider_no_key_with_llm_mock_returns_mock():
+    """无 API Key + LLM_MOCK=1 → 返回 mock (CI 短路)."""
+    from shared.provider_registry import get_default_provider
+    with patch.dict(os.environ, {"LLM_MOCK": "1"}, clear=True):
         assert get_default_provider().name == "mock"
 
 

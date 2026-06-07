@@ -97,3 +97,54 @@ def test_unified_client_anthropic_missing_sdk_raises(monkeypatch):
 
     with pytest.raises(RuntimeError, match="需 anthropic SDK"):
         UnifiedClient(provider="anthropic")
+
+
+# ────────────────────────────────────────────────────────────────
+# Wave 1 / Task 4: get_default_provider 缺 Key 必须抛错
+# ────────────────────────────────────────────────────────────────
+
+
+def test_get_default_provider_no_key_raises(monkeypatch):
+    """get_default_provider 无任何 Key 时抛 RuntimeError."""
+    from shared.provider_registry import get_default_provider
+    for k in ["DEEPSEEK_API_KEY", "OPENAI_API_KEY", "KIMI_API_KEY",
+              "SILICONFLOW_API_KEY", "MINIMAX_API_KEY", "ANTHROPIC_API_KEY"]:
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    with pytest.raises(RuntimeError, match="缺 API Key"):
+        get_default_provider()
+
+
+def test_get_default_provider_explicit_mock_returns_mock(monkeypatch):
+    """LLM_PROVIDER=mock 显式选 mock 时仍返回 mock（兼容旧用法）."""
+    from shared.provider_registry import get_default_provider, PROVIDERS
+    for k in ["DEEPSEEK_API_KEY", "OPENAI_API_KEY", "KIMI_API_KEY",
+              "SILICONFLOW_API_KEY", "MINIMAX_API_KEY", "ANTHROPIC_API_KEY"]:
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
+    p = get_default_provider()
+    assert p.name == "mock"
+
+
+def test_get_default_provider_explicit_provider_no_key_raises(monkeypatch):
+    """LLM_PROVIDER=deepseek 但无 Key 时抛错."""
+    from shared.provider_registry import get_default_provider
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    for k in ["OPENAI_API_KEY", "KIMI_API_KEY",
+              "SILICONFLOW_API_KEY", "MINIMAX_API_KEY", "ANTHROPIC_API_KEY"]:
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("LLM_PROVIDER", "deepseek")
+    with pytest.raises(RuntimeError, match="缺 API Key"):
+        get_default_provider()
+
+
+def test_get_default_provider_with_key_succeeds(monkeypatch):
+    """有 Key 时返回匹配厂商."""
+    from shared.provider_registry import get_default_provider
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-real-test")
+    for k in ["OPENAI_API_KEY", "KIMI_API_KEY",
+              "SILICONFLOW_API_KEY", "MINIMAX_API_KEY", "ANTHROPIC_API_KEY"]:
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    p = get_default_provider()
+    assert p.name == "deepseek"
