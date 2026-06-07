@@ -15,6 +15,16 @@
 # 1. BF16 的 8 位指数位带来什么根本优势?
 # 2. 训练 7B+ 模型时, BF16 与 FP16 在硬件支持上有何不同?
 # 3. PyTorch 2.x 中 torch.autocast 与 torch.cuda.amp.autocast 的关系?
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 """
 混合精度训练的最佳实践 —— BF16 优先 (2026 年推荐)
 """

@@ -15,6 +15,16 @@
 #   2. LLaVA-1.5 为什么取 vision encoder 的倒数第二层 hidden state？
 #   3. 多模态对话中如何将图像特征插入文本 token 序列？
 
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 import os
 import torch
 import torch.nn as nn

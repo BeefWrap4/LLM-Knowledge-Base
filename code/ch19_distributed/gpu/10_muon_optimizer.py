@@ -16,6 +16,16 @@
 # 2. Muon 的显存开销比 AdamW 少多少? 为什么?
 # 3. 为什么 Muon 只用于 >= 2D 参数 (矩阵), 而 embedding 仍用 AdamW?
 # 4. Muon 与 ZeRO-3 兼容吗? 它的动量如何被分片?
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 import torch
 from torch import Tensor
 

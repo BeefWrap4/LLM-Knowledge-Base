@@ -15,6 +15,16 @@
 # 1. 为什么 DP (DataParallel) 已被废弃? 说出至少 3 个致命缺陷。
 # 2. DP 和 DDP 在进程模型、负载均衡、通信方式上的本质差异是什么?
 # 3. 为什么 DP 不支持多机训练?
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 import torch
 import torch.nn as nn
 

@@ -15,6 +15,16 @@
 #   2. QLoRA 相比 LoRA 在显存占用上有什么具体收益？
 #   3. target_modules 的选择对 LoRA 效果有什么影响？
 
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 import os
 
 

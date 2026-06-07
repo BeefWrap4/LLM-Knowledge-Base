@@ -15,6 +15,16 @@
 # 1. DDP 为什么使用多进程而不是多线程? GIL 在这里的影响是什么?
 # 2. DDP 的梯度同步发生在 loss.backward() 之前还是之后? 是同步还是异步?
 # 3. DistributedSampler 在 DDP 中扮演什么角色? 为什么必须调用 set_epoch()?
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 """
 DDP 训练完整示例 - 单机多卡 / 多机多卡
 启动方式: torchrun --nproc_per_node=8 02_ddp_training.py

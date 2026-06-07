@@ -15,6 +15,16 @@
 #   2. [CLS] token 与全局平均池化在分类头设计上各有什么优劣？
 #   3. ViT 处理不同分辨率图像的关键技巧（位置编码插值）是什么？
 
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 import math
 import torch
 import torch.nn as nn

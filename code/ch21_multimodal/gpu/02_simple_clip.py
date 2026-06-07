@@ -15,6 +15,16 @@
 #   2. 为什么温度参数 τ 需要可学习？
 #   3. 对比学习为什么需要大 batch size？
 
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

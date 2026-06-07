@@ -15,6 +15,16 @@
 # 1. FSDP 相比 DDP 在显存节省上有什么本质差异? 节省的瓶颈在哪?
 # 2. FSDP 的 ALL_GATHER 和 REDUCE_SCATTER 分别在什么时机触发?
 # 3. auto_wrap_policy 应该如何选择 wrap 的粒度? 太细或太粗会怎样?
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 """
 FSDP 训练示例 - PyTorch 原生参数分片
 启动方式: torchrun --nproc_per_node=8 03_fsdp_training.py

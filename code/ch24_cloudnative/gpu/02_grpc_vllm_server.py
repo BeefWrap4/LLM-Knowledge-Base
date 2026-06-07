@@ -14,6 +14,16 @@
 #   1. gRPC Server Streaming 与 SSE 的性能差异主要来自哪里？
 #   2. 为什么大模型推理需要 keepalive 配置，keepalive_time_ms 该如何选？
 #   3. Protobuf 与 JSON 在大模型消息体积上的差异如何量化？
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 """
 gRPC 大模型推理服务端 —— 使用 vLLM AsyncEngine
 

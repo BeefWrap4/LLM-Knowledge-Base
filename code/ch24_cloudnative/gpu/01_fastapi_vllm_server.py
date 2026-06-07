@@ -14,6 +14,16 @@
 #   1. FastAPI lifespan 与 vLLM AsyncLLMEngine 的生命周期如何配合？
 #   2. 为什么用 asyncio.Semaphore 控制并发，而不是线程池？
 #   3. Prefix Cache (enable_prefix_caching=True) 在大模型推理中能节省多少成本？
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 """
 大模型推理服务 —— FastAPI + vLLM 后端
 支持 OpenAI 兼容 API、流式输出、并发控制

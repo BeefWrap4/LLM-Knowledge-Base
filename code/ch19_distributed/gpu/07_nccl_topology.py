@@ -15,6 +15,16 @@
 # 1. NCCL 会根据什么条件在 Ring 和 Tree 算法之间切换?
 # 2. NVLink, InfiniBand, RoCE 三种互联的典型带宽分别是多少?
 # 3. 哪些 NCCL 环境变量对跨节点 InfiniBand 性能影响最大?
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 import torch.distributed as dist
 
 

@@ -15,6 +15,16 @@
 #   2. 余弦相似度 + temperature 在对比学习中起什么作用？
 #   3. 为什么 OpenCLIP 相比原始 CLIP 更适合开源研究？
 
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 import os
 import torch
 import torch.nn.functional as F

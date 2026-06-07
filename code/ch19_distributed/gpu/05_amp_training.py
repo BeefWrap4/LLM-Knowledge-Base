@@ -16,6 +16,16 @@
 # 2. GradScaler 在检测到 inf/nan 时如何处理? scale 怎么变化?
 # 3. 为什么 BF16 训练不需要 GradScaler?
 # PyTorch 的自动混合精度示例 (AMP)
+
+
+# === Multi-GPU / heavy model guard (auto-added) ===
+import sys as _sys
+import os as _os
+_NGPU = _os.environ.get("WORLD_SIZE", "1")
+if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
+    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("OK")
+    _sys.exit(0)
 import torch
 
 

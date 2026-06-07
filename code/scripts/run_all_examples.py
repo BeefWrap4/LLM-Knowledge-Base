@@ -35,8 +35,13 @@ def run_one(script: Path, timeout: int = 30) -> tuple[str, bool, str, float]:
     rel = str(script.relative_to(CODE))
     t0 = time.perf_counter()
     try:
+        # GPU 例子默认需要 --mock 标志 (无真实模型)
+        # 跨平台: 同时检查 /gpu/ 和 \gpu\
+        cmd = [PY, str(script)]
+        if "/gpu/" in rel or "\\gpu\\" in rel:
+            cmd.append("--mock")
         result = subprocess.run(
-            [PY, str(script)],
+            cmd,
             capture_output=True, text=True, timeout=timeout,
             cwd=str(CODE),
         )
