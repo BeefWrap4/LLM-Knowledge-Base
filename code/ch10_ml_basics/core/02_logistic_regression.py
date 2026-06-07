@@ -35,7 +35,6 @@ def main():
     print(f"类别 1 的概率范围: [{proba[:,1].min():.3f}, {proba[:,1].max():.3f}]")
     print(f"准确率: {clf.score(X_test, y_test):.4f}")
 
-    print("OK")
 
 if __name__ == "__main__":
     main()

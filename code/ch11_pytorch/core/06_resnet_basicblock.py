@@ -57,4 +57,3 @@ if __name__ == "__main__":
     x_down = torch.randn(2, 64, 56, 56)
     y_down = block_down(x_down)
     print(f"downsample out shape: {y_down.shape}")
-    print("OK")

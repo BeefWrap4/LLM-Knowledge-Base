@@ -86,4 +86,3 @@ if __name__ == "__main__":
     if data:
         print(f"[Parsed Data] {data}")
     print(f"[Schema] {UserInfo.model_json_schema()}")
-    print("OK")

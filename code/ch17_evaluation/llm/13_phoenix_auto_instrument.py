@@ -100,4 +100,3 @@ def run_phoenix_demo() -> None:
 
 if __name__ == "__main__":
     run_phoenix_demo()
-    print("OK")

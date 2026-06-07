@@ -81,7 +81,6 @@ def mock_vllm_deployment():
     # )
     """)
     print()
-    print("OK")
 
 
 def real_vllm_deployment():

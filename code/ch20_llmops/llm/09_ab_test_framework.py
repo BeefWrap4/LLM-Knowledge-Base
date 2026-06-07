@@ -203,4 +203,3 @@ if __name__ == "__main__":
 
     analysis = framework.analyze()
     print(json.dumps(analysis, ensure_ascii=False, indent=2))
-    print("OK")

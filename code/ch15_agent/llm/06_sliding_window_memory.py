@@ -74,7 +74,6 @@ def main():
     print(f"首条: {msgs[0]['role']} -> {msgs[0]['content'][:30]}")
     print(f"末条: {msgs[-1]['role']} -> {msgs[-1]['content'][:30]}")
     assert msgs[0]["role"] == "system", "system 消息必须始终保留"
-    print("OK")
 
 
 if __name__ == "__main__":

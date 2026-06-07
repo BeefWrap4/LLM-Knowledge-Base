@@ -42,4 +42,3 @@ if __name__ == "__main__":
     for dim in [256, 512, 1024, 3072]:
         vec = get_mrl_embedding(text, dimensions=dim, api_key=None)
         print(f"dimensions={dim:4d} -> vector len={len(vec)}")
-    print("OK")

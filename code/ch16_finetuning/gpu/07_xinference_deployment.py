@@ -52,7 +52,6 @@ def mock_xinference():
     上手难度     中 (需配置)           低 (一键启动)
     """)
     print()
-    print("OK")
 
 
 def real_xinference():

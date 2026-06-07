@@ -131,7 +131,6 @@ def main() -> None:
     z0 = np.random.default_rng(42).standard_normal((4, 16, 16, 256)).astype(np.float32)
     n = interactive_rollout(z0, n_steps=16)
     print(f"Generated {n} future latent frames (decoded by frame-decoder in real model).")
-    print("OK")
 
 
 if __name__ == "__main__":

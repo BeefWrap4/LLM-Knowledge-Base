@@ -28,3 +28,5 @@ def chapter_dir(code_root):
     def _make(chapter: str) -> Path:
         return code_root / chapter
     return _make
+
+print("OK")

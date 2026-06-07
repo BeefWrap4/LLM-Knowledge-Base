@@ -90,7 +90,6 @@ def main() -> None:
           f"{'PASS' if rep['tpot_pass'] else 'FAIL'}")
     print(f"  E2E  : {rep['e2e_p99_ms']} ms                   "
           f"{'PASS' if rep['e2e_pass'] else 'FAIL'}")
-    print("OK")
 
 
 if __name__ == "__main__":

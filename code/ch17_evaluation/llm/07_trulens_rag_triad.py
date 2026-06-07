@@ -83,4 +83,3 @@ def setup_trulens_rag_triad() -> None:
 
 if __name__ == "__main__":
     setup_trulens_rag_triad()
-    print("OK")

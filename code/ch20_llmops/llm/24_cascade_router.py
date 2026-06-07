@@ -93,4 +93,3 @@ if __name__ == "__main__":
     spans = exporter.get_finished_spans()
     upgrades = [e for s in spans for e in s.events if e.name == "cascade.upgrade"]
     print(f"upgrades: {len(upgrades)}")
-    print("OK")

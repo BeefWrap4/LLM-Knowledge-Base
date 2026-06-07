@@ -64,7 +64,6 @@ def mock_sglang_rollout():
     TensorRT-LLM ★★★★★+ ★★     ★★          ★★          NVIDIA 极致性能
     """)
     print()
-    print("OK")
 
 
 def real_sglang_rollout():

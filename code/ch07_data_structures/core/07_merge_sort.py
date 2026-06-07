@@ -72,4 +72,3 @@ if __name__ == "__main__":
     assert merge([], [1, 2]) == [1, 2]
     assert merge([1, 2], []) == [1, 2]
 
-    print("OK")

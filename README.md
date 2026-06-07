@@ -21,6 +21,9 @@
 - 📊 **300+ 真实面试题** — 每章含 5-16 道详细题解，含参考答\n- 🔗 **完整交叉引用网络** — Wiki 链接形式，与 Obsidian 原生集成
 - 📋 **100% 风格统一** — 每章含 YAML frontmatter / Mermaid 图 / 速查表 / 面试题 / 交叉引用
 - 🛠️ **可执行代码示例** — Python/Shell/YAML/Dockerfile 完整可运行
+- 🤖 **13 个真实 LLM 例子** — DeepSeek / Kimi / SiliconFlow / MiniMax 等 7 厂商, 一键 `bash scripts/run_real_demos.sh`
+- 🐳 **Docker 化部署** — `make docker-build` 构建, 3 profile (core/llm/gpu), 国内源加速
+- 🎉 **[实测样例输出](code/docs/REAL_DEMOS.md)** — 13 个真实 LLM 调用的实际响应 (MiniMax 跑出)
 
 ## 📚 知识体系
 

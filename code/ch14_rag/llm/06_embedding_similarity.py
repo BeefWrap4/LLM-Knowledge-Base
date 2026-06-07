@@ -43,4 +43,5 @@ sim_matrix = np.dot(embeddings, embeddings.T)
 print("相似度矩阵：")
 print(np.round(sim_matrix, 2))
 # 期望效果：前两句相似度高（都是 AI 相关），第三句差异大
+
 print("OK")

@@ -61,4 +61,3 @@ def user_info(lm, name_desc=""):
     else:
         tpl = build_template()
         print(f"[Template Created] {tpl}")
-    print("OK")

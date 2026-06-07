@@ -113,4 +113,3 @@ if __name__ == "__main__":
         probes="dan,encoding",
     )
     print(f"\n模拟扫描结果: {result}")
-    print("OK")

@@ -56,4 +56,3 @@ if __name__ == "__main__":
     # scores = [0.95, 0.02, 0.89]
     for c, s in zip(candidates, scores):
         print(f"  score={s:.3f}  doc={c!r}")
-    print("OK")

@@ -124,4 +124,3 @@ if __name__ == "__main__":
     assert inorder_iterative(None) == []
     assert postorder_iterative(None) == []
 
-    print("OK")

@@ -102,4 +102,3 @@ def interview_trap():
 
 if __name__ == "__main__":
     interview_trap()
-    print("OK")

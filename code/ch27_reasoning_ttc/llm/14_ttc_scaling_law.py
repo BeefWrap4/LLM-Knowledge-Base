@@ -87,7 +87,6 @@ def main() -> None:
     print("  • 中等(70-90%):        BoN N=8~32")
     print("  • 高难度(>90%):        MCTS+PRM, N=128+, 强 verifier")
     print("  • 自适应: 小分类器先估难度, 再分配 compute")
-    print("OK")
 
 
 if __name__ == "__main__":

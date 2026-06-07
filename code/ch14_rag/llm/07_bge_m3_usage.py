@@ -42,4 +42,3 @@ if __name__ == "__main__":
     print("dense_embeddings shape:", out["dense_embeddings"].shape)
     print("sparse_embeddings[0] keys:", list(out["sparse_embeddings"][0].keys()))
     print("colbert_vecs[0] shape:", out["colbert_vecs"][0].shape)
-    print("OK")

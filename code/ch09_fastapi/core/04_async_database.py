@@ -67,4 +67,3 @@ if __name__ == "__main__":
     # 3. 验证 get_db 是异步生成器
     gen = _demo_dependency_generator()
     print(f"get_db 返回类型: async generator = {gen is not None}")
-    print("OK")

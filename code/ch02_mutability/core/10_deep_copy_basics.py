@@ -54,4 +54,3 @@ def demo_deep_copy():
 
 if __name__ == "__main__":
     demo_deep_copy()
-    print("OK")

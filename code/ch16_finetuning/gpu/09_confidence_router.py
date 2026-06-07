@@ -151,4 +151,3 @@ if __name__ == "__main__":
         print(f"Q: {query[:30]:<32} | tier={result.tier:<6} | "
               f"conf={result.confidence:.3f} | latency={result.latency_ms:.0f}ms")
 
-    print("OK")

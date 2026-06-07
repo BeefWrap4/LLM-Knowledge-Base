@@ -124,4 +124,3 @@ if __name__ == "__main__":
     assert parsed["minReplicaCount"] < parsed["maxReplicaCount"], "min must be < max"
     assert parsed["cooldownPeriod"] > 0, "cooldown must be > 0"
     print("\nValidation PASSED")
-    print("OK")

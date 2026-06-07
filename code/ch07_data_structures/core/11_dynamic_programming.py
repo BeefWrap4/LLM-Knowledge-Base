@@ -214,4 +214,3 @@ if __name__ == "__main__":
     assert min_distance("", "abc") == 3
     assert min_distance("abc", "") == 3
 
-    print("OK")

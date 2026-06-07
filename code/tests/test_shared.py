@@ -262,3 +262,5 @@ def test_get_env():
         assert get_env("MY_KEY") == "value"
         assert get_env("MY_KEY", "default") == "value"
         assert get_env("MISSING", "default") == "default"
+
+print("OK")

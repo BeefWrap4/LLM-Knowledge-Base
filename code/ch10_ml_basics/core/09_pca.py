@@ -36,7 +36,6 @@ def main():
     print(f"各主成分方差贡献: {pca.explained_variance_ratio_[:5]}")
     print(f"累计方差贡献: {pca.explained_variance_ratio_.cumsum()[-1]:.4f}")
 
-    print("OK")
 
 if __name__ == "__main__":
     main()

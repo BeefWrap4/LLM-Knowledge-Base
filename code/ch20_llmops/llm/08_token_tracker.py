@@ -88,4 +88,3 @@ if __name__ == "__main__":
         tracker.track_call("gpt-4o", input_tokens=10000, output_tokens=2000)
 
     print(tracker.get_usage_summary())
-    print("OK")

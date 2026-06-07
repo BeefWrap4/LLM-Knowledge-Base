@@ -99,4 +99,3 @@ if __name__ == "__main__":
 
     answer = execute_react("2 乘以 21 等于多少？", tools=tools, max_steps=3)
     print(f"\n[Final Answer] {answer}")
-    print("OK")

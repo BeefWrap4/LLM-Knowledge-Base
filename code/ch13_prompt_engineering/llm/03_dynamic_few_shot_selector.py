@@ -26,7 +26,6 @@ except (ImportError, ModuleNotFoundError) as _e:
     _SKIP_REASON = str(_e).split("\n")[0]
 if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
-    print("OK")
     _sys.exit(0)
 import numpy as np
 

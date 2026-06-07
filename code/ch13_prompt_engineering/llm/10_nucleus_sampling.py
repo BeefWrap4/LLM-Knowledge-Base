@@ -55,4 +55,3 @@ if __name__ == "__main__":
     for p in [0.5, 0.9, 0.99]:
         chosen, n_size = nucleus_sampling(logits, p=p)
         print(f"p={p:.2f} → 核大小={n_size}, 采样 token id={chosen}")
-    print("OK")

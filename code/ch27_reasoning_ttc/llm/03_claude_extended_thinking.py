@@ -102,7 +102,6 @@ def main() -> None:
 
     print("\n提示: Interleaved Thinking 让模型在 tool_use 之间持续思考，")
     print("      这是 Claude 4.6 在 Agent 场景相对 o3 的关键差异。")
-    print("OK")
 
 
 if __name__ == "__main__":

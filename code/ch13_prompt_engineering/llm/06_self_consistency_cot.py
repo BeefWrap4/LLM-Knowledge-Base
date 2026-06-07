@@ -81,4 +81,3 @@ if __name__ == "__main__":
     print(f"[多数投票答案] {answer}")
     print(f"[置信度] {confidence:.2%}")
     print(f"[模式] {'mock' if USE_MOCK else 'real-api'}")
-    print("OK")

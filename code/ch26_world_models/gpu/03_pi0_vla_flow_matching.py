@@ -142,7 +142,6 @@ def main() -> None:
     print(f"\n[Pi0] Flow-matching loss (should drop toward 0 as v_net improves):")
     print(f"        current loss = {flow_matching_loss(x0, x1, pred_v):.4f}")
     print()
-    print("OK")
 
 
 if __name__ == "__main__":

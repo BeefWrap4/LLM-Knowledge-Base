@@ -114,4 +114,3 @@ if __name__ == "__main__":
     print("\n=== 模型成本对比 ===")
     for c in comparison:
         print(f"{c['model']}: ${c['total_cost']:.6f}")
-    print("OK")

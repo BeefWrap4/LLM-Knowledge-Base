@@ -178,4 +178,3 @@ if __name__ == "__main__":
     print(f"answer: {out['answer']}")
     print(f"iterations: {out['iterations']}")
     print(f"check: {out['check']}")
-    print("OK")

@@ -100,4 +100,3 @@ def run_langfuse_v3_demo() -> None:
 
 if __name__ == "__main__":
     run_langfuse_v3_demo()
-    print("OK")

@@ -50,7 +50,6 @@ def mock_qlora_config():
     print("  bnb_4bit_compute_dtype=torch.bfloat16")
     print("  bnb_4bit_use_double_quant=True")
     print()
-    print("OK")
 
 
 def real_qlora_config():

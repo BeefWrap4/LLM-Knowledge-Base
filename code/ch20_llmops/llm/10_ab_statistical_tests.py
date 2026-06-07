@@ -116,4 +116,3 @@ if __name__ == "__main__":
         minimum_detectable_effect=0.05,
     )
     print(f"每组需要 {n_required} 个样本")
-    print("OK")

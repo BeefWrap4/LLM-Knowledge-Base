@@ -42,7 +42,6 @@ def mock_deepseek_ee():
     print("  MacBook M3 Pro:  ~45 tokens/s")
     print("  骁龙 8 Gen 3:    ~15 tokens/s")
     print()
-    print("OK")
 
 
 def real_deepseek_ee():

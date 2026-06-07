@@ -139,7 +139,6 @@ def main() -> None:
     print(f"  generated action chunk: shape={sample.shape}, "
           f"range=[{sample.min():.3f}, {sample.max():.3f}]")
     print()
-    print("OK")
 
 
 if __name__ == "__main__":

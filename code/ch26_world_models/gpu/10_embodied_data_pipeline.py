@@ -222,7 +222,6 @@ def main() -> None:
     print(f"[Pipeline] summary: {stats}")
     mixing_ratio_analysis(stats)
     print()
-    print("OK")
 
 
 if __name__ == "__main__":

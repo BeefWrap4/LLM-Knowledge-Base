@@ -47,4 +47,3 @@ if __name__ == "__main__":
         print(f"  step={step}  lr={opt.param_groups[0]['lr']:.6f}")
         sch.step()
 
-    print("OK")

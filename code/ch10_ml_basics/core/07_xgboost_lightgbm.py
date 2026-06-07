@@ -34,7 +34,6 @@ from sklearn.model_selection import train_test_split
 
 if not (HAS_XGB and HAS_LGB):
     print(f"[SKIP] xgboost={HAS_XGB}, lightgbm={HAS_LGB} (需 llm+ tier 或 pip install xgboost lightgbm)")
-    print("OK")
     sys.exit(0)
 
 def main():

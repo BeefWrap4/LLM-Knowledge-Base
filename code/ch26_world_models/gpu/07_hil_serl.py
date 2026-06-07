@@ -197,7 +197,6 @@ def main() -> None:
     print(f"\n[Summary] Intervention count dropped: {inter1} → {inter2}")
     print(f"          Total buffer transitions: {stats2['total']}")
     print()
-    print("OK")
 
 
 if __name__ == "__main__":

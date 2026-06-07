@@ -51,4 +51,3 @@ if __name__ == "__main__":
     by = torch.randint(0, 3, (4,))
     loss_val = amp_train_step(model, bx, by, crit, opt, sc, torch.device("cpu"))
     print(f"amp_train_step loss (CPU stub): {loss_val:.4f}")
-    print("OK")

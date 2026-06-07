@@ -140,4 +140,3 @@ if __name__ == "__main__":
         )
     print("summary:", collector.get_summary())
     print("alerts:", collector.check_alerts())
-    print("OK")

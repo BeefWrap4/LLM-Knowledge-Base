@@ -86,4 +86,3 @@ def demo_mutable_vs_immutable():
 
 if __name__ == "__main__":
     demo_mutable_vs_immutable()
-    print("OK")

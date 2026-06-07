@@ -243,7 +243,6 @@ def demo_mcp_registry():
     )
     print(f"\n审计日志条目数: {len(registry._audit_log)}")
     print(f"脱敏后参数: {registry._audit_log[-1]['arguments']}")
-    print("OK")
 
 
 if __name__ == "__main__":

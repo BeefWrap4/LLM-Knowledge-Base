@@ -111,7 +111,6 @@ async def voice_assistant():
         on_agent_speech=lambda text: print(f"小音: {text}"),
         on_interrupt=lambda: print("[用户打断]"),
     )
-    print("OK")
 
 
 if __name__ == "__main__":

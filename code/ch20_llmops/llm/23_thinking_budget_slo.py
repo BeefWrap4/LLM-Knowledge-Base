@@ -69,4 +69,3 @@ if __name__ == "__main__":
     spans = exporter.get_finished_spans()
     statuses = [s.attributes.get("gen_ai.thinking.slo_status") for s in spans]
     print(f"status histogram: {dict((s, statuses.count(s)) for s in set(statuses))}")
-    print("OK")

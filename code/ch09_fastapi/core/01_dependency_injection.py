@@ -54,4 +54,3 @@ if __name__ == "__main__":
     target = next(((p, n) for p, n in routes if n == "read_me"), None)
     assert target == ("/users/me", "read_me"), f"路由未注册正确: {target}"
     print(f"路由已注册: {target[0]} -> {target[1]}")
-    print("OK")

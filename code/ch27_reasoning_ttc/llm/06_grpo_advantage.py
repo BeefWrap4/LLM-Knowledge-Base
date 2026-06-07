@@ -69,7 +69,6 @@ def main() -> None:
         a16.append(grpo_advantages(rng.normal(0, 1, 16)).var())
     print(f"\nG=2  优势方差 stdev: {np.std(a2):.3f}")
     print(f"G=16 优势方差 stdev: {np.std(a16):.3f}  (更稳)")
-    print("OK")
 
 
 if __name__ == "__main__":

@@ -109,4 +109,3 @@ if __name__ == "__main__":
         tier = router.route(q, qtype)
         print(f"{q:<40} | {qtype:<14} | {tier}")
 
-    print("OK")

@@ -85,4 +85,3 @@ if __name__ == "__main__":
     quicksort_inplace(arr)
     assert arr == [1, 1, 2, 3, 6, 8, 10]
 
-    print("OK")

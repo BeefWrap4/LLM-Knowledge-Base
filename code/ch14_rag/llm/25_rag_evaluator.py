@@ -108,4 +108,3 @@ if __name__ == "__main__":
     contexts = ["员工每年享有 15 天带薪年假。", "请假需提前申请。"]
     out = evaluator.evaluate(question, answer, contexts)
     print(json.dumps(out, ensure_ascii=False, indent=2))
-    print("OK")

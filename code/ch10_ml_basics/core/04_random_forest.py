@@ -38,7 +38,6 @@ def main():
     y_pred = rf.predict(X_test)
     print(classification_report(y_test, y_pred, target_names=iris.target_names))
 
-    print("OK")
 
 if __name__ == "__main__":
     main()

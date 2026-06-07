@@ -97,4 +97,3 @@ if __name__ == "__main__":
     assert "/models/{model_id}" in paths
     assert "/search" in paths
     print(f"已注册 {len(paths)} 个路由: {', '.join(paths)}")
-    print("OK")

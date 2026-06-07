@@ -89,4 +89,3 @@ if __name__ == "__main__":
     print(f"[GRPO mock] kl_penalty  = {kl.item():.4f}")
     print(f"[GRPO mock] total_loss  = {total.item():.4f}  (beta=0.04)")
     print()
-    print("OK")

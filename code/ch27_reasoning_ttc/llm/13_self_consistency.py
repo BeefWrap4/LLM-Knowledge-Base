@@ -84,7 +84,6 @@ def main() -> None:
     print("  step 1: N=64 SC → top-k=8")
     print("  step 2: PRM 给 8 个候选打分 → 选最优")
     print("  比纯 BoN(N=64) 准 + 比纯 SC 鲁棒")
-    print("OK")
 
 
 if __name__ == "__main__":

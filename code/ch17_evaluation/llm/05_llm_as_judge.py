@@ -171,4 +171,3 @@ if __name__ == "__main__":
     print(json.dumps(pair_result, ensure_ascii=False, indent=2))
 
     print("LLM-as-Judge 评估框架已就绪（实际调用需有 API Key）")
-    print("OK")

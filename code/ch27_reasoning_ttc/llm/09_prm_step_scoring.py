@@ -101,7 +101,6 @@ def main() -> None:
     print(f"PRM-prod:           {aggregate_step_score(scores, 'prod'):.4f}")
     print("  → PRM 暴露了步骤 3 的不确定性 (0.6)，ORM 看不到")
 
-    print("OK")
 
 
 if __name__ == "__main__":

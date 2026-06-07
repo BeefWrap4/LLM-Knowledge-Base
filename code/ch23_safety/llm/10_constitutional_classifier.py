@@ -96,4 +96,3 @@ if __name__ == "__main__":
     if "content" in result:
         print(f"  响应: {result['content'][:100]}...")
     print(f"  说明: {result.get('note', 'N/A')}")
-    print("OK")

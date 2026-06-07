@@ -63,7 +63,6 @@ def main():
     importances = pd.Series(rf.feature_importances_)
     print(f"\n特征重要性:\n{importances.sort_values(ascending=False)}")
 
-    print("OK")
 
 if __name__ == "__main__":
     main()

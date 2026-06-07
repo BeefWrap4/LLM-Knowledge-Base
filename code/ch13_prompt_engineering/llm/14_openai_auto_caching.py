@@ -74,4 +74,3 @@ if __name__ == "__main__":
     print(" - 缓存窗口：默认 5-10 分钟（动态 TTL）")
     print(" - 最小缓存前缀：1024 tokens")
     print(" - 仅在 Prompt 前缀严格相同时才命中")
-    print("OK")

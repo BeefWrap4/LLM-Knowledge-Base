@@ -90,4 +90,3 @@ if __name__ == "__main__":
     print()
     print("ORPO 优势：单模型, 无需参考策略, SFT + 对齐一步完成, 显存 ~ 省 50%")
     print()
-    print("OK")

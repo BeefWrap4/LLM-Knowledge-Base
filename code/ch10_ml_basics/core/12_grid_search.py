@@ -45,7 +45,6 @@ def main():
     print(f"最优参数: {grid.best_params_}")
     print(f"最优 AUC: {grid.best_score_:.4f}")
 
-    print("OK")
 
 if __name__ == "__main__":
     main()

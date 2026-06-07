@@ -259,7 +259,6 @@ def main():
     result = agent.execute(query)
     print(f"查询：{query}")
     print(f"结果：{result}")
-    print("OK")
 
 
 if __name__ == "__main__":

@@ -201,4 +201,3 @@ if __name__ == "__main__":
         status = "⚠️" if result.is_malicious else "✅"
         print(f"{status} [{result.risk_score:.2f}] {text[:50]}...")
         print(f"   → {result.reason}")
-    print("OK")

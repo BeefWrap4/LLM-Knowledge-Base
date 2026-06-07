@@ -94,7 +94,6 @@ def main() -> None:
 
     resp = serve(eng, prompt_len=2048, out_len=256)
     print("mock serve response:", resp)
-    print("OK")
 
 
 if __name__ == "__main__":

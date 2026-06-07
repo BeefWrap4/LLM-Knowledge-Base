@@ -113,4 +113,3 @@ if __name__ == "__main__":
     print("To call the endpoint:")
     print('  predictor.predict({"inputs": "Hello, how are you?"})')
     print()
-    print("OK")

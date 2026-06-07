@@ -102,7 +102,6 @@ def main() -> None:
     print("  BoN  : 用 verifier 选最优 (reward model)")
     print("  SC   : 用 majority vote 选众数 (无 verifier)")
     print("  组合 : 先 SC 缩到 top-k, 再 RM 重排")
-    print("OK")
 
 
 if __name__ == "__main__":

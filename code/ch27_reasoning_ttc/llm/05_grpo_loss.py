@@ -92,7 +92,6 @@ def main() -> None:
     print("\n关键观察：")
     print("  • G=4 时组内优势方差较大 → 训练噪声大 → 生产中常取 G=8~16")
     print("  • KL 约束让策略不远离 SFT 模型，避免奖励黑客")
-    print("OK")
 
 
 if __name__ == "__main__":

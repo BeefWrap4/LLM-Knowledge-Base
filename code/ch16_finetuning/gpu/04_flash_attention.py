@@ -43,7 +43,6 @@ def mock_flash_attention_demo():
     print("  Flash Attention:    O(N) ≈ 32 × 4096 × 128 × 2B ≈ 32 MB / layer")
     print("  -> 显存比 ~ 32x")
     print()
-    print("OK")
 
 
 def real_flash_attention_demo():

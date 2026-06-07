@@ -113,4 +113,3 @@ if __name__ == "__main__":
     })
     optimized = optimize_memory(demo)
     print(optimized.dtypes)
-    print("OK")

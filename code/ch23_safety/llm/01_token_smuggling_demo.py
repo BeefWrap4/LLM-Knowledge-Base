@@ -73,4 +73,3 @@ if __name__ == "__main__":
 
     normalized = normalize_text(smuggled)
     print(f"规范化后字符数: {len(normalized)}")
-    print("OK")

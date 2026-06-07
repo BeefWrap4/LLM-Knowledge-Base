@@ -49,7 +49,6 @@ def main():
     lasso.fit(X_train, y_train)
     print(f"Lasso 稀疏参数: {lasso.coef_}")  # 部分参数被压缩至0
 
-    print("OK")
 
 if __name__ == "__main__":
     main()

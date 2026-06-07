@@ -155,7 +155,6 @@ def main() -> None:
     print(f"\n[Compounding] WM rollout total_r over 20 steps: {sum(real_rewards):+.3f}")
     print(f"               (in real deploy, horizon>10 usually shows ~10% error growth)")
     print()
-    print("OK")
 
 
 if __name__ == "__main__":

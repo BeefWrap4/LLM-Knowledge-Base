@@ -136,7 +136,6 @@ def main() -> None:
 
     # Naive contiguous allocator would have needed len(A) + len(B) blocks.
     # Paged + CoW only needs max(len(A), len(B)) + tiny overhead.
-    print("OK")
 
 
 if __name__ == "__main__":

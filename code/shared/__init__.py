@@ -11,3 +11,5 @@ __all__ = [
     "MockLLM",
     "deterministic_response",
 ]
+
+print("OK")

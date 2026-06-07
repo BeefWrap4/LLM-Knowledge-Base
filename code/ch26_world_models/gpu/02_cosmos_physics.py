@@ -116,7 +116,6 @@ def main() -> None:
     print(f"        Final heights: {np.round(final_heights, 3).tolist()}")
     print(f"        Trajectory shape: {traj.shape}  (T, N, xy)")
     print()
-    print("OK")
 
 
 if __name__ == "__main__":

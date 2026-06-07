@@ -105,4 +105,3 @@ print(f"copied[2] is copied? {copied[2] is copied}")  # True — 循环引用保
 
 if __name__ == "__main__":
     demo_circular_reference()
-    print("OK")

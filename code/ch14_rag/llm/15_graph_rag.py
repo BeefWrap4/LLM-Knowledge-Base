@@ -120,4 +120,3 @@ if __name__ == "__main__":
     print("图遍历结果:")
     for p in paths:
         print(f"  {p}")
-    print("OK")

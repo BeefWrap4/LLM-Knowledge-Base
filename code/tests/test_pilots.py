@@ -240,3 +240,5 @@ try:
     import torch  # noqa: E402
 except ImportError:
     torch = None
+
+print("OK")

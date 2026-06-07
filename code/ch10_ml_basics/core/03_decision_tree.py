@@ -39,7 +39,6 @@ def main():
     tree_rules = export_text(dt, feature_names=iris.feature_names)
     print(tree_rules[:500])
 
-    print("OK")
 
 if __name__ == "__main__":
     main()

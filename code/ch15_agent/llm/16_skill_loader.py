@@ -211,7 +211,6 @@ def demo_skill_loader():
     print(f"\nLoaded: {skill.name}")
     print(f"Tools: {skill.tools}")
     print(f"Flow: {skill.flow_steps}")
-    print("OK")
 
 
 if __name__ == "__main__":

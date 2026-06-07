@@ -47,4 +47,3 @@ if __name__ == "__main__":
     dp = copy.deepcopy(original)
     print(f"浅拷贝共享 data? {sh.data is original.data}")  # True
     print(f"深拷贝独立 data? {dp.data is original.data}")  # False
-    print("OK")

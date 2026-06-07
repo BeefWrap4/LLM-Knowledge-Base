@@ -115,4 +115,3 @@ def run_ragas_evaluation() -> None:
 
 if __name__ == "__main__":
     run_ragas_evaluation()
-    print("OK")

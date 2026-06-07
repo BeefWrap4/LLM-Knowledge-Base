@@ -101,4 +101,3 @@ if __name__ == "__main__":
     for i in range(120):
         detector.add_current(f"cur text {i}")
     print(detector.detect_drift())
-    print("OK")

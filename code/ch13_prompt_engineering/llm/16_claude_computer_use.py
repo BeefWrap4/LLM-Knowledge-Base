@@ -97,4 +97,3 @@ if __name__ == "__main__":
     )
     for block in response.content:
         print(f"[{block.type}]", getattr(block, "text", None) or getattr(block, "input", None))
-    print("OK")

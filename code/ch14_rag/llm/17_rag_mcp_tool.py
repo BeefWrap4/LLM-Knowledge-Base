@@ -106,4 +106,3 @@ if __name__ == "__main__":
     for r in result:
         print("---")
         print(r["text"])
-    print("OK")

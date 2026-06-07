@@ -121,4 +121,3 @@ if __name__ == "__main__":
     })
     cleaned = data_cleaning_pipeline(demo_df)
     print(cleaned.head())
-    print("OK")

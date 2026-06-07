@@ -54,7 +54,6 @@ def mock_lora_pipeline():
     print("  learning_rate=2e-4, warmup_ratio=0.03, lr_scheduler=cosine")
     print("  bf16=True, optim=paged_adamw_32bit, group_by_length=True")
     print()
-    print("OK")
 
 
 def real_lora_pipeline():

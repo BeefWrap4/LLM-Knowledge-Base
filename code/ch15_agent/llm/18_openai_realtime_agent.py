@@ -164,7 +164,6 @@ async def realtime_voice_demo():
             print(f"[错误] {event['data']}")
         else:
             print(f"[other] {event}")
-    print("OK")
 
 
 if __name__ == "__main__":

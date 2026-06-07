@@ -100,4 +100,3 @@ if __name__ == "__main__":
     print(f"  FPR差异: {eo['fpr_disparity']:.3f}")
     print(f"  公平判定: {'✅ 公平' if eo['fair'] else '❌ 不公平'}")
 
-    print("OK")

@@ -104,7 +104,6 @@ def main() -> None:
     print("  • low    →  简单 QA, 路由, 分类")
     print("  • medium →  一般推理, 短代码")
     print("  • high   →  数学, 竞赛编程, 复杂证明")
-    print("OK")
 
 
 if __name__ == "__main__":

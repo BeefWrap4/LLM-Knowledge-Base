@@ -57,4 +57,3 @@ if __name__ == "__main__":
         import faiss
         D, I = index.search(vectors[:1], 5)
         print(f"Top-5 邻居: {I[0].tolist()}, 距离: {D[0].tolist()}")
-    print("OK")

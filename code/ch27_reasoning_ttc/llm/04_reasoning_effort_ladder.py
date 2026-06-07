@@ -128,7 +128,6 @@ def main() -> None:
     for e in Effort:
         print(f"  {e.name:<7} ${estimate_cost(e, 10_000):.2f}")
 
-    print("OK")
 
 
 if __name__ == "__main__":

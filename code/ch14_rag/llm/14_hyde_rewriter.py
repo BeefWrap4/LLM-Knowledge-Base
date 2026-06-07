@@ -88,4 +88,3 @@ if __name__ == "__main__":
     emb = hyde.rewrite(q)
     print(f"查询: {q}")
     print(f"假想文档 embedding shape: {emb.shape}, norm: {float((emb**2).sum()):.3f}")
-    print("OK")

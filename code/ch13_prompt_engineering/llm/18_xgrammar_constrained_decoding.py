@@ -78,4 +78,3 @@ if __name__ == "__main__":
     parsed = json.loads(result)
     assert "name" in parsed and "age" in parsed
     print("[Schema 验证] 通过")
-    print("OK")

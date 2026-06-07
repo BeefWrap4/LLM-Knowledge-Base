@@ -275,4 +275,3 @@ if __name__ == "__main__":
     print(f"\n[StereoSet] 简化评估:")
     for k, v in ss_result.items():
         print(f"  {k}: {v}")
-    print("OK")

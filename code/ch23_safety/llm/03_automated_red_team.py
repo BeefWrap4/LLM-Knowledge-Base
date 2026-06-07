@@ -247,4 +247,3 @@ if __name__ == "__main__":
     for tc in test_cases[:2]:
         result = red_team.run_test(tc)
         print(f"  {tc.id} [{tc.severity}] 防御: {'通过' if result.passed else '失败'}")
-    print("OK")

@@ -134,4 +134,3 @@ if __name__ == "__main__":
     print(f"  违规组合数: {result['violations']}")
     print(f"  k-匿名合规: {'✅ 是' if result['k_anonymous'] else '❌ 否'}")
     print(f"  最小/最大组规模: {result['min_group_size']}/{result['max_group_size']}")
-    print("OK")

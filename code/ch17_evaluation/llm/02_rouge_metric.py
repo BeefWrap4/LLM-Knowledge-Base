@@ -53,4 +53,3 @@ def compute_rouge_demo() -> None:
 
 if __name__ == "__main__":
     compute_rouge_demo()
-    print("OK")

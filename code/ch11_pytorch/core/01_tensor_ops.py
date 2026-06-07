@@ -77,4 +77,3 @@ if __name__ == "__main__":
     print(f"x.unsqueeze(0) shape: {x_unsq.shape}")
     print(f"x.squeeze() shape: {x_sq.shape}")
     print(f"t (from numpy) shape: {t.shape}, shares memory: {t.data_ptr() == arr.ctypes.data}")
-    print("OK")

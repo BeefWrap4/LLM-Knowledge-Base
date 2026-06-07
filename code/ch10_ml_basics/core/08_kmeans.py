@@ -47,7 +47,6 @@ def main():
     labels = kmeans.fit_predict(X_cluster)
     print(f"聚类标签分布: {np.bincount(labels)}")
 
-    print("OK")
 
 if __name__ == "__main__":
     main()

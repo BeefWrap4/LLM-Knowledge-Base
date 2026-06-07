@@ -124,4 +124,3 @@ if __name__ == "__main__":
 
     spans = exporter.get_finished_spans()
     print(f"spans emitted: {len(spans)}")
-    print("OK")

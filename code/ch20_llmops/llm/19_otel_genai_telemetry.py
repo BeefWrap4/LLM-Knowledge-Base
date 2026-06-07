@@ -123,4 +123,3 @@ if __name__ == "__main__":
     print(f"recorded {len(spans)} span(s)")
     for s in spans:
         print(f"name={s.name}, attrs={dict(s.attributes)}")
-    print("OK")

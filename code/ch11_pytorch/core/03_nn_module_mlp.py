@@ -87,4 +87,3 @@ if __name__ == "__main__":
     print(f"MLPClassifier output shape: {y.shape}")
     y2 = simple_model(x_dummy)
     print(f"nn.Sequential model output shape: {y2.shape}")
-    print("OK")

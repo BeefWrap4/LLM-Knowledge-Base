@@ -63,4 +63,3 @@ if __name__ == "__main__":
     usage = response.usage_metadata
     print(f"缓存命中 tokens: {usage.cached_content_token_count}")
     print(f"新输入 tokens:   {usage.prompt_token_count - usage.cached_content_token_count}")
-    print("OK")

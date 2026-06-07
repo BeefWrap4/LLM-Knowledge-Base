@@ -242,4 +242,3 @@ if __name__ == "__main__":
     assert g.has_path(1, 3) is True
     assert g.has_path(3, 1) is False
 
-    print("OK")

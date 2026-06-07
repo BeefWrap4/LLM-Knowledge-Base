@@ -91,4 +91,3 @@ if __name__ == "__main__":
         1 for s in spans for e in s.events if e.name.startswith("judge.")
     )
     print(f"judge events on spans: {judge_event_count}")
-    print("OK")

@@ -112,4 +112,3 @@ if __name__ == "__main__":
     results = retriever.search("什么是 RAG", q_emb, top_k=3, alpha=0.7, beta=0.3)
     for idx, score in results:
         print(f"  idx={idx}  score={score:.4f}  doc={docs[idx]!r}")
-    print("OK")

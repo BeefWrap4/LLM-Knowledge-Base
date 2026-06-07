@@ -87,7 +87,6 @@ def main() -> None:
     per_rank_w = total_w / eng.num_ranks
     print(f"\ntotal expert weights (all ranks): {total_w/1024:.1f} GB")
     print(f"per-rank weights (if EP):         {per_rank_w/1024:.1f} GB")
-    print("OK")
 
 
 if __name__ == "__main__":

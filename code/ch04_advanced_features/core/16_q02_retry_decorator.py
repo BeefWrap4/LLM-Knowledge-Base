@@ -45,4 +45,3 @@ if __name__ == "__main__":
     # 简单冒烟测试：装饰器工厂返回 callable
     deco = retry(max_attempts=2, delay=0)
     assert callable(deco)
-    print("OK")

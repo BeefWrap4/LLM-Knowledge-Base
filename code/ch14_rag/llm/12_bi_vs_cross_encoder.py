@@ -59,4 +59,3 @@ if __name__ == "__main__":
     )
     print(f"Bi-Encoder dot-product 相似度: {bi_sim:.4f}")
     print(f"Cross-Encoder 相关性分数: {ce_score:.4f}")
-    print("OK")

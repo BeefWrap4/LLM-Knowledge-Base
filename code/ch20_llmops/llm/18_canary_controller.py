@@ -101,4 +101,3 @@ if __name__ == "__main__":
             controller.rollback("错误率超过 1% 阈值")
             break
     print(json.dumps(controller.get_status(), ensure_ascii=False, indent=2))
-    print("OK")

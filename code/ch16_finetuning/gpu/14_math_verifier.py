@@ -100,4 +100,3 @@ if __name__ == "__main__":
         print(f"Case {i}: total={total:.2f} | acc={info['accuracy']} | "
               f"format_ok={info['format_ok']}")
         print(f"  pred='{output[:50]}...' gt='{gt}'")
-    print("OK")

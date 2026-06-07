@@ -48,4 +48,3 @@ if __name__ == "__main__":
     # 初始化后
     w_after = model[0].weight
     print(f"conv 初始化后 mean={w_after.mean().item():.5f} std={w_after.std().item():.5f}")
-    print("OK")

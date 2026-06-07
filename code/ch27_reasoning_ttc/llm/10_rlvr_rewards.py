@@ -148,7 +148,6 @@ def main() -> None:
         r = rlvr_reward(a, math_task)
         print(f"  R={r:.2f}  answer={a[:50]!r}")
 
-    print("OK")
 
 
 if __name__ == "__main__":

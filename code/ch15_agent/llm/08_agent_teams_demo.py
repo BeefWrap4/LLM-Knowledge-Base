@@ -261,7 +261,6 @@ def demo_agent_teams():
     print(f"  团队: {progress['team_lead']} + {progress['teammates']}")
     print(f"  任务统计: {progress['task_summary']}")
     print(f"  全部完成: {progress['all_completed']}")
-    print("OK")
 
 
 if __name__ == "__main__":

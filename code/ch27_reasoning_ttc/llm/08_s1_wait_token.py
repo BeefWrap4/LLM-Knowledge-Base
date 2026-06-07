@@ -111,7 +111,6 @@ def main() -> None:
     print("  • patience 越小 → 注入越频繁 → 思维链越长")
     print("  • budget 是硬上限 → 超过则截断 (会有答案缺失风险)")
     print("  • s1.1: 用更强的 base 模型 + 更大 budget 上限")
-    print("OK")
 
 
 if __name__ == "__main__":

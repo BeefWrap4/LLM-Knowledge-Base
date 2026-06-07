@@ -93,7 +93,6 @@ async def main() -> None:
         one_call("r2", "Explain speculative decoding."),
         one_call("r3", "Why is decode memory-bound?"),
     )
-    print("OK")
 
 
 if __name__ == "__main__":

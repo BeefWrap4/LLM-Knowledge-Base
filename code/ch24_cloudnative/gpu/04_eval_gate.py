@@ -22,7 +22,6 @@ import os as _os
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
     print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
-    print("OK")
     _sys.exit(0)
 """
 模型评估门禁框架 —— 在 CI 中自动执行的评估脚本

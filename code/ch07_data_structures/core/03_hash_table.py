@@ -100,4 +100,3 @@ if __name__ == "__main__":
     hs.remove(2)
     assert hs.contains(2) is False
 
-    print("OK")

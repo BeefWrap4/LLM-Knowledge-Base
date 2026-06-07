@@ -41,4 +41,3 @@ if __name__ == "__main__":
     print(prompt_zero_shot_cot)
     print("===== 模型推理示例输出 =====")
     print(EXPECTED_RESPONSE)
-    print("OK")

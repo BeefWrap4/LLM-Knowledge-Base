@@ -75,4 +75,3 @@ if __name__ == "__main__":
             action = item.action
             coords = getattr(action, "coordinates", None)
             print(f"动作: {action.type}, 坐标: {coords if coords else 'N/A'}")
-    print("OK")

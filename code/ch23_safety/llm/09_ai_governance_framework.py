@@ -181,4 +181,3 @@ if __name__ == "__main__":
 
     # 4. 治理清单汇总
     print(f"\n[4] AI系统清单: {len(framework.ai_inventory)}个系统已注册")
-    print("OK")

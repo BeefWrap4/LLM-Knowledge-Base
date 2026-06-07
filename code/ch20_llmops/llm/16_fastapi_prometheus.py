@@ -91,4 +91,3 @@ if __name__ == "__main__":
         for r in app.routes:
             if hasattr(r, "path"):
                 print(f"  {getattr(r, 'methods', '-')} {r.path}")
-    print("OK")

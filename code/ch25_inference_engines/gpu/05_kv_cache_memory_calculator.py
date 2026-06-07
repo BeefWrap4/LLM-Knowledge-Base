@@ -87,7 +87,6 @@ def main() -> None:
     check = total_kv_gb(s, seq_len=8192, batch=32, precision="fp16")
     assert 79.5 < check < 80.5, f"sanity check failed: {check}"
     print(f"\nsanity: LLaMA-70B 8K×32 fp16 = {check:.2f} GB  (KV-only; weights ~140 GB)")
-    print("OK")
 
 
 if __name__ == "__main__":

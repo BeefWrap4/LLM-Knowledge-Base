@@ -83,4 +83,3 @@ if __name__ == "__main__":
     print(f"输入 tokens:  {response.usage.input_tokens}")
     print(f"输出 tokens:  {response.usage.output_tokens}")
     print(f"思考 tokens:  {getattr(response.usage, 'thinking_tokens', 'N/A')}")
-    print("OK")

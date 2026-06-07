@@ -82,3 +82,5 @@ for word in sentence.split():
 print(f"字数统计: {word_count}")
 
 print("\nOK")
+
+print("OK")

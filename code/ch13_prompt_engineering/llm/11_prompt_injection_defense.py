@@ -131,4 +131,3 @@ if __name__ == "__main__":
     sample = '{"answer": "苹果", "confidence": 0.92}'
     schema = {"answer": str, "confidence": float}
     print(f"是否符合 schema: {validate_output(sample, schema)}")
-    print("OK")

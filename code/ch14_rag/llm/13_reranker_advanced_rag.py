@@ -139,4 +139,3 @@ if __name__ == "__main__":
     print(f"recall_count: {out['recall_count']}")
     for doc, score in out["sources"]:
         print(f"  score={score:.3f}  doc={doc!r}")
-    print("OK")

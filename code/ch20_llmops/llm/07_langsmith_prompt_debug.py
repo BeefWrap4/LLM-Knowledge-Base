@@ -98,4 +98,3 @@ def debug_prompt_issue(project_name: str, query_pattern: str) -> Dict[str, List]
 if __name__ == "__main__":
     issues = debug_prompt_issue("my-qa-system", "customer support")
     print(issues)
-    print("OK")

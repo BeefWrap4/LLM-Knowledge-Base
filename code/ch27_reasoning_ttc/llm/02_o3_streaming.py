@@ -95,7 +95,6 @@ def stream_o3(question: str) -> None:
 
 def main() -> None:
     stream_o3("Prove that sqrt(2) is irrational.")
-    print("OK")
 
 
 if __name__ == "__main__":

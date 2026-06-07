@@ -37,7 +37,6 @@ def main():
     print(f"线性核 SVM: {svm_linear.score(X_test, y_test):.4f}")
     print(f"RBF 核 SVM: {svm_rbf.score(X_test, y_test):.4f}")
 
-    print("OK")
 
 if __name__ == "__main__":
     main()

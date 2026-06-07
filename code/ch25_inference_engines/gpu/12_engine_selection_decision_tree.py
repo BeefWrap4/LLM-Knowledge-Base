@@ -73,7 +73,6 @@ def main() -> None:
         print(f"{uc.hardware:<14}{uc.workload:<12}{uc.concurrency:>6}"
               f"{'Y' if uc.needs_moe else 'N':>5}  ->  {eng}")
         print(f"{'':>32}  reason: {why}")
-    print("OK")
 
 
 if __name__ == "__main__":

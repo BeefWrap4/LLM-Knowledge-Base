@@ -32,7 +32,6 @@ def main():
     print(f"5-Fold AUC: {cv_scores}")
     print(f"均值: {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
 
-    print("OK")
 
 if __name__ == "__main__":
     main()

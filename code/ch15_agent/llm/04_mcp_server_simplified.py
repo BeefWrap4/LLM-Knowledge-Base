@@ -181,7 +181,6 @@ def demo_json_rpc_responses():
     print("[initialize]", json.dumps(init_resp, ensure_ascii=False))
     print("[tools/list tools count]", len(list_resp["result"]["tools"]))
     print("[tools/call unknown]", json.dumps(call_resp, ensure_ascii=False))
-    print("OK")
 
 
 if __name__ == "__main__":

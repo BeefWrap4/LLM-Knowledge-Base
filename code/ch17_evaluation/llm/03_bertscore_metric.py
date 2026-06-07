@@ -59,4 +59,3 @@ def compute_bertscore_demo() -> None:
 
 if __name__ == "__main__":
     compute_bertscore_demo()
-    print("OK")

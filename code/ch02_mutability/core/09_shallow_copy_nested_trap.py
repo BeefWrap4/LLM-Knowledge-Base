@@ -107,4 +107,3 @@ right2 = copy.deepcopy(matrix)
 
 if __name__ == "__main__":
     demo_shallow_copy_behavior()
-    print("OK")

@@ -139,7 +139,6 @@ def main() -> None:
     aloha_pick_place_demo()
     chunk_size_tradeoff()
     print()
-    print("OK")
 
 
 if __name__ == "__main__":

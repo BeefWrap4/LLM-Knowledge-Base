@@ -154,7 +154,6 @@ def main() -> None:
               f"kv_MB={r.kv_bytes/1e6:.1f}")
     # Key insight: long-prompt reqs pay big prefill cost, but their decode
     # step starts on a separate, memory-optimized instance.
-    print("OK")
 
 
 if __name__ == "__main__":

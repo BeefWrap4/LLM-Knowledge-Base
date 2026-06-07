@@ -182,4 +182,3 @@ if __name__ == "__main__":
             print(f"[AUTO] Q: {q:<25} -> mode={r.complexity}")
 
     asyncio.run(demo())
-    print("OK")

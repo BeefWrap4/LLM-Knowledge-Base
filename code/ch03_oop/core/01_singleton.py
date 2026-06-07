@@ -99,3 +99,5 @@ assert d1 is d2, "装饰器单例失败"
 assert m1 is m2, "元类单例失败"
 
 print("\nOK")
+
+print("OK")

@@ -112,7 +112,6 @@ def main() -> None:
     matched = cache.insert(system + few_shot + req_a_tail, kv_block_ids=[40, 41])
     print(f"req 4 (==A): reused={matched}  (full hit = 0 compute)")
     print("tree stats:", cache.stats())
-    print("OK")
 
 
 if __name__ == "__main__":

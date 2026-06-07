@@ -244,4 +244,5 @@ if __name__ == "__main__":
     assert cache.get(3) == 3
     assert cache.get(4) == 4
 
-    print("OK")
+
+print("OK")

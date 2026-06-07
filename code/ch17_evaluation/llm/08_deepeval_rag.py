@@ -84,4 +84,3 @@ def run_deepeval_test() -> None:
 
 if __name__ == "__main__":
     run_deepeval_test()
-    print("OK")

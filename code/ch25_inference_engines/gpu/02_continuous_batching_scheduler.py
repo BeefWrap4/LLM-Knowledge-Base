@@ -105,7 +105,6 @@ def main() -> None:
     speedup = static_steps / max(1, cont_steps)
     print(f"step-count ratio    : static={static_steps}  continuous={cont_steps}")
     # The big wins are (a) no padding waste, (b) head-of-line blocking gone.
-    print("OK")
 
 
 if __name__ == "__main__":

@@ -87,4 +87,3 @@ if __name__ == "__main__":
     print(f"问题: {result['question']}")
     print(f"回答: {result['answer']}")
     print(f"检索到 {len(result['sources'])} 条来源")
-    print("OK")

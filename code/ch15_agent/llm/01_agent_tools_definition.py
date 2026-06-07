@@ -55,7 +55,6 @@ def main():
     for tool in TOOLS:
         assert "name" in tool and "description" in tool and "parameters" in tool
         print(f"[OK] tool={tool['name']:>14} | params={list(tool['parameters'].keys())}")
-    print("OK")
 
 
 if __name__ == "__main__":

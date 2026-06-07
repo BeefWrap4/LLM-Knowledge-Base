@@ -76,4 +76,3 @@ if __name__ == "__main__":
     assert last["full_text"].endswith("LLM服务。"), \
         f"full_text 应以 'LLM服务。' 结尾, 实际: {last['full_text']!r}"
     print(f"累计产出 {len(chunks)} 个 SSE chunk，完整文本: {last['full_text']}")
-    print("OK")

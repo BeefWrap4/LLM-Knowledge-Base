@@ -53,4 +53,3 @@ async def main():
 if __name__ == "__main__":
     # 启动事件循环
     asyncio.run(main())
-    print("OK")

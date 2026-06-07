@@ -109,4 +109,3 @@ if __name__ == "__main__":
     print(f"[Cached Prefix] {cached_text_len} 字符 (~{cached_text_len // 4} tokens)")
     print(f"[Dynamic Part] {dynamic_text_len} 字符 (~{dynamic_text_len // 4} tokens)")
     print(f"[预期命中率] ~{cached_text_len / (cached_text_len + dynamic_text_len):.0%}")
-    print("OK")

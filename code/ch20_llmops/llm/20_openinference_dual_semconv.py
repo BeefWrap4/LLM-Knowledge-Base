@@ -95,4 +95,3 @@ if __name__ == "__main__":
     spans = exporter.get_finished_spans()
     for s in spans:
         print(f"  span={s.name}, kind={s.attributes.get(OPENINFERENCE_SPAN_KIND)}")
-    print("OK")

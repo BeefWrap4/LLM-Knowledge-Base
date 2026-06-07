@@ -86,4 +86,3 @@ if __name__ == "__main__":
 
     if not metrics.is_healthy():
         send_alert(f"缓存命中率低: {metrics.avg_hit_rate:.2%}")
-    print("OK")

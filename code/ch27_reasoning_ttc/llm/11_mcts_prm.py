@@ -146,7 +146,6 @@ def main() -> None:
     print(f"  MCTS+PRM  : {root.visits} 次模拟 → 通常 N=64 BoN 更准但代价高")
     print(f"  Best-of-N : 独立采样 N 次，verifier 选最优")
     print(f"  混合策略  : MCTS 指导 prefix → N 个完成 → verifier 选最优")
-    print("OK")
 
 
 if __name__ == "__main__":

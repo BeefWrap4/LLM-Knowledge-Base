@@ -129,7 +129,6 @@ def main() -> None:
     action = policy.select_action(state)
     print(f"[ACT] First action:  dim={action.shape[0]}, range=[{action.min():.3f}, {action.max():.3f}]")
     print()
-    print("OK")
 
 
 if __name__ == "__main__":

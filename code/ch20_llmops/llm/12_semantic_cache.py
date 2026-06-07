@@ -90,4 +90,3 @@ if __name__ == "__main__":
 
     print("cache stats:", cache.get_cache_stats())
     print("estimated savings: $", cache.estimated_savings())
-    print("OK")

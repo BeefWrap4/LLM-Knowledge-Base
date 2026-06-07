@@ -26,8 +26,8 @@ except (ImportError, ModuleNotFoundError) as _e:
     _SKIP_REASON = str(_e).split("\n")[0]
 if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
-    print("OK")
     _sys.exit(0)
+print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
 _code_root = _Path_setup(__file__).resolve().parent.parent.parent

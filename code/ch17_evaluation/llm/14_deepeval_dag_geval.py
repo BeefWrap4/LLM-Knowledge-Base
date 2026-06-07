@@ -120,4 +120,3 @@ def run_deepeval_dag_geval() -> None:
 
 if __name__ == "__main__":
     run_deepeval_dag_geval()
-    print("OK")

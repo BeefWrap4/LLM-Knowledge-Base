@@ -115,4 +115,3 @@ def _offline_mock():
 
 if __name__ == "__main__":
     main()
-    print("OK")

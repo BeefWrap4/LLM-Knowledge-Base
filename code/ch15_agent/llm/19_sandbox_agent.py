@@ -143,7 +143,6 @@ def demo_sandbox():
             result = python_executor(code)
             print(f"Execution result: {result[:120]}")
         print()
-    print("OK")
 
 
 if __name__ == "__main__":

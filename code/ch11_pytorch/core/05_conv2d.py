@@ -38,4 +38,3 @@ if __name__ == "__main__":
     # 计算参数量: out_channels * (in_channels * kernel_h * kernel_w + bias)
     params = 64 * (3 * 3 * 3)  # = 1728
     print(f"参数量: {params:,}")
-    print("OK")

@@ -81,7 +81,6 @@ def main() -> None:
     grouped_rmse = sum(errs) / len(errs)
     print(f"  per-tensor FP4 RMSE: {rmse(w, dequantize(*quantize_per_tensor(w, 16))):.5f}")
     print(f"  group-wise FP4 RMSE: {grouped_rmse:.5f}  (usually 3-10x lower)")
-    print("OK")
 
 
 if __name__ == "__main__":

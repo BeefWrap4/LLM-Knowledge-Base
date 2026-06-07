@@ -34,4 +34,3 @@ if __name__ == "__main__":
     for i, g in enumerate(optimizer.param_groups):
         print(f"group {i}: lr={g['lr']}, betas={g['betas']}, "
               f"eps={g['eps']}, weight_decay={g['weight_decay']}")
-    print("OK")

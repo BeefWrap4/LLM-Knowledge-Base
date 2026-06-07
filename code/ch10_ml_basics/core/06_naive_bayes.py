@@ -30,7 +30,6 @@ def main():
     nb.fit(X_train, y_train)
     print(f"朴素贝叶斯准确率: {nb.score(X_test, y_test):.4f}")
 
-    print("OK")
 
 if __name__ == "__main__":
     main()

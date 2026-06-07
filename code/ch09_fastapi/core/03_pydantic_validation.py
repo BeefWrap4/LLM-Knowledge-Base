@@ -66,4 +66,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[模型级校验触发] {type(e).__name__}: small 模型单次最多处理 50 条文本")
 
-    print("OK")

@@ -47,7 +47,6 @@ def mock_kv_cache_demo():
     print("  update(layer_idx, new_k, new_v)  # 追加到 current_len 之后")
     print("  increment(delta=1)               # current_len += 1")
     print()
-    print("OK")
 
 
 def real_kv_cache_demo():

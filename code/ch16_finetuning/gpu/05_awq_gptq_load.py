@@ -53,7 +53,6 @@ def mock_quantization_load():
     print("      use_triton=True,    # Triton 加速内核")
     print("  )")
     print()
-    print("OK")
 
 
 def real_quantization_load():

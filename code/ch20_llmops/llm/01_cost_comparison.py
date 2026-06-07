@@ -66,4 +66,3 @@ if __name__ == "__main__":
     print(trad)
     print("=== LLM cost (gpt-4o) ===")
     print(llm)
-    print("OK")

@@ -91,4 +91,3 @@ if __name__ == "__main__":
     )
     print("Mock response:", response.choices[0].message.content)
     print("Calls logged:", len(client.call_log))
-    print("OK")

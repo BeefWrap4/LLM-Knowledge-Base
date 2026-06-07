@@ -111,4 +111,3 @@ if __name__ == "__main__":
 
     summary = tracker.cost_summary(traj_id, exporter.get_finished_spans())
     print(summary)
-    print("OK")

@@ -81,4 +81,3 @@ if __name__ == "__main__":
         response.usage.cache_read_input_tokens + response.usage.input_tokens, 1
     )
     print(f"缓存命中率: {hit_rate:.2%}")
-    print("OK")

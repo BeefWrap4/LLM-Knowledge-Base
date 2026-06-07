@@ -69,7 +69,6 @@ def main():
     plt.close()
     print(f"ROC 曲线已保存: {out_path}")
 
-    print("OK")
 
 if __name__ == "__main__":
     main()

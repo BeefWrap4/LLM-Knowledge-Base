@@ -103,7 +103,6 @@ def main() -> None:
           f"tokens/call={norm_emitted/norm_calls:.2f}")
     print(f"effective speedup (tokens per fwd): {spec_emitted/spec_calls:.2f}x")
     # Theoretical: gamma * (1 - (1-alpha)^gamma)... rough intuition only
-    print("OK")
 
 
 if __name__ == "__main__":

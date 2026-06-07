@@ -66,4 +66,3 @@ if __name__ == "__main__":
         print(f"[mock] 计算失败 ({exc})，使用模拟值")
         print("流畅文本 PPL: 35.20")
         print("乱序文本 PPL: 280.50")
-    print("OK")

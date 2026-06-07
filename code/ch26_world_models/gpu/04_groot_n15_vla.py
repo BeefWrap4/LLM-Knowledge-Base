@@ -137,7 +137,6 @@ def main() -> None:
     err = float(np.linalg.norm(rec - franka_act))
     print(f"\n[Adapter] encode→decode reconstruction error: {err:.4f} (should be ~0)")
     print()
-    print("OK")
 
 
 if __name__ == "__main__":

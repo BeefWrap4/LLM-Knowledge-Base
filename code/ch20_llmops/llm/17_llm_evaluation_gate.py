@@ -132,4 +132,3 @@ if __name__ == "__main__":
     report = gate.run_evaluation("prompt_v4.0.0")
     print(report["recommendation"])
     print(json.dumps(report["checks"], ensure_ascii=False, indent=2))
-    print("OK")

@@ -110,7 +110,6 @@ def main() -> None:
     print("  budget=4000 + Wait → ~57%")
     print("  budget=32000 + Wait → ~59%  (s1.1)")
 
-    print("OK")
 
 
 if __name__ == "__main__":
