@@ -23,7 +23,6 @@ Ragas（RAG Assessment）是最流行的开源 RAG 评估框架，
 Wave 30 改进:
   - LLM 改用 UnifiedClient (MiniMax / DeepSeek / Kimi / SiliconFlow 任意厂商)
   - Embedding 改用本地 bge-small-zh-v1.5 (无需 OpenAI Key)
-  - 兼容旧 RAGAS_MOCK=0 / 新 USE_REAL_API=1 两种启用方式
 """
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
@@ -35,20 +34,6 @@ import os
 
 
 def run_ragas_evaluation() -> None:
-    # 兼容两种启用方式: 旧 RAGAS_MOCK=0 / 新 USE_REAL_API=1
-    mock_mode = not (
-        os.environ.get("RAGAS_MOCK", "0") == "0"
-        and os.environ.get("USE_REAL_API", "0") == "1"
-    )
-
-    if mock_mode:
-        print("[mock] 模拟 Ragas 评估输出 (设置 USE_REAL_API=1 走真实评估)")
-        print("RAG 评估结果：")
-        print("  faithfulness      answer_relevancy  context_recall  context_precision")
-        print("0          0.95              0.92             0.88               0.91")
-        print("1          0.93              0.94             0.90               0.89")
-        return
-
     try:
         from datasets import Dataset
         from ragas import evaluate
@@ -114,7 +99,7 @@ def run_ragas_evaluation() -> None:
     bge_path = _code_root / "models" / "bge-small-zh-v1.5"
     if not (bge_path.exists() and (bge_path / "config.json").exists()):
         print(f"[WARN] 本地 bge 不存在: {bge_path}")
-        print("  跑 setup_local.sh 下载, 或跑 mock 模式 (USE_REAL_API 不设)")
+        print("  跑 setup_local.sh 下载 bge-small-zh-v1.5 模型")
         return
     emb = HuggingFaceEmbeddings(model_name=str(bge_path))
     embeddings = LangchainEmbeddingsWrapper(emb)
