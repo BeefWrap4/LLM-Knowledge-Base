@@ -217,6 +217,24 @@ python scripts/llm_doctor.py  # 验证 Key
 支持 **DeepSeek / Kimi / SiliconFlow / OpenAI / Anthropic** 多厂商 (统一 OpenAI 兼容协议).
 详见 [`code/docs/API_KEYS.md`](code/docs/API_KEYS.md).
 
+### 一键跑 13 个真实 LLM 例子 (Wave 22)
+
+```bash
+cd code/
+
+# 全部 13 个 (deepseek 默认, ~2 min)
+bash scripts/run_real_demos.sh
+
+# 3 个核心 (快速演示, ~30s)
+bash scripts/run_real_demos.sh quick
+
+# 指定厂商
+bash scripts/run_real_demos.sh MiniMax
+bash scripts/run_real_demos.sh kimi
+```
+
+自动检查 API Key, 缺则降级 mock. 跑通后输出 `3 passed, 0 failed` + 估算成本.
+
 ### 下载教程所需模型 (Wave 14-B)
 
 ```bash
