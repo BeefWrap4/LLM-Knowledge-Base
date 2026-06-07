@@ -33,19 +33,10 @@ if _SKIP_REASON:
     _sys.exit(0)
 print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
 from langchain_core.prompts import PromptTemplate
-import os
 
-# Wave 20: 优先真实 LLM, 缺 key 降级 mock
-USE_REAL_API = os.environ.get("USE_REAL_API") == "1"
-if USE_REAL_API:
-    from shared.chatmodel_factory import make_chat_model
-    llm = make_chat_model()  # 默认厂商 (deepseek)
-else:
-    class _MockChatModel:
-        def invoke(self, msgs):
-            class _R: content = "这款智能手表专为运动爱好者打造——实时心率、GPS轨迹、50米防水，让每一次奔跑都更专业。"
-            return _R()
-    llm = _MockChatModel()
+# Wave 30+: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 时 raise
+from shared.chatmodel_factory import make_chat_model
+llm = make_chat_model()  # 默认厂商 (deepseek)
 
 prompt = PromptTemplate(
     input_variables=["product", "audience"],

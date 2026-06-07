@@ -33,28 +33,13 @@ if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
     _sys.exit(0)
 print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
-import os
 from langchain.chains import ConversationChain
 from langchain_core.messages import HumanMessage, AIMessage
 
-# Wave 20: 优先真实 LLM, 缺 key 降级 mock (mock 行为: 模拟"记住"姓名年龄)
-USE_REAL_API = os.environ.get("USE_REAL_API") == "1"
-if USE_REAL_API:
-    from shared.chatmodel_factory import make_chat_model
-    llm = make_chat_model()  # 默认厂商
-else:
-    class _MockChatModel:
-        def invoke(self, msgs):
-            joined = " ".join([m.content for m in msgs if hasattr(m, 'content')])
-            if "你叫什么" in joined or "名字" in joined:
-                text = "您叫张三。"
-            elif "几岁" in joined or "年龄" in joined:
-                text = "您今年 30 岁。"
-            else:
-                text = "好的，我记住了。"
-            class _R: content = text
-            return _R()
-    llm = _MockChatModel()
+# Wave 30+: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 时 raise
+from shared.chatmodel_factory import make_chat_model
+llm = make_chat_model()  # 默认厂商
+
 memory = ConversationBufferMemory(return_messages=True)
 
 conversation = ConversationChain(

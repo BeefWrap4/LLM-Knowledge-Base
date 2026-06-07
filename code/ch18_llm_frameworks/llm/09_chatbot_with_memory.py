@@ -34,8 +34,6 @@ _code_root = _Path_setup(__file__).resolve().parent.parent.parent
 if str(_code_root) not in _sys_path_setup.path:
     _sys_path_setup.path.insert(0, str(_code_root))
 
-import os
-
 
 """
 完整示例：带记忆的多工具对话 Agent
@@ -72,12 +70,9 @@ def knowledge_search(query: str) -> str:
     return results[0] if results else "未找到相关知识。"
 
 # ===== Step 2: 配置记忆 =====
-class _MockChatModel:
-    def invoke(self, msgs):
-        class _R: content = "（流式）这是回答内容"
-        return _R()
-
-llm = _MockChatModel()
+# Wave 30+: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 时 raise
+from shared.chatmodel_factory import make_chat_model
+llm = make_chat_model()  # 默认厂商
 
 memory = ConversationSummaryBufferMemory(
     llm=llm,

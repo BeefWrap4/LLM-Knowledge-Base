@@ -28,34 +28,9 @@ if _SKIP_REASON:
 print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
 from langchain_core.prompts import PromptTemplate
 
-class _MockChatModel:
-    def __init__(self, content): self._c = content
-    def invoke(self, msgs):
-        class _R: content = self._c
-        return _R()
-
-# Wave 21: 优先真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 降级 mock
-USE_REAL_API = os.environ.get("USE_REAL_API") == "1"
-if USE_REAL_API:
-    from shared.chatmodel_factory import make_chat_model
-    _llm = make_chat_model()  # 默认厂商 (deepseek)
-    class _SwitchMock:
-        """真实 LLM 模式下也保留 _SwitchMock 接口 (invoke 单方法), 框架可识别"""
-        pass
-else:
-    # 单一 mock LLM 在不同 prompt 下返回不同内容
-    class _SwitchMock:
-        def invoke(self, msgs):
-            last = msgs[-1].content if hasattr(msgs[-1], 'content') else str(msgs[-1])
-            if "大纲" in last or "outline" in last.lower():
-                text = "1. 选型考量\n2. 主流框架\n3. 落地建议"
-            else:
-                text = "在2026年，大模型应用框架选型应聚焦于编排能力、Agent支持、RAG能力与可观测性。LangGraph适合复杂工作流，LlamaIndex是RAG首选，Dify适合快速落地。"
-            class _R: content = text
-            return _R()
-    _llm = _SwitchMock()
-
-llm = _llm
+# Wave 30+: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 时 raise
+from shared.chatmodel_factory import make_chat_model
+llm = make_chat_model()  # 默认厂商 (deepseek)
 
 # 第一链：生成大纲
 chain1 = LLMChain(

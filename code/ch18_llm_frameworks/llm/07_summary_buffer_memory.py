@@ -29,18 +29,9 @@ print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使�
 from langchain_openai import ChatOpenAI
 from langchain.chains import ConversationChain
 
-# 在 mock 模式下用一个简单回显 LLM 替代
-class _MockChatModel:
-    def invoke(self, msgs):
-        last = msgs[-1].content if hasattr(msgs[-1], 'content') else str(msgs[-1])
-        if "总结" in last or "摘要" in last or "Summarize" in last:
-            text = "用户询问了多个关于大模型应用框架的话题。"
-        else:
-            text = "这是关于该问题的回答。"
-        class _R: content = text
-        return _R()
-
-llm = _MockChatModel()
+# Wave 30+: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 时 raise
+from shared.chatmodel_factory import make_chat_model
+llm = make_chat_model()  # 默认厂商
 
 # SummaryBufferMemory = 摘要 + 最近 K 轮原始对话
 memory = ConversationSummaryBufferMemory(

@@ -194,8 +194,8 @@ def test_ch12_multi_head_attention():
 
 @pytest.mark.llm
 def test_ch18_langchain_chain_mock():
-    """Ch18: LangChain basic chain (mock 模式, 不需 API key)."""
-    result = _run_example("ch18_llm_frameworks/llm/01_langchain_basic_chain.py", timeout=30)
+    """Ch18: LangChain basic chain demo (mock 模式, 不需 API key). W3 之后 mock 已下沉到 tests/_mocks/."""
+    result = _run_example("tests/_mocks/demo_langchain_basic_chain.py", timeout=30)
     if "ModuleNotFoundError" in result.stderr and "langchain" in result.stderr:
         pytest.skip("langchain not installed (need llm tier)")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
