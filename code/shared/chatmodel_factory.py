@@ -183,9 +183,13 @@ def _make_llama_index(p: Provider, model: str, key: str, temperature: float, **k
         return Anthropic(model=model, api_key=key, **kwargs)
     else:
         try:
-            from llama_index.core.llms import OpenAILike
+            from llama_index.llms.openai_like import OpenAILike
         except ImportError:
-            raise ImportError("pip install llama-index")
+            try:
+                # 旧版本 llama_index 在 core.llms
+                from llama_index.core.llms import OpenAILike
+            except ImportError:
+                raise ImportError("pip install llama-index-llms-openai-like")
         # OpenAILike 是 OpenAI 兼容, 设置 context_window 等
         return OpenAILike(
             model=model,

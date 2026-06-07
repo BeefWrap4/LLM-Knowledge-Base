@@ -38,6 +38,10 @@ from llama_index.core import Settings
 
 # Wave 20: 优先真实 LLM + embedding, 缺 key 降级 mock
 USE_REAL_API = os.environ.get("USE_REAL_API") == "1"
+# Wave 26 修复: llama_index Settings 在 import 时检查 OPENAI_API_KEY, 提前设 dummy 避免报错
+if "OPENAI_API_KEY" not in os.environ:
+    os.environ["OPENAI_API_KEY"] = "sk-dummy-for-import-only"
+
 if USE_REAL_API:
     # 真实 LLM (默认厂商)
     from shared.chatmodel_factory import make_chat_model
