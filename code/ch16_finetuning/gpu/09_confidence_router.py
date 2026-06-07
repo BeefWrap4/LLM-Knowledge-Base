@@ -1,153 +1,108 @@
 # ---
 # chapter: 16
-# topic: 模型微调与推理优化
-# section: 16.7.3 基于置信度的动态路由
+# topic: 置信度路由器 (真实模型推理 + logprob 置信度)
+# section: 16.7.3
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
-# deps: (stdlib only)
+# deps: transformers, torch
 # run: python 09_confidence_router.py
-# expected_runtime: <2s
-# expected_output: 演示 Cascade 路由在 3 个 mock query 上的命中层级与置信度
+# expected_runtime: 30-90s (Qwen2.5-0.5B 加载 + 3 prompt 推理)
+# expected_output: 每个 prompt 的 top-5 token logprob + confidence 决策
 # ---
 # See: ../tutorial/16_模型微调与推理优化.md §16.7.3
+#
 # Interview hooks:
 #   1. 端云协同的三种动态调度策略（Cascade / Prediction / Hybrid）各自优劣？
 #   2. 模型置信度如何估计？token 平均概率 vs 序列级 log-likelihood 哪个更稳？
 #   3. privacy_level=high 直接路由到端侧的工程意义？数据合规边界？
+"""置信度路由器: 用模型 next-token logprob 决定回退策略.
 
+核心思路:
+  1. 让 Qwen2.5-0.5B 给出 prompt 后的 next-token 分布
+  2. 取 top-5 logprob, 算平均 → confidence in [0, 1]
+  3. confidence > 0.7 → 直接用; > 0.3 → 中等 (标记 review)
+  4. < 0.3 → 回退到更大模型 (e.g. Qwen2.5-7B-Instruct)
 """
-基于置信度的动态调度路由 —— 端云协同 2026 面试热点
-"""
+import math
+import sys
+from pathlib import Path
 
-from __future__ import annotations
-import random
-from typing import Optional
-from dataclasses import dataclass, field
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-
-@dataclass
-class ModelResponse:
-    text: str
-    token_probs: list = field(default_factory=list)
-    latency_ms: float = 0.0
+import torch
+from shared.gpu_guard import require_nvidia_gpu
+from shared._error_helper import raise_with_help
 
 
-@dataclass
-class RouterResult:
-    tier: str
-    confidence: float
-    response: str
-    latency_ms: float
+def check_hardware():
+    require_nvidia_gpu(min_vram_gb=8, min_count=1)
 
 
-class ConfidenceRouter:
-    """
-    基于模型置信度的动态调度路由
-    策略：端侧先尝试，置信度低于阈值则上云
-    """
+def compute_confidence(logprobs: list[float]) -> float:
+    """top-K logprob 平均 → 0-1 置信度."""
+    if not logprobs:
+        return 0.0
+    avg_logprob = sum(logprobs) / len(logprobs)
+    # exp(avg) ∈ (0, 1]; 越大表示 top tokens 概率越集中
+    return math.exp(avg_logprob)
 
-    def __init__(
-        self,
-        device_model,
-        edge_model,
-        cloud_model,
-        device_threshold: float = 0.8,
-        edge_threshold: float = 0.75,
-    ):
-        self.models = {
-            "device": device_model,
-            "edge": edge_model,
-            "cloud": cloud_model,
-        }
-        self.thresholds = {
-            "device": device_threshold,
-            "edge": edge_threshold,
-        }
 
-    def route(self, query: str, context: Optional[dict] = None) -> RouterResult:
-        """
-        动态路由决策
-        返回: {"tier": "device|edge|cloud", "confidence": float, "response": str}
-        """
-        # 策略1: 隐私检查 - 敏感数据直接端侧处理
-        if context and context.get("privacy_level") == "high":
-            return self._execute("device", query)
+def route_decision(confidence: float) -> str:
+    if confidence > 0.7:
+        return "high (直接用)"
+    if confidence > 0.3:
+        return "medium (标记 review)"
+    return "low (回退到 Qwen2.5-7B)"
 
-        # 策略2: 逐层尝试 (Cascade)
-        for tier in ["device", "edge"]:
-            result = self._execute(tier, query)
-            if result.confidence >= self.thresholds[tier]:
-                return result
 
-        # 策略3: 云端兜底
-        return self._execute("cloud", query)
+def main():
+    check_hardware()
 
-    def _execute(self, tier: str, query: str) -> RouterResult:
-        """在指定层级执行推理"""
-        model = self.models[tier]
-        response = model.generate(query)
-        confidence = self._compute_confidence(response)
-        return RouterResult(
-            tier=tier,
-            confidence=confidence,
-            response=response.text,
-            latency_ms=response.latency_ms,
+    model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")
+    if not Path(model_path).exists():
+        raise_with_help(
+            f"需要模型 {model_path}",
+            "运行 `make download-models-default` 下载.",
         )
 
-    @staticmethod
-    def _compute_confidence(response) -> float:
-        """计算模型输出的置信度（平均 token 概率）"""
-        if hasattr(response, "token_probs") and response.token_probs:
-            return sum(response.token_probs) / len(response.token_probs)
-        return 0.5  # 默认中等置信度
+    from transformers import AutoModelForCausalLM, AutoTokenizer
 
+    print("=== 置信度路由器 (Qwen2.5-0.5B-Instruct) ===\n")
+    print(f"GPU: {torch.cuda.get_device_name(0)}")
+    print(f"VRAM total: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f}GB\n")
 
-# ========== Mock 模型（用于本地演示）==========
-class MockModel:
-    """模拟不同层级模型的输出行为"""
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path, torch_dtype=torch.bfloat16, device_map="auto"
+    )
+    model.eval()
 
-    def __init__(self, tier: str, base_conf: float, latency: float):
-        self.tier = tier
-        self.base_conf = base_conf
-        self.latency = latency
+    test_prompts = [
+        "Q: 1+1=? A:",                              # 简单 (高置信度)
+        "Q: 解释薛定谔的猫, 一句话. A:",            # 中等
+        "Q: 列出 5 个不存在的化学元素. A:",          # 模型可能胡扯 (低置信度)
+    ]
 
-    def generate(self, query: str) -> ModelResponse:
-        # 模拟生成：短文本 + 与 base_conf 接近的置信度
-        n_tokens = random.randint(8, 20)
-        token_probs = [
-            max(0.0, min(1.0, self.base_conf + random.uniform(-0.1, 0.1)))
-            for _ in range(n_tokens)
-        ]
-        return ModelResponse(
-            text=f"[{self.tier}] 模拟回答 for: {query[:30]}",
-            token_probs=token_probs,
-            latency_ms=self.latency + random.uniform(-5, 5),
-        )
+    for prompt in test_prompts:
+        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+        with torch.no_grad():
+            out = model(**inputs)
+        next_logits = out.logits[0, -1]  # next-token logits
+        logprobs = torch.log_softmax(next_logits.float(), dim=-1)
+        top_k = torch.topk(logprobs, k=5)
+
+        top_tokens = tokenizer.convert_ids_to_tokens(top_k.indices.tolist())
+        top_logprobs = top_k.values.tolist()
+        conf = compute_confidence(top_logprobs)
+        decision = route_decision(conf)
+
+        print(f"prompt: {prompt}")
+        print(f"  top-5 tokens: {top_tokens}")
+        print(f"  top-5 logprob: {[f'{x:.3f}' for x in top_logprobs]}")
+        print(f"  confidence:    {conf:.3f} → {decision}\n")
 
 
 if __name__ == "__main__":
-    # 端侧高置信 (简单问题), 边缘中等, 云端兜底
-    device = MockModel("device", base_conf=0.85, latency=80)    # 3B-7B
-    edge = MockModel("edge", base_conf=0.78, latency=300)       # 13B-34B
-    cloud = MockModel("cloud", base_conf=0.92, latency=1500)    # 70B+
-
-    router = ConfidenceRouter(
-        device_model=device,
-        edge_model=edge,
-        cloud_model=cloud,
-        device_threshold=0.8,
-        edge_threshold=0.75,
-    )
-
-    test_queries = [
-        ("你好", {}),                                  # 简单问候 - 应命中 device
-        ("写一个 SQL 查询统计用户数", {}),                  # 中等 - 应命中 edge
-        ("证明 n^3-n 能被 6 整除", {}),                   # 复杂 - 应命中 cloud
-        ("我的身份证号 110...", {"privacy_level": "high"}),  # 隐私 - 强制 device
-    ]
-
-    for query, ctx in test_queries:
-        result = router.route(query, ctx)
-        print(f"Q: {query[:30]:<32} | tier={result.tier:<6} | "
-              f"conf={result.confidence:.3f} | latency={result.latency_ms:.0f}ms")
-
+    main()

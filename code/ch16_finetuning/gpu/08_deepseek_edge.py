@@ -1,87 +1,91 @@
 # ---
 # chapter: 16
-# topic: 模型微调与推理优化
-# section: 16.6.4 DeepSeek-EE 端侧部署
+# topic: DeepSeek Edge (真实 DeepSeek API via OpenAI 协议)
+# section: 16.6.4
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
-# deps: deepseek-ee (or fallback mock)
-# run: python 08_deepseek_edge.py --mock
-# expected_runtime: <5s for mock
-# expected_output: mock 模式打印 DeepSeek-EE 部署选项 + Test-Time Compute 推理演示
+# deps: openai SDK
+# run: export DEEPSEEK_API_KEY=sk-xxx; python 08_deepseek_edge.py
+# expected_runtime: 5-30s (取决于网络与 R1 推理时间)
+# expected_output: deepseek-chat + deepseek-reasoner 两个真实响应
 # ---
 # See: ../tutorial/16_模型微调与推理优化.md §16.6.4
+#
 # Interview hooks:
-#   1. DeepSeek-EE 相对 llama.cpp 的优势？DeepSeek 模型深度优化？
-#   2. enable_thinking / thinking_budget 在端侧推理中的作用？
-#   3. 不同部署层级的模型选型（端/边/云）如何做权衡？
+#   1. DeepSeek API 的 OpenAI 兼容性如何实现？BaseURL 重写？
+#   2. deepseek-chat (V3) vs deepseek-reasoner (R1) 的能力差异？
+#   3. Reasoning model 的 token 消耗模式？R1 平均比 V3 多 5-10x?
+"""DeepSeek Edge API 真实调用 (OpenAI 协议).
 
-"""
-DeepSeek-EE 端侧部署示例
-"""
+DeepSeek API 完全兼容 OpenAI 协议:
+  base_url = https://api.deepseek.com/v1
+  api_key  = DEEPSEEK_API_KEY env
 
+可用 openai SDK 直接连.
+"""
 import os
-import argparse
+import sys
+from pathlib import Path
+
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
+
+from shared._error_helper import raise_with_help
 
 
-MOCK_MODE = os.environ.get("MOCK_MODE", "0") == "1"
+def get_deepseek_key() -> str:
+    key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    if not key or key == "YOUR_API_KEY":
+        raise_with_help(
+            "DEEPSEEK_API_KEY 未设置或为占位符",
+            "运行 `export DEEPSEEK_API_KEY=sk-xxx` (Linux/Mac) "
+            "或 `$env:DEEPSEEK_API_KEY='sk-xxx'` (PowerShell). "
+            "或使用 Ollama 本地替代: `ollama pull deepseek-r1:7b`.",
+        )
+    return key
 
 
-def mock_deepseek_ee():
-    """Mock 模式演示"""
-    print("[MOCK] DeepSeek 部署方案选择")
-    print()
-    print("  场景             方案                     模型                       硬件")
-    print("  ------------  --------------------  ------------------------  -----------------")
-    print("  端侧 (手机)     DeepSeek-EE INT4       R1-Distill-1.5B/3B        手机 NPU")
-    print("  个人 PC        DeepSeek-EE / llama.cpp R1-Distill-7B/14B       RTX 3060+ / Mac M")
-    print("  边缘服务器     vLLM + AWQ             R1-Distill-14B/32B        A10 / L4")
-    print("  云端生产       vLLM + TensorRT-LLM    DeepSeek-V3 / R1          A100 / H100")
-    print()
-    print("[MOCK] DeepSeek-EE 性能指标 (7B INT4)")
-    print("  RTX 4090:        ~80 tokens/s")
-    print("  MacBook M3 Pro:  ~45 tokens/s")
-    print("  骁龙 8 Gen 3:    ~15 tokens/s")
-    print()
+def main():
+    api_key = get_deepseek_key()
 
+    from openai import OpenAI
 
-def real_deepseek_ee():
-    """真实 DeepSeek-EE（需安装 deepseek-ee 库）"""
-    try:
-        from deepseek_ee import DeepSeekEngine
-    except ImportError:
-        print("未安装 deepseek-ee, 请先 pip install deepseek-ee")
-        print("（本文件 mock 模式可独立运行）")
-        return
+    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
 
-    # 初始化端侧推理引擎
-    engine = DeepSeekEngine(
-        model_path="deepseek/DeepSeek-R1-Distill-Qwen-7B",
-        device="gpu",            # "cpu" | "gpu" | "npu"
-        quantization="int4",     # "fp16" | "int8" | "int4"
-        max_batch_size=4,
-        max_seq_len=4096,
+    print("=== DeepSeek Edge API 真实调用 ===\n")
+
+    # 1) deepseek-chat (V3) — 普通对话
+    print("[1/2] deepseek-chat (V3):")
+    resp = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[{"role": "user", "content": "讲个冷笑话, 一句话"}],
+        max_tokens=64,
+        temperature=0.7,
     )
+    content = resp.choices[0].message.content
+    print(f"  回答: {content}")
+    if resp.usage:
+        print(f"  usage: total_tokens={resp.usage.total_tokens} "
+              f"(prompt={resp.usage.prompt_tokens}, completion={resp.usage.completion_tokens})")
 
-    # 推理（支持长思考模式 —— Test-Time Compute）
-    result = engine.generate(
-        prompt="证明: 对于任意正整数 n, n^3 - n 能被 6 整除。",
-        max_new_tokens=1024,
-        temperature=0.6,
-        enable_thinking=True,     # 启用长思考模式
-        thinking_budget=512,      # 思考过程最大 token 数
+    # 2) deepseek-reasoner (R1) — 推理模型
+    print("\n[2/2] deepseek-reasoner (R1):")
+    resp = client.chat.completions.create(
+        model="deepseek-reasoner",
+        messages=[{"role": "user", "content": "9.11 和 9.9 哪个大? 请推理."}],
+        max_tokens=512,
     )
-
-    print(f"思考过程: {result.thinking}")
-    print(f"最终答案: {result.text}")
-    print("OK")
+    content = resp.choices[0].message.content
+    # R1 还会返回 reasoning_content
+    reasoning = getattr(resp.choices[0].message, "reasoning_content", None)
+    print(f"  回答: {content[:200]}")
+    if reasoning:
+        print(f"  推理过程: {reasoning[:200]}...")
+    if resp.usage:
+        print(f"  usage: total_tokens={resp.usage.total_tokens} "
+              f"(R1 通常比 V3 消耗多 5-10x)")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mock", action="store_true")
-    args = parser.parse_args()
-
-    if args.mock or MOCK_MODE:
-        mock_deepseek_ee()
-    else:
-        real_deepseek_ee()
+    main()

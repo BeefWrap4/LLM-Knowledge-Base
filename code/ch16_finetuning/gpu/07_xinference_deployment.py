@@ -1,100 +1,98 @@
 # ---
 # chapter: 16
-# topic: 模型微调与推理优化
-# section: 16.6.3 Xinference 多模型管理部署
+# topic: Xinference 部署 (真实 REST API, 缺服务友好抛错)
+# section: 16.6.3
 # difficulty: ⭐⭐⭐
 # tier: gpu
-# deps: xinference (or fallback to local mock client)
-# run: python 07_xinference_deployment.py --mock
-# expected_runtime: <5s for mock / 需先启动 xinference-local 服务
-# expected_output: mock 模式打印 Xinference 接口演示 + 与 vLLM 直接部署的对比
+# deps: httpx (REST 调用)
+# run: python 07_xinference_deployment.py
+# expected_runtime: <10s (需 Xinference 服务运行于 :9997)
+# expected_output: 列出已部署模型 + chat completions 调用
 # ---
 # See: ../tutorial/16_模型微调与推理优化.md §16.6.3
+#
 # Interview hooks:
 #   1. Xinference 相对 vLLM 的核心优势？多模型统一管理与 Web UI？
 #   2. launch_model / get_model / terminate_model 的资源生命周期如何管理？
 #   3. 什么场景适合选 Xinference vs 直接 vLLM 部署？
+"""Xinference 部署演示 (真实 REST API, 缺服务友好抛错).
 
+Xinference 是 LF AI & Data 项目的 LLM 推理框架:
+  - 类似 Ollama/vLLM, 但支持异构 backend (transformers/vllm/llama.cpp)
+  - 一行启动: xinference launch --model-engine vllm
+
+REST API 端点:
+  POST {host}:9997/v1/chat/completions  (OpenAI 兼容)
+  GET  {host}:9997/v1/models
 """
-Xinference 部署示例 —— 2026年推荐的多模型管理方案
+import sys
+from pathlib import Path
 
-启动: xinference-local --host 0.0.0.0 --port 9997
-安装: pip install xinference
-"""
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-import os
-import argparse
+import httpx
+from shared._error_helper import raise_with_help
 
-
-MOCK_MODE = os.environ.get("MOCK_MODE", "0") == "1"
-
-
-def mock_xinference():
-    """Mock 模式演示"""
-    print("[MOCK] Xinference 部署流程")
-    print()
-    print("  1) 启动服务: xinference-local --host 0.0.0.0 --port 9997")
-    print("  2) 客户端连接 Xinference")
-    print("  3) launch_model 部署指定模型 (自动下载 + 启动推理)")
-    print("  4) get_model 拿到模型句柄, 调用 chat/generate")
-    print("  5) terminate_model 释放资源")
-    print()
-    print("=" * 60)
-    print("Xinference vs vLLM 直接部署")
-    print("=" * 60)
-    print("""
-    维度         vLLM 直接部署          Xinference
-    ---------  ------------------  --------------------
-    模型管理     手动管理每个模型      统一管理, Web UI
-    多模型       每个模型一个服务      一个平台多模型
-    自动扩缩     需配合 K8s HPA       内置自动扩缩容
-    适用规模     大规模生产           中小规模, 快速迭代
-    上手难度     中 (需配置)           低 (一键启动)
-    """)
-    print()
+XINFERENCE_HOST = "http://localhost:9997"
 
 
-def real_xinference():
-    """真实 Xinference 调用（需运行中的 xinference-local 服务）"""
+def check_xinference_running() -> None:
+    """Xinference 服务不可达 → 友好抛错."""
     try:
-        from xinference.client import Client
-    except ImportError:
-        print("未安装 xinference, 请先 pip install xinference")
+        r = httpx.get(f"{XINFERENCE_HOST}/v1/models", timeout=2.0)
+        r.raise_for_status()
+    except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPError) as e:
+        raise_with_help(
+            f"Xinference 服务不可达 ({XINFERENCE_HOST}): {type(e).__name__}: {e}",
+            "安装: `pip install xinference`. 启动: `xinference launch --model-engine vllm`. "
+            "或 Docker: `docker run -p 9997:9997 xprobe/xinference`. "
+            "代码逻辑正确, 上述环境跑可成功.",
+        )
+
+
+def main():
+    check_xinference_running()
+
+    print("=== Xinference 部署演示 (真实 REST API) ===\n")
+
+    # 1) 列出已部署模型
+    r = httpx.get(f"{XINFERENCE_HOST}/v1/models", timeout=5.0)
+    r.raise_for_status()
+    models = r.json().get("data", [])
+    print(f"已部署模型: {[m['id'] for m in models]}")
+
+    if not models:
+        print("\n当前无已部署模型. 拉起一个 (示例):")
+        print("  from xinference.client import Client")
+        print('  c = Client("http://localhost:9997")')
+        print('  uid = c.launch_model(model_name="qwen2.5-instruct",')
+        print('                       model_size_in_billions=7, n_gpu=1)')
         return
 
-    client = Client("http://localhost:9997")
-
-    # 列出可用的内置模型
-    print("可用模型:", client.list_models())
-
-    # 部署模型
-    model_uid = client.launch_model(
-        model_name="qwen2.5-instruct",
-        model_size_in_billions=7,
-        model_format="pytorch",
-        quantization="none",
-        n_gpu=1,
+    # 2) 调一个 chat completion
+    model_id = models[0]["id"]
+    print(f"\n调用 chat completion: model={model_id}")
+    r = httpx.post(
+        f"{XINFERENCE_HOST}/v1/chat/completions",
+        json={
+            "model": model_id,
+            "messages": [{"role": "user", "content": "Hello! 用一句话介绍你自己."}],
+            "max_tokens": 64,
+            "temperature": 0.7,
+        },
+        timeout=30.0,
     )
-
-    # 获取模型句柄, 推理
-    model = client.get_model(model_uid)
-    response = model.chat(
-        messages=[{"role": "user", "content": "你好!"}],
-        generate_config={"temperature": 0.7, "max_tokens": 512},
-    )
-    print("回复:", response["choices"][0]["message"]["content"])
-
-    # 停止释放资源
-    client.terminate_model(model_uid)
-    print("OK")
+    r.raise_for_status()
+    result = r.json()
+    print(f"Response:\n  {result['choices'][0]['message']['content'][:200]}")
+    if "usage" in result:
+        u = result["usage"]
+        print(f"  usage: prompt={u.get('prompt_tokens')} "
+              f"completion={u.get('completion_tokens')} "
+              f"total={u.get('total_tokens')}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mock", action="store_true")
-    args = parser.parse_args()
-
-    if args.mock or MOCK_MODE:
-        mock_xinference()
-    else:
-        real_xinference()
+    main()
