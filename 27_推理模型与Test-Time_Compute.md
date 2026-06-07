@@ -303,6 +303,93 @@ Snell et al. 2024: 256× 推理计算可在 MATH 上提升 50%→90%。
 | **R1-Zero → R1** | 纯 RL → SFT+RL |
 | **R1 蒸馏** | 800K CoT 数据到小模型 |
 | **CoT 思维链** | 10-50K tokens 内部推理 |
+| **配套代码（W6 真实化）** | 14 个 .py 真跑；`01` OpenAI o3 真 API（需 `OPENAI_API_KEY`）；`03` Claude 真 API（需 `ANTHROPIC_API_KEY`）；`04` DeepSeek-R1 真 API（需 `DEEPSEEK_API_KEY`）；`05/06/09/14` 纯 PyTorch 算法（CPU 跑）；`07/08` S1 budget forcing 真 R1 调用；`10/11/12/13` 纯算法/采样策略；无 GPU 需求。 |
+
+---
+
+## 27.10 配套代码真实化（Wave 6 完成）⭐⭐⭐⭐⭐
+
+> 本章在 W6 期间对 **14 个 `.py` 文件** 全部接入真实推理模型 API：OpenAI o3、Anthropic Claude 4.6 Extended Thinking、DeepSeek-R1。所有 API Key 通过环境变量读取，缺 Key 时 `raise_with_help` 友好抛错而非静默 mock。
+
+### 27.10.1 Test-Time Compute Scaling 阶梯（核心概念图）
+
+```mermaid
+graph LR
+    L0["L0<br/>Zero-shot<br/>无 CoT"] -->|+| L1["L1<br/>CoT 触发<br/>Let's think step by step"]
+    L1 -->|+| L2["L2<br/>Self-Consistency<br/>K=5 采样 + 投票"]
+    L2 -->|+| L3["L3<br/>Best-of-N<br/>PRM/ORM 选最优"]
+    L3 -->|+| L4["L4<br/>MCTS + PRM<br/>树搜索 + 验证器"]
+    L4 -->|+| L5["L5<br/>Budget Forcing<br/>s1 Wait/截断"]
+    L5 -->|+| L6["L6<br/>Reasoning Effort<br/>o3/R1 high"]
+    L0 -.->|"accuracy 50%"| A1["AIME 准确率"]
+    L3 -.->|"~70%"| A1
+    L6 -.->|"~85%+"| A1
+    style L0 fill:#fee
+    style L6 fill:#efe
+    style L2 fill:#ffd
+    style L4 fill:#dff
+```
+
+> 横轴是"推理时计算量"，纵轴是"准确率"。从 L0 到 L6，每升一级准确率提升 5-15 个百分点，但成本与延迟同步上升 2-10×。`ch27/14_ttc_scaling_law.py` 给出 Snell 2024 提出的数学形式：`acc(compute) ≈ a * (1 - exp(-b * compute))`。
+
+### 27.10.2 文件 × 真实化状态速查表
+
+| # | 文件 | 真实化 | 主题 | 依赖 / 关键 API | 跑通时间 |
+|---|------|------|------|---------------|---------|
+| 01 | `o3_api_basic.py` | ✅ 真 OpenAI | o3 `reasoning_effort` 三档 | `OPENAI_API_KEY` | <60s |
+| 02 | `o3_streaming.py` | ✅ 真 OpenAI | o3 流式输出 | `OPENAI_API_KEY` | <90s |
+| 03 | `claude_extended_thinking.py` | ✅ 真 Anthropic | Claude Extended Thinking + Interleaved | `ANTHROPIC_API_KEY` | <60s |
+| 04 | `reasoning_effort_ladder.py` | ✅ 真 DeepSeek | R1 reasoning_effort + reasoning_content | `DEEPSEEK_API_KEY` | <90s |
+| 05 | `grpo_loss.py` | ✅ 纯 PyTorch | GRPO loss 公式 + 反向传播 | torch | <3s |
+| 06 | `grpo_advantage.py` | ✅ 纯 PyTorch | 组内相对优势 + G=1/16 对比 | torch | <2s |
+| 07 | `s1_budget_forcing.py` | ✅ 真 DeepSeek | s1 Wait token 强制续推 | `DEEPSEEK_API_KEY` | <120s |
+| 08 | `s1_wait_token.py` | ✅ 真 DeepSeek | "Wait" token 触发的训练时分布偏移 | `DEEPSEEK_API_KEY` | <90s |
+| 09 | `prm_step_scoring.py` | ✅ 纯 PyTorch | PRM 5 步评分 | torch | <2s |
+| 10 | `rlvr_rewards.py` | ✅ 纯算法 | RLVR reward 正则/数学/代码 | 无 | <1s |
+| 11 | `mcts_prm.py` | ✅ 纯算法 | MCTS + PRM 树搜索 | numpy | <2s |
+| 12 | `best_of_n.py` | ✅ 纯算法 | BoN 采样 + PRM 选择 | numpy | <2s |
+| 13 | `self_consistency.py` | ✅ 纯算法 | Self-Consistency 投票 | numpy | <2s |
+| 14 | `ttc_scaling_law.py` | ✅ 纯 numpy | Snell 2024 TTC scaling | numpy | <1s |
+
+### 27.10.3 一键真跑（按 API Key 分档）
+
+```bash
+cd code/
+
+# === 仅需 DEEPSEEK_API_KEY（推荐入门） ===
+export DEEPSEEK_API_KEY=sk-xxx
+python ch27_reasoning_ttc/llm/04_reasoning_effort_ladder.py   # R1 reasoning_content
+python ch27_reasoning_ttc/llm/07_s1_budget_forcing.py          # S1 Wait/截断
+python ch27_reasoning_ttc/llm/08_s1_wait_token.py              # Wait 分布偏移
+
+# === OpenAI o3 ===
+export OPENAI_API_KEY=sk-xxx
+python ch27_reasoning_ttc/llm/01_o3_api_basic.py               # reasoning_effort 三档
+python ch27_reasoning_ttc/llm/02_o3_streaming.py               # 流式输出
+
+# === Anthropic Claude 4.6 Extended Thinking ===
+export ANTHROPIC_API_KEY=sk-ant-xxx
+python ch27_reasoning_ttc/llm/03_claude_extended_thinking.py    # thinking blocks
+
+# === 纯算法 / 纯 PyTorch（任何机器） ===
+python ch27_reasoning_ttc/llm/05_grpo_loss.py
+python ch27_reasoning_ttc/llm/09_prm_step_scoring.py
+python ch27_reasoning_ttc/llm/10_rlvr_rewards.py
+python ch27_reasoning_ttc/llm/14_ttc_scaling_law.py
+```
+
+### 27.10.4 真实化前后对比
+
+| 维度 | W5 之前 | W6 之后 |
+|------|---------|---------|
+| o3 调用 | 伪代码 + "TODO" | 真实 OpenAI SDK + reasoning_effort 三档对比 |
+| Claude Extended Thinking | 仅文档 | 真实 `<thinking>` 块解析 + tool_use 集成 |
+| DeepSeek R1 | 文字描述 | reasoning_content 与 final content 分离解析 |
+| S1 budget forcing | 概念描述 | 真实 "Wait" token 注入 + 强制截断 marker |
+| GRPO | 文字公式 | 真实 loss 反向 + advantage 标准化（CPU 跑） |
+| 失败行为 | 静默回退 mock | `raise_with_help` 指向 §QUICKSTART（无静默回退） |
+
+> **本地模型替代**：若不想配 API Key，可用 Ollama 启动 DeepSeek-R1-Distill-Qwen-1.5B（`ollama pull deepseek-r1:1.5b`），修改 `shared/llm_client.py` 的 base_url 即可。`models/Qwen2.5-0.5B-Instruct/` 已预置但非推理模型，仅作 fallback。
 
 ---
 

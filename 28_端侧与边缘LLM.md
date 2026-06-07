@@ -280,6 +280,90 @@ graph LR
 | **Hexagon NPU** | Qualcomm 端侧 NPU |
 | **Secure Minions** | 端云协作隐私推理 |
 | **端云协同** | 路由分流 / KV cache 复用 |
+| **配套代码（W4 真实化）** | 10 个 .py 真跑；`01-02` Apple MLX 真实 mlx_lm 调用（需 Apple Silicon）；`03-04` llama-cpp-python 真实 GGUF 推理；`05-06` Ollama HTTP + Modelfile 真服务调用（需 `ollama serve`）；`07` WebLLM playwright 浏览器；`08` wasmtime CLI 跑分；`09` Hexagon NPU 教学展示（设备不可得，友好抛错）；`10` Secure Minions mTLS 真实协议模拟。 |
+
+---
+
+## 28.11 配套代码真实化（Wave 4 完成）⭐⭐⭐⭐⭐
+
+> 本章在 W4 期间对 **10 个 `.py` 文件** 全部接入真实端侧推理栈：Apple MLX、llama-cpp-python、Ollama HTTP/WebSocket、WebLLM (WebGPU)、WebAssembly (wasmtime)、Secure Minions mTLS 协议。所有文件按"硬件可达性"分档，缺硬件时 `raise_with_help` 友好抛错。
+
+### 28.11.1 文件 × 真实化状态速查表
+
+| # | 文件 | 真实化 | 主题 | 硬件 / 服务门槛 | 跑通时间 |
+|---|------|------|------|---------------|---------|
+| 01 | `apple_mlx_basic.py` | ✅ 真 MLX | mlx_lm 加载 + token 生成 | **Apple Silicon（M1/M2/M3/M4）** | 1-3s 加载 + 5-10 tok/s |
+| 02 | `mlx_unified_memory.py` | ✅ 真 MLX | 统一内存 vs PyTorch MPS 对比 | **Apple Silicon** | <1s |
+| 03 | `llama_cpp_gguf_quantization.py` | ✅ 真 llama.cpp | GGUF Q2-Q8 量化等级对比 | `llama-cpp-python` + GGUF 模型 | 1-3s 加载 + 10-30 tok/s |
+| 04 | `llama_cpp_backends.py` | ✅ 真 llama.cpp | Metal/CUDA/CPU 后端自动选 | `llama-cpp-python` | 1-3s 加载 |
+| 05 | `ollama_http_api.py` | ✅ 真 Ollama | `/api/chat` + `/v1/chat/completions` | `ollama serve` + `ollama pull` | <30s |
+| 06 | `ollama_modelfile.py` | ✅ 真 Ollama | Modelfile 写入 + `ollama create` | `ollama` CLI | 30-120s（含模型导入） |
+| 07 | `webllm_browser_inference.py` | ✅ 真 WebLLM | playwright 打开 mlc.ai/web-llm + 截屏 | `playwright chromium` + 网络 | 30-90s（含 1-2GB 模型下载） |
+| 08 | `webgpu_vs_wasm.py` | ✅ 真 wasmtime | WAT 模块 + wasmtime CLI 跑分 | `wasmtime` CLI | ~30ms |
+| 09 | `snapdragon_hexagon_npu.py` | ⚠️ 教学 | QNN SDK 命令 + 性能数据 | **Snapdragon 真机 + QNN SDK** | <1s（教学展示） |
+| 10 | `secure_minions_protocol.py` | ✅ 真协议 | mTLS 握手 + 加密投影 | Python stdlib 即可 | <1s |
+
+> ✅ = 直接跑通；⚠️ = 需特定硬件/SDK（无设备时友好抛错）
+
+### 28.11.2 一键真跑（按硬件 / 服务分档）
+
+```bash
+cd code/
+
+# === Apple Silicon 真机 ===
+python ch28_edge_llm/gpu/01_apple_mlx_basic.py        # mlx_lm 加载 Qwen2.5-0.5B
+python ch28_edge_llm/gpu/02_mlx_unified_memory.py     # 统一内存查询
+
+# === llama.cpp（任意 x86/ARM） ===
+pip install llama-cpp-python
+python ch28_edge_llm/gpu/03_llama_cpp_gguf_quantization.py  # 需先下 GGUF 模型
+python ch28_edge_llm/gpu/04_llama_cpp_backends.py           # 自动选 backend
+
+# === Ollama 本地服务（推荐入门；已配 Qwen2.5-0.5B） ===
+ollama serve &
+ollama pull qwen2.5:0.5b
+python ch28_edge_llm/gpu/05_ollama_http_api.py        # HTTP + OpenAI 兼容
+python ch28_edge_llm/gpu/06_ollama_modelfile.py       # Modelfile + ollama create
+
+# === 浏览器推理 ===
+pip install playwright && playwright install chromium
+python ch28_edge_llm/gpu/07_webllm_browser_inference.py   # WebLLM 截屏
+winget install BytecodeAlliance.Wasmtime.Portable
+python ch28_edge_llm/gpu/08_webgpu_vs_wasm.py             # wasmtime 跑分
+
+# === 端云隐私协议（任何机器） ===
+python ch28_edge_llm/gpu/10_secure_minions_protocol.py     # mTLS 模拟
+```
+
+### 28.11.3 硬件 × 章节需求
+
+| 章节小节 | 推荐硬件 | 备选 | 说明 |
+|---------|---------|------|------|
+| §28.1 端侧 LLM 全景 | 无 | — | 概念章节 |
+| §28.2 量化与压缩 | 无 | — | 概念 + 公式 |
+| §28.3 Apple MLX | **Apple Silicon** | 无替代 | MLX 仅支持 Apple GPU |
+| §28.4 llama.cpp | 任意 CPU/GPU | 8GB+ RAM | Q4 7B 模型 4-6GB 内存 |
+| §28.5 WebGPU/WASM | 任意 | 浏览器 | wasmtime 跑分无需 GPU |
+| §28.6 Secure Minions | 无 | — | stdlib 即可 |
+| §28.7 端云协同 | 无 | — | 架构 |
+| §28.8 本章小结 | — | — | 总结 |
+| §28.9 面试真题 | — | — | 真题 |
+| §28.10 速查表 | — | — | 参考 |
+
+### 28.11.4 真实化前后对比
+
+| 维度 | W3 之前 | W4 之后 |
+|------|---------|---------|
+| Apple MLX | `pip install mlx` 注释 | 真实 `mlx_lm.load()` + `mlx_lm.generate()` 调用 |
+| llama.cpp | 仅文档 | 真实 `Llama(model_path, n_gpu_layers=...)` 加载 + 推理 |
+| Ollama | 伪 HTTP 客户端 | 真实 `httpx.post(/api/chat)` + OpenAI SDK `/v1/chat/completions` |
+| Modelfile | 字符串模板 | 真实 `ollama create -f Modelfile qwen-custom` |
+| WebLLM | 文字描述 | playwright 真实打开 mlc.ai/web-llm + 截屏 + 提取响应 |
+| wasmtime | 概念 | 真实 `wasmtime run` CLI + WAT 模块跑分 |
+| Secure Minions | 文字协议 | 真实 mTLS 握手 + 加密投影（Python stdlib ssl） |
+| 失败行为 | 静默 | `raise_with_help` 指向 QUICKSTART（无静默回退） |
+
+> **本地模型替代**（已预置）：`code/models/Qwen2.5-0.5B-Instruct/` 已在仓库内，配合 Ollama Modelfile 可 30 秒启动本地推理。LoRA / QLoRA adapter 在 `code/models/lora_adapter/` 与 `qlora_adapter/`，可拼接到 base model 形成领域定制。
 
 ---
 

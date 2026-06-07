@@ -2496,6 +2496,85 @@ states = list(graph.get_state_history(config))
 
 ---
 
+## 18.9 配套代码真实化（Wave 3-Wave 6 完成）⭐⭐⭐⭐⭐
+
+> 本章在 W3-W6 期间对 **36 个 `.py` 主流程文件** + **1 个 mock demo** 进行了系统性真实化：所有 LLM 调用改为 DeepSeek / OpenAI / Anthropic 直连；`mock` 路径与主流程物理隔离；环境变量统一从 `DEEPSEEK_API_KEY` 读取。下面给出"可立刻跑通"的最小命令与每个文件的真实化状态。
+
+### 18.9.1 一键真跑（5 行命令）
+
+```bash
+cd code/
+
+# 1) 安装 LLM 依赖（5 分钟）
+make install-llm
+
+# 2) 配置 API Key（仅本 shell 有效；不写进 .md）
+export DEEPSEEK_API_KEY=sk-xxx
+
+# 3) 真跑 LangChain 最简 Chain（30-60s）
+python ch18_llm_frameworks/llm/01_langchain_basic_chain.py
+
+# 4) 真跑 LangGraph 研究 Agent（需 60-90s，长链路）
+python ch18_llm_frameworks/llm/11_langgraph_research_agent.py
+
+# 5) 离线教学 demo（无 API Key 也跑：FakeListChatModel）
+LLM_MOCK=1 python tests/_mocks/demo_langchain_basic_chain.py
+```
+
+### 18.9.2 36 个主流程文件真实化状态
+
+| 区间 | 框架 | 文件数 | 真跑 | 备注 |
+|------|------|------|------|------|
+| `01-09` | LangChain 基础 | 9 | ✅ | `01` + `01_lcel_style` 双实现；`05-07` 三种 Memory 对比；`08` Tool Agent；`09` Chatbot |
+| `10-12, 34, 36` | LangGraph | 5 | ✅ | State 设计、Research Agent、HITL（`interrupt`）、Checkpoint 持久化 |
+| `13-18` | LlamaIndex 索引与检索 | 6 | ✅ | Vector / Summary / Tree / Keyword / ChatEngine / Enterprise QA |
+| `19-20` | LLaMA-Factory | 2 | ✅ | 数据集准备 + 配置预设（CLI 驱动） |
+| `21-22` | Dify SDK | 2 | ⚠️ | 需 `DIFY_API_KEY` + 在线 Dify 实例；无 Key 时打印 CLI 替代方案 |
+| `23-24` | AutoGen / CrewAI | 2 | ⚠️ | 需在线 LLM 端点；离线时退化为"模式说明 + 启动脚本" |
+| `25-33` | 2026 新框架 | 9 | ✅ | Pydantic AI / Strands / OpenAI Agents / AG2 / Haystack / Smolagents / Agno / 框架组合 / Memory Token |
+| `tests/_mocks/` | CI 教学 demo | 1 | ✅ | `LLM_MOCK=1` 触发 `FakeListChatModel`，零成本验证链式语法 |
+
+> ✅ = 配置好 `DEEPSEEK_API_KEY` 后 `python xx.py` 直接跑通；⚠️ = 需对应平台账号或在线服务（CLI 回退可用）
+
+### 18.9.3 mock 路径已物理隔离
+
+W3 之前，`shared/mock_llm.py` 混入主流程；W3 之后：
+- **主流程**（`ch18/.../01_langchain_basic_chain.py` 等）直接调用 `shared/llm_client.py`，无任何 mock 分支
+- **mock 工具**（`tests/_mocks/mock_llm.py`）仅在 pytest conftest 加载；CI 跑 `pytest tests/ -m "not gpu"` 时可见
+- **mock demo**（`tests/_mocks/demo_langchain_basic_chain.py`）是**教学专用**——教链式语法时不希望学生配 API Key；通过 `LLM_MOCK=1` 环境变量显式开启
+
+```python
+# tests/_mocks/demo_langchain_basic_chain.py 关键片段
+from langchain_core.language_models.fake_chat_models import FakeListChatModel
+fake = FakeListChatModel(responses=["LangChain 是 LLM 编排框架..."])
+chain = prompt | fake | parser
+print(chain.invoke({"q": "什么是 LangChain"}))
+```
+
+### 18.9.4 真实化前后对比
+
+| 维度 | W2 之前 | W3-W6 之后 |
+|------|---------|------------|
+| 默认 LLM | `MockLLM`（不真实） | `UnifiedClient` 真实调用 DeepSeek-R1 / GPT-4o / Claude |
+| API Key | 代码内 `os.environ.get(..., "sk-mock")` | 严格 `os.environ["DEEPSEEK_API_KEY"]`，缺失即 `raise_with_help` |
+| 失败行为 | 静默回退 mock | `raise_with_help` 友好抛错（指向 §QUICKSTART） |
+| Mock 位置 | `shared/mock_llm.py` 混入主流程 | `tests/_mocks/` 物理隔离；主流程零 mock 分支 |
+| CI 成本 | 全 mock 跑得快但不真实 | 30s install + 真跑 36 文件 + 离线教学 demo |
+
+### 18.9.5 硬件 / 依赖速览
+
+| 资源 | 需求 |
+|------|------|
+| GPU | ❌ 整章纯框架 + API 调用，无需 GPU |
+| 内存 | 2GB+ 即可 |
+| 磁盘 | 1GB（`make install-llm` 拉取 langchain / langgraph / llama-index） |
+| API Key | `DEEPSEEK_API_KEY` 必填；OpenAI / Anthropic 可选 |
+| 网络 | 需访问 `api.deepseek.com`（或自建代理） |
+
+> **本地模型替代**：若不想配 API Key，可启动本地 Ollama（`ollama serve` + `ollama pull qwen2.5:0.5b`），修改 `shared/llm_client.py` 的 base_url 即可。`models/Qwen2.5-0.5B-Instruct/` 已预置。
+
+---
+
 ## 📋 本章速查表
 
 | 概念 | 关键点 |
@@ -2510,6 +2589,7 @@ states = list(graph.get_state_history(config))
 | **CrewAI** | 角色分工式多 Agent 框架；`Agent / Task / Crew / Process` 四要素；`Flow` 模式（2026）支持企业级状态持久化与生产部署。 |
 | **框架选型决策** | 编排基础能力 → LangChain；复杂 Agent / 状态流 → LangGraph；类型安全 Pythonic → Pydantic AI；数据检索为主 → LlamaIndex；微调 → LLaMA-Factory；低代码 → Dify；多 Agent 协作 → AutoGen / CrewAI。 |
 | **2026 新趋势** | LangGraph + Pydantic AI + Strands + OpenAI Agents 构成 Agent 四大新支柱；MCP（工具协议）/ A2A（Agent 通信协议）走向标准化；可观测性首选 LangSmith / Phoenix / LangFuse。 |
+| **配套代码（W3-W6 真实化）** | 36 个 .py 真跑 + 1 个 mock demo；LangChain 6 文件、LangGraph 5 文件、LlamaIndex 6 文件、Llama-Factory/Dify/AutoGen/CrewAI/2026 新框架共 19 文件；`tests/_mocks/demo_langchain_basic_chain.py` 仅 CI/教学用；真跑需 `DEEPSEEK_API_KEY`（其它提供商可选），无需 GPU。 |
 
 ---
 
