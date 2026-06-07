@@ -67,7 +67,9 @@ if __name__ == "__main__":
     ]
 
     response = call_openai(messages)
-    print(f"[Response] {response.choices[0].message.content}")
+    # Wave 24: 适配 UnifiedClient 的 _LLMResponse (无 .choices 属性)
+    content = response.content if hasattr(response, "content") else response.choices[0].message.content
+    print(f"[Response] {content}")
     print("\n[OpenAI 缓存关键约束]")
     print(" - 缓存窗口：默认 5-10 分钟（动态 TTL）")
     print(" - 最小缓存前缀：1024 tokens")

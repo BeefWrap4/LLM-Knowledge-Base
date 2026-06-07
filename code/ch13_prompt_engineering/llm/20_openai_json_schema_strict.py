@@ -69,8 +69,21 @@ if __name__ == "__main__":
     response = call_openai_structured("张伟今年 28 岁，擅长 Python 和 Rust。")
 
     # 输出 100% 符合 schema，可直接 parse
-    data = json.loads(response.choices[0].message.content)
-    # data = {"name": "张伟", "age": 28, "skills": ["Python", "Rust"]}
-    print(f"[Parsed Data] {data}")
+    # Wave 24: 适配 UnifiedClient 的 _LLMResponse (无 .choices 属性)
+    content = response.content if hasattr(response, "content") else response.choices[0].message.content
+    # Wave 24: 部分厂商不严格遵循 JSON, 用 regex 提取首个 {...} 块
+    import re
+    json_match = re.search(r"\{[^{}]*\}", content, re.DOTALL)
+    if json_match:
+        data = json.loads(json_match.group(0))
+        print(f"[Parsed Data] {data}")
+    else:
+        # 厂商未返回 JSON, 输出原文让用户看到
+        print(f"[Raw Response] {content[:200]}")
+        print(f"[Schema (expected)] {UserInfo.model_json_schema()}")
+        data = None
+    # data = {"name": "张伟", "age": 28, "skills": ["Python", "Rust"]} (when schema 严格)
+    if data:
+        print(f"[Parsed Data] {data}")
     print(f"[Schema] {UserInfo.model_json_schema()}")
     print("OK")
