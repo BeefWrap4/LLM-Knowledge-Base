@@ -91,7 +91,16 @@ USE_REAL_API=1 python your_example.py
 | LangGraph | `ch18/llm/10-12_*.py` | 与 LangChain 深度耦合 |
 | Haystack | `ch18/llm/30_*.py` | Haystack 组件系统 |
 
-**这些框架例子保留 SDK 调用, 通过 SKIP 模式跳过 — 不破坏 100% 通过率**.
+### OpenAI-特定 (Wave 17 标注)
+
+以下例子使用 OpenAI 独有特性, 其他厂商不支持. 保留 SDK 调用, 跑通需 `OPENAI_API_KEY`:
+
+| 文件 | 特性 | 替代方案 |
+|------|------|---------|
+| `ch15/llm/03_function_calling_agent.py` | `tools=[...]` + `tool_choice="auto"` | 用 LangChain (见上) 或 OpenAI only |
+| `ch27/llm/01_o3_api_basic.py` | `model="o3-mini"` + `reasoning_effort=...` | 用 DeepSeek-R1 (`deepseek-reasoner`) 替代 |
+
+**这些例子保留 SDK 调用, 通过 SKIP 模式跳过 — 不破坏 100% 通过率**.
 
 ## 5. 调试技巧
 

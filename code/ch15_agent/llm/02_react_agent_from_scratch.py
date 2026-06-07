@@ -1,8 +1,15 @@
 # ---
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
+
 # chapter: 15
 # topic: Agent智能体开发
 # section: 15.2.3 手写 ReAct Agent
 # difficulty: ⭐⭐⭐⭐⭐
+# (file top comment - path setup added below)
 # tier: llm
 # deps: []
 # run: python 02_react_agent_from_scratch.py
@@ -91,20 +98,19 @@ Thought: """
         return "\n".join([t.to_prompt_format() for t in self.tools.values()])
 
     def _call_llm(self, prompt: str) -> str:
-        """调用 LLM（支持 OpenAI 和模拟模式）"""
+        """调用 LLM（Wave 17: 改用 UnifiedClient 支持 deepseek/kimi/siliconflow/MiniMax）"""
         try:
-            import openai
-            client = openai.OpenAI(api_key=self.llm_api_key)
-            response = client.chat.completions.create(
-                model="gpt-4",
+            from shared.llm_client import UnifiedClient
+            client = UnifiedClient()
+            resp = client.chat(
                 messages=[
                     {"role": "system", "content": "你是一个严格遵循 ReAct 格式的智能助手。"},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.1,
-                stop=["Observation:"],  # 在 Observation 前停止，等待工具执行
+                # 注: stop 参数仅 OpenAI/Anthropic 支持, 其他厂商忽略
             )
-            return response.choices[0].message.content
+            return resp.content
         except Exception:
             # 模拟模式（用于演示和测试）
             return self._simulate_llm(prompt)
