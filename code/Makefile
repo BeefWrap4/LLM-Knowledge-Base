@@ -1,4 +1,4 @@
-.PHONY: help install-core install-llm install-gpu install-all test test-llm test-llm-mock test-gpu lint fmt clean run verify verify-xrefs sync-links run-all ci ci-quick ci-core ci-llm ci-real download-models download-models-list download-models-default download-models-llm download-models-gpu download-models-edge llm-doctor llm-doctor-setup llm-doctor-check docker-build docker-up docker-down docker-bash docker-llm docker-gpu setup-local integration-test
+.PHONY: help install-core install-llm install-gpu install-all test test-llm test-llm-mock test-gpu test-real-api lint fmt clean run verify verify-xrefs sync-links run-all ci ci-quick ci-core ci-llm ci-real download-models download-models-list download-models-default download-models-llm download-models-gpu download-models-edge llm-doctor llm-doctor-setup llm-doctor-check docker-build docker-up docker-down docker-bash docker-llm docker-gpu setup-local integration-test
 
 # ─────────────────────────────────────────────────────────
 # 安装
@@ -163,8 +163,13 @@ llm-doctor-setup:  ## 交互式配置 API Key
 llm-doctor-check:  ## 测试已配置 Key
 	python scripts/llm_doctor.py --check
 
-ci-real:  ## 夜间跑真实 API (需 DEEPSEEK_API_KEY)
-	python scripts/run_all_examples.py --tier llm-real --parallel 1 --timeout 300
+ci-real:  ## 夜间跑真实 API 冒烟 (10 个代表性 LLM tier 文件, 需 DEEPSEEK_API_KEY)
+	python scripts/test_real_api_smoke.py
+
+test-real-api:  ## 真实 API 冒烟 (10 个代表性 LLM tier, 需 DEEPSEEK_API_KEY, 不可 LLM_MOCK=1)
+	@test -n "$$DEEPSEEK_API_KEY" || (echo "[ERROR] DEEPSEEK_API_KEY 未设"; exit 1)
+	@test "$$LLM_MOCK" != "1" || (echo "[ERROR] LLM_MOCK=1 与真实 API 互斥, 请 unset"; exit 1)
+	unset LLM_MOCK && python scripts/test_real_api_smoke.py
 
 # ─────────────────────────────────────────────────────────
 # 模型下载 (Wave 28)

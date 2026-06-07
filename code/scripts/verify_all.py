@@ -7,14 +7,18 @@
 """
 Master verification script. Returns 0 iff all checks pass.
 
-Checks:
+Checks (7 项):
   1. Wiki link integrity: 所有 [[WikiLinks]] 都能解析
   2. Chapter README coverage: 29/29 章节都有 README.md
   3. Code companion health:
      - 每章都有 core/ 或 llm/ 或 gpu/
      - 每章 .py 数 >= 1
-  4. Smoke test sample: 跑 5 个代表性 core 例子
+  4. Tutorial ↔ Code bidirectional sync: §X.Y ↔ # section: X.Y
+  5. CI LLM_MOCK safety: CI 环境应设 LLM_MOCK=1 (advisory)
+  6. Smoke test sample: 跑 5 个代表性 core 例子
+  7. LLM doctor (optional): 若环境有 API Key 跑诊断
 """
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -24,7 +28,7 @@ REPO = CODE.parent
 
 
 def check_wiki_links() -> bool:
-    print("\n--- [1/5] Wiki link integrity ---")
+    print("\n--- [1/7] Wiki link integrity ---")
     r = subprocess.run([sys.executable, str(CODE / "scripts" / "verify_xrefs.py")],
                        capture_output=True, text=True, cwd=str(REPO))
     # Filter out the summary lines we want
@@ -35,7 +39,7 @@ def check_wiki_links() -> bool:
 
 
 def check_readme_coverage() -> bool:
-    print("\n--- [2/5] Chapter README coverage ---")
+    print("\n--- [2/7] Chapter README coverage ---")
     expected = 29
     actual = sum(1 for d in CODE.glob("ch*") if (d / "README.md").is_file())
     print(f"  Chapter READMEs: {actual}/{expected}")
@@ -46,7 +50,7 @@ def check_readme_coverage() -> bool:
 
 
 def check_code_health() -> bool:
-    print("\n--- [3/5] Code companion health ---")
+    print("\n--- [3/7] Code companion health ---")
     chapters = sorted(CODE.glob("ch*"))
     total_py = 0
     unhealthy = []
@@ -65,7 +69,7 @@ def check_code_health() -> bool:
 
 
 def check_sync_links() -> bool:
-    print("\n--- [4/5] Tutorial ↔ Code bidirectional sync ---")
+    print("\n--- [4/7] Tutorial ↔ Code bidirectional sync ---")
     r = subprocess.run([sys.executable, str(CODE / "scripts" / "sync_links.py")],
                        capture_output=True, text=True, cwd=str(REPO))
     # Extract the key summary lines
@@ -76,8 +80,32 @@ def check_sync_links() -> bool:
     return r.returncode == 0
 
 
+def check_ci_llm_mock_safety() -> bool:
+    """CI 安全检查: 防止 PR check 意外调真实 API.
+
+    规则:
+    - 在 GitHub Actions CI 环境, LLM_MOCK 应被设 (避免 401/意外扣费)
+    - 本地开发可灵活 (LLM_MOCK=0 走真实 API 也 OK)
+    - 这项是 advisory, 不阻塞 (返回 True 总是, 只警告)
+    """
+    print("\n--- [5/7] CI LLM_MOCK safety check ---")
+    in_ci = bool(os.environ.get("CI"))
+    mock_set = os.environ.get("LLM_MOCK") == "1"
+
+    if in_ci and not mock_set:
+        print(f"  [WARN] CI 环境未设 LLM_MOCK=1, 可能意外调真实 API")
+        print(f"         建议: GitHub Actions workflow 加 `env: LLM_MOCK: '1'`")
+    elif mock_set:
+        print(f"  [OK]   LLM_MOCK=1, 走 mock 路径 (CI 友好)")
+    elif in_ci:
+        print(f"  [OK]   CI 环境且未设 LLM_MOCK (例如 real-api job, 显式走真实 API)")
+    else:
+        print(f"  [INFO] 本地非 CI 环境, LLM_MOCK 未设 (会调真实 API 或抛缺 Key 错)")
+    return True  # advisory, 不阻塞
+
+
 def check_smoke() -> bool:
-    print("\n--- [5/5] Smoke test sample (5 core/ files) ---")
+    print("\n--- [6/7] Smoke test sample (5 core/ files) ---")
     sample = [
         "ch01_python_basics/core/22_list_dict_basics.py",
         "ch02_mutability/core/01_is_vs_equals.py",
@@ -110,23 +138,25 @@ def main() -> int:
     r2 = check_readme_coverage()
     r3 = check_code_health()
     r4 = check_sync_links()
-    r5 = check_smoke()
-    r6 = check_llm_doctor()
+    r5 = check_ci_llm_mock_safety()
+    r6 = check_smoke()
+    r7 = check_llm_doctor()
 
     print("\n" + "=" * 60)
     print(f"  Wiki links:        {'PASS' if r1 else 'FAIL'}")
     print(f"  README coverage:   {'PASS' if r2 else 'FAIL'}")
     print(f"  Code health:       {'PASS' if r3 else 'FAIL'}")
     print(f"  Sync links:        {'PASS' if r4 else 'FAIL'}")
-    print(f"  Smoke sample:      {'PASS' if r5 else 'FAIL'}")
-    print(f"  LLM doctor:        {'PASS' if r6 else 'FAIL'}")
+    print(f"  LLM_MOCK safety:   {'PASS' if r5 else 'FAIL'}  (advisory)")
+    print(f"  Smoke sample:      {'PASS' if r6 else 'FAIL'}")
+    print(f"  LLM doctor:        {'PASS' if r7 else 'FAIL'}")
     print("=" * 60)
-    return 0 if all([r1, r2, r3, r4, r5, r6]) else 1
+    return 0 if all([r1, r2, r3, r4, r5, r6, r7]) else 1
 
 
 def check_llm_doctor() -> bool:
     """Optional: skip if no API key (return True). 实际有 key 时跑全部."""
-    print("\n--- [6/6] LLM doctor (API key health) ---")
+    print("\n--- [7/7] LLM doctor (API key health) ---")
     # 如果没任何 key, 跳过 (但 100% 通过, 因为 mock 也在)
     sys.path.insert(0, str(CODE))  # 让 shared 可 import
     try:
