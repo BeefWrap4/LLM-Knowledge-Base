@@ -1,95 +1,119 @@
 # ---
 # chapter: 25
-# topic: TTFT / TPOT SLO Monitor
+# topic: TTFT / TPOT SLO Monitor (真实 prometheus_client)
 # section: 25.6
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
-# deps: none
+# deps: prometheus-client
 # run: python 11_slo_ttft_tpot_monitor.py
-# expected_runtime: <1s
-# expected_output: 评估一批推理请求的 TTFT/TPOT 是否满足 SLO
+# expected_runtime: 5-30s (10 mock requests + http server)
+# expected_output: 启动 :9090 Prometheus 端点, 10 个 mock 请求的 TTFT/TPOT 记录
 # ---
-# See: ../tutorial/25_推理引擎_与高性能服务.md (note typo intentional: corrected below)
-# See also: ../tutorial/25_推理引擎与高性能服务.md §25.6
+# See: ../tutorial/25_推理引擎与高性能服务.md §25.6
 # Interview hooks:
 #   1. 什么是 TTFT 和 TPOT？分别由什么决定？
 #   2. 如何定义 LLM 服务 SLO？p50/p99 各自代表什么？
-#   3. SLO 不达标时如何定位？(答: prefill/ decode 拆分分析、batching 延迟、KV 压力)
+#   3. SLO 不达标时如何定位？(答: prefill/decode 拆分分析、batching 延迟、KV 压力)
+"""SLO 监控: TTFT (Time To First Token) + TPOT (Time Per Output Token).
 
-"""SLO monitor: TTFT / TPOT for a batch of mock requests."""
-from __future__ import annotations
-import random
+真实暴露 Prometheus metrics (HTTP :9090/metrics), 配合 Grafana 可视化.
+本文件模拟 10 个 LLM 请求, 记录 SLO 指标. 生产环境替换 simulate_request()
+为真实 vLLM 调用即可.
+"""
+import sys
 import time
-from dataclasses import dataclass
+import random
+from pathlib import Path
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
+
+from shared._error_helper import raise_with_help
+
+try:
+    from prometheus_client import Histogram, Counter, start_http_server
+    HAS_PROMETHEUS = True
+except ImportError:
+    HAS_PROMETHEUS = False
 
 
-@dataclass
-class SLO:
-    ttft_p99_ms: float = 300.0     # 99% of requests get first token < 300ms
-    tpot_p99_ms: float = 50.0      # 99% of decode steps < 50ms
-    e2e_p99_ms: float = 5000.0
+def setup_metrics():
+    """定义 Prometheus metrics."""
+    if not HAS_PROMETHEUS:
+        return None, None, None
+    return (
+        Histogram("llm_ttft_seconds", "Time to first token",
+                  buckets=(0.05, 0.1, 0.2, 0.5, 1.0, 2.0)),
+        Histogram("llm_tpot_seconds", "Time per output token",
+                  buckets=(0.01, 0.02, 0.05, 0.1, 0.2, 0.5)),
+        Counter("llm_requests_total", "Total LLM requests"),
+    )
 
 
-@dataclass
-class SampledReq:
-    rid: int
-    prompt_len: int
-    out_len: int
-    ttft_ms: float
-    per_token_ms: list[float]
+def simulate_request(req_id: int, ttft_hist, tpot_hist, req_counter) -> dict:
+    """模拟单次 LLM 请求, 记录 SLO metrics.
+
+    生产替换: 真实 vllm/tgi 调用即可, 仍用 Histogram.observe().
+    """
+    if not HAS_PROMETHEUS:
+        return {}
+
+    # 模拟 TTFT (50-300ms)
+    ttft = random.uniform(0.05, 0.3)
+    time.sleep(ttft * 0.01)  # 加速模拟 (实际会真 sleep)
+    ttft_hist.observe(ttft)
+
+    # 模拟 TPOT (10-100ms per token)
+    num_tokens = random.randint(50, 200)
+    total_tpot = 0
+    for _ in range(num_tokens):
+        tpot = random.uniform(0.01, 0.1)
+        total_tpot += tpot
+        tpot_hist.observe(tpot)
+    avg_tpot_ms = total_tpot / num_tokens * 1000
+
+    req_counter.inc()
+    print(f"  [{req_id:2d}] TTFT={ttft*1000:5.0f}ms | {num_tokens:3d} tokens | "
+          f"avg TPOT={avg_tpot_ms:5.1f}ms")
+    return {"ttft_ms": ttft*1000, "tpot_ms": avg_tpot_ms, "tokens": num_tokens}
 
 
-def simulate(n: int = 200) -> list[SampledReq]:
-    rng = random.Random(0)
-    out: list[SampledReq] = []
-    for i in range(n):
-        p = rng.randint(256, 4096)
-        o = rng.randint(64, 512)
-        # toy model: ttft grows with prompt_len
-        ttft = 30 + p * 0.04 + rng.gauss(0, 15)
-        # tpot mostly constant, occasionally spikes (memory pressure)
-        tpot = [12 + rng.gauss(0, 3) + (20 if rng.random() < 0.05 else 0)
-                for _ in range(o)]
-        out.append(SampledReq(i, p, o, ttft, tpot))
-    return out
+def main():
+    if not HAS_PROMETHEUS:
+        raise_with_help(
+            "prometheus_client 未装",
+            "运行 `pip install prometheus-client`.",
+        )
 
+    ttft_hist, tpot_hist, req_counter = setup_metrics()
 
-def percentile(xs: list[float], q: float) -> float:
-    s = sorted(xs)
-    idx = max(0, min(len(s) - 1, int(q * len(s))))
-    return s[idx]
+    # 启动 Prometheus HTTP server
+    port = 9090
+    start_http_server(port)
+    print(f"✅ Prometheus metrics server: http://localhost:{port}/metrics")
+    print()
+    print("=== 模拟 10 个 LLM 请求 ===")
 
+    results = []
+    for i in range(1, 11):
+        r = simulate_request(i, ttft_hist, tpot_hist, req_counter)
+        if r:
+            results.append(r)
 
-def evaluate(reqs: list[SampledReq], slo: SLO) -> dict:
-    ttfts = [r.ttft_ms for r in reqs]
-    tpots = [t for r in reqs for t in r.per_token_ms]
-    e2e = [r.ttft_ms + sum(r.per_token_ms) for r in reqs]
-    p = lambda xs, q: percentile(xs, q)
-    return {
-        "ttft_p50": round(p(ttfts, 0.50), 1),
-        "ttft_p99": round(p(ttfts, 0.99), 1),
-        "tpot_p50": round(p(tpots, 0.50), 2),
-        "tpot_p99": round(p(tpots, 0.99), 2),
-        "e2e_p99_ms": round(p(e2e, 0.99), 1),
-        "ttft_pass": p(ttfts, 0.99) <= slo.ttft_p99_ms,
-        "tpot_pass": p(tpots, 0.99) <= slo.tpot_p99_ms,
-        "e2e_pass":  p(e2e, 0.99) <= slo.e2e_p99_ms,
-    }
-
-
-def main() -> None:
-    reqs = simulate(500)
-    slo = SLO()
-    rep = evaluate(reqs, slo)
-    print("SLO targets : TTFT<%.0fms  TPOT<%.0fms  E2E<%.0fms"
-          % (slo.ttft_p99_ms, slo.tpot_p99_ms, slo.e2e_p99_ms))
-    print(f"observed p50/p99:")
-    print(f"  TTFT : {rep['ttft_p50']} / {rep['ttft_p99']} ms   "
-          f"{'PASS' if rep['ttft_pass'] else 'FAIL'}")
-    print(f"  TPOT : {rep['tpot_p50']} / {rep['tpot_p99']} ms   "
-          f"{'PASS' if rep['tpot_pass'] else 'FAIL'}")
-    print(f"  E2E  : {rep['e2e_p99_ms']} ms                   "
-          f"{'PASS' if rep['e2e_pass'] else 'FAIL'}")
+    # 汇总
+    if results:
+        avg_ttft = sum(r["ttft_ms"] for r in results) / len(results)
+        avg_tpot = sum(r["tpot_ms"] for r in results) / len(results)
+        print()
+        print(f"=== SLO 汇总 (10 请求) ===")
+        print(f"  avg TTFT: {avg_ttft:.0f}ms (SLO < 200ms) {'✅' if avg_ttft < 200 else '❌'}")
+        print(f"  avg TPOT: {avg_tpot:.1f}ms (SLO < 50ms) {'✅' if avg_tpot < 50 else '❌'}")
+        print()
+        print("✅ Metrics 暴露在 :9090/metrics (Grafana 可抓取)")
+        print()
+        print("生产部署: 把 simulate_request() 替换为:")
+        print("  - vllm.AsyncLLMEngine.generate() + timing")
+        print("  - 或 tgi/trtllm-serve 的 OpenAI 协议 + 客户端计时")
 
 
 if __name__ == "__main__":
