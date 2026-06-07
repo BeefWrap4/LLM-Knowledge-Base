@@ -96,6 +96,70 @@ make download-models-gpu           # +25GB: 世界模型 / VLA / 推理
 make download-models-edge          # +7GB: MLX / GGUF 端侧
 ```
 
+## 🐳 Docker vLLM 集成 (Windows escape hatch)
+
+`vllm._C` 编译扩展在 Windows 上缺失, 7 个 vLLM 例子默认友好抛错. **Docker escape hatch** 让 Windows 用户也能真跑:
+
+### 1. 启动 vLLM server (后台容器)
+
+```bash
+# 默认用 Qwen2.5-0.5B (本机已下载, ~60s 启动)
+make vllm-server-start
+
+# 自定义模型 (e.g. Qwen2.5-7B 需先下: make download-models-llm)
+MODEL=Qwen/Qwen2.5-7B-Instruct PORT=8001 make vllm-server-start
+```
+
+容器自动:
+- 用 `vllm/vllm-openai:latest` 镜像
+- GPU passthrough (`--gpus all`)
+- 挂载 `code/models/` 到 `/root/.cache/huggingface/` (免重下)
+- 等 30 秒后 `curl /v1/models` 验证 ready
+
+### 2. 用 OpenAI 客户端连 server (绕开 vllm._C)
+
+```python
+from openai import OpenAI
+client = OpenAI(base_url="http://localhost:8000/v1", api_key="EMPTY")
+resp = client.chat.completions.create(
+    model="/root/.cache/huggingface/Qwen2.5-0.5B-Instruct",  # 容器内路径
+    messages=[{"role": "user", "content": "Hello!"}],
+    max_tokens=32,
+)
+print(resp.choices[0].message.content)
+```
+
+### 3. 验证 / 停止
+
+```bash
+make vllm-server-status    # 检查 server 是否运行
+make vllm-server-stop     # 停止容器
+```
+
+### 4. 7 个 vLLM 例子的兼容性
+
+| 文件 | vLLM._C 缺失 | Docker server |
+|------|--------------|---------------|
+| `ch25/01-04` (paged/continuous/radix/PD) | 友好抛错 | 可改用 OpenAI 客户端 (需重构) |
+| `ch25/06, 07` (speculative, MoE) | 友好抛错 | 同上 |
+| `ch25/10` (vLLM async engine) | 友好抛错 | 同上 |
+| `ch18/13-18, 35` (LlamaIndex) | 友好抛错 | 同上 |
+
+**当前状态**: Docker 启动脚本是 escape hatch, 例子本身未重构. 用户可自行写 OpenAI 客户端代码连 server.
+
+### 5. Linux/WSL2/Docker 镜像推荐 (生产用)
+
+| 环境 | 推荐命令 |
+|------|---------|
+| Linux (有 GPU) | `pip install vllm` (官方支持, 编译扩展正常) |
+| WSL2 (有 GPU) | `pip install vllm` (Windows Subsystem 内部 Linux) |
+| Docker | `vllm/vllm-openai:0.21.0` (本脚本) |
+| 云端 (RunPod/Vast) | 用 vLLM 官方模板 + `pip install vllm` |
+
+---
+
+注: 这是 Windows 用户的临时 escape hatch. **生产推荐** 仍在 Linux 上 `pip install vllm`.
+
 ### 各章节最低硬件需求
 
 | 章节 | 最低硬件 | 模型权重 | 推荐 API |
