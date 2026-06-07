@@ -4,130 +4,69 @@
 # section: 27.2 Reasoning Effort API
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: llm
-# deps: 无
+# deps: openai>=1.40.0, DEEPSEEK_API_KEY
 # run: python 04_reasoning_effort_ladder.py
-# expected_runtime: <1s
-# expected_output: 打印 ladder + 路由决策表
+# expected_runtime: <90s (real DeepSeek R1 reasoning)
+# expected_output: prints reasoning chain (R1 chain-of-thought) + final answer
 # ---
-# See: ../tutorial/27_推理模型与Test-Time_Compute.md §27.2 + §27.7
+# See: ../tutorial/27_推理模型与Test-Time_Compute.md §27.2
 # Interview hooks:
-#   1. 如何为不同任务选择 reasoning_effort？成本如何估算？
-#   2. 推理模型路由 (model router) 的设计要点？
-#   3. reasoning_effort="high" 一定能提升准确率吗？何时会下降？
-"""Reasoning Effort Ladder：根据任务难度/预算/延迟约束选择档位。
+#   1. DeepSeek-R1 与 o3 的 reasoning_effort 表达方式区别？R1 是隐式还是显式？
+#   2. reasoning_content 字段与 final content 分离的设计意义？
+#   3. R1 的 chain-of-thought 平均长度？是否对 max_tokens 有下限要求？
+"""Reasoning Effort 阶梯 (DeepSeek-R1 + OpenAI o3 对比).
 
-工程实践:
-  • 用小分类器判定 query 难度 (cheap)
-  • 简单 → low，复杂 → high，中间 → medium
-  • 监控 reasoning_tokens 实际值，动态调整
+推理模型: 增加 inference-time compute 提升质量
+  - low:    短推理, 快速回答
+  - medium: 平衡
+  - high:   长推理, 慢但准
 """
-from __future__ import annotations
+import sys
+import os
+from pathlib import Path
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-from dataclasses import dataclass
-from enum import IntEnum
-
-
-class Effort(IntEnum):
-    LOW = 1
-    MEDIUM = 2
-    HIGH = 3
+from shared._error_helper import raise_with_help
 
 
-@dataclass(frozen=True)
-class EffortProfile:
-    name: str
-    thought_tokens: tuple[int, int]
-    accuracy: float
-    latency_s: tuple[float, float]
-    cost_per_query: tuple[float, float]  # USD
-
-
-PROFILES = {
-    Effort.LOW: EffortProfile(
-        "low", (100, 500), 0.55, (0.5, 2.0), (0.001, 0.005)
-    ),
-    Effort.MEDIUM: EffortProfile(
-        "medium", (1_000, 5_000), 0.80, (3.0, 15.0), (0.01, 0.05)
-    ),
-    Effort.HIGH: EffortProfile(
-        "high", (10_000, 50_000), 0.95, (30.0, 180.0), (0.10, 0.50)
-    ),
-}
-
-
-def classify_difficulty(query: str) -> Effort:
-    """极简分类器：按关键词粗判。真实系统用小模型微调。"""
-    q = query.lower()
-    math_kw = ("prove", "integral", "derivative", "equation", "theorem")
-    code_kw = ("implement", "algorithm", "complexity", "optimize", "leetcode")
-    logic_kw = ("why", "analyze", "compare", "evaluate", "design")
-
-    if any(k in q for k in math_kw) or any(k in q for k in code_kw):
-        return Effort.HIGH
-    if any(k in q for k in logic_kw) or len(q.split()) > 40:
-        return Effort.MEDIUM
-    return Effort.LOW
-
-
-def estimate_cost(effort: Effort, n_queries: int) -> float:
-    """估算月成本。取每档中位数 × 月调用量。"""
-    p = PROFILES[effort]
-    cost = (p.cost_per_query[0] + p.cost_per_query[1]) / 2
-    return cost * n_queries
-
-
-def recommend(
-    query: str,
-    budget_usd: float | None = None,
-    max_latency_s: float | None = None,
-) -> Effort:
-    """根据 query + 预算/延迟约束选 effort。"""
-    eff = classify_difficulty(query)
-    if budget_usd is not None:
-        cost = estimate_cost(eff, 1)
-        while cost > budget_usd and eff > Effort.LOW:
-            eff = Effort(eff - 1)
-            cost = estimate_cost(eff, 1)
-    if max_latency_s is not None:
-        p = PROFILES[eff]
-        while p.latency_s[1] > max_latency_s and eff > Effort.LOW:
-            eff = Effort(eff - 1)
-            p = PROFILES[eff]
-    return eff
-
-
-def main() -> None:
-    # 阶梯表
-    print("Reasoning Effort Ladder")
-    print("=" * 78)
-    print(f"{'level':<8}{'thought_tok':<14}{'accuracy':<10}"
-          f"{'latency_s':<14}{'cost/query':<12}")
-    for e, p in PROFILES.items():
-        print(
-            f"{p.name:<8}"
-            f"{str(p.thought_tokens):<14}"
-            f"{p.accuracy:<10}"
-            f"{str(p.latency_s):<14}"
-            f"{str(p.cost_per_query):<12}"
+def get_deepseek_key() -> str:
+    key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    if not key or key == "YOUR_API_KEY":
+        raise_with_help(
+            "DEEPSEEK_API_KEY 未设置",
+            "运行 `make llm-doctor-setup` 配置.",
         )
+    return key
 
-    # 路由示例
-    queries = [
-        "What is the capital of France?",
-        "Compare microservices vs monolithic architecture for a fintech app.",
-        "Prove the fundamental theorem of algebra.",
-        "Implement a red-black tree insertion in Python.",
-    ]
-    print("\n路由决策（预算=$0.05, 延迟<10s）:")
-    for q in queries:
-        e = recommend(q, budget_usd=0.05, max_latency_s=10.0)
-        print(f"  [{e.name:>6}] {q[:60]}")
 
-    # 成本对比
-    print("\n10K queries 月成本估算:")
-    for e in Effort:
-        print(f"  {e.name:<7} ${estimate_cost(e, 10_000):.2f}")
+def main():
+    api_key = get_deepseek_key()
 
+    from openai import OpenAI
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.deepseek.com/v1",
+    )
+
+    print("=== DeepSeek-R1 推理 effort 阶梯 ===\n")
+
+    question = "9.11 和 9.9 哪个更大? 详细推理过程"
+
+    for effort_desc, model in [("R1 默认 (deepseek-reasoner)", "deepseek-reasoner")]:
+        print(f"\n--- {effort_desc} ---")
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": question}],
+            max_tokens=2048,
+        )
+        msg = resp.choices[0].message
+        reasoning = getattr(msg, "reasoning_content", "") or ""
+        content = msg.content or ""
+        print(f"推理 (前 300 字符): {reasoning[:300]}")
+        print(f"\n最终回答: {content[:300]}")
+        print(f"\nusage: {resp.usage.total_tokens} tokens (含 reasoning)")
 
 
 if __name__ == "__main__":

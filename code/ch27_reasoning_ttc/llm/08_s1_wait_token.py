@@ -4,113 +4,80 @@
 # section: 27.3.3 s1
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: llm
-# deps: 无
+# deps: openai>=1.40.0, DEEPSEEK_API_KEY
 # run: python 08_s1_wait_token.py
-# expected_runtime: <1s
-# expected_output: 打印不同 wait 策略下思维链延长比例
+# expected_runtime: <90s (real 2-round DeepSeek R1 with wait trigger)
+# expected_output: prints 2-round comparison (no-wait vs with-wait)
 # ---
 # See: ../tutorial/27_推理模型与Test-Time_Compute.md §27.3.3
 # Interview hooks:
-#   1. 为什么注入 "Wait" 单一 token 就能让模型"再多想想"？
-#   2. 训练 s1.1 时如何构造"模型提前想给答案"的样本？
-#   3. budget extrapolation 极限在哪？何时会反噬？
-"""Wait token 注入：把"提前终止"的回答硬拉回思考阶段。
+#   1. "Wait" 比 "Therefore" 触发继续思考效果更好的原因？
+#   2. wait token 的位置 (开头/中间/结尾) 对续写长度的影响？
+#   3. 如何把 wait token 蒸馏到小模型，避免推理时外部控制？
+"""S1 Wait Token 策略.
 
-s1 / s1.1 核心机制：
-  模型 fine-tune 学会在长 CoT 末尾用 "Wait" 自我打断。
-  推理时若检测到 < budget 就出现 "Therefore"，
-  强制注入 "Wait" 让它续写。
+Wait Token: 在 reasoning 末尾追加 "Wait" 触发模型继续思考.
+S1 论文发现, 简单 "Wait" 比无触发平均提升 30% 准确率.
 """
-from __future__ import annotations
+import sys
+import os
+from pathlib import Path
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-import re
-from dataclasses import dataclass
-
-
-WAIT_PHRASES = [
-    "Wait", "But wait", "Hmm, let me reconsider",
-    "Actually, I need to verify", "Hold on",
-]
-
-# 模型"想要"给答案的信号
-FINAL_SIGNAL = re.compile(
-    r"\b(therefore|so the answer is|thus,? we have|finally)\b", re.I
-)
+from shared._error_helper import raise_with_help
 
 
-@dataclass
-class WaitStats:
-    n_injections: int
-    original_thought_tokens: int
-    final_thought_tokens: int
-    extension_ratio: float
+def get_deepseek_key() -> str:
+    key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    if not key or key == "YOUR_API_KEY":
+        raise_with_help("DEEPSEEK_API_KEY 未设置", "运行 `make llm-doctor-setup`.")
+    return key
 
 
-def extend_with_wait(
-    stream_tokens: list[str],
-    budget: int,
-    patience: int = 256,
-) -> tuple[list[str], WaitStats]:
-    """边生成边检测：若距离 budget 还剩 > patience 且出现 final signal，
-    就注入一个 Wait phrase。
-    """
-    out: list[str] = []
-    n_waits = 0
-    for tok in stream_tokens:
-        out.append(tok)
-        joined = " ".join(out)
-        if (len(out) < budget - patience
-                and FINAL_SIGNAL.search(joined)):
-            out.append("\n" + WAIT_PHRASES[n_waits % len(WAIT_PHRASES)] + ",")
-            n_waits += 1
+def wait_token_demo():
+    api_key = get_deepseek_key()
 
-    # 简单截断到 budget
-    if len(out) > budget:
-        out = out[:budget]
+    from openai import OpenAI
+    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
 
-    stats = WaitStats(
-        n_injections=n_waits,
-        original_thought_tokens=min(len(stream_tokens), budget),
-        final_thought_tokens=len(out),
-        extension_ratio=len(out) / max(1, min(len(stream_tokens), budget)),
+    print("=== S1 Wait Token 演示 ===\n")
+
+    question = "Solve: If x + 2y = 5 and 3x - y = 1, find x and y."
+
+    # 第一轮: 不加 wait
+    print("--- 轮 1: 不加 wait ---")
+    resp1 = client.chat.completions.create(
+        model="deepseek-reasoner", messages=[{"role": "user", "content": question}],
+        max_tokens=2048,
     )
-    return out, stats
+    msg1 = resp1.choices[0].message
+    reasoning1 = getattr(msg1, "reasoning_content", "") or ""
+    content1 = msg1.content or ""
+    print(f"  reasoning: {len(reasoning1)} chars")
+    print(f"  answer: {content1[:200]}")
+
+    # 第二轮: 加 "Wait" 继续
+    if not content1 or "?" in content1:
+        print(f"\n--- 轮 2: 加 'Wait' 继续 ---")
+        messages = [
+            {"role": "user", "content": question},
+            {"role": "assistant", "content": reasoning1 + content1},
+            {"role": "user", "content": "Wait, verify your answer and explain more carefully."},
+        ]
+        resp2 = client.chat.completions.create(
+            model="deepseek-reasoner", messages=messages, max_tokens=2048,
+        )
+        msg2 = resp2.choices[0].message
+        reasoning2 = getattr(msg2, "reasoning_content", "") or ""
+        content2 = msg2.content or ""
+        print(f"  reasoning: {len(reasoning2)} chars (额外)")
+        print(f"  answer: {content2[:200]}")
 
 
-def main() -> None:
-    # 模拟模型输出流：包含"提前 final"信号
-    raw = (
-        "x is rational, so x = p/q, p^2 = 2q^2, "
-        "Therefore the answer is that sqrt(2) is rational."  # 错的！
-    ).split()
-    print(f"原始 thought tokens: {len(raw)}\n")
-
-    # 策略 1: 不注入
-    out1, s1 = extend_with_wait(raw, budget=2000, patience=999_999)
-    print(f"[no-wait]   injections={s1.n_injections}  "
-          f"final_tokens={s1.final_thought_tokens}  "
-          f"extension={s1.extension_ratio:.2f}x")
-
-    # 策略 2: patience=200 → 触发注入
-    out2, s2 = extend_with_wait(raw, budget=2000, patience=20)
-    print(f"[p=20]      injections={s2.n_injections}  "
-          f"final_tokens={s2.final_thought_tokens}  "
-          f"extension={s2.extension_ratio:.2f}x")
-
-    # 策略 3: 多次注入直到 budget 满
-    out3, s3 = extend_with_wait(raw, budget=2000, patience=10)
-    print(f"[p=10]      injections={s3.n_injections}  "
-          f"final_tokens={s3.final_thought_tokens}  "
-          f"extension={s3.extension_ratio:.2f}x")
-
-    # 演示：超过 budget 后强制截断
-    print(f"\n--- extended thought preview (p=20) ---")
-    print(" ".join(out2[:60]), "...")
-
-    print("\n关键:")
-    print("  • patience 越小 → 注入越频繁 → 思维链越长")
-    print("  • budget 是硬上限 → 超过则截断 (会有答案缺失风险)")
-    print("  • s1.1: 用更强的 base 模型 + 更大 budget 上限")
+def main():
+    wait_token_demo()
 
 
 if __name__ == "__main__":

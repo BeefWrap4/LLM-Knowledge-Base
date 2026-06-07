@@ -4,112 +4,104 @@
 # section: 27.3.3 s1 (Stanford 2025)
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: llm
-# deps: 无
+# deps: openai>=1.40.0, DEEPSEEK_API_KEY
 # run: python 07_s1_budget_forcing.py
-# expected_runtime: <1s
-# expected_output: 打印 budget 强制生成 + 答案提取
+# expected_runtime: <120s (real DeepSeek R1 with forced wait loops)
+# expected_output: prints budget-forced reasoning length + final answer
 # ---
 # See: ../tutorial/27_推理模型与Test-Time_Compute.md §27.3.3
 # Interview hooks:
-#   1. s1 的核心思想是什么？为什么 1K 样本就能让 32B 模型学会长 CoT？
-#   2. budget forcing 的实现方式（截断 / 注入 wait token）？
-#   3. s1 与 DeepSeek-R1 的差异？(数据规模 + RL)
-"""s1: 用 1K 高质量长 CoT 样本 SFT + 推理时 budget forcing。
+#   1. Budget forcing 与 RL 训练的 cost model 区别？
+#   2. "Wait" token 触发的训练时分布偏移如何缓解？
+#   3. S1 在 AIME 24 上相对 base R1 提升多少？计算量/准确率曲线斜率？
+"""S1: Simple Test-Time Scaling (Budget Forcing).
 
-两个核心技巧:
-  1. 用特殊分隔符 `<|im_start|>think ... <|im_end|>` 强制结束思考
-  2. 当模型提前想给答案时，追加 "Wait" token 让它继续
+S1 核心: 控制推理时"思考 token 数", 强制模型用尽/截断思考:
+  - 强制等长: 追加 "Wait" 触发继续思考
+  - 强制截断: 追加最终答案 marker (如 "Final Answer:")
+
+参考: "Simple Test-Time Scaling" (arXiv 2501.19308) 2025
 """
-from __future__ import annotations
+import sys
+import os
+from pathlib import Path
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-import re
-from dataclasses import dataclass
-
-
-# s1 论文推荐的特殊 token
-THINK_END = "<|im_start|>answer"
-WAIT_TOKEN = "Wait"
-
-
-@dataclass
-class S1Config:
-    max_think_tokens: int = 4000   # 论文默认 budget
-    max_answer_tokens: int = 2000
-    inject_wait: bool = True
-    wait_patience: int = 200       # 距离答案 < 200 tok 时注入 Wait
+from shared._error_helper import raise_with_help
 
 
-@dataclass
-class S1Output:
-    think: str
-    answer: str
-    n_wait_injections: int
+def get_deepseek_key() -> str:
+    key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    if not key or key == "YOUR_API_KEY":
+        raise_with_help("DEEPSEEK_API_KEY 未设置", "运行 `make llm-doctor-setup`.")
+    return key
 
 
-def budget_force(raw_generation: str, cfg: S1Config) -> S1Output:
-    """把模型原始输出切分为 think / answer，并按 budget 强制结束。
+def budget_forced_generation(client, model: str, prompt: str, max_budget: int = 2000) -> dict:
+    """S1 budget forcing: 强制模型用足 / 截断 reasoning tokens.
 
-    Mock：把传入的 raw_generation 视为完整长 CoT。
+    流程:
+      1. 第一次调 API, 拿到 partial response (含 reasoning)
+      2. 如 reasoning < max_budget, 追加 "Wait" 强制继续
+      3. 重复, 直至 reasoning >= max_budget 或达到 N 次迭代
     """
-    # 1) 切分 think 与 answer
-    if THINK_END in raw_generation:
-        think, _, answer = raw_generation.partition(THINK_END)
-    else:
-        # 模型忘了切分 → 整段当 think
-        think, answer = raw_generation, ""
+    from openai import OpenAI
 
-    # 2) 截断过长的 think
-    think = truncate_to_tokens(think, cfg.max_think_tokens)
+    messages = [{"role": "user", "content": prompt}]
+    total_reasoning = ""
+    final_content = ""
+    iterations = 0
+    max_iterations = 5
 
-    # 3) 模拟 Wait 注入：检测 "Therefore the answer is" 提前出现
-    n_waits = 0
-    if cfg.inject_wait:
-        early = re.search(r"Therefore,?\s*the\s+answer\s+is", think, re.I)
-        if early and cfg.max_think_tokens - len(think.split()) < cfg.wait_patience:
-            think += f"\n{WAIT_TOKEN}, let me double-check..."
-            n_waits += 1
+    while iterations < max_iterations:
+        resp = client.chat.completions.create(
+            model=model, messages=messages,
+            max_tokens=4096,
+        )
+        msg = resp.choices[0].message
+        reasoning = getattr(msg, "reasoning_content", "") or ""
+        final_content = msg.content or ""
+        total_reasoning += reasoning
+        iterations += 1
 
-    # 4) answer 后处理
-    answer = answer.strip() or "(forced) 42"
+        if len(total_reasoning) >= max_budget:
+            break
+        if not final_content:  # 模型还没给最终答案, 强制继续
+            messages.append({"role": "assistant", "content": total_reasoning})
+            messages.append({"role": "user", "content": "Wait, continue thinking."})
+        else:
+            break
 
-    return S1Output(think=think.strip(), answer=answer, n_wait_injections=n_waits)
+    return {
+        "reasoning_len": len(total_reasoning),
+        "iterations": iterations,
+        "final": final_content,
+    }
 
 
-def truncate_to_tokens(text: str, max_tokens: int) -> str:
-    """粗略按空格切 token（真实环境用 tokenizer）。"""
-    toks = text.split()
-    if len(toks) <= max_tokens:
-        return text
-    return " ".join(toks[:max_tokens])
+def main():
+    api_key = get_deepseek_key()
 
+    from openai import OpenAI
+    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
 
-def main() -> None:
-    cfg = S1Config()
-    print(f"s1 config: budget={cfg.max_think_tokens}, "
-          f"wait_patience={cfg.wait_patience}\n")
+    print("=== S1 Budget Forcing (DeepSeek-R1) ===\n")
 
-    # 模拟模型生成（实际是 streaming 边生成边控制）
-    raw = (
-        "Let me think about this math problem carefully. We have x^2 = 2. "
-        "If x is rational, x = p/q, then p^2 = 2 q^2. "
-        "This means p^2 is even, so p is even, let p=2k, then 4k^2 = 2 q^2, "
-        "q^2 = 2k^2, so q is also even. Contradiction with p/q in lowest terms. "
-        "Therefore the answer is: sqrt(2) is irrational. "
-        f"{THINK_END} √2 is irrational, proved by infinite descent."
+    result = budget_forced_generation(
+        client, "deepseek-reasoner",
+        "9.11 和 9.9 哪个更大? 详细推理",
+        max_budget=2000,
     )
-    out = budget_force(raw, cfg)
 
-    print(f"think tokens (approx): {len(out.think.split())}")
-    print(f"answer: {out.answer!r}")
-    print(f"wait injections: {out.n_wait_injections}")
-    print(f"\n--- THINK PREVIEW (first 200 chars) ---\n{out.think[:200]}...")
-
-    # 关键统计：s1.1 vs s1 准确率 vs budget
-    print("\ns1 论文结果 (AIME24):")
-    print("  budget=4000  → ~56%  (无 Wait 注入)")
-    print("  budget=4000 + Wait → ~57%")
-    print("  budget=32000 + Wait → ~59%  (s1.1)")
-
+    print(f"  reasoning length: {result['reasoning_len']} chars")
+    print(f"  iterations: {result['iterations']}")
+    print(f"\n  final: {result['final'][:300]}")
+    print(f"\n  S1 关键:")
+    print(f"    - max_budget: 强制模型推理 token 数")
+    print(f"    - Wait token: 触发继续思考")
+    print(f"    - Final Answer: 触发截断")
 
 
 if __name__ == "__main__":

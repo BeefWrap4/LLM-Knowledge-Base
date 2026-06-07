@@ -4,104 +4,66 @@
 # section: 27.2 Reasoning Effort API
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: llm
-# deps: anthropic>=0.40.0 (optional)
+# deps: anthropic>=0.40.0
 # run: python 03_claude_extended_thinking.py
-# expected_runtime: <2s
-# expected_output: prints mock extended thinking blocks
+# expected_runtime: <60s (real Anthropic API call with thinking blocks)
+# expected_output: prints <thinking>...</thinking> block + final answer, or friendly error
 # ---
-# See: ../tutorial/27_推理模型与Test-Time_Compute.md §27.2 + §27.8 Q7
+# See: ../tutorial/27_推理模型与Test-Time_Compute.md §27.3
 # Interview hooks:
-#   1. Claude Extended Thinking 的 budget_tokens 和 max_tokens 区别？
-#   2. 什么是 Interleaved Thinking？为何对 Agent 关键？
-#   3. thinking block 在多轮对话中如何回传？
-"""Claude 4.6 Extended Thinking：budget_tokens 控制思考预算。
+#   1. Claude Extended Thinking 与 o3 reasoning_effort 的本质区别？
+#   2. thinking budget_tokens 与 max_tokens 的关系？interleaved thinking？
+#   3. 如何在 tool_use 中启用 extended thinking？
+"""Claude Extended Thinking (Anthropic).
 
-核心 API:
-  thinking = {"type": "enabled", "budget_tokens": 5000}
-  返回中包含 type="thinking" 的 block（可选择重加密回传），
-  以及最终的 type="text" answer block。
+Extended thinking 让 Claude 在生成最终回答前显式思考:
+  - 思考内容: <thinking>...</thinking> 块 (用户可见)
+  - 最大思考 token: thinking budget (max_tokens 参数)
+  - 适合: 复杂推理, 多步问题
 """
-from __future__ import annotations
-
+import sys
 import os
-import random
-from dataclasses import dataclass
+from pathlib import Path
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
+
+from shared._error_helper import raise_with_help
 
 
-@dataclass
-class ThinkingBlock:
-    type: str  # "thinking" | "text" | "tool_use"
-    content: str
-    tokens: int
-
-
-def _mock_extended_thinking(
-    question: str, budget_tokens: int
-) -> list[ThinkingBlock]:
-    """Mock 思考过程：按 budget 比例生成 thinking 与 text。"""
-    random.seed(hash(question) % 999)
-    used = random.randint(int(budget_tokens * 0.7), budget_tokens)
-    think = (
-        "The user asks about a non-trivial problem. Let me decompose:\n"
-        "  1. Identify known facts...\n"
-        "  2. Consider edge cases...\n"
-        "  3. Verify by substitution...\n"
-    ) * (used // 100 + 1)
-    think = think[: used * 4]  # 粗略 4 字符/token
-    answer = "After careful consideration, the answer is 42."
-    return [
-        ThinkingBlock("thinking", think, used),
-        ThinkingBlock("text", answer, len(answer.split())),
-    ]
-
-
-def call_claude(
-    question: str, budget_tokens: int = 5000
-) -> list[ThinkingBlock]:
-    """调用 Claude；缺 API key 时走 mock。"""
-    if budget_tokens < 1024:
-        raise ValueError("budget_tokens 必须 >= 1024")
-
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        try:
-            import anthropic
-
-            client = anthropic.Anthropic()
-            resp = client.messages.create(
-                model="claude-opus-4-6",
-                max_tokens=budget_tokens + 4096,
-                thinking={"type": "enabled", "budget_tokens": budget_tokens},
-                messages=[{"role": "user", "content": question}],
-            )
-            blocks = []
-            for b in resp.content:
-                blocks.append(
-                    ThinkingBlock(b.type, getattr(b, "thinking", b.text), 0)
-                )
-            return blocks
-        except Exception as e:  # noqa: BLE001
-            print(f"[warn] anthropic 调用失败 ({e})，回退到 mock")
-    return _mock_extended_thinking(question, budget_tokens)
-
-
-def main() -> None:
-    q = "Design a function that returns the k-th prime in O(n log log n)."
-
-    # 不同 budget 对比
-    for budget in (1024, 8000, 32000):
-        blocks = call_claude(q, budget_tokens=budget)
-        thinking = next((b for b in blocks if b.type == "thinking"), None)
-        text = next((b for b in blocks if b.type == "text"), None)
-        n_think = thinking.tokens if thinking else 0
-        preview = (thinking.content[:60] + "...") if thinking else ""
-        print(
-            f"[budget={budget:>5}] think_tokens={n_think:>5}  "
-            f"answer={text.content if text else ''!r}"
+def get_anthropic_key() -> str:
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not key or key == "YOUR_API_KEY":
+        raise_with_help(
+            "ANTHROPIC_API_KEY 未设置",
+            "国内用户可用 DeepSeek-R1 替代.",
         )
-        print(f"           think_preview={preview!r}")
+    return key
 
-    print("\n提示: Interleaved Thinking 让模型在 tool_use 之间持续思考，")
-    print("      这是 Claude 4.6 在 Agent 场景相对 o3 的关键差异。")
+
+def main():
+    api_key = get_anthropic_key()
+
+    import anthropic
+    client = anthropic.Anthropic(api_key=api_key)
+
+    print("=== Claude Extended Thinking ===\n")
+
+    response = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=4096,
+        thinking={
+            "type": "enabled",
+            "budget_tokens": 2048,
+        },
+        messages=[{"role": "user", "content": "9.11 和 9.9 哪个更大?"}],
+    )
+
+    for block in response.content:
+        if block.type == "thinking":
+            print(f"\n<thinking>\n{block.thinking[:500]}\n</thinking>")
+        elif block.type == "text":
+            print(f"\n回答: {block.text}")
 
 
 if __name__ == "__main__":
