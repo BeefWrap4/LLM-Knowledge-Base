@@ -114,7 +114,7 @@ class UnifiedClient:
 | `ch18_llm_frameworks/llm/01-09_*.py` | 9 | 删除 `run_real()/run_mock()` 双函数；只留真实路径 |
 | `ch18_llm_frameworks/llm/13-18_*.py` | 6 | 删除 `if USE_REAL_API:` 分支，保留真实路径 |
 | `ch18_llm_frameworks/llm/35_memory_token_control.py` | 1 | 同上 |
-| `ch19_distributed/gpu/02_ddp_training.py` | 1 | 真实 `accelerate launch` |
+| `ch19_distributed/gpu/02_ddp_training.py` | 1 | W3 阶段：仅审 + 去 mock import；W6 阶段：真实 `accelerate launch`（见 §6 W6）|
 | `ch22_data_eng/llm/04_self_instruct.py` | 1 | 删 `if not is_real_api` |
 | `ch22_data_eng/llm/11_constitutional_ai.py` | 1 | 同上 |
 | `ch29_context_engineering/llm/05_haystack_chat_pipeline.py` | 1 | 同上 |
@@ -409,7 +409,8 @@ tests/
 2. **修 ch18/01-09**：9 个 `run_real()/run_mock()` 双函数 → 拆为 `01_langchain_*.py`（真实）+ `tests/_mocks/demo_*`（demo）
 3. **修 ch18/13-18 + 35**：6+1 个 `if USE_REAL_API` 分支 → 默认真实
 4. **修 ch22/04, ch22/11, ch29/05, ch29/12**：4 个 `if not is_real_api` → 默认真实
-5. **审剩余 ~170 个 llm/*.py**：grep 全文 `MockLLM\|is_mock\|fake_llm`
+5. **审 ch19/02, 03**：`02_ddp_training.py` 和 `03_fsdp_training.py` 是 GPU tier 文件，本 wave **只审 + 去 mock import**，**不**做真实化（真实化留到 W6 阶段，本 wave stub 处理：调用框架改为 `accelerate launch`，但保留小模型占位 + 合成 dataset）
+6. **审剩余 ~170 个 llm/*.py**：grep 全文 `MockLLM\|is_mock\|fake_llm`
 
 **验收**：
 - `LLM_MOCK=1 make ci-llm` 全绿
