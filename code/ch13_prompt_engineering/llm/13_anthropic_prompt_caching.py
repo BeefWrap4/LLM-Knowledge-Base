@@ -4,9 +4,9 @@
 # section: 13.7.2 Anthropic Prompt Caching
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: anthropic (可选，缺失则使用 mock)
+# deps: anthropic
 # run: python 13_anthropic_prompt_caching.py
-# expected_runtime: <1s (mock) / 5-15s (real api)
+# expected_runtime: 5-15s (real api)
 # expected_output: 打印缓存创建/读取 token 数及命中率
 # ---
 # See: ../tutorial/13_Prompt_Engineering.md#13.7.2
@@ -15,9 +15,9 @@
 # - cache_control 应该插在 messages 的哪一段最有效？
 # - 如何监控命中率并触发告警？
 
-import os
+import anthropic
 
-USE_MOCK = os.environ.get("USE_REAL_API") != "1"
+_client = anthropic.Anthropic()
 
 
 def load_user_document() -> str:
@@ -25,22 +25,8 @@ def load_user_document() -> str:
     return "示例代码 - " * 1000
 
 
-class _MockUsage:
-    cache_creation_input_tokens = 8000
-    cache_read_input_tokens = 32000
-    input_tokens = 400
-
-
-class _MockResp:
-    usage = _MockUsage()
-
-
 def call_anthropic_with_cache(system_prompt, user_content):
-    if USE_MOCK:
-        return _MockResp()
-    import anthropic
-    client = anthropic.Anthropic()
-    return client.messages.create(
+    return _client.messages.create(
         model="claude-sonnet-4-5",
         max_tokens=2048,
         system=system_prompt,

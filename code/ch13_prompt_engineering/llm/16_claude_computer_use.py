@@ -4,10 +4,10 @@
 # section: 13.7.3 Claude Computer Use
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: anthropic (可选，缺失则使用 mock)
+# deps: anthropic
 # run: python 16_claude_computer_use.py
-# expected_runtime: <1s (mock) / 10-20s (real api)
-# expected_output: 打印 Claude Computer Use 工具规范与模拟返回
+# expected_runtime: 10-20s (real api)
+# expected_output: 打印 Claude Computer Use 工具规范与返回
 # ---
 # See: ../tutorial/13_Prompt_Engineering.md#13.7.3
 # Interview hooks:
@@ -16,33 +16,13 @@
 # - 高风险操作（支付、删除）的拦截策略？
 
 import base64
-import os
 
-USE_MOCK = os.environ.get("USE_REAL_API") != "1"
+import anthropic
 
-
-class _MockBlock:
-    def __init__(self, type_, **kwargs):
-        self.type = type_
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
-
-class _MockResp:
-    content = [
-        _MockBlock("text", text="<thinking>在搜索框定位坐标 (500, 200) 处输入文本</thinking>"),
-        _MockBlock("tool_use", name="computer",
-                   input={"action": "type", "coordinate": [500, 200], "text": "Python tutorial"})
-    ]
+_client = anthropic.Anthropic()
 
 
 def call_claude_computer_use(screenshot_b64: str, user_msg: str):
-    if USE_MOCK:
-        return _MockResp()
-
-    import anthropic
-    client = anthropic.Anthropic()
-
     # Computer Use 工具定义
     tools = [{
         "name": "computer",
@@ -73,7 +53,7 @@ def call_claude_computer_use(screenshot_b64: str, user_msg: str):
 返回坐标时使用 0-1000 归一化坐标，0=左上，1000=右下。
 """
 
-    return client.messages.create(
+    return _client.messages.create(
         model="claude-sonnet-4-5",
         max_tokens=2048,
         system=COMPUTER_USE_SYSTEM,

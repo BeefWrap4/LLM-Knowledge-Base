@@ -10,10 +10,10 @@ if str(_code_root) not in _sys_path_setup.path:
 # section: 13.7.2 OpenAI Automatic Caching
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: openai (可选，缺失则使用 mock)
+# deps: openai (via shared.llm_client)
 # run: python 14_openai_auto_caching.py
-# expected_runtime: <1s (mock) / 3-10s (real api)
-# expected_output: 打印请求构造后返回的 mock content 与缓存约束说明
+# expected_runtime: 3-10s (real api)
+# expected_output: 打印请求构造后返回的内容与缓存约束说明
 # ---
 # See: ../tutorial/13_Prompt_Engineering.md#13.7.2
 # Interview hooks:
@@ -21,32 +21,18 @@ if str(_code_root) not in _sys_path_setup.path:
 # - 如果前缀只改了 1 个 token，缓存能命中吗？
 # - 如何把动态内容尽量"后置"以最大化缓存命中？
 
-import os
+from shared.llm_client import UnifiedClient
 
-USE_MOCK = os.environ.get("USE_REAL_API") != "1"
+_client = UnifiedClient()
 
 LARGE_SYSTEM_PROMPT = (
     "你是一名专业的中文写作助手。规则：" * 200
 )  # 模拟一个 > 1024 tokens 的 system prompt
 
 
-class _MockChoice:
-    class _Msg:
-        content = "[mock] 这是基于自动缓存命中的响应"
-    message = _Msg()
-
-
-class _MockResp:
-    choices = [_MockChoice()]
-
-
 def call_openai(messages):
-    if USE_MOCK:
-        return _MockResp()
     # Wave 16: 改用 UnifiedClient (支持 deepseek/kimi/siliconflow/MiniMax)
-    from shared.llm_client import UnifiedClient
-    client = UnifiedClient()
-    return client.chat(
+    return _client.chat(
         messages=messages,  # 不传 model = 用 provider 默认 (deepseek-chat, MiniMax-Text-01, etc.)
     )
 

@@ -4,9 +4,9 @@
 # section: 13.3.1 Temperature 对比
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: openai (可选，缺失则使用 mock)
+# deps: openai (via shared.llm_client)
 # run: python 09_compare_temperatures.py
-# expected_runtime: <1s (mock) / 5-20s (real api)
+# expected_runtime: 5-20s (real api)
 # expected_output: 打印不同 temperature 下的 3 个样本对比
 # ---
 # See: ../tutorial/13_Prompt_Engineering.md#13.3.1
@@ -21,19 +21,9 @@ _code_root = _Path_setup(__file__).resolve().parent.parent.parent  # /app/code o
 if str(_code_root) not in _sys_path_setup.path:
     _sys_path_setup.path.insert(0, str(_code_root))
 
-import os
+from shared.llm_client import UnifiedClient
 
-USE_MOCK = os.environ.get("USE_REAL_API") != "1"
-
-
-def _mock_completions(prompt: str, temperature: float, n: int):
-    """模拟 OpenAI 返回：temperature 越高，输出差异越大。"""
-    import random
-    rng = random.Random(int(temperature * 1000))
-    base = ["落叶飘黄", "金风送爽", "枫红如火", "稻浪翻涌", "凉意渐浓"]
-    if temperature == 0:
-        return [base[0]] * n
-    return rng.sample(base, n)
+_client = UnifiedClient()
 
 
 def compare_temperatures(prompt: str, temps=None):
@@ -42,18 +32,13 @@ def compare_temperatures(prompt: str, temps=None):
         temps = [0.0, 0.5, 1.0]
     results = {}
     for t in temps:
-        if USE_MOCK:
-            results[t] = _mock_completions(prompt, t, n=3)
-        else:
-            from shared.llm_client import UnifiedClient
-            _client = UnifiedClient()
-            results[t] = [
-                _client.chat(
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=t,
-                ).content
-                for _ in range(3)  # 每个温度生成3个样本
-            ]
+        results[t] = [
+            _client.chat(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=t,
+            ).content
+            for _ in range(3)  # 每个温度生成3个样本
+        ]
     return results
 
 

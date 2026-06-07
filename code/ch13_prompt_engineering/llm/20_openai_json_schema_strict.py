@@ -10,9 +10,9 @@ if str(_code_root) not in _sys_path_setup.path:
 # section: 13.7.4 OpenAI JSON Schema 严格模式
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: openai (可选), pydantic
+# deps: openai (via shared.llm_client), pydantic
 # run: python 20_openai_json_schema_strict.py
-# expected_runtime: <1s (mock) / 3-10s (real api)
+# expected_runtime: 3-10s (real api)
 # expected_output: 打印符合 schema 的结构化输出
 # ---
 # See: ../tutorial/13_Prompt_Engineering.md#13.7.4
@@ -21,15 +21,14 @@ if str(_code_root) not in _sys_path_setup.path:
 # - 为何 Pydantic + model_json_schema 是推荐组合？
 # - strict=True 是否影响延迟？(轻微增加)
 
-import os
 import json
+import re
 
-USE_MOCK = os.environ.get("USE_REAL_API") != "1"
+from pydantic import BaseModel
 
-try:
-    from pydantic import BaseModel
-except ImportError:
-    BaseModel = object  # 极简兼容
+from shared.llm_client import UnifiedClient
+
+_client = UnifiedClient()
 
 
 class UserInfo(BaseModel):
@@ -38,25 +37,9 @@ class UserInfo(BaseModel):
     skills: list[str]
 
 
-class _MockChoice:
-    class _Msg:
-        content = json.dumps({"name": "张伟", "age": 28, "skills": ["Python", "Rust"]},
-                             ensure_ascii=False)
-    message = _Msg()
-
-
-class _MockResp:
-    choices = [_MockChoice()]
-
-
 def call_openai_structured(user_text: str):
-    if USE_MOCK:
-        return _MockResp()
-
     # Wave 16: 改用 UnifiedClient (注: response_format 仅 OpenAI 完整支持, 其他厂商可能忽略)
-    from shared.llm_client import UnifiedClient
-    client = UnifiedClient()
-    return client.chat(
+    return _client.chat(
         messages=[
             {"role": "system", "content": "从用户描述中提取结构化信息。"},
             {"role": "user", "content": user_text}
@@ -72,7 +55,6 @@ if __name__ == "__main__":
     # Wave 24: 适配 UnifiedClient 的 _LLMResponse (无 .choices 属性)
     content = response.content if hasattr(response, "content") else response.choices[0].message.content
     # Wave 24: 部分厂商不严格遵循 JSON, 用 regex 提取首个 {...} 块
-    import re
     json_match = re.search(r"\{[^{}]*\}", content, re.DOTALL)
     if json_match:
         data = json.loads(json_match.group(0))

@@ -4,9 +4,9 @@
 # section: 13.7.4 xgrammar 词表级约束解码
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: xgrammar (可选), transformers (可选), torch (可选)
+# deps: xgrammar, transformers, torch
 # run: python 18_xgrammar_constrained_decoding.py
-# expected_runtime: <1s (mock) / 5-30s (real)
+# expected_runtime: 5-30s (real)
 # expected_output: 打印通过 grammar 约束生成的合法 JSON
 # ---
 # See: ../tutorial/13_Prompt_Engineering.md#13.7.4
@@ -15,27 +15,16 @@
 # - xgrammar 与 outlines/lm-format-enforcer 的实现差异？
 # - 约束解码对推理速度的开销 (5-15%) 主要来自哪里？
 
-import os
 import json
 
-USE_MOCK = os.environ.get("USE_REAL_API") != "1"
+# xgrammar：2025 年发布的开源结构化生成引擎
+# 安装：pip install xgrammar
+import xgrammar as xg
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def run_xgrammar_demo():
-    # xgrammar：2025 年发布的开源结构化生成引擎
-    # 安装：pip install xgrammar
-    if USE_MOCK:
-        # 演示约束效果：返回一个 schema-合规的 JSON
-        return json.dumps({
-            "name": "张伟",
-            "age": 28,
-            "skills": ["Python", "Rust"]
-        }, ensure_ascii=False)
-
-    import xgrammar as xg
-    import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-
     # 1. 定义 JSON Schema
     json_schema = {
         "type": "object",

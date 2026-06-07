@@ -4,9 +4,9 @@
 # section: 13.7.2 Gemini Explicit Caching
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: google-generativeai (可选，缺失则使用 mock)
+# deps: google-generativeai
 # run: python 15_gemini_explicit_caching.py
-# expected_runtime: <1s (mock) / 5-15s (real api)
+# expected_runtime: 5-15s (real api)
 # expected_output: 打印 cached tokens 与 prompt tokens
 # ---
 # See: ../tutorial/13_Prompt_Engineering.md#13.7.2
@@ -17,27 +17,13 @@
 
 import os
 
-USE_MOCK = os.environ.get("USE_REAL_API") != "1"
+# Google Gemini Explicit Caching
+import google.generativeai as genai
 
-
-class _MockUsageMeta:
-    cached_content_token_count = 50000
-    prompt_token_count = 50300
-
-
-class _MockResponse:
-    text = "[mock] 公司年假政策：员工每年享有 15 天带薪年假，按入职年限递增。"
-    usage_metadata = _MockUsageMeta()
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY"))
 
 
 def run_gemini_cache_demo():
-    if USE_MOCK:
-        return _MockResponse()
-
-    # Google Gemini Explicit Caching
-    import google.generativeai as genai
-    genai.configure(api_key=os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY"))
-
     large_handbook_doc = "公司年假政策……" * 5000
 
     # 1. 显式创建缓存（最长 60 分钟）

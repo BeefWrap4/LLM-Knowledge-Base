@@ -4,9 +4,9 @@
 # section: 13.7.3 OpenAI Computer-Using Agent (CUA)
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: openai (可选，缺失则使用 mock)
+# deps: openai
 # run: python 17_openai_cua.py
-# expected_runtime: <1s (mock) / 10-20s (real api)
+# expected_runtime: 10-20s (real api)
 # expected_output: 打印 CUA 返回的动作序列
 # ---
 # See: ../tutorial/13_Prompt_Engineering.md#13.7.3
@@ -16,33 +16,15 @@
 # - environment 参数（browser/mac/windows）如何影响动作集？
 
 import base64
-import os
 
-USE_MOCK = os.environ.get("USE_REAL_API") != "1"
+from openai import OpenAI
 
-
-class _MockAction:
-    type = "click"
-    coordinates = [320, 540]
-
-
-class _MockItem:
-    type = "computer_call"
-    action = _MockAction()
-
-
-class _MockResp:
-    output = [_MockItem()]
+_client = OpenAI()
 
 
 def call_openai_cua(screenshot_b64: str, user_msg: str):
-    if USE_MOCK:
-        return _MockResp()
-
     # OpenAI CUA 通过 Responses API 使用
-    from openai import OpenAI
-    client = OpenAI()
-    return client.responses.create(
+    return _client.responses.create(
         model="computer-use-preview",  # 专用 CUA 模型
         input=[{
             "role": "user",
