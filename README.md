@@ -4,7 +4,7 @@
 >
 > 29 章节 · 280+ 面试题 · 439 个可运行代码示例 · 2026 主题全覆盖 · 健康评分 95/100
 
-[![Verify](https://github.com/yourname/python-llm-interview-2026/actions/workflows/verify.yml/badge.svg)](https://github.com/yourname/python-llm-interview-2026/actions/workflows/verify.yml)
+[![Verify](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/verify.yml/badge.svg)](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-green.svg)](https://www.python.org/)
 
@@ -90,6 +90,27 @@
 
 ## 🚀 快速开始
 
+### 5 分钟跑通第一个代码例子 (推荐)
+
+```bash
+git clone https://github.com/BeefWrap4/LLM-Knowledge-Base.git
+cd LLM-Knowledge-Base/code
+python -m venv .venv && source .venv/Scripts/activate
+make install-core                    # 30 秒, CPU 即可
+python ch12_transformer_architecture/core/01_scaled_dot_product_attention.py
+# 输出: OK
+```
+
+跑通后, 任意 `ch*/llm/*.py` 或 `ch*/gpu/*.py` 都可执行, 三层依赖自动决定.
+
+### 三层依赖策略 (按需升级)
+
+| Tier | 安装命令 | 适用例子 | 备注 |
+|------|---------|---------|------|
+| **core (158)** | `make install-core` | Ch01-11 | 任何电脑, 30s |
+| **llm (199)** | `make install-llm` | Ch12-24 | mock 模式或 API key, 5min |
+| **gpu (76)** | `make install-gpu` | Ch25-29 | NVIDIA GPU + 重型依赖, 30min |
+
 ### 在 Obsidian 中阅读（推荐）
 
 1. 下载 [Obsidian](https://obsidian.md/)
@@ -104,6 +125,14 @@
 ### 搜索特定考点
 
 所有 Wiki 链接使用 `[[NN_TopicName]]` 格式，搜索 `[[16_` 即可找到所有指向第 16 章的反向链接。
+
+### 一键验证 5 项检查
+
+```bash
+cd code/
+make verify                # <30s, 任何 commit 前跑一次
+make ci                    # ~10min, push 前跑 (镜像 GitHub Actions)
+```
 
 ## 📊 2026 主题速查
 

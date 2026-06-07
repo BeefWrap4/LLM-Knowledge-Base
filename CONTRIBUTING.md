@@ -3,8 +3,8 @@
 ## 开发环境
 
 ```bash
-git clone https://github.com/yourname/python-llm-interview-2026.git
-cd python-llm-interview-2026
+git clone https://github.com/BeefWrap4/LLM-Knowledge-Base.git
+cd LLM-Knowledge-Base
 
 # 安装 pre-commit (自动检查 wiki 链接 + 代码风格)
 pip install pre-commit ruff
