@@ -1,95 +1,98 @@
 # ---
 # chapter: 28
-# topic: Ollama OpenAI 兼容 API 调用
+# topic: Ollama OpenAI 兼容 API 调用 (真实 httpx / openai SDK)
 # section: 28.4.2 Ollama 一键部署
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
-# deps: httpx (or urllib stdlib)
+# deps: httpx, openai
 # run: python 05_ollama_http_api.py
-# expected_runtime: <1s (no live server, prints curl/python equivalent)
-# expected_output: Ollama /api/chat 与 /v1/chat/completions 调用示例
+# expected_runtime: <30s (受 Ollama 服务可用性 + 模型下载状态影响)
+# expected_output: 真实调用 Ollama /api/chat 与 /v1/chat/completions 拿到回复
 # ---
 # See: ../tutorial/28_端侧与边缘LLM.md § 28.4.2
 # Interview hooks:
 #   1. Ollama 与 llama.cpp 直接调用的关系是什么?
 #   2. Ollama 的 OpenAI 兼容端点路径是什么?
 #   3. 如何在 Python 中以 OpenAI SDK 客户端调用本地 Ollama?
-"""Ollama 本地 LLM 服务的两种 API 调用方式 (无需真实服务)."""
+"""Ollama 本地 LLM 服务的两种 API 调用方式 (真实调用, 非打印代码字符串)."""
 from __future__ import annotations
 
-import json
+import sys
+from pathlib import Path
+
+# 让脚本既能 `python file.py` 也能 `import` 找到 shared/
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
+
+from shared._error_helper import raise_with_help
 
 
-def show_native_api_call() -> None:
+def call_ollama_native(prompt: str = "Hello!", model: str = "llama3.2:3b") -> str:
     """Ollama 原生 API: POST /api/chat."""
-    print("--- Ollama 原生 API (POST /api/chat) ---")
-    print("# 启动 Ollama 后: ollama run llama3.2:3b")
-    print()
-    print("import httpx")
-    print("resp = httpx.post(")
-    print('    "http://localhost:11434/api/chat",')
-    print("    json={")
-    print('        "model": "llama3.2:3b",')
-    print('        "messages": [{"role": "user", "content": "Hello!"}],')
-    print('        "stream": False,')
-    print("    },")
-    print("    timeout=60,")
-    print(")")
-    print("data = resp.json()")
-    print('print(data["message"]["content"])  # 模型回复')
+    import httpx
+
+    try:
+        resp = httpx.post(
+            "http://localhost:11434/api/chat",
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json()["message"]["content"]
+    except httpx.ConnectError:
+        raise_with_help(
+            "Ollama 服务未运行 (connection refused on :11434).",
+            "先 `ollama serve` (后台启动); 然后 `ollama pull llama3.2:3b`.",
+        )
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise_with_help(
+                f"模型 {model} 未下载 (HTTP 404 from /api/chat).",
+                f"运行 `ollama pull {model}`.",
+            )
+        raise
 
 
-def show_openai_compat_call() -> None:
-    """OpenAI 兼容 API: POST /v1/chat/completions - 可以用 openai SDK."""
-    print("--- OpenAI 兼容 API (POST /v1/chat/completions) ---")
-    print("用 openai SDK 调用本地 Ollama (改 base_url):")
-    print()
-    print("from openai import OpenAI")
-    print("client = OpenAI(")
-    print('    base_url="http://localhost:11434/v1",  # 关键: 指向本地 Ollama')
-    print('    api_key="ollama",  # 任意占位')
-    print(")")
-    print("resp = client.chat.completions.create(")
-    print('    model="llama3.2:3b",')
-    print('    messages=[{"role": "user", "content": "Hello!"}],')
-    print(")")
-    print('print(resp.choices[0].message.content)')
+def call_ollama_openai_compat(prompt: str = "Hello!", model: str = "llama3.2:3b") -> str:
+    """Ollama OpenAI 兼容端点: POST /v1/chat/completions (可用 openai SDK)."""
+    try:
+        from openai import OpenAI
+    except ImportError:
+        raise_with_help("openai SDK 未装.", "运行 `make install-llm` 或 `pip install openai`.")
 
-
-def show_curl_examples() -> None:
-    """curl 等价命令, 方便调试."""
-    print("\n--- curl 等价命令 ---")
-    print("# 原生 API:")
-    print('curl -X POST http://localhost:11434/api/chat \\')
-    print('  -H "Content-Type: application/json" \\')
-    print('  -d \'{"model":"llama3.2:3b","messages":[{"role":"user","content":"Hi"}],"stream":false}\'')
-
-    print("\n# OpenAI 兼容:")
-    print('curl -X POST http://localhost:11434/v1/chat/completions \\')
-    print('  -H "Content-Type: application/json" \\')
-    print('  -d \'{"model":"llama3.2:3b","messages":[{"role":"user","content":"Hi"}]}\'')
-
-    print("\n# 流式响应 (stream=true):")
-    print('curl -N http://localhost:11434/api/chat -d \'{"model":"llama3.2:3b","stream":true,...}\'')
-
-
-def show_pull_command() -> None:
-    """常用模型管理命令."""
-    print("\n--- 模型管理 ---")
-    print("  ollama pull llama3.2:3b          # 拉取模型")
-    print("  ollama list                      # 已下载模型")
-    print("  ollama ps                        # 正在运行的模型")
-    print("  ollama rm llama3.2:3b            # 删除模型")
-    print("  ollama show llama3.2:3b          # 查看模型元数据")
-    print("  ollama cp llama3.2:3b my-model   # 复制/重命名")
+    client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            timeout=60,
+        )
+        return resp.choices[0].message.content
+    except Exception as e:
+        raise_with_help(
+            f"Ollama OpenAI 兼容端点调用失败: {type(e).__name__}: {e}",
+            "确保 `ollama serve` 已运行, 且 `ollama pull llama3.2:3b` 已下载模型.",
+        )
 
 
 def main() -> None:
-    show_native_api_call()
-    print()
-    show_openai_compat_call()
-    show_curl_examples()
-    show_pull_command()
+    # 1) 健康检查: Ollama 服务 + 模型可用性
+    from shared.gpu_guard import require_ollama
+
+    require_ollama(model="llama3.2:3b")
+
+    print("=== Ollama 原生 API ===")
+    result = call_ollama_native("用一句话介绍你自己, 30 字以内.")
+    print(f"Response: {result}\n")
+
+    print("=== Ollama OpenAI 兼容 ===")
+    result = call_ollama_openai_compat("用一句话介绍你自己, 30 字以内.")
+    print(f"Response: {result}")
 
 
 if __name__ == "__main__":

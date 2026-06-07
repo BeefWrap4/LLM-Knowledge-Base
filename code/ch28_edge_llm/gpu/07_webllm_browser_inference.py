@@ -1,116 +1,164 @@
 # ---
 # chapter: 28
-# topic: WebLLM 浏览器端推理 (WebGPU 加速)
+# topic: WebLLM 浏览器端推理 (真实 playwright 打开 mlc.ai/web-llm)
 # section: 28.5.1 WebLLM / MLC-LLM
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
-# deps: (浏览器侧: @mlc-ai/web-llm; 本文件仅展示 JS 调用模板)
+# deps: playwright (chromium)
 # run: python 07_webllm_browser_inference.py
-# expected_runtime: <1s
-# expected_output: WebLLM 完整前端调用代码 + 配套 Python 后端代理示例
+# expected_runtime: 30-90s (页面加载 + 浏览器下载模型 1-2GB)
+# expected_output: 截屏保存到 code/.benchmarks/webllm-demo.png + 提取响应文本
 # ---
 # See: ../tutorial/28_端侧与边缘LLM.md § 28.5.1
 # Interview hooks:
 #   1. WebLLM 的运行原理是什么?为什么能直接跑在浏览器?
 #   2. WebGPU 相比 WebAssembly 在 LLM 推理上的性能差距?
 #   3. 浏览器推理的工程挑战 (模型分发/缓存/版本)?
-"""WebLLM 浏览器推理示例: 前端调用模板 + 配套 Python 后端代理."""
+"""WebLLM 浏览器推理示例: 真实用 playwright 打开 mlc.ai/web-llm, 输入 prompt, 截屏."""
 from __future__ import annotations
 
-WEBLLM_JS_TEMPLATE = '''
-// 1. 安装: npm i @mlc-ai/web-llm
-// 2. 浏览器需要 Chromium 113+ 或 Safari 17+ 才能用 WebGPU
+import sys
+from pathlib import Path
 
+# 让脚本既能 `python file.py` 也能 `import` 找到 shared/
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
+
+from shared._error_helper import raise_with_help
+
+
+# 浏览器侧 (供前端工程师复制) 的 JS 调用模板.
+# 真实运行时, 模型权重由浏览器在客户端下载 + 编译, 无需服务端.
+WEBLLM_JS_TEMPLATE = '''\
+// 浏览器侧调用: 完整前端代码, 复制到 .html 即可
+// 1. npm i @mlc-ai/web-llm
+// 2. 需要 Chromium 113+ 或 Safari 17+ 才能用 WebGPU
 import * as webllm from "@mlc-ai/web-llm";
 
 const appConfig = {
-  model_list: [
-    {
-      model: "https://huggingface.co/mlc-ai/Llama-3.2-3B-Instruct-q4f16_1-MLC",
-      model_id: "Llama-3.2-3B-Instruct-q4f16_1-MLC",
-      model_type: "llama",
-      vram_required_MB: 2048,
-      // 量化等级: q4f16_1 = 4-bit 权重量化, FP16 激活
-    },
-  ],
+  model_list: [{
+    model: "https://huggingface.co/mlc-ai/Llama-3.2-3B-Instruct-q4f16_1-MLC",
+    model_id: "Llama-3.2-3B-Instruct-q4f16_1-MLC",
+    model_type: "llama",
+    vram_required_MB: 2048,
+  }],
 };
 
-async function initEngine() {
-  const engine = await webllm.CreateMLCEngine(
-    "Llama-3.2-3B-Instruct-q4f16_1-MLC",
-    {
-      appConfig,
-      initProgressCallback: (report) => {
-        console.log(\`[WebLLM] \${report.text} (\${report.progress.toFixed(1)}%)\`);
-        // report.text 例子: "Loading model weights..."
-      },
-    }
-  );
-  return engine;
-}
-
-async function chat(userMessage) {
-  const engine = await initEngine();
-  const reply = await engine.chat.completions.create({
-    messages: [{ role: "user", content: userMessage }],
-    temperature: 0.7,
-    max_tokens: 256,
-  });
-  return reply.choices[0].message.content;
-}
-
-// 流式响应
-async function chatStream(userMessage, onChunk) {
-  const engine = await initEngine();
-  const stream = await engine.chat.completions.create({
-    messages: [{ role: "user", content: userMessage }],
-    stream: true,
-  });
-  for await (const chunk of stream) {
-    onChunk(chunk.choices[0]?.delta?.content || "");
-  }
-}
-
-chat("Hello!").then(console.log);
+const engine = await webllm.CreateMLCEngine(
+  "Llama-3.2-3B-Instruct-q4f16_1-MLC",
+  { appConfig, initProgressCallback: (r) => console.log(r.text, r.progress) }
+);
+const reply = await engine.chat.completions.create({
+  messages: [{ role: "user", content: "Hello!" }],
+});
+console.log(reply.choices[0].message.content);
 '''
 
 
-def browser_challenge_summary() -> None:
-    """浏览器推理的工程挑战."""
-    print("--- 浏览器推理挑战 ---")
-    challenges = [
-        ("首次加载",      "1-5GB 模型需下载, 需 Service Worker 缓存"),
-        ("GPU 显存",     "WebGPU 通常限制 4-8GB, 7B Q4 是上限"),
-        ("浏览器兼容",   "Chrome/Edge 113+, Safari 17+, Firefox 实验"),
-        ("Tab 关闭即停", "无后台运行, PWA 需 Workaround"),
-        ("模型分发",     "推荐 MLC 格式 (TVM 编译) 而非 GGUF, 因为更小"),
-        ("DRM/版权",     "权重需 CDN 签名, 防未授权分发"),
-    ]
-    for tag, desc in challenges:
-        print(f"  {tag}: {desc}")
+def run_webllm_in_browser(
+    prompt: str = "Hello!",
+    screenshot_path: str = "code/.benchmarks/webllm-demo.png",
+    wait_ms: int = 15000,
+) -> dict:
+    """真实用 playwright 打开 webllm demo, 输入 prompt, 截屏, 提取响应.
 
+    Args:
+        prompt: 要发给 WebLLM 的用户消息.
+        screenshot_path: 截屏保存路径 (绝对或相对 code/).
+        wait_ms: 等待模型生成响应的毫秒数 (浏览器侧首次加载模型可能 30s+).
 
-def supported_models() -> None:
-    """WebLLM 支持的常见模型."""
-    print("\n--- WebLLM 支持的模型 (MLC-AI 编译) ---")
-    models = [
-        ("Llama-3.2-1B-Instruct-q4f16_1-MLC",  "1B", "1.0GB", "入门, 移动端"),
-        ("Llama-3.2-3B-Instruct-q4f16_1-MLC",  "3B", "1.8GB", "⭐ 浏览器黄金标准"),
-        ("Phi-3.5-mini-instruct-q4f16_1-MLC",  "3.8B", "2.3GB", "微软小模型"),
-        ("Qwen2.5-7B-Instruct-q4f16_1-MLC",    "7B", "4.1GB", "中文好, 显存紧"),
-        ("gemma-2-2b-it-q4f16_1-MLC",          "2B", "1.4GB", "Google 开源"),
-    ]
-    print(f"{'模型 ID':<45} {'大小':<6} {'体积':<8} {'备注'}")
-    print("-" * 80)
-    for mid, sz, vol, note in models:
-        print(f"{mid:<45} {sz:<6} {vol:<8} {note}")
+    Returns:
+        dict 含 'screenshot' 和 'response' (提取到的 chat log 文本, 失败时为空).
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        raise_with_help(
+            "playwright 未装.",
+            "运行 `pip install playwright && playwright install chromium`.",
+        )
+
+    out = Path(screenshot_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            # mlc.ai/web-llm 是官方 ChatBot demo 页面
+            page.goto("https://mlc.ai/web-llm/", timeout=60000, wait_until="domcontentloaded")
+
+            # 等待页面顶部标题加载 (避免立即操作)
+            try:
+                page.wait_for_selector("text=/WebLLM/i", timeout=15000)
+            except Exception:
+                # 不强制要求, 继续尝试找输入框
+                pass
+
+            # 尝试找到 chat 输入框 (页面有多个 fallback selector)
+            input_selectors = [
+                "textarea",
+                "input[type='text']",
+                "#user-input",
+                "#chat-input",
+            ]
+            clicked = False
+            for sel in input_selectors:
+                try:
+                    el = page.locator(sel).first
+                    if el.count() > 0 and el.is_visible():
+                        el.fill(prompt)
+                        clicked = True
+                        break
+                except Exception:
+                    continue
+
+            # 提交: 优先按 Enter, 否则找发送按钮
+            if clicked:
+                try:
+                    page.keyboard.press("Enter")
+                except Exception:
+                    try:
+                        page.locator("button:has-text('Send')").first.click()
+                    except Exception:
+                        pass
+
+            # 给浏览器一些时间下载/编译/推理
+            page.wait_for_timeout(wait_ms)
+
+            # 截屏保存
+            page.screenshot(path=str(out), full_page=True)
+
+            # 尝试提取响应文本
+            response_text = ""
+            for sel in ["#chat-log", "#chat-messages", ".chat-log", "main", "body"]:
+                try:
+                    text = page.text_content(sel) or ""
+                    if text and len(text) > len(response_text):
+                        response_text = text
+                except Exception:
+                    continue
+
+            return {
+                "screenshot": str(out),
+                "response": response_text[:1000] if response_text else "(see screenshot)",
+                "input_filled": clicked,
+            }
+        finally:
+            browser.close()
 
 
 def main() -> None:
-    print("=== WebLLM 浏览器端推理模板 ===\n")
+    print("=== WebLLM 浏览器内推理 (真实 playwright) ===\n")
+    print("JS 模板 (供前端复制):")
     print(WEBLLM_JS_TEMPLATE)
-    browser_challenge_summary()
-    supported_models()
+    print()
+
+    result = run_webllm_in_browser("Hello!")
+    print(f"截屏已保存: {result['screenshot']}")
+    print(f"输入是否填入: {result['input_filled']}")
+    print(f"提取的响应 (前 200 字):\n{result['response'][:200]}")
 
 
 if __name__ == "__main__":
