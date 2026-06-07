@@ -4,9 +4,9 @@
 # section: 面试真题 18-7：Memory Token 消耗控制
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: langchain
+# deps: langchain, langchain-openai
 # run: python 35_memory_token_control.py
-# expected_runtime: <1s
+# expected_runtime: <1s (mock mode) / 5-30s (real API)
 # expected_output: memory config dump
 # ---
 # See: ../tutorial/18_LLM工程框架实战.md § 18.7 (面试真题精选)
@@ -14,15 +14,25 @@
 #   1. 在生产环境中如何选择合适的 Memory 策略？需要考虑哪些权衡？
 #   2. 为什么推荐用便宜的模型（如 gpt-4o-mini）做摘要？
 # 推荐配置：Summary + Buffer 混合策略
-class _MockLLM:
-    model = "gpt-4o-mini"
-    def invoke(self, msgs):
-        class _R: content = "（mock）摘要"
-        return _R()
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
+
+# W3-T5: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 走 raise_with_help
+from shared.chatmodel_factory import make_chat_model
+from shared._error_helper import raise_with_help
+llm = make_chat_model()  # 默认厂商 (cheap mini model)
+if llm is None:
+    raise_with_help(
+        "需要 LLM_PROVIDER + API Key 来运行此例子.",
+        "运行 `make llm-doctor-setup` 配置; 或参考 README §环境配置.",
+    )
 
 memory_config = {
     "type": "ConversationSummaryBufferMemory",
-    "llm": _MockLLM(),  # 摘要用便宜模型
+    "llm": llm,  # 摘要用便宜模型
     "max_token_limit": 2000,    # 总预算
     "return_messages": True,
 }
@@ -30,7 +40,8 @@ memory_config = {
 print("=== Memory 配置 ===")
 for k, v in memory_config.items():
     if k == "llm":
-        print(f"  {k}: <{v.model}>")
+        # ChatOpenAI exposes .model_name
+        print(f"  {k}: <{getattr(v, 'model_name', getattr(v, 'model', 'unknown'))}>")
     else:
         print(f"  {k}: {v}")
 

@@ -28,11 +28,16 @@ if _SKIP_REASON:
 print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
 from llama_index.core import Settings
 
-class _MockLLM:
-    def complete(self, prompt, **kwargs):
-        return type("R", (), {"text": "（mock）树形摘要：多文档对比完成。"})()
-
-Settings.llm = _MockLLM()
+# W3-T5: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 走 raise_with_help
+from shared.chatmodel_factory import make_chat_model
+from shared._error_helper import raise_with_help
+real_llm = make_chat_model(framework="llama_index")
+if real_llm is None:
+    raise_with_help(
+        "需要 LLM_PROVIDER + API Key 来运行此例子.",
+        "运行 `make llm-doctor-setup` 配置; 或参考 README §环境配置.",
+    )
+Settings.llm = real_llm
 
 documents = [
     Document(text="LangChain 文档：LCEL 与 Chain 抽象。"),

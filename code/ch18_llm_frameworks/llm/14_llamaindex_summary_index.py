@@ -26,6 +26,7 @@ if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
     _sys.exit(0)
 print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
+import os
 from llama_index.core import Settings
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
@@ -33,38 +34,38 @@ _code_root = _Path_setup(__file__).resolve().parent.parent.parent
 if str(_code_root) not in _sys_path_setup.path:
     _sys_path_setup.path.insert(0, str(_code_root))
 
-import os
+# Wave 26 修复: llama_index Settings 在 import 时检查 OPENAI_API_KEY, 提前设 dummy 避免报错
+if "OPENAI_API_KEY" not in os.environ:
+    os.environ["OPENAI_API_KEY"] = "sk-dummy-for-import-only"
 
+# W3-T5: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 走 raise_with_help
+from shared.chatmodel_factory import make_chat_model
+from shared._error_helper import raise_with_help
+real_llm = make_chat_model(framework="llama_index")
+if real_llm is None:
+    raise_with_help(
+        "需要 LLM_PROVIDER + API Key 来运行此例子.",
+        "运行 `make llm-doctor-setup` 配置; 或参考 README §环境配置.",
+    )
+Settings.llm = real_llm
 
-
-# Wave 21: 优先真实 LLM (llama_index framework), 缺 key 降级 mock
-USE_REAL_API = os.environ.get("USE_REAL_API") == "1"
-if USE_REAL_API:
-    from shared.chatmodel_factory import make_chat_model
-    real_llm = make_chat_model(framework="llama_index")
-    if real_llm is not None:
-        Settings.llm = real_llm
-    else:
-        class _MockLLM:
-            def complete(self, prompt, **kwargs):
-                return type("R", (), {"text": f"（mock）摘要：{prompt[-50:]}"})()
-        Settings.llm = _MockLLM()
-
-    # Wave 29: 真实 embedding (本地 bge)
-    from pathlib import Path as _P
-    _bge_path = _P(__file__).resolve().parent.parent.parent / "models" / "bge-small-zh-v1.5"
-    if _bge_path.exists() and (_bge_path / "config.json").exists():
-        try:
-            from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-            Settings.embed_model = HuggingFaceEmbedding(model_name=str(_bge_path))
-            print(f"[embedding] 使用本地 bge: {_bge_path}")
-        except ImportError:
-            print("[WARN] llama_index.embeddings.huggingface 未装, 降级 mock embed")
-else:
-    class _MockLLM:
-        def complete(self, prompt, **kwargs):
-            return type("R", (), {"text": "（mock）所有文档的核心观点摘要：聚焦文档索引与检索。"})()
-    Settings.llm = _MockLLM()
+# Wave 29: 真实 embedding (本地 bge)
+from pathlib import Path as _P
+_bge_path = _P(__file__).resolve().parent.parent.parent / "models" / "bge-small-zh-v1.5"
+if not (_bge_path.exists() and (_bge_path / "config.json").exists()):
+    raise_with_help(
+        f"需要本地 bge 模型权重: {_bge_path}",
+        "运行 `make download-models-default` 下载 (或 `setup_local.sh`).",
+    )
+try:
+    from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+    Settings.embed_model = HuggingFaceEmbedding(model_name=str(_bge_path))
+    print(f"[embedding] 使用本地 bge: {_bge_path}")
+except ImportError as _e:
+    raise_with_help(
+        f"需要 llama_index.embeddings.huggingface 才能用本地 bge: {_e}",
+        "运行 `pip install llama-index-embeddings-huggingface` (或 `make install-llm`).",
+    )
 
 documents = [
     Document(text="文档1: 关于 LangChain 的核心组件与 LCEL 编程范式。"),

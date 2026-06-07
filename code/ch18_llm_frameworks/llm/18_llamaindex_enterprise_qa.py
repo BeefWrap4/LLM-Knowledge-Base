@@ -36,23 +36,46 @@ LlamaIndex 实战：企业文档智能问答系统
 4. 高级检索（混合检索 + 重排序）
 5. 带记忆的多轮对话
 """
+import os
 from llama_index.core import Settings
 from llama_index.core.node_parser import SentenceSplitter, HierarchicalNodeParser
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.postprocessor import SimilarityPostprocessor
 
+# Wave 26 修复: llama_index Settings 在 import 时检查 OPENAI_API_KEY, 提前设 dummy 避免报错
+if "OPENAI_API_KEY" not in os.environ:
+    os.environ["OPENAI_API_KEY"] = "sk-dummy-for-import-only"
+
 # ===== Step 1: 全局配置 =====
-class _MockLLM:
-    def complete(self, prompt, **kwargs):
-        return type("R", (), {"text": "（mock）基于上下文生成答案。"})()
+# W3-T5: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 走 raise_with_help
+from shared.chatmodel_factory import make_chat_model
+from shared._error_helper import raise_with_help
+real_llm = make_chat_model(framework="llama_index")
+if real_llm is None:
+    raise_with_help(
+        "需要 LLM_PROVIDER + API Key 来运行此例子.",
+        "运行 `make llm-doctor-setup` 配置; 或参考 README §环境配置.",
+    )
+Settings.llm = real_llm
 
-class _MockEmbed:
-    def get_text_embedding(self, text):
-        return [float(len(text))] * 8
-
-Settings.llm = _MockLLM()
-Settings.embed_model = _MockEmbed()
+# 真实 embedding (本地 bge)
+from pathlib import Path as _P
+_bge_path = _P(__file__).resolve().parent.parent.parent / "models" / "bge-small-zh-v1.5"
+if not (_bge_path.exists() and (_bge_path / "config.json").exists()):
+    raise_with_help(
+        f"需要本地 bge 模型权重: {_bge_path}",
+        "运行 `make download-models-default` 下载 (或 `setup_local.sh`).",
+    )
+try:
+    from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+    Settings.embed_model = HuggingFaceEmbedding(model_name=str(_bge_path))
+    print(f"[embedding] 使用本地 bge: {_bge_path}")
+except ImportError as _e:
+    raise_with_help(
+        f"需要 llama_index.embeddings.huggingface 才能用本地 bge: {_e}",
+        "运行 `pip install llama-index-embeddings-huggingface` (或 `make install-llm`).",
+    )
 Settings.chunk_size = 512
 Settings.chunk_overlap = 50
 
@@ -88,7 +111,7 @@ retriever = VectorIndexRetriever(
 
 # 后处理管线：相似度过滤
 node_postprocessors = [
-    SimilarityPostprocessor(similarity_cutoff=0.0),  # mock 下用 0.0
+    SimilarityPostprocessor(similarity_cutoff=0.0),  # 0.0 兜底不过滤
 ]
 
 # ===== Step 6: 构建查询引擎 =====
