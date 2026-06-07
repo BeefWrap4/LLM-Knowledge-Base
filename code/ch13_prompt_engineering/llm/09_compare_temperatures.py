@@ -15,6 +15,12 @@
 # - T=0 是否完全等价于 greedy decoding？为什么？
 # - 高 Temperature 下的"重复惩罚"在哪类任务尤其重要？
 
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent  # /app/code or code/
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
+
 import os
 
 USE_MOCK = os.environ.get("USE_REAL_API") != "1"
@@ -39,14 +45,15 @@ def compare_temperatures(prompt: str, temps=None):
         if USE_MOCK:
             results[t] = _mock_completions(prompt, t, n=3)
         else:
-            import openai
-            response = openai.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=t,
-                n=3,  # 每个温度生成3个样本
-            )
-            results[t] = [c.message.content for c in response.choices]
+            from shared.llm_client import UnifiedClient
+            _client = UnifiedClient()
+            results[t] = [
+                _client.chat(
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=t,
+                ).content
+                for _ in range(3)  # 每个温度生成3个样本
+            ]
     return results
 
 

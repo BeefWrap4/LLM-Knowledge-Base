@@ -15,6 +15,12 @@
 # - 采样次数 n 与准确率的关系？(收益递减)
 # - 如何把 self-consistency 与 ToT 结合？
 
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent  # /app/code or code/
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
+
 import os
 import re
 from collections import Counter
@@ -54,13 +60,13 @@ def self_consistency_cot(prompt: str, n_samples: int = 5, temperature: float = 0
         if USE_MOCK:
             content = call_llm_mock(prompt, temperature=temperature)
         else:
-            import openai
-            response = openai.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}],
+            from shared.llm_client import UnifiedClient
+            _client = UnifiedClient()
+            resp = _client.chat(
+                                messages=[{"role": "user", "content": prompt}],
                 temperature=temperature,  # >0 以生成不同推理路径
             )
-            content = response.choices[0].message.content
+            content = resp.content
         answer = extract_final_answer(content)
         answers.append(answer)
 
