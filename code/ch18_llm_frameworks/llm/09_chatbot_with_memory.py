@@ -28,6 +28,15 @@ if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
     print("OK")
     _sys.exit(0)
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
+
+import os
+
+
 """
 完整示例：带记忆的多工具对话 Agent
 具备以下能力：

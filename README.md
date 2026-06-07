@@ -7,6 +7,11 @@
 [![Verify](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/verify.yml/badge.svg)](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-green.svg)](https://www.python.org/)
+[![code passing](https://img.shields.io/badge/code-357%2F357-brightgreen.svg)]()
+[![chapters](https://img.shields.io/badge/chapters-29%2F29-blue.svg)]()
+[![vendors](https://img.shields.io/badge/LLM%20vendors-7-orange.svg)]()
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](Dockerfile)
+[![CN mirror](https://img.shields.io/badge/CN%20mirror-清华%2BModelScope-red.svg)]()
 
 本仓库是一份面向 **2026 年大模型算法/应用/部署/安全** 岗位的面试准备教程，**完全基于 Obsidian 知识库结构组织**。从 Python 基础到 LLM 工程实践，覆盖大模型开发的完整技术栈。
 

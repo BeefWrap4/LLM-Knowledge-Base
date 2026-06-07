@@ -27,12 +27,33 @@ if _SKIP_REASON:
     print("OK")
     _sys.exit(0)
 from llama_index.core import Settings
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
 
-class _MockLLM:
-    def complete(self, prompt, **kwargs):
-        return type("R", (), {"text": "（mock）所有文档的核心观点摘要：聚焦文档索引与检索。"})()
+import os
 
-Settings.llm = _MockLLM()
+
+
+# Wave 21: 优先真实 LLM (llama_index framework), 缺 key 降级 mock
+USE_REAL_API = os.environ.get("USE_REAL_API") == "1"
+if USE_REAL_API:
+    from shared.chatmodel_factory import make_chat_model
+    real_llm = make_chat_model(framework="llama_index")
+    if real_llm is not None:
+        Settings.llm = real_llm
+    else:
+        class _MockLLM:
+            def complete(self, prompt, **kwargs):
+                return type("R", (), {"text": f"（mock）摘要：{prompt[-50:]}"})()
+        Settings.llm = _MockLLM()
+else:
+    class _MockLLM:
+        def complete(self, prompt, **kwargs):
+            return type("R", (), {"text": "（mock）所有文档的核心观点摘要：聚焦文档索引与检索。"})()
+    Settings.llm = _MockLLM()
 
 documents = [
     Document(text="文档1: 关于 LangChain 的核心组件与 LCEL 编程范式。"),
