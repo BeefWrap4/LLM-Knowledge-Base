@@ -111,6 +111,7 @@ def main() -> int:
     r3 = check_code_health()
     r4 = check_sync_links()
     r5 = check_smoke()
+    r6 = check_llm_doctor()
 
     print("\n" + "=" * 60)
     print(f"  Wiki links:        {'PASS' if r1 else 'FAIL'}")
@@ -118,8 +119,31 @@ def main() -> int:
     print(f"  Code health:       {'PASS' if r3 else 'FAIL'}")
     print(f"  Sync links:        {'PASS' if r4 else 'FAIL'}")
     print(f"  Smoke sample:      {'PASS' if r5 else 'FAIL'}")
+    print(f"  LLM doctor:        {'PASS' if r6 else 'FAIL'}")
     print("=" * 60)
-    return 0 if all([r1, r2, r3, r4, r5]) else 1
+    return 0 if all([r1, r2, r3, r4, r5, r6]) else 1
+
+
+def check_llm_doctor() -> bool:
+    """Optional: skip if no API key (return True). 实际有 key 时跑全部."""
+    print("\n--- [6/6] LLM doctor (API key health) ---")
+    # 如果没任何 key, 跳过 (但 100% 通过, 因为 mock 也在)
+    sys.path.insert(0, str(CODE))  # 让 shared 可 import
+    try:
+        from shared.provider_registry import PROVIDERS
+        has_key = any(p.has_key() for p in PROVIDERS.values() if p.name != "mock")
+    except Exception as e:
+        print(f"  WARN  provider_registry 不可用: {e}")
+        return True
+    if not has_key:
+        print("  SKIP (no LLM API key in env — using mock for everything)")
+        return True
+    r = subprocess.run([sys.executable, str(CODE / "scripts" / "llm_doctor.py")],
+                       capture_output=True, text=True, cwd=str(CODE), timeout=120)
+    for line in r.stdout.splitlines():
+        if "[✓]" in line or "[✗]" in line or "passed" in line or "Result:" in line:
+            print(f"  {line.strip()}")
+    return r.returncode == 0
 
 
 if __name__ == "__main__":
