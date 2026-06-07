@@ -1,3 +1,9 @@
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
+
 # ---
 # chapter: 13
 # topic: Prompt Engineering
@@ -37,13 +43,11 @@ class _MockResp:
 def call_openai(messages):
     if USE_MOCK:
         return _MockResp()
-    # OpenAI 自动缓存：无需显式 cache_control
-    from openai import OpenAI
-    client = OpenAI()
-    # 只要前缀稳定（前 1024+ tokens 相同），OpenAI 自动命中缓存
-    return client.chat.completions.create(
-        model="gpt-5",
-        messages=messages
+    # Wave 16: 改用 UnifiedClient (支持 deepseek/kimi/siliconflow/MiniMax)
+    from shared.llm_client import UnifiedClient
+    client = UnifiedClient()
+    return client.chat(
+        messages=messages,  # 不传 model = 用 provider 默认 (deepseek-chat, MiniMax-Text-01, etc.)
     )
 
 

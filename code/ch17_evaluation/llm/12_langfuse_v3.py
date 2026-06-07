@@ -1,3 +1,9 @@
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
+
 # ---
 # chapter: 17
 # topic: 大模型评估体系
@@ -40,7 +46,7 @@ def run_langfuse_v3_demo() -> None:
         from langfuse import Langfuse
         from langfuse.decorators import observe, langfuse_context
         from langfuse.evaluation import evaluate
-        from openai import OpenAI
+        from shared.llm_client import UnifiedClient  # Wave 16
     except ImportError as exc:
         print(f"[mock] langfuse/openai 未安装 ({exc})，使用模拟输出")
         return
@@ -51,7 +57,7 @@ def run_langfuse_v3_demo() -> None:
         secret_key=os.environ.get("LANGFUSE_SECRET_KEY", "sk-lf-..."),
         host=os.environ.get("LANGFUSE_HOST", "https://cloud.langfuse.com"),
     )
-    openai_client = OpenAI()
+    openai_client = UnifiedClient()  # Wave 16: 统一多厂商 (deepseek/kimi/siliconflow/MiniMax)
 
     # 2. 集中式 Prompt 管理（生产环境不写死在代码里）
     prompt = langfuse.get_prompt("summarizer", version=3, label="production")
@@ -60,18 +66,17 @@ def run_langfuse_v3_demo() -> None:
     # 3. 追踪 LLM 调用（OpenTelemetry 自动捕获）
     @observe(as_type="generation")
     def summarize(text: str) -> str:
-        response = openai_client.chat.completions.create(
-            model="gpt-4o",
+        resp = openai_client.chat(
             messages=[
                 {"role": "user", "content": f"{compiled_prompt}\n\n{text}"}
             ],
         )
         # 自动上报 token / 延迟 / 模型参数
         langfuse_context.update_current_observation(
-            model=response.model,
+            model=resp.model,
             usage={
-                "input": response.usage.prompt_tokens,
-                "output": response.usage.completion_tokens,
+                "input": resp.usage["prompt_tokens"],
+                "output": resp.usage["completion_tokens"],
             },
         )
         return response.choices[0].message.content

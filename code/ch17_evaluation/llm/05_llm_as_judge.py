@@ -1,3 +1,9 @@
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
+
 # ---
 # chapter: 17
 # topic: 大模型评估体系
@@ -36,12 +42,12 @@ class LLMJudge:
         self.client = None
         self.mock_mode = os.environ.get("LLM_JUDGE_MOCK", "1") == "1"
         if not self.mock_mode:
+            # Wave 16: 改用 UnifiedClient (deepseek/kimi/siliconflow/MiniMax)
             try:
-                from openai import OpenAI
-
-                self.client = OpenAI()
-            except ImportError:
-                print("[mock] openai 未安装，切换 mock 模式")
+                from shared.llm_client import UnifiedClient
+                self.client = UnifiedClient(provider="openai" if os.environ.get("OPENAI_API_KEY") else None)
+            except ImportError as exc:
+                print(f"[mock] UnifiedClient 不可用 ({exc}), 切换 mock 模式")
                 self.mock_mode = True
 
     def build_prompt(self, question: str, answer: str, rubric: str) -> str:
@@ -92,14 +98,12 @@ class LLMJudge:
                 "justification": "[mock] 回答准确解释了核心概念，并用生活化比喻帮助理解",
             }
 
-        response = self.client.chat.completions.create(
-            model=self.judge_model,
+        # Wave 16: 统一接口; 注: response_format 仅 OpenAI 完整支持
+        resp = self.client.chat(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,  # 评估任务使用低温度保证一致性
-            response_format={"type": "json_object"},
         )
-
-        result = json.loads(response.choices[0].message.content)
+        result = json.loads(resp.content)
         return result
 
     def pairwise_compare(self, question: str, answer_a: str, answer_b: str) -> dict:
@@ -137,14 +141,12 @@ class LLMJudge:
                 "key_difference": "[mock] A 提供了更详细的算法解释",
             }
 
-        response = self.client.chat.completions.create(
-            model=self.judge_model,
+        # Wave 16: 统一接口
+        resp = self.client.chat(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
-            response_format={"type": "json_object"},
         )
-
-        return json.loads(response.choices[0].message.content)
+        return json.loads(resp.content)
 
 
 if __name__ == "__main__":

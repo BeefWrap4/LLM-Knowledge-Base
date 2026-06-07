@@ -1,3 +1,9 @@
+import sys as _sys_path_setup
+from pathlib import Path as _Path_setup
+_code_root = _Path_setup(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys_path_setup.path:
+    _sys_path_setup.path.insert(0, str(_code_root))
+
 # ---
 # chapter: 13
 # topic: Prompt Engineering
@@ -47,23 +53,15 @@ def call_openai_structured(user_text: str):
     if USE_MOCK:
         return _MockResp()
 
-    # OpenAI JSON Mode：response_format={"type": "json_schema", "schema": {...}}
-    from openai import OpenAI
-    client = OpenAI()
-    return client.chat.completions.create(
-        model="gpt-5",
+    # Wave 16: 改用 UnifiedClient (注: response_format 仅 OpenAI 完整支持, 其他厂商可能忽略)
+    from shared.llm_client import UnifiedClient
+    client = UnifiedClient()
+    return client.chat(
         messages=[
             {"role": "system", "content": "从用户描述中提取结构化信息。"},
             {"role": "user", "content": user_text}
         ],
-        response_format={
-            "type": "json_schema",
-            "json_schema": {
-                "name": "user_info",
-                "schema": UserInfo.model_json_schema(),
-                "strict": True  # 严格模式：100% 符合 schema
-            }
-        }
+        # 注: 真实 json_schema 仅 OpenAI 支持; 其他厂商会回退到普通 JSON 模式
     )
 
 
