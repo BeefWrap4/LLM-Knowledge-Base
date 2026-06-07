@@ -101,10 +101,18 @@ def test_get_default_provider_respects_env_override():
 # llm_client
 # ═══════════════════════════════════════════════════════════
 
-def test_unified_client_no_key_falls_back_to_mock():
-    """无 API Key 时 UnifiedClient 降级 mock."""
+def test_unified_client_no_key_raises():
+    """无 API Key + LLM_MOCK 未设 → 必须抛 RuntimeError (不再静默降级 mock)."""
     from shared.llm_client import UnifiedClient
     with patch.dict(os.environ, {}, clear=True):
+        with pytest.raises(RuntimeError, match="缺 API Key"):
+            UnifiedClient(provider="deepseek")
+
+
+def test_unified_client_no_key_with_mock_env_works():
+    """无 API Key + LLM_MOCK=1 → 走 mock, 不抛错."""
+    from shared.llm_client import UnifiedClient
+    with patch.dict(os.environ, {"LLM_MOCK": "1"}, clear=True):
         c = UnifiedClient(provider="deepseek")
         assert c.is_mock is True
         resp = c.chat(prompt="test")
@@ -123,9 +131,9 @@ def test_unified_client_with_key_not_mock():
 
 
 def test_unified_client_response_has_attrs():
-    """_LLMResponse 应有 content / model / provider / mock 字段."""
+    """_LLMResponse 应有 content / model / provider / mock 字段 (LLM_MOCK=1)."""
     from shared.llm_client import UnifiedClient
-    with patch.dict(os.environ, {}, clear=True):
+    with patch.dict(os.environ, {"LLM_MOCK": "1"}, clear=True):
         c = UnifiedClient()
         resp = c.chat(prompt="hello")
         assert hasattr(resp, "content")
@@ -136,9 +144,9 @@ def test_unified_client_response_has_attrs():
 
 
 def test_unified_client_chat_with_messages():
-    """messages 形式调用应工作."""
+    """messages 形式调用应工作 (LLM_MOCK=1)."""
     from shared.llm_client import UnifiedClient
-    with patch.dict(os.environ, {}, clear=True):
+    with patch.dict(os.environ, {"LLM_MOCK": "1"}, clear=True):
         c = UnifiedClient()
         resp = c.chat(
             system="你是一个助手",

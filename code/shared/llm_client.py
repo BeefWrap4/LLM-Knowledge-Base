@@ -54,26 +54,38 @@ class UnifiedClient:
         self.api_key: str = api_key or os.environ.get(self.provider.env_key, "")
         self.timeout = timeout
 
-        # Mock fallback
-        self._mock = MockLLM()
-        if not self.api_key or self.api_key == "YOUR_API_KEY":
-            print(
-                f"[WARN] UnifiedClient: 无 {self.provider.env_key}, 降级到 MockLLM (provider={self.provider.name})",
-                file=sys.stderr,
-            )
+        # LLM_MOCK=1 环境变量 → 强制走 mock (CI/离线)
+        if os.environ.get("LLM_MOCK") == "1":
             self.client = None
-        elif self.provider.api_style == "openai" and HAS_OPENAI:
+            return
+        if not self.api_key or self.api_key == "YOUR_API_KEY":
+            from shared._error_helper import raise_with_help
+            raise_with_help(
+                f"厂商 {self.provider.name} 缺 API Key (env {self.provider.env_key}).",
+                "运行 `make llm-doctor` 诊断; 或参考 README §环境配置.",
+            )
+        if self.provider.api_style == "openai" and HAS_OPENAI:
             self.client = OpenAI(
                 api_key=self.api_key,
                 base_url=self.provider.base_url,
                 timeout=timeout,
             )
+        elif self.provider.api_style == "anthropic":
+            try:
+                from anthropic import Anthropic
+                self.client = Anthropic(api_key=self.api_key, timeout=timeout)
+            except ImportError:
+                from shared._error_helper import raise_with_help
+                raise_with_help(
+                    f"厂商 {self.provider.name} 需 anthropic SDK.",
+                    "运行 `pip install anthropic`.",
+                )
         else:
-            print(
-                f"[WARN] UnifiedClient: provider={self.provider.name} 不支持或 openai SDK 缺失, 降级到 mock",
-                file=sys.stderr,
+            from shared._error_helper import raise_with_help
+            raise_with_help(
+                f"厂商 {self.provider.name} 不支持或 openai SDK 缺失.",
+                "运行 `make install-llm`.",
             )
-            self.client = None
 
     @property
     def is_mock(self) -> bool:
