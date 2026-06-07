@@ -4,6 +4,10 @@
 >
 > 29 章节 · 280+ 面试题 · 439 个可运行代码示例 · 2026 主题全覆盖 · 健康评分 95/100
 
+[![Verify](https://github.com/yourname/python-llm-interview-2026/actions/workflows/verify.yml/badge.svg)](https://github.com/yourname/python-llm-interview-2026/actions/workflows/verify.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-green.svg)](https://www.python.org/)
+
 本仓库是一份面向 **2026 年大模型算法/应用/部署/安全** 岗位的面试准备教程，**完全基于 Obsidian 知识库结构组织**。从 Python 基础到 LLM 工程实践，覆盖大模型开发的完整技术栈。
 
 ## ✨ 核心特色

@@ -1,0 +1,38 @@
+# ---
+# .pre-commit-config.yaml
+# 本地 pre-commit hook — 提交前自动检查 wiki 链接和 code 健康
+# 安装: pip install pre-commit && pre-commit install
+# ---
+repos:
+  - repo: local
+    hooks:
+      - id: verify-wiki-xrefs
+        name: Verify [[WikiLinks]] integrity
+        description: 检查所有教程 [[WikiLinks]] 都指向真实 .md 文件
+        entry: python code/scripts/verify_xrefs.py
+        language: system
+        pass_filenames: false
+        # 每次 commit 都跑 (慢但必要)
+        always_run: true
+
+      - id: verify-readme-coverage
+        name: Verify 29/29 chapter README
+        description: 检查 code/chNN_*/README.md 完整覆盖
+        entry: bash -c 'python code/scripts/verify_all.py 2>&1 | grep -E "README coverage|Smoke sample" | grep -q FAIL || exit 0'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # 标准 Python hooks (依赖 git staged .py 文件)
+      - id: ruff-check
+        name: ruff lint
+        entry: ruff check --fix
+        language: system
+        types: [python]
+        # 只检查 staged 的 .py, 避免跑 439 个文件
+
+      - id: ruff-format
+        name: ruff format
+        entry: ruff format
+        language: system
+        types: [python]

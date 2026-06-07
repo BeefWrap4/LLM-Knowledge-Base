@@ -1,4 +1,4 @@
-.PHONY: help install-core install-llm install-gpu install-all test test-llm test-gpu lint fmt clean run verify verify-xrefs run-all
+.PHONY: help install-core install-llm install-gpu install-all test test-llm test-gpu lint fmt clean run verify verify-xrefs run-all ci ci-quick ci-core ci-llm
 
 # ─────────────────────────────────────────────────────────
 # 安装
@@ -44,6 +44,29 @@ verify-xrefs:  ## 只检查 wiki 链接完整性
 
 run-all:  ## 跑完所有 core/ 例子 (TIER=core|llm|gpu, PARALLEL=8)
 	python scripts/run_all_examples.py --tier $${TIER:-core} --parallel $${PARALLEL:-8}
+
+# ─────────────────────────────────────────────────────────
+# CI 集成 (Wave 10)
+# ─────────────────────────────────────────────────────────
+
+ci:  ## 完整 CI: quick + core + llm (~10 min, 镜像 GitHub Actions)
+	@echo "=== [1/3] Quick check (wiki / README / smoke) ==="
+	@python scripts/verify_all.py
+	@echo ""
+	@echo "=== [2/3] Core tier (158 examples) ==="
+	@python scripts/run_all_examples.py --tier core --parallel 4 --timeout 60
+	@echo ""
+	@echo "=== [3/3] LLM tier (199 examples, mock mode) ==="
+	@python scripts/run_all_examples.py --tier llm --parallel 4 --timeout 180
+
+ci-quick:  ## 仅 quick 检查 (wiki / README / smoke) — <30s
+	python scripts/verify_all.py
+
+ci-core:  ## 仅 core tier — ~30s
+	python scripts/run_all_examples.py --tier core --parallel 4 --timeout 60
+
+ci-llm:  ## 仅 llm tier — ~3 min
+	python scripts/run_all_examples.py --tier llm --parallel 4 --timeout 180
 
 # ─────────────────────────────────────────────────────────
 # 代码质量
