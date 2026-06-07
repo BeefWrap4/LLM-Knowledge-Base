@@ -1,4 +1,4 @@
-.PHONY: help install-core install-llm install-gpu install-all test test-llm test-llm-mock test-gpu test-real-api lint fmt clean run verify verify-xrefs sync-links run-all ci ci-quick ci-core ci-llm ci-real download-models download-models-list download-models-default download-models-llm download-models-gpu download-models-edge llm-doctor llm-doctor-setup llm-doctor-check docker-build docker-up docker-down docker-bash docker-llm docker-gpu setup-local integration-test
+.PHONY: help install-core install-llm install-gpu install-all test test-llm test-llm-mock test-gpu test-real-api lint fmt clean run verify verify-xrefs sync-links run-all ci ci-quick ci-core ci-llm ci-real download-models download-models-list download-models-default download-models-llm download-models-gpu download-models-edge llm-doctor llm-doctor-setup llm-doctor-check docker-build docker-up docker-down docker-bash docker-llm docker-gpu setup-local integration-test vllm-server-start vllm-server-stop vllm-server-status
 
 # ─────────────────────────────────────────────────────────
 # 安装
@@ -189,3 +189,16 @@ download-models-gpu:  ## 下载 GPU 例子用模型 (cosmos / pi0 / r1-distill, 
 
 download-models-edge:  ## 下载端侧模型 (MLX / GGUF, ~7GB)
 	python scripts/download_models.py --tier edge
+
+# ─────────────────────────────────────────────────────────
+# Docker vLLM server (escape hatch for Windows, Wave 32+)
+# ─────────────────────────────────────────────────────────
+
+vllm-server-start:  ## 启动 vLLM Docker server (供本机 vLLM 例子连 OpenAI 协议)
+	bash scripts/start_vllm_server.sh
+
+vllm-server-stop:  ## 停止 vLLM Docker server
+	bash scripts/stop_vllm_server.sh
+
+vllm-server-status:  ## 检查 vLLM server 状态
+	@curl -s --max-time 2 http://localhost:8000/v1/models 2>&1 | head -3 || echo "vLLM server 未运行"
