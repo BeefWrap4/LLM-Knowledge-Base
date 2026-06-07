@@ -1,4 +1,4 @@
-.PHONY: help install-core install-llm install-gpu install-all test test-llm test-gpu lint fmt clean run verify verify-xrefs sync-links run-all ci ci-quick ci-core ci-llm download-models llm-doctor
+.PHONY: help install-core install-llm install-gpu install-all test test-llm test-gpu lint fmt clean run verify verify-xrefs sync-links run-all ci ci-quick ci-core ci-llm download-models llm-doctor docker-build docker-up docker-down docker-bash docker-llm docker-gpu
 
 # ─────────────────────────────────────────────────────────
 # 安装
@@ -76,6 +76,34 @@ ci-core:  ## 仅 core tier — ~30s
 
 ci-llm:  ## 仅 llm tier — ~3 min
 	python scripts/run_all_examples.py --tier llm --parallel 4 --timeout 180
+
+# ─────────────────────────────────────────────────────────
+# Docker (Wave 14-C)
+# ─────────────────────────────────────────────────────────
+
+docker-build:  ## 构建 Docker 镜像 (默认 core + llm tier, 国内源)
+	docker build -t llm-kb:latest \
+		--build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+		--build-arg REGISTRY=docker.io \
+		-t llm-kb:latest .
+
+docker-up:  ## 启动 core profile (仅 app 容器)
+	cd .. && docker compose --profile core up -d
+
+docker-llm:  ## 启动 llm profile (app + Redis)
+	cd .. && docker compose --profile llm up -d
+
+docker-gpu:  ## 启动 gpu profile (app + Redis + pgvector, 需 NVIDIA GPU)
+	cd .. && docker compose --profile gpu up -d
+
+docker-bash:  ## 进 core 容器交互式 bash
+	cd .. && docker compose --profile core run --rm app bash
+
+docker-down:  ## 停所有容器
+	cd .. && docker compose --profile core --profile llm --profile gpu down
+
+docker-ci:  ## 在容器内跑 make ci-quick (验证 Docker 镜像完整性)
+	cd .. && docker compose --profile core run --rm app make -C code ci-quick
 
 # ─────────────────────────────────────────────────────────
 # 代码质量

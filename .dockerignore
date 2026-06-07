@@ -1,0 +1,37 @@
+# Docker 排除文件 (减小 build context)
+.git/
+.github/
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 排除大文件
+code/models/
+code/.venv/
+code/venv/
+.venv/
+venv/
+
+# 排除 secrets (用户运行时挂载)
+.env
+.env.local
+.env.*.local
+
+# 排除测试 artifacts
+*.png
+*.jpg
+*.svg
+test.txt
+output/
+figures/
+
+# 排除 docs 和 scripts 之外的项目文件
+docs/
+*.md
+!code/docs/**/*.md
+!code/models/README.md
