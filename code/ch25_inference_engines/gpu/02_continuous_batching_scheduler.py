@@ -81,8 +81,9 @@ async def stream_one(engine, prompt: str, req_id: str, sampling) -> dict:
 
 async def run() -> None:
     # 故意把 import 放在 async 函数内, 避免顶层 import vllm._C
+    # shared.vllm_compat: 设了 VLLM_BASE_URL → 走 Docker OpenAI 协议; 否则按需 import 真 vllm
     try:
-        from vllm import AsyncLLMEngine, AsyncEngineArgs, SamplingParams
+        from shared.vllm_compat import AsyncLLMEngine, AsyncEngineArgs, SamplingParams
     except ModuleNotFoundError as e:
         if "vllm._C" in str(e):
             print("=" * 60)

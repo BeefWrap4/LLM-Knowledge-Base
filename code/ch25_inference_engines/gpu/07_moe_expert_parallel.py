@@ -57,8 +57,9 @@ def main() -> None:
     print()
 
     # 故意把 import 放在 GPU 检查之后, 避免无 GPU 机器 import vllm._C 失败
+    # shared.vllm_compat: 设了 VLLM_BASE_URL → 走 Docker OpenAI 协议; 否则按需 import 真 vllm
     try:
-        from vllm import LLM, SamplingParams
+        from shared.vllm_compat import LLM, SamplingParams
     except ModuleNotFoundError as e:
         if "vllm._C" in str(e):
             print("=" * 60)

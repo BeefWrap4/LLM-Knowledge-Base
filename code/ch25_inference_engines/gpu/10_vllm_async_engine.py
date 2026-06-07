@@ -36,8 +36,9 @@ def check_hardware():
 
 def check_vllm_engine():
     """检查 vllm._C 编译扩展 (Windows 不可用)."""
+    # shared.vllm_compat: 设了 VLLM_BASE_URL → 走 Docker OpenAI 协议; 否则按需 import 真 vllm
     try:
-        from vllm import AsyncLLMEngine, AsyncEngineArgs  # noqa
+        from shared.vllm_compat import AsyncLLMEngine, AsyncEngineArgs  # noqa
         import vllm._C  # noqa
     except (ImportError, ModuleNotFoundError) as e:
         raise_with_help(
@@ -53,7 +54,7 @@ async def main():
     check_hardware()
     check_vllm_engine()
 
-    from vllm import AsyncLLMEngine, AsyncEngineArgs, SamplingParams
+    from shared.vllm_compat import AsyncLLMEngine, AsyncEngineArgs, SamplingParams
 
     # 加载模型 (0.5B 已有, 7B 需下)
     model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")
