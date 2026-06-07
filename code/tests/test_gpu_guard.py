@@ -49,6 +49,32 @@ def test_require_apple_silicon_on_linux():
 
 def test_require_ollama_not_running():
     """Ollama 服务不可达抛 RuntimeError."""
-    with patch("shared.gpu_guard._httpx_get", side_effect=Exception("ConnectError")):
+    import httpx
+    with patch("shared.gpu_guard._httpx_get", side_effect=httpx.ConnectError("ConnectError")):
         with pytest.raises(RuntimeError, match="Ollama 未运行"):
             require_ollama("llama3.2:3b")
+
+
+def test_require_nvidia_gpu_no_torch():
+    """缺 torch → 抛 RuntimeError."""
+    with patch("shared.gpu_guard._has_torch", return_value=False):
+        with pytest.raises(RuntimeError, match="需要 torch"):
+            require_nvidia_gpu(min_vram_gb=8)
+
+
+def test_require_ollama_missing_model():
+    """Ollama 已在跑但缺模型 → 抛错信息包含 '缺模型'."""
+    fake_response = MagicMock()
+    fake_response.raise_for_status = MagicMock()
+    fake_response.json.return_value = {"models": [{"name": "qwen2.5:7b"}]}
+    with patch("shared.gpu_guard._httpx_get", return_value=fake_response):
+        with pytest.raises(RuntimeError, match="缺模型 llama3.2:3b"):
+            require_ollama("llama3.2:3b")
+
+
+def test_require_apple_silicon_on_intel_mac():
+    """Intel Mac (Darwin + x86_64) → 抛错."""
+    with patch("shared.gpu_guard._platform_system", return_value="Darwin"), \
+         patch("shared.gpu_guard._platform_machine", return_value="x86_64"):
+        with pytest.raises(RuntimeError, match="需要 Apple Silicon"):
+            require_apple_silicon()

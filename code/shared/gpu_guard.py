@@ -174,11 +174,8 @@ def require_nvidia_gpu(min_vram_gb: int = 8, min_count: int = 1) -> None:
                 )
 
 
-def require_apple_silicon(min_memory_gb: int = 8) -> None:
+def require_apple_silicon() -> None:
     """检查 Apple Silicon (M-series Mac). 否则抛 RuntimeError.
-
-    Args:
-        min_memory_gb: 最小统一内存 (GB). 当前仅做平台检查, 留作未来扩展.
 
     Raises:
         RuntimeError: 非 Darwin/arm64 平台.
@@ -202,6 +199,7 @@ def require_ollama(model: str = "llama3.2:3b") -> None:
         RuntimeError: Ollama 未运行 / 模型缺失.
     """
     from shared._error_helper import raise_with_help
+    import httpx
 
     try:
         r = _httpx_get("http://localhost:11434/api/tags", timeout=2.0)
@@ -212,8 +210,8 @@ def require_ollama(model: str = "llama3.2:3b") -> None:
                 f"Ollama 已运行, 但缺模型 {model}.",
                 f"运行 `ollama pull {model}` 拉取模型.",
             )
-    except Exception as e:
+    except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPError):
         raise_with_help(
             "Ollama 未运行. 先 `ollama serve` 启动服务.",
-            f"或使用云端 LLM 替代. 详见 README §硬件 × 章节矩阵. (原因: {e!s})",
+            "或使用云端 LLM 替代. 详见 README §硬件 × 章节矩阵.",
         )
