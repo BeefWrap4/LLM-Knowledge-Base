@@ -1,4 +1,4 @@
-.PHONY: help install-core install-llm install-gpu install-all test test-llm test-gpu lint fmt clean run verify verify-xrefs sync-links run-all ci ci-quick ci-core ci-llm download-models llm-doctor docker-build docker-up docker-down docker-bash docker-llm docker-gpu
+.PHONY: help install-core install-llm install-gpu install-all test test-llm test-gpu lint fmt clean run verify verify-xrefs sync-links run-all ci ci-quick ci-core ci-llm download-models llm-doctor docker-build docker-up docker-down docker-bash docker-llm docker-gpu setup-local integration-test
 
 # ─────────────────────────────────────────────────────────
 # 安装
@@ -104,6 +104,19 @@ docker-down:  ## 停所有容器
 
 docker-ci:  ## 在容器内跑 make ci-quick (验证 Docker 镜像完整性)
 	cd .. && docker compose --profile core run --rm app make -C code ci-quick
+
+# ─────────────────────────────────────────────────────────
+# 本地一键部署 (Wave 27)
+# ─────────────────────────────────────────────────────────
+
+setup-local:  ## 一键本地部署 (装依赖 + 启中间件 + 下模型 + 集成测试, ~5-10 min)
+	bash scripts/setup_local.sh
+
+setup-local-quick:  ## 快速版 (跳过模型下载, ~30s)
+	bash scripts/setup_local.sh --skip-models
+
+integration-test:  ## 跑 4 项集成测试 (Embedding + Redis + pgvector + LLM)
+	python scripts/test_integration.py
 
 # ─────────────────────────────────────────────────────────
 # 代码质量

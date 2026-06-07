@@ -209,6 +209,18 @@ python ch12_transformer_architecture/core/01_scaled_dot_product_attention.py
 - **llm (199 文件)** — API 调用 + mock 模式, 5 分钟安装
 - **gpu (76 文件)** — 需 NVIDIA GPU/Apple MLX, 30 分钟安装
 
+### 一键本地部署 (Wave 27)
+
+```bash
+cd code/
+bash scripts/setup_local.sh          # 5 步完整部署 (装依赖 + 启中间件 + 配 Key + 下模型 + 集成测试, ~10 min)
+bash scripts/setup_local.sh --skip-models   # 快速版 (跳过模型下载, ~30s)
+make setup-local                    # 同样, Makefile wrapper
+```
+
+部署完整栈: Redis 16379 + pgvector 15432 + 3 个真实模型 (bge-small/reranker/Qwen 0.5B) + 4 厂商 LLM.
+详见 [`code/docs/DEPLOY_LOCAL.md`](code/docs/DEPLOY_LOCAL.md) 和 [`make integration-test`](code/Makefile).
+
 ### 接入真实 LLM (Wave 14-A)
 
 ```bash
