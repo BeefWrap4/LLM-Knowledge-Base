@@ -38,7 +38,7 @@ def run_real():
 
 # Mock 模式 (无需 API key)
 def run_mock():
-    """用 shared.mock_llm 离线验证 Chain 逻辑."""
+    """用 langchain FakeListChatModel 离线验证 Chain 逻辑 (无需 shared.mock_llm)."""
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))

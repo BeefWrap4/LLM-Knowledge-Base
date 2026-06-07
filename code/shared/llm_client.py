@@ -29,7 +29,7 @@ from typing import Any, Optional
 from shared.provider_registry import (
     Provider, get_default_provider, get_provider, PROVIDERS,
 )
-from shared.mock_llm import deterministic_response
+from shared._mock_fallback import deterministic_response
 
 # OpenAI SDK 是可选依赖 (anthropic 走自己的 SDK)
 try:

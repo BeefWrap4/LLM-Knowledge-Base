@@ -1,26 +1,23 @@
 # ---
-# shared/mock_llm.py
-# 确定性 LLM stub — 测试用, 避免真实 API 调用
+# tests/_mocks/mock_llm.py
+# 确定性 LLM stub — 仅 CI/测试用, 避免真实 API 调用
 # ---
 """
+Mock LLM 客户端 (CI-only).
+
+此模块位于 tests/_mocks/ 下, 仅在 pytest conftest 自动加载时可见.
+主流程 (code/shared/llm_client.py 等) 不应 import 此模块 —
+如需确定性响应, 请 from shared._mock_fallback import deterministic_response.
+
+迁移历史:
+  原位于 code/shared/mock_llm.py, 因 MockLLM 类属于测试辅助, 不应混入主流程,
+  故迁移至 tests/_mocks/mock_llm.py (W1-T5).
+
 See: tutorial/Ch15_Agent智能体开发, Ch17_大模型评估体系, Ch18_LLM工程框架实战
 """
-import hashlib
-import re
 from typing import Any, Optional
 
-
-def deterministic_response(prompt: str, max_length: int = 64) -> str:
-    """基于 prompt hash 的确定性响应 — 相同 prompt 永远返回相同输出."""
-    h = hashlib.md5(prompt.encode()).hexdigest()[:8]
-    words = [
-        "这是一个确定性 mock 响应。",
-        f"prompt hash: {h}",
-        "真实 LLM 会返回更有意义的答案。",
-        "本 mock 用于 smoke testing。",
-    ]
-    response = " ".join(words)
-    return response[:max_length]
+from shared._mock_fallback import deterministic_response
 
 
 class MockLLM:

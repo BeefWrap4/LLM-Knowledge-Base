@@ -208,8 +208,12 @@ def test_ch18_langchain_chain_mock():
 
 @pytest.mark.core
 def test_shared_module_imports():
-    """shared 工具模块可正常导入."""
-    from shared import get_api_key, gpu_summary, MockLLM
+    """shared 工具模块可正常导入.
+
+    注: MockLLM 已迁移至 tests/_mocks/mock_llm.py (W1-T5).
+    """
+    from shared import get_api_key, gpu_summary
+    from tests._mocks import MockLLM
     summary = gpu_summary()
     assert isinstance(summary, str)
     mock = MockLLM()
