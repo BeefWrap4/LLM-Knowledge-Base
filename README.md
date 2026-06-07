@@ -231,6 +231,39 @@ make -C code docker-bash     # 进容器
 
 3 个 profile: `core` / `llm` (+Redis) / `gpu` (+pgvector). 详见 [`code/docs/DEPLOY.md`](code/docs/DEPLOY.md).
 
+### 拉取预构建 Docker 镜像 (Wave 18)
+
+```bash
+# GitHub Container Registry (自动 build, push by .github/workflows/docker-build.yml)
+docker pull ghcr.io/beefwrap4/llm-knowledge-base:latest
+
+# 跑
+docker run --rm -it \
+  -e DEEPSEEK_API_KEY="sk-xxx" \
+  -e KIMI_API_KEY="sk-xxx" \
+  -e MINIMAX_API_KEY="sk-cp-xxx" \
+  -v ${PWD}/code/models:/app/code/models \
+  ghcr.io/beefwrap4/llm-knowledge-base:latest bash
+
+# 容器内:
+cd /app/code && make ci-quick   # 验证 5 项检查 + 真实 LLM 调用
+```
+
+### CI 配置真实 LLM API Key (Wave 18)
+
+仓库维护者: 在 GitHub → Settings → Secrets and variables → Actions 添加 (任选 1 个):
+
+| Secret 名 | 厂商 |
+|----------|------|
+| `DEEPSEEK_API_KEY` | DeepSeek |
+| `KIMI_API_KEY` | Moonshot Kimi |
+| `SILICONFLOW_API_KEY` | 硅基流动 |
+| `MINIMAX_API_KEY` | MiniMax (Codin Plan) |
+| `OPENAI_API_KEY` | OpenAI |
+| `ANTHROPIC_API_KEY` | Anthropic |
+
+配置后, [ci-llm-doctor workflow](.github/workflows/ci-llm-doctor.yml) 会每周一 14:00 自动跑真实调用, 也可手动触发.
+
 ## 📝 维护与贡献
 
 - 每月一次全库健康审计（见 `99_库健康检查报告.md`）
