@@ -1,116 +1,116 @@
 # ---
 # chapter: 16
-# topic: 模型微调与推理优化
-# section: 16.4.2 KV Cache 简化实现
-# difficulty: ⭐⭐⭐⭐⭐
+# topic: KV Cache Memory Calculator (纯计算)
+# section: 16.4.2
+# difficulty: ⭐⭐⭐
 # tier: gpu
-# deps: torch
-# run: python 03_kv_cache.py --mock
-# expected_runtime: <5s for mock / <10s for real
-# expected_output: KV Cache 显存估算 + 顺序 update/get 演示
+# deps: none
+# run: python 03_kv_cache.py
+# expected_runtime: <1s
+# expected_output: KV cache 内存对比表
 # ---
 # See: ../tutorial/16_模型微调与推理优化.md §16.4.2
+#
 # Interview hooks:
 #   1. KV Cache 的显存公式？LLaMA-2-7B, seq=4096, bs=1 时约多少 GB？
 #   2. MQA / GQA（Multi/Grouped Query Attention）如何将 KV Cache 压缩到 1/4~1/8？
 #   3. KV Cache 与 Paged Attention 的关系？为什么连续分配会有碎片问题？
+"""KV Cache 内存计算器 (纯计算, 无 GPU 加载).
 
+KV Cache 显存公式:
+  per_token = 2 (K+V) × num_layers × num_kv_heads × head_dim × dtype_bytes
+  total     = per_token × seq_len × batch_size
+
+GQA (Grouped Query Attention) 通过 num_kv_heads < num_heads 节省 KV cache.
+例: Qwen2.5-7B 28 layers, 28 query heads, 4 kv heads → 节省 7x.
 """
-KV Cache 概念实现 —— 缓存每层的 K/V 避免自回归重复计算
-"""
-
-import os
-import argparse
+from dataclasses import dataclass
 
 
-MOCK_MODE = os.environ.get("MOCK_MODE", "0") == "1"
+@dataclass
+class ModelKVConfig:
+    name: str
+    num_layers: int
+    num_kv_heads: int
+    head_dim: int
+    num_query_heads: int = 0  # 0 = 同 num_kv_heads (MHA)
+
+    def __post_init__(self):
+        if self.num_query_heads == 0:
+            self.num_query_heads = self.num_kv_heads
 
 
-def mock_kv_cache_demo():
-    """无 CUDA 环境下的演示 + 显存估算"""
-    # LLaMA-2-7B 典型配置
-    B, L, H, T, D, dtype_bytes = 1, 32, 32, 4096, 128, 2  # bf16
-    kv_bytes = 2 * B * L * H * T * D * dtype_bytes
-    kv_gb = kv_bytes / (1024 ** 3)
-    print(f"[MOCK] LLaMA-2-7B KV Cache 显存估算")
-    print(f"  batch={B}, layers={L}, heads={H}, seq={T}, head_dim={D}, bf16")
-    print(f"  公式: 2 × B × L × H × T × D × bytes")
-    print(f"  = 2 × {B} × {L} × {H} × {T} × {D} × {dtype_bytes}")
-    print(f"  = {kv_bytes/1e9:.2f} GB")
-    print()
-    print("  -> 配合 MQA (num_kv_heads=1) 或 GQA (num_kv_heads=8)")
-    print("     可将 KV Cache 压缩到 1/32 ~ 1/4（视模型而定）")
-    print()
-    print("[MOCK] KVCache 简化接口（伪代码）")
-    print("  __init__(num_layers, batch_size, num_heads, head_dim, max_seq_len)")
-    print("  get(layer_idx) -> (K, V) of shape (B, H, T_cur, D)")
-    print("  update(layer_idx, new_k, new_v)  # 追加到 current_len 之后")
-    print("  increment(delta=1)               # current_len += 1")
-    print()
+# 主流模型 KV cache 配置 (来源: HuggingFace config.json)
+CONFIGS = {
+    "qwen2.5-0.5b": ModelKVConfig("Qwen2.5-0.5B", 24, 2, 64, num_query_heads=14),  # GQA
+    "qwen2.5-7b":   ModelKVConfig("Qwen2.5-7B",  28, 4, 128, num_query_heads=28), # GQA
+    "qwen2.5-72b":  ModelKVConfig("Qwen2.5-72B", 80, 8, 128, num_query_heads=64), # GQA
+    "llama-3-8b":   ModelKVConfig("Llama-3-8B",  32, 8, 128, num_query_heads=32), # GQA
+    "llama-2-7b":   ModelKVConfig("Llama-2-7B",  32, 32, 128),                    # MHA
+}
 
 
-def real_kv_cache_demo():
-    """真实 KV Cache 演示（需 CUDA）"""
-    import torch
+def kv_per_token(cfg: ModelKVConfig, dtype_bytes: int = 2) -> int:
+    """每个 token 的 KV cache 字节数 (K+V 加起来)."""
+    return 2 * cfg.num_layers * cfg.num_kv_heads * cfg.head_dim * dtype_bytes
 
-    class KVCache:
-        """KV Cache 简化实现"""
 
-        def __init__(self, num_layers, batch_size, num_heads, head_dim, max_seq_len):
-            self.num_layers = num_layers
-            # 预分配 [layers, 2(k/v), batch, heads, max_seq, head_dim]
-            self.cache = torch.zeros(
-                num_layers, 2, batch_size, num_heads, max_seq_len, head_dim,
-                dtype=torch.bfloat16, device="cuda",
-            )
-            self.current_len = 0
+def total_kv(
+    cfg: ModelKVConfig,
+    max_seq_len: int = 4096,
+    batch_size: int = 32,
+    dtype_bytes: int = 2,
+) -> int:
+    """总 KV cache 字节数."""
+    return kv_per_token(cfg, dtype_bytes) * max_seq_len * batch_size
 
-        def get(self, layer_idx):
-            """获取指定层的 K/V（到当前长度）"""
-            k = self.cache[layer_idx, 0, :, :, :self.current_len, :]
-            v = self.cache[layer_idx, 1, :, :, :self.current_len, :]
-            return k, v
 
-        def update(self, layer_idx, new_k, new_v):
-            """追加新的 K/V"""
-            seq_len = new_k.shape[2]
-            end = self.current_len + seq_len
-            self.cache[layer_idx, 0, :, :, self.current_len:end, :] = new_k
-            self.cache[layer_idx, 1, :, :, self.current_len:end, :] = new_v
+def main():
+    print("=== KV Cache 内存计算 (fp16, 2 bytes) ===\n")
 
-        def increment(self, delta=1):
-            self.current_len += delta
+    # 1) 不同模型单 token KV cache
+    print("Per-token KV cache (单 token, fp16):")
+    print(f"{'模型':<15} {'kv heads':>10} {'per tok':>12} {'gqa ratio':>12}")
+    print("-" * 55)
+    for cfg in CONFIGS.values():
+        per_tok = kv_per_token(cfg) / 1024
+        gqa_ratio = cfg.num_query_heads / cfg.num_kv_heads
+        print(
+            f"{cfg.name:<15} {cfg.num_kv_heads:>10} {per_tok:>9.1f}KB {gqa_ratio:>11.1f}x"
+        )
 
-    # 演示：32 层 7B 模型的 KV Cache
-    cache = KVCache(
-        num_layers=32,
-        batch_size=1,
-        num_heads=32,
-        head_dim=128,
-        max_seq_len=512,
-    )
+    # 2) 不同 ctx 长度 + batch 大小下的总 KV cache
+    print("\n总 KV cache (4K ctx, batch=32, fp16):")
+    print(f"{'模型':<15} {'total KV':>14} {'对比 Llama-2-7B':>20}")
+    print("-" * 55)
+    base_total = total_kv(CONFIGS["llama-2-7b"])
+    for cfg in CONFIGS.values():
+        total = total_kv(cfg) / (1024**3)
+        ratio = total_kv(cfg) / base_total
+        print(f"{cfg.name:<15} {total:>12.2f}GB {ratio:>19.2f}x")
 
-    print(f"缓存形状: {tuple(cache.cache.shape)}")
-    print(f"占用显存: {cache.cache.numel() * cache.cache.element_size() / 1024**2:.2f} MB")
+    # 3) 长上下文场景 (32K)
+    print("\n长上下文场景 (32K ctx, batch=1, fp16):")
+    print(f"{'模型':<15} {'total KV':>14}")
+    print("-" * 35)
+    for cfg in CONFIGS.values():
+        total = total_kv(cfg, max_seq_len=32768, batch_size=1) / (1024**3)
+        print(f"{cfg.name:<15} {total:>12.2f}GB")
 
-    # 模拟 step 1: 预填充 4 个 token
-    fake_k = torch.randn(1, 32, 4, 128, dtype=torch.bfloat16, device="cuda")
-    fake_v = torch.randn(1, 32, 4, 128, dtype=torch.bfloat16, device="cuda")
-    for layer in range(32):
-        cache.update(layer, fake_k[layer:layer+1], fake_v[layer:layer+1])
-    cache.increment(4)
-    print(f"After prefill: current_len={cache.current_len}")
-    k0, v0 = cache.get(0)
-    print(f"Layer 0 K shape={tuple(k0.shape)}")
-    print("OK")
+    # 4) 对比 FP16 vs INT8 vs INT4 (量化 KV cache)
+    print("\n量化 KV cache 节省 (Qwen2.5-7B, 4K ctx, b=32):")
+    print(f"{'dtype':<10} {'bytes':>8} {'total KV':>14} {'节省':>10}")
+    print("-" * 50)
+    cfg = CONFIGS["qwen2.5-7b"]
+    fp16 = total_kv(cfg)
+    for label, nbytes in [("fp16", 2), ("int8", 1), ("int4", 1)]:
+        # int4 KV cache 用 0.5 字节
+        scale = 1.0 if nbytes == 2 else (0.5 if nbytes == 1 and label == "int4" else 0.5)
+        v = fp16 * (nbytes / 2) * (0.5 if label == "int4" else 1.0)
+        v_gb = v / (1024**3)
+        saving = (1 - v / fp16) * 100
+        print(f"{label:<10} {nbytes:>8} {v_gb:>12.2f}GB {saving:>9.0f}%")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mock", action="store_true")
-    args = parser.parse_args()
-
-    if args.mock or MOCK_MODE:
-        mock_kv_cache_demo()
-    else:
-        real_kv_cache_demo()
+    main()

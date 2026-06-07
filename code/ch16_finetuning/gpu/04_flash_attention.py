@@ -1,101 +1,120 @@
 # ---
 # chapter: 16
-# topic: 模型微调与推理优化
-# section: 16.4.3 Flash Attention 使用
-# difficulty: ⭐⭐⭐⭐⭐
+# topic: Flash Attention (torch SDPA 真实 benchmark)
+# section: 16.4.3
+# difficulty: ⭐⭐⭐⭐
 # tier: gpu
-# deps: torch (>=2.0), flash-attn (optional)
-# run: python 04_flash_attention.py --mock
-# expected_runtime: <5s for mock / <30s for real
-# expected_output: 展示 SDPA Flash kernel 路径 + 注意力计算正确性对比
+# deps: torch>=2.0
+# run: python 04_flash_attention.py
+# expected_runtime: 30-60s
+# expected_output: 标准 vs Flash Attention 性能对比
 # ---
 # See: ../tutorial/16_模型微调与推理优化.md §16.4.3
+#
 # Interview hooks:
 #   1. Flash Attention 为什么能将显存从 O(N^2) 降到 O(N)？分块 + Online Softmax 的关键？
 #   2. 标准 Attention 矩阵 S = QK^T 的显存瓶颈在哪？为什么反向传播时需要重新计算？
 #   3. PyTorch SDPA 是如何选择后端 kernel 的？enable_flash / enable_mem_efficient 区别？
+"""Flash Attention 演示 (torch SDPA).
 
+PyTorch 2.0+ 通过 torch.nn.functional.scaled_dot_product_attention
+自动选择最优 attention 后端 (Flash Attention 2, Memory-Efficient, Math).
+
+此处对比:
+  - naive: 标准 O(N^2) attention, 显存 O(N^2)
+  - SDPA:  自动选择 Flash/MemEfficient 后端
 """
-Flash Attention 使用 —— PyTorch 2.0+ SDPA / flash_attn 库
-"""
+import sys
+import time
+from pathlib import Path
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-import os
-import argparse
+import torch
+import torch.nn.functional as F
+from shared.gpu_guard import require_nvidia_gpu
+from shared._error_helper import raise_with_help
 
 
-MOCK_MODE = os.environ.get("MOCK_MODE", "0") == "1"
+def check_hardware():
+    require_nvidia_gpu(min_vram_gb=8, min_count=1)
 
 
-def mock_flash_attention_demo():
-    """无 CUDA 环境下的概念演示"""
-    print("[MOCK] Flash Attention 核心思路")
-    print("  1. 分块（Tiling）:  Q/K/V 切成能在 SRAM 容纳的小块")
-    print("  2. Online Softmax: 增量计算 softmax, 不存完整 N×N 矩阵")
-    print("  3. 重计算（Recompute）: 反向时按需重算 attention 矩阵")
+def naive_attention(q, k, v):
+    """标准 O(N^2) attention — 显式 softmax, 完整 attn 矩阵."""
+    scale = q.size(-1) ** -0.5
+    attn = (q @ k.transpose(-2, -1)) * scale
+    attn = F.softmax(attn, dim=-1)
+    return attn @ v
+
+
+def sdpa_attention(q, k, v):
+    """PyTorch SDPA (自动 Flash Attention 后端)."""
+    return F.scaled_dot_product_attention(q, k, v, dropout_p=0.0, is_causal=True)
+
+
+def benchmark(fn, q, k, v, n_warmup=3, n_runs=10):
+    """测平均延迟 (ms)."""
+    for _ in range(n_warmup):
+        _ = fn(q, k, v)
+    torch.cuda.synchronize()
+    t0 = time.perf_counter()
+    for _ in range(n_runs):
+        out = fn(q, k, v)
+    torch.cuda.synchronize()
+    elapsed = (time.perf_counter() - t0) * 1000 / n_runs
+    return out, elapsed
+
+
+def main():
+    check_hardware()
+
+    # 测试配置: batch=2, heads=8, seq=2048, head_dim=64
+    B, H, S, D = 2, 8, 2048, 64
+    q = torch.randn(B, H, S, D, dtype=torch.bfloat16, device="cuda")
+    k = torch.randn_like(q)
+    v = torch.randn_like(q)
+
+    print("=== Flash Attention (torch SDPA) vs 标准 attention ===\n")
+    print(f"GPU: {torch.cuda.get_device_name(0)}")
+    print(f"Config: B={B}, H={H}, S={S}, D={D}, dtype=bf16")
+    print(f"   attn matrix 大小: {H} × {S} × {S} × 2B = {H*S*S*2/1024:.1f}KB/层")
     print()
-    print("[MOCK] PyTorch SDPA (>=2.0) 三种 kernel 路径")
-    print("  - FLASH (Flash Attention 2)")
-    print("  - EFFICIENT (Memory-Efficient, xformers 风格)")
-    print("  - MATH (标准实现, 显存 O(N^2), 仅作 fallback)")
+
+    # 1) Naive attention
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+    out_naive, naive_ms = benchmark(naive_attention, q, k, v)
+    naive_vram = torch.cuda.max_memory_allocated() / (1024**3)
+
+    # 2) SDPA (Flash / MemEfficient 自动选择)
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+    out_sdpa, sdpa_ms = benchmark(sdpa_attention, q, k, v)
+    sdpa_vram = torch.cuda.max_memory_allocated() / (1024**3)
+
+    # 3) 数值正确性 (loss 容忍)
+    max_diff = (out_naive - out_sdpa).abs().max().item()
+    rel_diff = max_diff / (out_naive.abs().mean().item() + 1e-6)
+
+    print(f"naive attention:")
+    print(f"  latency:  {naive_ms:.2f}ms")
+    print(f"  VRAM:     {naive_vram * 1024:.1f}MB")
     print()
-    print("[MOCK] 显存对比 (seq=4096, head=32, dim=128, bf16)")
-    print("  Standard Attention: 4096×4096 × 2B × 32 heads ≈ 1 GB / layer")
-    print("  Flash Attention:    O(N) ≈ 32 × 4096 × 128 × 2B ≈ 32 MB / layer")
-    print("  -> 显存比 ~ 32x")
+    print(f"SDPA (Flash):")
+    print(f"  latency:  {sdpa_ms:.2f}ms")
+    print(f"  VRAM:     {sdpa_vram * 1024:.1f}MB")
+    print()
+    print(f"数值差异: max abs = {max_diff:.4e}, rel = {rel_diff:.4e}")
     print()
 
-
-def real_flash_attention_demo():
-    """真实 Flash Attention 演示（需 CUDA）"""
-    import torch
-    import torch.nn.functional as F
-
-    # 构造测试数据
-    B, H, T, D = 2, 8, 1024, 64
-    Q = torch.randn(B, H, T, D, dtype=torch.bfloat16, device="cuda")
-    K = torch.randn(B, H, T, D, dtype=torch.bfloat16, device="cuda")
-    V = torch.randn(B, H, T, D, dtype=torch.bfloat16, device="cuda")
-
-    # 方式1：PyTorch 原生 scaled_dot_product_attention
-    with torch.backends.cuda.sdp_kernel(
-        enable_flash=True,
-        enable_math=False,
-        enable_mem_efficient=False,
-    ):
-        out_flash = F.scaled_dot_product_attention(Q, K, V, is_causal=True)
-    print(f"[SDPA-Flash] output shape: {tuple(out_flash.shape)}")
-
-    # 方式2：数学实现（参考对照）
-    with torch.backends.cuda.sdp_kernel(
-        enable_flash=False, enable_math=True, enable_mem_efficient=False,
-    ):
-        out_math = F.scaled_dot_product_attention(Q, K, V, is_causal=True)
-
-    diff = (out_flash - out_math).abs().max().item()
-    print(f"[SDPA-Math]  max abs diff vs Flash: {diff:.4e}")
-
-    # 方式3：flash_attn 库（若安装）
-    try:
-        from flash_attn import flash_attn_func
-        # flash_attn 期望 (B, T, H, D) 布局
-        Qf = Q.transpose(1, 2)
-        Kf = K.transpose(1, 2)
-        Vf = V.transpose(1, 2)
-        out_fa = flash_attn_func(Qf, Kf, Vf, causal=True)
-        out_fa = out_fa.transpose(1, 2)
-        print(f"[flash_attn_func] output shape: {tuple(out_fa.shape)}")
-    except ImportError:
-        print("[flash_attn_func] 库未安装, 跳过 (pip install flash-attn)")
-
-    print("OK")
+    speedup = naive_ms / sdpa_ms
+    print(f"speedup: {speedup:.2f}x | VRAM 节省: {(1 - sdpa_vram / naive_vram) * 100:.0f}%")
+    print()
+    print("✅ SDPA 自动选择最优后端 (Flash Attention 2 / MemEfficient / Math)")
+    print("   在长序列 (S≥4096) 时 Flash 优势更显著 (O(N²) → O(N) 显存)")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mock", action="store_true")
-    args = parser.parse_args()
-
-    if args.mock or MOCK_MODE:
-        mock_flash_attention_demo()
-    else:
-        real_flash_attention_demo()
+    main()

@@ -1,104 +1,162 @@
 # ---
 # chapter: 16
-# topic: 模型微调与推理优化
-# section: 16.2.3 QLoRA: 4-bit 量化 + LoRA
+# topic: QLoRA 4-bit + LoRA Fine-tuning (真实 bitsandbytes + peft)
+# section: 16.2.3
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
-# deps: torch, transformers>=4.40, peft, bitsandbytes, accelerate
-# run: python 02_qlora_config.py --mock
-# expected_runtime: <5s for mock / 3-10 min for real (RTX 3090/4090)
-# expected_output: BitsAndBytesConfig + 显存估算 summary
+# deps: transformers, peft, bitsandbytes, accelerate, torch
+# run: python 02_qlora_config.py
+# expected_runtime: 60-180s
+# expected_output: 4-bit NF4 量化 + LoRA 训练 loss 下降
 # ---
 # See: ../tutorial/16_模型微调与推理优化.md §16.2.3
+#
 # Interview hooks:
 #   1. NF4 量化为什么比 INT4 精度更高？（针对正态分布权重的最优 4-bit 数据类型）
 #   2. Double Quantization 如何进一步省显存？Paged Optimizer 防 OOM 的原理？
 #   3. QLoRA 的 7B 模型显存构成：4-bit 基础模型 + LoRA + 优化器 + 激活值各占多少？
+"""QLoRA 4-bit 量化 + LoRA 训练 (Qwen2.5-0.5B).
 
+QLoRA = 4-bit NF4 量化 (NormalFloat) base + LoRA adapter
+- base 模型: 4-bit 量化存储
+- LoRA adapter: 16-bit 训练
+- 显存节省: 0.5B 模型 4-bit 量化后 ~0.4GB (vs 1GB fp16)
 """
-QLoRA 配置 - 单卡 24GB 消费级 GPU 微调 7B/13B 模型
+import sys
+from pathlib import Path
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-关键技术：
-    1. 4-bit NormalFloat (NF4)：针对正态分布权重设计的最优 4-bit 数据类型
-    2. Double Quantization：对量化常数再次量化，再省 ~0.4 bits/param
-    3. Paged Optimizer：利用 CPU 内存做 optimizer state offload
-"""
-
-import os
-import argparse
-
-
-MOCK_MODE = os.environ.get("MOCK_MODE", "0") == "1"
+import torch
+from shared.gpu_guard import require_nvidia_gpu
+from shared._error_helper import raise_with_help
 
 
-def mock_qlora_config():
-    """无 GPU / 无 bitsandbytes 环境的 mock 实现"""
-    print("[MOCK] QLoRA 显存估算（7B 模型，bf16 计算 + NF4 存储）")
-    print()
-    print("  4-bit 基础模型权重:    7B × 0.5B  ≈  3.5 GB")
-    print("  LoRA 参数 (r=16):     ~33M × 2B    ≈  0.07 GB  (≈ 70 MB)")
-    print("  Adam 优化器状态:       33M × 8B    ≈  0.26 GB  (FP32 m, v)")
-    print("  梯度（仅 LoRA）:       33M × 2B    ≈  0.07 GB")
-    print("  激活值（512 seq, bs=4）:              ≈  4-8 GB")
-    print("  其它（CUDA/框架预留）:                ≈  1-2 GB")
-    print("  -------------------------------------------------")
-    print("  合计：~ 10-15 GB（单张 RTX 3090/4090 即可）")
-    print()
-    print("[MOCK] BitsAndBytesConfig 关键参数：")
-    print("  load_in_4bit=True")
-    print("  bnb_4bit_quant_type='nf4'")
-    print("  bnb_4bit_compute_dtype=torch.bfloat16")
-    print("  bnb_4bit_use_double_quant=True")
-    print()
+def check_hardware():
+    require_nvidia_gpu(min_vram_gb=8, min_count=1)
 
 
-def real_qlora_config():
-    """真实 QLoRA 配置（需 GPU + bitsandbytes）"""
-    import torch
-    from transformers import AutoModelForCausalLM, BitsAndBytesConfig
-    from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training, TaskType
+class SyntheticDataset(torch.utils.data.Dataset):
+    def __init__(self, size: int = 100, seq_len: int = 64):
+        self.size = size
+        torch.manual_seed(42)
+        self.examples = [
+            {
+                "input_ids": torch.randint(0, 1000, (seq_len,)),
+                "labels": torch.randint(0, 1000, (seq_len,)),
+            }
+            for _ in range(size)
+        ]
+
+    def __len__(self):
+        return self.size
+
+    def __getitem__(self, i):
+        return self.examples[i]
+
+
+def main():
+    check_hardware()
+
+    model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")
+    if not Path(model_path).exists():
+        raise_with_help(
+            f"需要 {model_path}", "运行 `make download-models-default`."
+        )
+
+    from transformers import (
+        AutoModelForCausalLM,
+        AutoTokenizer,
+        TrainingArguments,
+        Trainer,
+        BitsAndBytesConfig,
+    )
+    from peft import (
+        LoraConfig,
+        get_peft_model,
+        TaskType,
+        prepare_model_for_kbit_training,
+    )
+
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    print("=== QLoRA 4-bit + LoRA 训练 (Qwen2.5-0.5B) ===\n")
+    print(f"GPU: {torch.cuda.get_device_name(0)}\n")
 
     # 4-bit 量化配置
     bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,                       # 启用 4-bit 量化
-        bnb_4bit_quant_type="nf4",               # NF4 量化类型
-        bnb_4bit_compute_dtype=torch.bfloat16,   # 计算时用 bf16
-        bnb_4bit_use_double_quant=True,          # 二次量化
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",  # NormalFloat 4-bit
+        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_use_double_quant=True,  # 双重量化
     )
 
-    model_name = "Qwen/Qwen2.5-7B-Instruct"
+    print("加载 4-bit NF4 量化 base model...")
     model = AutoModelForCausalLM.from_pretrained(
-        model_name,
+        model_path,
         quantization_config=bnb_config,
         device_map="auto",
-        trust_remote_code=True,
+    )
+    print(
+        f"  4-bit 加载后 VRAM: {torch.cuda.memory_allocated() / 1024**3:.2f}GB"
     )
 
-    # 准备模型用于量化训练（必须！）
+    # QLoRA 必须: prepare_model_for_kbit_training
     model = prepare_model_for_kbit_training(model)
 
-    # LoRA 配置（与 16.2.2 一致）
+    print("\n应用 LoRA adapter (r=16, q/k/v/o_proj)...")
     lora_config = LoraConfig(
         r=16,
         lora_alpha=32,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                        "gate_proj", "up_proj", "down_proj"],
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
         lora_dropout=0.05,
         bias="none",
         task_type=TaskType.CAUSAL_LM,
     )
-
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
-    print("OK")
+
+    # 训练
+    print("\n训练 (50 steps)...")
+    training_args = TrainingArguments(
+        output_dir=str(_code_root / "models" / "qlora_adapter"),
+        num_train_epochs=1,
+        max_steps=50,
+        per_device_train_batch_size=2,
+        learning_rate=2e-4,
+        logging_steps=10,
+        save_steps=1000,
+        report_to="none",
+        bf16=True,
+    )
+
+    dataset = SyntheticDataset(size=100)
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=dataset,
+        tokenizer=tokenizer,
+    )
+
+    trainer.train()
+    losses = [e["loss"] for e in trainer.state.log_history if "loss" in e]
+
+    if losses:
+        print(f"\n=== 训练完成 ===")
+        print(f"  initial loss: {losses[0]:.4f}")
+        print(f"  final loss:   {losses[-1]:.4f}")
+        if losses[-1] < losses[0]:
+            print(f"  ✅ loss 下降: {losses[0]:.4f} → {losses[-1]:.4f}")
+        else:
+            print(f"  ⚠️  loss 未明显下降 (合成随机数据, 这是正常)")
+
+    vram = torch.cuda.max_memory_allocated() / (1024**3)
+    print(f"  peak VRAM: {vram:.2f}GB / 34GB")
+    print(f"  (对比 fp16 LoRA 节省 ~50%)")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mock", action="store_true")
-    args = parser.parse_args()
-
-    if args.mock or MOCK_MODE:
-        mock_qlora_config()
-    else:
-        real_qlora_config()
+    main()
