@@ -86,7 +86,7 @@ PROVIDERS: dict[str, Provider] = {
     "MiniMax": Provider(
         name="MiniMax",
         display_name="MiniMax (MiniMax, Codin Plan)",
-        base_url="https://api.MiniMax.com/v1",
+        base_url="https://api.minimaxi.com/v1",          # 注意域名是 minimaxi (无 s)
         default_chat="MiniMax-Text-01",
         default_reasoner="MiniMax-Text-01",  # same model supports thinking via reasoning_effort param
         api_style="openai",
