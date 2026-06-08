@@ -1,9 +1,8 @@
 # ---
-# .github/workflows/integration-test.yml (Wave 31 + W8)
+# .github/workflows/integration-test.yml (Wave 31 + W8 + v1.0.13)
 # 集成测试 workflow — 验证 4 项真实组件 (Embedding + Redis + pgvector + LLM)
-#                + 真实 API 冒烟 (10 个代表性 LLM tier 文件, 仅 push/schedule/manual)
 # 触发: push to master / PR / schedule (周日 04:00 UTC) / 手动
-# 需 GitHub Secrets: DEEPSEEK_API_KEY 等 (run_real_demos 同样需要)
+# 需 GitHub Secrets: DEEPSEEK_API_KEY (test_llm 用, 缺则跳过该厂商)
 # ---
 name: integration-test
 
