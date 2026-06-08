@@ -8,3 +8,11 @@
 # OS
 .DS_Store
 Thumbs.db
+
+# MCP / Playwright / 临时调试产物
+.playwright-mcp/
+code/jobs.json
+code/jobs2.json
+code/logs.zip
+code/logs/
+code/output/
