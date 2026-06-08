@@ -46,10 +46,14 @@ jobs:
 
       - name: Run verify_all (4 checks)
         working-directory: code
+        env:
+          LLM_MOCK: "1"  # CI mock 模式: 不需真实 API key
         run: python scripts/verify_all.py
 
       - name: Run pytest smoke tests
         working-directory: code
+        env:
+          LLM_MOCK: "1"  # CI mock 模式
         run: |
           pytest tests/ -m "not gpu" --tb=short -v 2>&1 | tee pytest-smoke.log
       - name: Upload pytest log on failure
@@ -115,6 +119,8 @@ jobs:
 
       - name: Run all llm/ examples (mock mode)
         working-directory: code
+        env:
+          LLM_MOCK: "1"  # CI mock 模式: 不需真实 API key, 跑 199 个 llm 例子全过
         run: python scripts/run_all_examples.py --tier llm --parallel 4 --timeout 180
 
   # ============================================================
