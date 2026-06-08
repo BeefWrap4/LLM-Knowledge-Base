@@ -50,7 +50,15 @@ jobs:
 
       - name: Run pytest smoke tests
         working-directory: code
-        run: pytest tests/ -m "not gpu" -q --tb=short
+        run: |
+          pytest tests/ -m "not gpu" --tb=short -v 2>&1 | tee pytest-smoke.log
+      - name: Upload pytest log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-smoke-log
+          path: code/pytest-smoke.log
+          retention-days: 7
 
   # ============================================================
   # 2. 跑通所有 core/ 例子 (~3 min, 任意 ubuntu runner 即可)
