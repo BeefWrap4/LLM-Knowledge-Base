@@ -81,13 +81,14 @@ jobs:
           sleep 10
           python -c "import psycopg2; c=psycopg2.connect(host='localhost', port=15432, user='llmkb', password='llmkb_test', dbname='vectordb'); c.autocommit=True; c.cursor().execute('CREATE EXTENSION IF NOT EXISTS vector'); c.close(); print('  ✓ pgvector 15432 ready')"
 
-      - name: 下载真实模型 (国内源, 3 个 required 模型, ~1.7GB)
+      - name: 下载真实模型 (仅 bge-small-zh ~0.1GB, 集成测试唯一需要的)
         working-directory: code
         env:
           HF_ENDPOINT: https://hf-mirror.com
         run: |
-          # 用 --required-only 避免触发 auth-gated 16GB Llama 模型
-          python scripts/download_models.py --required-only
+          # test_integration.py 只需要 bge-small-zh-v1.5 做 embedding 测试
+          # bge-reranker / qwen0_5b 不被此 workflow 使用, 不下载 (省 27min)
+          python scripts/download_models.py --embedding
 
       - name: "跑集成测试 (4 项: Embedding + Redis + pgvector + LLM)"
         working-directory: code
