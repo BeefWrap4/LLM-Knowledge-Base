@@ -14,14 +14,18 @@
 #   1. field_validator 与 model_validator(mode="after") 的执行顺序与适用场景？
 #   2. Pydantic v2 中 Literal 字段如何生成 OpenAPI 的 enum 约束？
 #   3. model_dump() 与 dict() 有什么区别？何时使用 model_dump_json()？
-from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
 
 class EmbeddingRequest(BaseModel):
     """Embedding 请求模型 - 展示高级验证"""
+
     texts: list[str] = Field(min_length=1, max_length=100, description="待编码文本列表")
-    model: Literal["text-embedding-3-small", "text-embedding-3-large", "bge-m3"] = \
-        Field(default="bge-m3", description="Embedding 模型")
+    model: Literal["text-embedding-3-small", "text-embedding-3-large", "bge-m3"] = Field(
+        default="bge-m3", description="Embedding 模型"
+    )
     normalize: bool = Field(default=True, description="是否归一化")
 
     @field_validator("texts")
@@ -43,11 +47,7 @@ class EmbeddingRequest(BaseModel):
 
 if __name__ == "__main__":
     # 使用示例
-    valid_req = EmbeddingRequest(
-        texts=["FastAPI 教程", "机器学习基础"],
-        model="bge-m3",
-        normalize=True
-    )
+    valid_req = EmbeddingRequest(texts=["FastAPI 教程", "机器学习基础"], model="bge-m3", normalize=True)
     print(valid_req.model_dump())  # 序列化为字典
     print(valid_req.model_dump_json())  # 序列化为 JSON 字符串
 
@@ -59,10 +59,6 @@ if __name__ == "__main__":
 
     # 模型级校验：small 模型 + 超过 50 条
     try:
-        EmbeddingRequest(
-            texts=[f"text-{i}" for i in range(51)],
-            model="text-embedding-3-small"
-        )
+        EmbeddingRequest(texts=[f"text-{i}" for i in range(51)], model="text-embedding-3-small")
     except Exception as e:
         print(f"[模型级校验触发] {type(e).__name__}: small 模型单次最多处理 50 条文本")
-

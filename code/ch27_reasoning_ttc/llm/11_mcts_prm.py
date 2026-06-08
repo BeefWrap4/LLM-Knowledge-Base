@@ -19,22 +19,22 @@
 四步循环: Selection → Expansion → Simulation → Backprop
 PRM 作为 Expansion 时的先验 + Simulation 时的 rollout 价值。
 """
+
 from __future__ import annotations
 
 import math
 import random
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
 class MCTSNode:
     state: str
-    parent: Optional["MCTSNode"] = None
-    children: list["MCTSNode"] = field(default_factory=list)
+    parent: MCTSNode | None = None
+    children: list[MCTSNode] = field(default_factory=list)
     visits: int = 0
     value_sum: float = 0.0
-    prior: float = 1.0           # PRM 给的先验
+    prior: float = 1.0  # PRM 给的先验
     is_terminal: bool = False
 
     @property
@@ -45,9 +45,7 @@ class MCTSNode:
         if self.visits == 0:
             return float("inf")
         parent_visits = self.parent.visits if self.parent else 1
-        return (self.value_sum / self.visits) + c * self.prior * math.sqrt(
-            parent_visits
-        ) / (1 + self.visits)
+        return (self.value_sum / self.visits) + c * self.prior * math.sqrt(parent_visits) / (1 + self.visits)
 
 
 def mock_prm(state: str) -> float:
@@ -70,15 +68,13 @@ def mock_expand(node: MCTSNode, branching: int = 3) -> None:
         # 末位 step2 模拟"正确"答案
         if "step2" in s and random.random() < 0.4:
             s = s.replace("step2", "answer=correct")
-            child = MCTSNode(s, parent=node, prior=mock_prm(s),
-                             is_terminal=True)
+            child = MCTSNode(s, parent=node, prior=mock_prm(s), is_terminal=True)
         else:
             child = MCTSNode(s, parent=node, prior=mock_prm(s))
         node.children.append(child)
 
 
-def mcts_search(root_state: str, n_simulations: int = 50,
-                c: float = 1.4) -> MCTSNode:
+def mcts_search(root_state: str, n_simulations: int = 50, c: float = 1.4) -> MCTSNode:
     root = MCTSNode(root_state, prior=1.0)
 
     for sim in range(n_simulations):
@@ -130,9 +126,11 @@ def main() -> None:
     def show(n: MCTSNode, depth: int = 1) -> None:
         for c in sorted(n.children, key=visit_count, reverse=True):
             tag = " [TERMINAL]" if c.is_terminal else ""
-            print(f"  {'  ' * depth}- {c.state.split(' > ')[-1]:>10}"
-                  f"  V={c.visits:>3}  v={c.value:.2f}"
-                  f"  prior={c.prior:.2f}{tag}")
+            print(
+                f"  {'  ' * depth}- {c.state.split(' > ')[-1]:>10}"
+                f"  V={c.visits:>3}  v={c.value:.2f}"
+                f"  prior={c.prior:.2f}{tag}"
+            )
             if depth < 2:
                 show(c, depth + 1)
 
@@ -144,8 +142,8 @@ def main() -> None:
 
     print("\n--- 与 Best-of-N 对比 ---")
     print(f"  MCTS+PRM  : {root.visits} 次模拟 → 通常 N=64 BoN 更准但代价高")
-    print(f"  Best-of-N : 独立采样 N 次，verifier 选最优")
-    print(f"  混合策略  : MCTS 指导 prefix → N 个完成 → verifier 选最优")
+    print("  Best-of-N : 独立采样 N 次，verifier 选最优")
+    print("  混合策略  : MCTS 指导 prefix → N 个完成 → verifier 选最优")
 
 
 if __name__ == "__main__":

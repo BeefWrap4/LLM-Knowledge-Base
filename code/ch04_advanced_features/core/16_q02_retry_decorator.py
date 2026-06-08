@@ -23,8 +23,9 @@ Q2：手写一个带参数的装饰器（如重试装饰器）。
 关键点：最内层可以访问外层参数形成闭包。
 """
 
-from functools import wraps
 import time
+from functools import wraps
+
 
 def retry(max_attempts=3, delay=1):
     def decorator(func):
@@ -33,11 +34,13 @@ def retry(max_attempts=3, delay=1):
             for attempt in range(1, max_attempts + 1):
                 try:
                     return func(*args, **kwargs)
-                except Exception as e:
+                except Exception:
                     if attempt == max_attempts:
                         raise
                     time.sleep(delay)
+
         return wrapper
+
     return decorator
 
 

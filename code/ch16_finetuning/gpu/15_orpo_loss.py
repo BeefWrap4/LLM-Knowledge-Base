@@ -28,6 +28,7 @@ ORPO 优势:
   - SFT + 对齐一步完成
   - 在 7B 量级上比 DPO 更快收敛
 """
+
 import sys
 from pathlib import Path
 
@@ -37,8 +38,8 @@ if str(_code_root) not in sys.path:
 
 import torch
 import torch.nn.functional as F
+
 from shared.gpu_guard import require_nvidia_gpu
-from shared._error_helper import raise_with_help
 
 
 def check_hardware():
@@ -51,9 +52,9 @@ def log_odds(logp: torch.Tensor) -> torch.Tensor:
 
 
 def orpo_loss(
-    chosen_logps: torch.Tensor,    # [B, T] chosen 序列 token-level logp
+    chosen_logps: torch.Tensor,  # [B, T] chosen 序列 token-level logp
     rejected_logps: torch.Tensor,  # [B, T] rejected 序列 token-level logp
-    chosen_labels: torch.Tensor,   # [B, T] label mask (-100 表示 padding/prompt)
+    chosen_labels: torch.Tensor,  # [B, T] label mask (-100 表示 padding/prompt)
     beta: float = 0.1,
     lam: float = 0.5,
 ) -> torch.Tensor:

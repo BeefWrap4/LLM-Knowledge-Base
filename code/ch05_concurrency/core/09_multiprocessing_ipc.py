@@ -75,13 +75,10 @@ def increment(shared_counter, lock, n):
 
 
 def run_shared_memory_demo():
-    shared_counter = mp.Value('i', 0)  # 'i' = signed int
+    shared_counter = mp.Value("i", 0)  # 'i' = signed int
     lock = mp.Lock()
 
-    processes = [
-        mp.Process(target=increment, args=(shared_counter, lock, 2500))
-        for _ in range(4)
-    ]
+    processes = [mp.Process(target=increment, args=(shared_counter, lock, 2500)) for _ in range(4)]
 
     for p in processes:
         p.start()

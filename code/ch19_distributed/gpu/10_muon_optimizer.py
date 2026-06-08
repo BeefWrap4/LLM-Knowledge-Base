@@ -19,11 +19,12 @@
 
 
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 import torch
 from torch import Tensor
@@ -32,6 +33,7 @@ from torch import Tensor
 try:
     _compile = torch.compile
 except AttributeError:
+
     def _compile(fn, **_kw):
         return fn
 
@@ -64,10 +66,16 @@ class Muon(torch.optim.Optimizer):
     用法: optimizer = Muon(model_params, lr=0.02, momentum=0.95)
     注意: 仅用于 >= 2D 参数 (矩阵), embedding / lm_head 仍用 AdamW。
     """
-    def __init__(self, params, lr: float = 0.02, momentum: float = 0.95,
-                 weight_decay: float = 0.0, nesterov: bool = True):
-        defaults = dict(lr=lr, momentum=momentum, weight_decay=weight_decay,
-                        nesterov=nesterov)
+
+    def __init__(
+        self,
+        params,
+        lr: float = 0.02,
+        momentum: float = 0.95,
+        weight_decay: float = 0.0,
+        nesterov: bool = True,
+    ):
+        defaults = dict(lr=lr, momentum=momentum, weight_decay=weight_decay, nesterov=nesterov)
         super().__init__(params, defaults)
 
     @torch.no_grad()
@@ -120,8 +128,7 @@ def main():
     print(f"参数组数: {len(muon.param_groups)}")
     for i, g in enumerate(muon.param_groups):
         n_params = sum(p.numel() for p in g["params"])
-        print(f"  组 {i}: lr={g['lr']}, 动量={g['momentum']}, "
-              f"参数量={n_params}")
+        print(f"  组 {i}: lr={g['lr']}, 动量={g['momentum']}, 参数量={n_params}")
 
     # 模拟一次 step
     x = torch.randn(4, 64)

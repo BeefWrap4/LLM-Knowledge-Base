@@ -24,15 +24,16 @@
 #   - "Pipeline 如何验证质量?"          →  离线评估集 + 关键事实召回率 + 端到端 task accuracy
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Any, Callable
 
+from dataclasses import dataclass, field
 
 # ---- 5 个层 ----
+
 
 @dataclass
 class InputLayer:
     """层 1: 输入 — 清洗 + 意图分类 + 安全过滤。"""
+
     def run(self, raw_query: str) -> dict:
         q = raw_query.strip()
         intent = "qa" if "?" in q or "？" in q else "chat"
@@ -42,6 +43,7 @@ class InputLayer:
 @dataclass
 class RetrievalLayer:
     """层 2: 检索 — RAG + Rerank, Top-K=3。"""
+
     corpus: list[str] = field(default_factory=list)
 
     def run(self, query: str, k: int = 3) -> list[str]:
@@ -59,6 +61,7 @@ class RetrievalLayer:
 @dataclass
 class CompressionLayer:
     """层 3: 压缩 — 长文档分块 + 摘要。"""
+
     chunk_size: int = 120
 
     def run(self, docs: list[str]) -> list[str]:
@@ -75,34 +78,29 @@ class CompressionLayer:
 @dataclass
 class AssemblyLayer:
     """层 4: 组装 — Template + Few-shot + RAG + Memory + Cache prefix 标记。"""
-    cached_prefix: str = ""     # 稳定部分 (system + few-shot)
-    dynamic_part: str = ""      # 动态部分 (RAG + memory + query)
 
-    def run(self, *, intent: str, docs: list[str], memory_hits: list[str],
-            query: str) -> dict:
-        self.cached_prefix = (
-            "[CACHE-PREFIX]\n"
-            "你是一个严谨的企业知识助手。\n"
-            "Few-shot: Q=PE 含义? A=市盈率。"
-        )
+    cached_prefix: str = ""  # 稳定部分 (system + few-shot)
+    dynamic_part: str = ""  # 动态部分 (RAG + memory + query)
+
+    def run(self, *, intent: str, docs: list[str], memory_hits: list[str], query: str) -> dict:
+        self.cached_prefix = "[CACHE-PREFIX]\n你是一个严谨的企业知识助手。\nFew-shot: Q=PE 含义? A=市盈率。"
         rag_block = "\n".join(f"- {d}" for d in docs)
         mem_block = "\n".join(f"- {m}" for m in memory_hits) or "(无 LTM 命中)"
         self.dynamic_part = (
-            "[DYNAMIC]\n"
-            f"意图: {intent}\n"
-            f"相关文档:\n{rag_block}\n"
-            f"长期记忆:\n{mem_block}\n"
-            f"用户问题: {query}"
+            f"[DYNAMIC]\n意图: {intent}\n相关文档:\n{rag_block}\n长期记忆:\n{mem_block}\n用户问题: {query}"
         )
         full = self.cached_prefix + "\n\n" + self.dynamic_part
-        return {"prompt": full,
-                "cache_prefix_tokens": len(self.cached_prefix) // 2,
-                "dynamic_tokens": len(self.dynamic_part) // 2}
+        return {
+            "prompt": full,
+            "cache_prefix_tokens": len(self.cached_prefix) // 2,
+            "dynamic_tokens": len(self.dynamic_part) // 2,
+        }
 
 
 @dataclass
 class OutputLayer:
     """层 5: 输出 — 结构化 + 后处理。"""
+
     def run(self, raw: str) -> dict:
         # mock: 强制返回结构化
         return {
@@ -113,6 +111,7 @@ class OutputLayer:
 
 
 # ---- 编排: 完整 pipeline ----
+
 
 @dataclass
 class ContextPipeline:
@@ -143,12 +142,14 @@ class ContextPipeline:
 
 def run_demo() -> None:
     pipe = ContextPipeline()
-    pipe.seed_corpus([
-        "Context Engineering 关注模型每步推理时看到的全部信息 (Anthropic 2026)",
-        "Haystack 2.x 提供组件化 pipeline, 支持 RAG + 缓存",
-        "LangGraph 用 checkpointer 持久化 agent state, 解决长会话问题",
-        "Sub-Agent 模式让每个子任务有独立 context, 避免污染",
-    ])
+    pipe.seed_corpus(
+        [
+            "Context Engineering 关注模型每步推理时看到的全部信息 (Anthropic 2026)",
+            "Haystack 2.x 提供组件化 pipeline, 支持 RAG + 缓存",
+            "LangGraph 用 checkpointer 持久化 agent state, 解决长会话问题",
+            "Sub-Agent 模式让每个子任务有独立 context, 避免污染",
+        ]
+    )
 
     print("=== 端到端 Context Pipeline 演示 ===\n")
     result = pipe.run(
@@ -163,7 +164,7 @@ def run_demo() -> None:
     print(f"  answer: {result['answer']}")
     print(f"  citations: {result['citations']}")
     print(f"  confidence: {result['confidence']}")
-    print(f"\n→ 提示: cache_prefix (system+few-shot) 跨轮命中, dynamic 每轮新鲜。")
+    print("\n→ 提示: cache_prefix (system+few-shot) 跨轮命中, dynamic 每轮新鲜。")
 
 
 if __name__ == "__main__":

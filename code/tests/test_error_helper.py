@@ -5,6 +5,7 @@ messages so all 8-wave refactor tasks produce consistent user-facing
 output with a `[ERROR]` / `[HELP]` shape and an optional file:line
 location prefix.
 """
+
 import pytest
 
 from shared._error_helper import format_error
@@ -32,6 +33,7 @@ def test_raise_with_help_raises_runtime_error_by_default():
     """raise_with_help 默认抛 RuntimeError."""
     with pytest.raises(RuntimeError) as exc_info:
         from shared._error_helper import raise_with_help
+
         raise_with_help("test message", "test hint")
     msg = str(exc_info.value)
     assert "[ERROR]" in msg
@@ -44,6 +46,7 @@ def test_raise_with_help_custom_exception_class():
     """raise_with_help 接受自定义 exc_class."""
     with pytest.raises(ValueError) as exc_info:
         from shared._error_helper import raise_with_help
+
         raise_with_help("custom msg", "custom hint", exc_class=ValueError)
     assert "custom msg" in str(exc_info.value)
 

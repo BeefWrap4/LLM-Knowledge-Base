@@ -24,8 +24,10 @@ Wave 30 改进:
   - LLM 改用 UnifiedClient (MiniMax / DeepSeek / Kimi / SiliconFlow 任意厂商)
   - Embedding 改用本地 bge-small-zh-v1.5 (无需 OpenAI Key)
 """
+
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
+
 _code_root = _Path_setup(__file__).resolve().parent.parent.parent
 if str(_code_root) not in _sys_path_setup.path:
     _sys_path_setup.path.insert(0, str(_code_root))
@@ -36,17 +38,17 @@ import os
 def run_ragas_evaluation() -> None:
     try:
         from datasets import Dataset
-        from ragas import evaluate
-        from ragas.metrics import (
-            faithfulness,
-            answer_relevancy,
-            context_recall,
-            context_precision,
-            answer_correctness,
-        )
-        from ragas.llms import LangchainLLMWrapper
-        from ragas.embeddings import LangchainEmbeddingsWrapper
         from langchain_huggingface import HuggingFaceEmbeddings
+        from ragas import evaluate
+        from ragas.embeddings import LangchainEmbeddingsWrapper
+        from ragas.llms import LangchainLLMWrapper
+        from ragas.metrics import (
+            answer_correctness,
+            answer_relevancy,
+            context_precision,
+            context_recall,
+            faithfulness,
+        )
     except ImportError as exc:
         print(f"[mock] 依赖未安装 ({exc}), 使用模拟输出")
         print("  pip install ragas datasets langchain-huggingface")
@@ -87,6 +89,7 @@ def run_ragas_evaluation() -> None:
 
     # Wave 30: LLM 用 chatmodel_factory (支持 7 厂商)
     from shared.chatmodel_factory import make_chat_model
+
     lc_llm = make_chat_model(provider=os.environ.get("LLM_PROVIDER", "MiniMax"))
     if lc_llm is None:
         print("[mock] UnifiedClient 无 Key, 使用模拟输出")
@@ -103,7 +106,7 @@ def run_ragas_evaluation() -> None:
         return
     emb = HuggingFaceEmbeddings(model_name=str(bge_path))
     embeddings = LangchainEmbeddingsWrapper(emb)
-    print(f"[ragas] Embedding: bge-small-zh (本地)")
+    print("[ragas] Embedding: bge-small-zh (本地)")
 
     # 选择评估指标
     metrics = [

@@ -4,6 +4,7 @@
 W1 已下沉 mock 到 tests/_mocks/. W3 目标: 移除 llm tier 主流程的所有 mock 分支.
 任何 PR 引入新的 mock 引用, CI 立即 fail.
 """
+
 import re
 from pathlib import Path
 
@@ -63,9 +64,7 @@ def test_no_mock_in_llm_tier():
             for pat in FORBIDDEN_PATTERNS:
                 if pat in line:
                     rel_path = py_file.relative_to(CODE_ROOT)
-                    violations.append(
-                        f"{rel_path}:{line_no}: '{pat}'\n    {line.strip()}"
-                    )
+                    violations.append(f"{rel_path}:{line_no}: '{pat}'\n    {line.strip()}")
                     break  # 一行只报一次
 
     if violations:
@@ -80,6 +79,4 @@ def test_llm_files_count():
     """sanity check: 应该有约 199 个 llm 文件 (W3 计划目标)."""
     llm_files = list(CODE_ROOT.glob("ch*/llm/*.py"))
     llm_files = [f for f in llm_files if f.name != "__init__.py"]
-    assert 100 <= len(llm_files) <= 300, (
-        f"llm 文件数 {len(llm_files)} 偏离预期 100-300"
-    )
+    assert 100 <= len(llm_files) <= 300, f"llm 文件数 {len(llm_files)} 偏离预期 100-300"

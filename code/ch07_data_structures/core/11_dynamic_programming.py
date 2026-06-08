@@ -50,7 +50,7 @@ def coin_change(coins: list[int], amount: int) -> int:
 
     时间复杂度: O(n * amount)  空间复杂度: O(amount)
     """
-    dp = [float('inf')] * (amount + 1)
+    dp = [float("inf")] * (amount + 1)
     dp[0] = 0  # 凑成 0 需要 0 个硬币
 
     for i in range(1, amount + 1):
@@ -58,7 +58,7 @@ def coin_change(coins: list[int], amount: int) -> int:
             if coin <= i:
                 dp[i] = min(dp[i], dp[i - coin] + 1)
 
-    return dp[amount] if dp[amount] != float('inf') else -1
+    return dp[amount] if dp[amount] != float("inf") else -1
 
 
 # ========== 最长递增子序列 (LIS) ==========
@@ -171,9 +171,9 @@ def min_distance(word1: str, word2: str) -> int:
                 dp[i][j] = dp[i - 1][j - 1]  # 字符相同，无需操作
             else:
                 dp[i][j] = min(
-                    dp[i - 1][j] + 1,      # 删除 word1[i-1]
-                    dp[i][j - 1] + 1,      # 插入 word2[j-1]
-                    dp[i - 1][j - 1] + 1   # 替换
+                    dp[i - 1][j] + 1,  # 删除 word1[i-1]
+                    dp[i][j - 1] + 1,  # 插入 word2[j-1]
+                    dp[i - 1][j - 1] + 1,  # 替换
                 )
 
     return dp[m][n]
@@ -213,4 +213,3 @@ if __name__ == "__main__":
     assert min_distance("intention", "execution") == 5
     assert min_distance("", "abc") == 3
     assert min_distance("abc", "") == 3
-

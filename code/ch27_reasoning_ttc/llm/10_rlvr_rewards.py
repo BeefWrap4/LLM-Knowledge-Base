@@ -21,9 +21,11 @@ RLVR 用可验证的 reward (vs learned reward model):
   - code: 单元测试是否通过
   - format: 输出格式是否合规 (think + answer 块)
 """
-import sys
+
 import re
+import sys
 from pathlib import Path
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
@@ -71,9 +73,7 @@ def composite_reward(
     r_code = code_reward(code, tests_pass) if code else 0
     r_format = format_reward(predicted, require_think=True)
 
-    total = (weights["math"] * r_math +
-             weights["code"] * r_code +
-             weights["format"] * r_format)
+    total = weights["math"] * r_math + weights["code"] * r_code + weights["format"] * r_format
     return total
 
 
@@ -95,10 +95,10 @@ def main():
     r3 = composite_reward(output3, ground_truth="9.11")
     print(f"  Case 3 (correct + bad format):       reward = {r3:.3f}")
 
-    print(f"\n  RLVR 优势:")
-    print(f"    - 不需要 learned reward model (节省训练)")
-    print(f"    - 客观可验证, 避免 reward hacking")
-    print(f"    - 适合 math / code / factual QA")
+    print("\n  RLVR 优势:")
+    print("    - 不需要 learned reward model (节省训练)")
+    print("    - 客观可验证, 避免 reward hacking")
+    print("    - 适合 math / code / factual QA")
 
 
 if __name__ == "__main__":

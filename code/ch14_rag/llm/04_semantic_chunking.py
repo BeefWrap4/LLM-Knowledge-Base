@@ -21,8 +21,8 @@ import numpy as np
 
 def semantic_chunking(
     text: str,
-    embedder=None,                # SentenceTransformer 实例；None 时 mock
-    window_size: int = 3,         # 滑动窗口大小
+    embedder=None,  # SentenceTransformer 实例；None 时 mock
+    window_size: int = 3,  # 滑动窗口大小
     threshold_percentile: float = 80,  # 断点阈值百分位
 ) -> list[str]:
     """
@@ -51,8 +51,8 @@ def semantic_chunking(
     similarities = []
     for i in range(len(sentences) - window_size):
         # 窗口 A: [i, i+window_size)；窗口 B: [i+1, i+window_size+1)
-        vec_a = np.mean(embeddings[i:i + window_size], axis=0)
-        vec_b = np.mean(embeddings[i + 1:i + window_size + 1], axis=0)
+        vec_a = np.mean(embeddings[i : i + window_size], axis=0)
+        vec_b = np.mean(embeddings[i + 1 : i + window_size + 1], axis=0)
         sim = float(np.dot(vec_a, vec_b))  # 余弦相似度（已归一化）
         similarities.append(sim)
 

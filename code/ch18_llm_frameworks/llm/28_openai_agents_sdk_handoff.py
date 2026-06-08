@@ -19,10 +19,12 @@ OpenAI Agents SDK 实战：多 agent 客服系统 - 离线 mock 结构
 # 真实环境: from agents import Agent, Runner, function_tool, handoff
 # from agents.extensions.sandbox import SandboxAgent
 
+
 # ===== 1. 定义工具 =====
 def check_order(order_id: str) -> str:
     """查询订单状态"""
     return f"订单 {order_id} 状态：已发货，预计明天到达"
+
 
 # ===== 2. 定义专业 agent =====
 billing_agent = {
@@ -49,6 +51,7 @@ triage_agent = {
     ],
 }
 
+
 # ===== 4. mock 运行 =====
 class _MockRunner:
     @staticmethod
@@ -58,13 +61,18 @@ class _MockRunner:
             "trace": type("T", (), {"url": f"https://platform.openai.com/traces/{session_id}"})(),
         }
 
+
 print("=== OpenAI Agents SDK 配置 ===")
 print(f"分诊 Agent: {triage_agent['name']} → handoffs: {[h['to'] for h in triage_agent['handoffs']]}")
 print(f"  - {billing_agent['name']}: {billing_agent['instructions']}")
-print(f"  - {tech_agent['name']}: {tech_agent['instructions']} (tools: {[t.__name__ for t in tech_agent['tools']]})")
+print(
+    f"  - {tech_agent['name']}: {tech_agent['instructions']} (tools: {[t.__name__ for t in tech_agent['tools']]})"
+)
 
 # 同步演示异步运行结果
 import asyncio
+
+
 async def demo():
     result = await _MockRunner.run(
         triage_agent,
@@ -73,6 +81,7 @@ async def demo():
     )
     print(f"\n最终回复: {result['final_output']}")
     print(f"执行轨迹: {result['trace'].url}")
+
 
 asyncio.run(demo())
 

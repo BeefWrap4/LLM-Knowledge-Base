@@ -16,15 +16,16 @@
 #   3. 多模态对话中如何将图像特征插入文本 token 序列？
 
 
-
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 import os
+
 import torch
 import torch.nn as nn
 
@@ -56,9 +57,9 @@ def main():
     img_pos = 1  # 第 1 个位置放 image token
     inputs_embeds = torch.cat(
         [
-            text_embeds[:, :img_pos, :],     # prefix (含 <image> 之前)
-            projected,                         # visual tokens
-            text_embeds[:, img_pos:, :],     # suffix
+            text_embeds[:, :img_pos, :],  # prefix (含 <image> 之前)
+            projected,  # visual tokens
+            text_embeds[:, img_pos:, :],  # suffix
         ],
         dim=1,
     )
@@ -68,6 +69,7 @@ def main():
     if not use_mock:
         try:
             from transformers import AutoModel, AutoTokenizer
+
             llm_name = os.environ.get("CH21_LLM", "meta-llama/Llama-3-8B-Instruct")
             llm = AutoModel.from_pretrained(llm_name)
             tokenizer = AutoTokenizer.from_pretrained(llm_name)

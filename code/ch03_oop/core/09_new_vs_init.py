@@ -42,17 +42,19 @@ __new__ vs __init__ —— 面试超高频考点
 └─────────────┴─────────────────────────┴─────────────────────────┘
 """
 
+
 class Demo:
     def __new__(cls, *args, **kwargs):
         print(f"1. __new__ 被调用: cls={cls.__name__}")
-        instance = super().__new__(cls)   # 必须调用父类的 __new__ 创建实例
+        instance = super().__new__(cls)  # 必须调用父类的 __new__ 创建实例
         print(f"   实例已创建: id={id(instance)}")
-        return instance                   # 必须返回实例
+        return instance  # 必须返回实例
 
     def __init__(self, name):
         print(f"2. __init__ 被调用: self={id(self)}")
         self.name = name
         print(f"   属性已初始化: name={name}")
+
 
 obj = Demo("test")
 # 1. __new__ 被调用: cls=Demo

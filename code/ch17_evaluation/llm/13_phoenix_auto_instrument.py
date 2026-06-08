@@ -20,6 +20,7 @@
 Phoenix（Arize AI 开源）是 LLM 可观测性领域的标杆项目，
 以 OpenInference 协议为核心，强调 Auto-Instrumentation（零代码一行启动）。
 """
+
 import os
 
 # ---- Phoenix MCP Server 配置（Claude / Cursor 直连 Phoenix 数据）----
@@ -70,21 +71,18 @@ def run_phoenix_demo() -> None:
 
     # ---- 离线批量评估 ----
     try:
+        import phoenix as px
         from phoenix.evals import HallucinationEvaluator, run_evals
         from phoenix.trace.dsl import SpanQuery
-        import phoenix as px
     except ImportError as exc:
         print(f"[mock] phoenix.evals 未安装 ({exc})")
         return
 
     # 用 DSL 查询特定的 span
-    query = (
-        SpanQuery()
-        .select(
-            span="llm.generation",
-            child_of="retrieval",
-            columns=["input.value", "output.value", "context.value"],
-        )
+    query = SpanQuery().select(
+        span="llm.generation",
+        child_of="retrieval",
+        columns=["input.value", "output.value", "context.value"],
     )
 
     spans_df = px.Client().query_spans(query)

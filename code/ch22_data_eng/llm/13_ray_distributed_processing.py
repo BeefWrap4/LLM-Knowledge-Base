@@ -16,12 +16,11 @@
 #   2. 为什么 Agent / LLM 场景下 Ray 增长快于 Spark？Actor 模式优势在哪？
 #   3. 分布式数据处理中如何处理倾斜 (skew) 问题？Round-robin 分片够用吗？
 
-import sys
-from typing import List, Dict
 
 # 提供无 ray 环境下的优雅降级
 try:
     import ray  # type: ignore
+
     RAY_AVAILABLE = True
 except ImportError:
     RAY_AVAILABLE = False
@@ -40,17 +39,19 @@ if RAY_AVAILABLE:
             self.lang = lang
             self.processed_count = 0
 
-        def process_batch(self, texts: List[str]) -> List[Dict]:
+        def process_batch(self, texts: list[str]) -> list[dict]:
             """处理一批文本"""
             results = []
             for text in texts:
                 self.processed_count += 1
-                results.append({
-                    "text": text,
-                    "length": len(text),
-                    "word_count": len(text.split()),
-                    "lang": self.lang,
-                })
+                results.append(
+                    {
+                        "text": text,
+                        "length": len(text),
+                        "word_count": len(text.split()),
+                        "lang": self.lang,
+                    }
+                )
             return results
 
         def get_count(self) -> int:
@@ -61,10 +62,7 @@ if RAY_AVAILABLE:
     processors = [TextProcessor.remote(lang="en") for _ in range(num_workers)]
 
     # 模拟数据批次
-    batches = [
-        [f"这是第{i}批的第{j}条数据，用于测试Ray分布式处理。" for j in range(100)]
-        for i in range(8)
-    ]
+    batches = [[f"这是第{i}批的第{j}条数据，用于测试Ray分布式处理。" for j in range(100)] for i in range(8)]
 
     # 分布式处理（Round-robin 分配批次）
     futures = []
@@ -94,8 +92,7 @@ else:
             results = []
             for t in texts:
                 self.processed_count += 1
-                results.append({"text": t, "length": len(t),
-                                "word_count": len(t.split()), "lang": self.lang})
+                results.append({"text": t, "length": len(t), "word_count": len(t.split()), "lang": self.lang})
             return results
 
         def get_count(self):

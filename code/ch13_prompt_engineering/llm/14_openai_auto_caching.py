@@ -1,5 +1,6 @@
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
+
 _code_root = _Path_setup(__file__).resolve().parent.parent.parent
 if str(_code_root) not in _sys_path_setup.path:
     _sys_path_setup.path.insert(0, str(_code_root))
@@ -25,9 +26,7 @@ from shared.llm_client import UnifiedClient
 
 _client = UnifiedClient()
 
-LARGE_SYSTEM_PROMPT = (
-    "你是一名专业的中文写作助手。规则：" * 200
-)  # 模拟一个 > 1024 tokens 的 system prompt
+LARGE_SYSTEM_PROMPT = "你是一名专业的中文写作助手。规则：" * 200  # 模拟一个 > 1024 tokens 的 system prompt
 
 
 def call_openai(messages):
@@ -44,12 +43,12 @@ if __name__ == "__main__":
     messages = [
         {
             "role": "system",
-            "content": LARGE_SYSTEM_PROMPT  # > 1024 tokens，自动进入缓存候选
+            "content": LARGE_SYSTEM_PROMPT,  # > 1024 tokens，自动进入缓存候选
         },
         {
             "role": "user",
-            "content": f"文档：{document}\n问题：{user_query}"  # 动态部分
-        }
+            "content": f"文档：{document}\n问题：{user_query}",  # 动态部分
+        },
     ]
 
     response = call_openai(messages)

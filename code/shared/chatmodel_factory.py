@@ -32,20 +32,23 @@ Usage:
     client = make_openai_client(provider="siliconflow")
     resp = client.chat.completions.create(model="Qwen/Qwen2.5-72B", messages=[...])
 """
-from typing import Any, Optional
 
 from shared.provider_registry import (
-    PROVIDERS, Provider, get_default_provider, get_provider,
+    PROVIDERS,
+    Provider,
+    get_default_provider,
+    get_provider,
 )
-
 
 # ────────────────────────────────────────────────────────────────
 # 可选框架检测
 # ────────────────────────────────────────────────────────────────
 
+
 def has_langchain() -> bool:
     try:
         from langchain_openai import ChatOpenAI  # noqa
+
         return True
     except ImportError:
         return False
@@ -54,6 +57,7 @@ def has_langchain() -> bool:
 def has_llama_index() -> bool:
     try:
         from llama_index.core.llms import OpenAILike  # noqa
+
         return True
     except ImportError:
         return False
@@ -63,7 +67,8 @@ def has_llama_index() -> bool:
 # 纯 OpenAI 客户端
 # ────────────────────────────────────────────────────────────────
 
-def make_openai_client(provider: Optional[str] = None, **overrides):
+
+def make_openai_client(provider: str | None = None, **overrides):
     """创建 OpenAI 兼容 SDK client.
 
     Usage:
@@ -78,10 +83,7 @@ def make_openai_client(provider: Optional[str] = None, **overrides):
     p = get_provider(provider) if provider else get_default_provider()
     api_key = overrides.pop("api_key", None) or _get_key(p)
     if not api_key:
-        raise ValueError(
-            f"厂商 {p.name} 缺 API Key (env {p.env_key}), "
-            f"或显式传 api_key="
-        )
+        raise ValueError(f"厂商 {p.name} 缺 API Key (env {p.env_key}), 或显式传 api_key=")
     return OpenAI(
         api_key=api_key,
         base_url=overrides.pop("base_url", p.base_url),
@@ -89,8 +91,9 @@ def make_openai_client(provider: Optional[str] = None, **overrides):
     )
 
 
-def _get_key(p: Provider) -> Optional[str]:
+def _get_key(p: Provider) -> str | None:
     import os
+
     return os.environ.get(p.env_key, "").strip() or None
 
 
@@ -98,9 +101,10 @@ def _get_key(p: Provider) -> Optional[str]:
 # 统一 ChatModel 工厂 (LangChain / LlamaIndex)
 # ────────────────────────────────────────────────────────────────
 
+
 def make_chat_model(
-    provider: Optional[str] = None,
-    model: Optional[str] = None,
+    provider: str | None = None,
+    model: str | None = None,
     framework: str = "langchain",  # "langchain" | "llama_index"
     temperature: float = 0.7,
     **kwargs,
@@ -206,9 +210,11 @@ def _make_llama_index(p: Provider, model: str, key: str, temperature: float, **k
 # 便捷函数
 # ────────────────────────────────────────────────────────────────
 
-def quick_chat(prompt: str, provider: Optional[str] = None, model: Optional[str] = None, **kwargs) -> str:
+
+def quick_chat(prompt: str, provider: str | None = None, model: str | None = None, **kwargs) -> str:
     """最简调用: 1 行发请求, 返回 string. 适合教程例子."""
     from shared.llm_client import UnifiedClient
+
     return UnifiedClient(provider=provider, model=model).chat(prompt=prompt, **kwargs).content
 
 
@@ -235,4 +241,5 @@ def doctor_summary() -> dict:
 
 if __name__ == "__main__":
     import json
+
     print(json.dumps(doctor_summary(), indent=2, ensure_ascii=False))

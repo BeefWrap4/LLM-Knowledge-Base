@@ -18,7 +18,6 @@
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict
 
 
 @dataclass
@@ -28,13 +27,15 @@ class TokenTracker:
     daily_budget: float = 50.0  # 每日预算 $50
     alert_threshold: float = 0.8  # 80% 时告警
 
-    _daily_usage: Dict[str, float] = field(default_factory=lambda: defaultdict(float))
+    _daily_usage: dict[str, float] = field(default_factory=lambda: defaultdict(float))
     _monthly_usage: float = 0.0
-    _model_pricing: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
-        "gpt-4o": {"input": 2.50, "output": 10.00},
-        "gpt-4o-mini": {"input": 0.15, "output": 0.60},
-        "claude-sonnet-4": {"input": 3.00, "output": 15.00},
-    })
+    _model_pricing: dict[str, dict[str, float]] = field(
+        default_factory=lambda: {
+            "gpt-4o": {"input": 2.50, "output": 10.00},
+            "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+            "claude-sonnet-4": {"input": 3.00, "output": 15.00},
+        }
+    )
 
     def track_call(
         self,
@@ -56,13 +57,13 @@ class TokenTracker:
 
         if self._daily_usage[today] > self.daily_budget * self.alert_threshold:
             self._send_alert(
-                f"⚠️ Token 用量已达日预算的 {self.alert_threshold*100:.0f}% "
+                f"⚠️ Token 用量已达日预算的 {self.alert_threshold * 100:.0f}% "
                 f"(${self._daily_usage[today]:.2f}/${self.daily_budget:.2f})"
             )
 
         return total_cost
 
-    def get_usage_summary(self) -> Dict:
+    def get_usage_summary(self) -> dict:
         """获取用量摘要"""
         today = time.strftime("%Y-%m-%d")
         return {

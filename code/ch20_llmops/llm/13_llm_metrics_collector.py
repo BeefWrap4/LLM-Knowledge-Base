@@ -18,23 +18,22 @@
 import threading
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import Deque, Dict, List
 
 
 @dataclass
 class LLMMetricsCollector:
     """LLM 应用指标收集器 —— 面试中展示系统设计能力"""
 
-    _latencies: Deque[float] = field(default_factory=lambda: deque(maxlen=10000))
+    _latencies: deque[float] = field(default_factory=lambda: deque(maxlen=10000))
     _total_requests: int = 0
     _successful_requests: int = 0
     _failed_requests: int = 0
     _total_input_tokens: int = 0
     _total_output_tokens: int = 0
     _total_cost: float = 0.0
-    _model_stats: dict = field(default_factory=lambda: defaultdict(
-        lambda: {"requests": 0, "tokens": 0, "cost": 0.0, "errors": 0}
-    ))
+    _model_stats: dict = field(
+        default_factory=lambda: defaultdict(lambda: {"requests": 0, "tokens": 0, "cost": 0.0, "errors": 0})
+    )
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
     def record_request(
@@ -66,7 +65,7 @@ class LLMMetricsCollector:
             if not success:
                 stats["errors"] += 1
 
-    def get_latency_percentiles(self) -> Dict[str, float]:
+    def get_latency_percentiles(self) -> dict[str, float]:
         """计算延迟分位数"""
         if not self._latencies:
             return {"p50": 0, "p95": 0, "p99": 0, "avg": 0, "min": 0, "max": 0}
@@ -103,31 +102,38 @@ class LLMMetricsCollector:
             "per_model": dict(self._model_stats),
         }
 
-    def check_alerts(self) -> List[dict]:
-        alerts: List[dict] = []
+    def check_alerts(self) -> list[dict]:
+        alerts: list[dict] = []
         summary = self.get_summary()
         if summary["requests"]["error_rate"] > 0.01:
-            alerts.append({
-                "severity": "critical",
-                "message": f"错误率过高: {summary['requests']['error_rate']:.2%}",
-                "threshold": "> 1%",
-            })
+            alerts.append(
+                {
+                    "severity": "critical",
+                    "message": f"错误率过高: {summary['requests']['error_rate']:.2%}",
+                    "threshold": "> 1%",
+                }
+            )
         if summary["latency"]["p95"] > 3000:
-            alerts.append({
-                "severity": "warning",
-                "message": f"P95 延迟过高: {summary['latency']['p95']:.0f}ms",
-                "threshold": "> 3000ms",
-            })
+            alerts.append(
+                {
+                    "severity": "warning",
+                    "message": f"P95 延迟过高: {summary['latency']['p95']:.0f}ms",
+                    "threshold": "> 3000ms",
+                }
+            )
         if self._total_requests == 0:
-            alerts.append({
-                "severity": "critical",
-                "message": "5 分钟内无任何请求",
-            })
+            alerts.append(
+                {
+                    "severity": "critical",
+                    "message": "5 分钟内无任何请求",
+                }
+            )
         return alerts
 
 
 if __name__ == "__main__":
     import random
+
     collector = LLMMetricsCollector()
     for _ in range(200):
         collector.record_request(

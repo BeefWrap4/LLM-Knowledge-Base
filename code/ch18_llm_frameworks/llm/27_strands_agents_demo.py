@@ -22,10 +22,12 @@ Strands Agents SDK 实战：双向流式研究 Agent - 离线 mock 结构
 # from strands.tools.mcp import MCPClient
 # from mcp import stdio_client, StdioServerParameters
 
+
 # ===== 1. 定义工具 =====
 def get_weather(city: str) -> str:
     """获取城市天气"""
     return f"{city} 当前晴，25°C"
+
 
 # ===== 2. MCP Client 配置（mock）=====
 mcp_config = {
@@ -52,7 +54,7 @@ print("=== Strands Agent 配置 ===")
 for k, v in agent_config.items():
     print(f"  {k}: {str(v)[:80]}")
 print(f"\nMCP Server: {mcp_config['command']} {mcp_config['args']}")
-print(f"\n 双向流：边思考边输出，边调工具")
+print("\n 双向流：边思考边输出，边调工具")
 
 # 模拟事件流
 print("\n=== 模拟流式事件 ===")

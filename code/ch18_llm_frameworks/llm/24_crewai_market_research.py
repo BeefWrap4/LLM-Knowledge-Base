@@ -87,7 +87,7 @@ for a in crew["agents"]:
     print(f"  - role={a['role']}, tools={len(a['tools'])}")
 print(f"Task 数量: {len(crew['tasks'])}")
 for i, t in enumerate(crew["tasks"]):
-    print(f"  {i+1}. agent={t['agent']['role']}, deps={len(t.get('context', []))}")
+    print(f"  {i + 1}. agent={t['agent']['role']}, deps={len(t.get('context', []))}")
 print(f"Process: {crew['process']}")
 print("\n实际执行需要真实 LLM API（OPENAI_API_KEY）")
 

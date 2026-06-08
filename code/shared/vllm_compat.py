@@ -18,8 +18,10 @@ vLLM Docker escape hatch — 让 Windows 用户也能跑 vLLM 例子.
 
 主体代码 0 改动, API 兼容.
 """
+
 import os
-from typing import Any, AsyncIterator, List, Optional, Union
+from collections.abc import AsyncIterator
+from typing import Any
 
 VLLM_BASE_URL = os.environ.get("VLLM_BASE_URL", "").rstrip("/")
 USE_DOCKER = bool(VLLM_BASE_URL)
@@ -35,11 +37,19 @@ def _get_model_id() -> str:
 
 # ── SamplingParams / EngineArgs (纯 dataclass, 双模式通用) ──
 
+
 class SamplingParams:
     """兼容 vllm.SamplingParams (本例子只用 temperature + max_tokens)."""
-    def __init__(self, temperature: float = 0.7, max_tokens: int = 64,
-                 top_p: float = 1.0, top_k: int = -1,
-                 stop: Optional[List[str]] = None, **kwargs: Any):
+
+    def __init__(
+        self,
+        temperature: float = 0.7,
+        max_tokens: int = 64,
+        top_p: float = 1.0,
+        top_k: int = -1,
+        stop: list[str] | None = None,
+        **kwargs: Any,
+    ):
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.top_p = top_p
@@ -50,10 +60,18 @@ class SamplingParams:
 
 class EngineArgs:
     """兼容 vllm.EngineArgs (无 _C 校验, 用于配置展示)."""
-    def __init__(self, model: str, max_num_seqs: int = 8,
-                 gpu_memory_utilization: float = 0.5, max_model_len: int = 2048,
-                 enforce_eager: bool = True, tensor_parallel_size: int = 1,
-                 enable_expert_parallel: bool = False, **kwargs: Any):
+
+    def __init__(
+        self,
+        model: str,
+        max_num_seqs: int = 8,
+        gpu_memory_utilization: float = 0.5,
+        max_model_len: int = 2048,
+        enforce_eager: bool = True,
+        tensor_parallel_size: int = 1,
+        enable_expert_parallel: bool = False,
+        **kwargs: Any,
+    ):
         self.model = model
         self.max_num_seqs = max_num_seqs
         self.gpu_memory_utilization = gpu_memory_utilization
@@ -66,10 +84,12 @@ class EngineArgs:
 
 class AsyncEngineArgs(EngineArgs):
     """兼容 vllm.AsyncEngineArgs (同 EngineArgs 字段)."""
+
     pass
 
 
 # ── Mock config objects (Docker 模式用于演示打印, 不真跑模型) ──
+
 
 class _MockCacheConfig:
     def __init__(self, gpu_memory_utilization: float = 0.5):
@@ -106,15 +126,16 @@ class _MockLLMEngine:
 
 # ── Mock RequestOutput (Docker 模式) ──
 
+
 class _Output:
-    def __init__(self, text: str, finish_reason: str = "stop", token_ids: Optional[List[int]] = None):
+    def __init__(self, text: str, finish_reason: str = "stop", token_ids: list[int] | None = None):
         self.text = text
         self.finish_reason = finish_reason
         self.token_ids = token_ids or list(range(len(text.split())))
 
 
 class _RequestOutput:
-    def __init__(self, request_id: str, text: str, finished: bool = True, token_ids: Optional[List[int]] = None):
+    def __init__(self, request_id: str, text: str, finished: bool = True, token_ids: list[int] | None = None):
         self.request_id = request_id
         self.outputs = [_Output(text, token_ids=token_ids)]
         self.finished = finished
@@ -126,35 +147,42 @@ def _approx_token_count(text: str) -> int:
 
 # ── 模式 1: Docker server (OpenAI 协议) ──
 
+
 class _CompatLLM:
     """OpenAI 协议客户端, 模拟 vllm.LLM.generate() 同步接口."""
 
-    def __init__(self, model: Optional[str] = None, **kwargs: Any):
+    def __init__(self, model: str | None = None, **kwargs: Any):
         from openai import OpenAI  # type: ignore
+
         self.client = OpenAI(base_url=f"{VLLM_BASE_URL}/v1", api_key="EMPTY")
         self.model = model or _get_model_id()
         self.llm_engine = _MockLLMEngine(EngineArgs(model=self.model, **kwargs))
         print(f"  [vllm_compat] Docker server: {VLLM_BASE_URL}, model={self.model}")
 
-    def generate(self, prompts: Union[str, List[str]],
-                 sampling_params: Optional[SamplingParams] = None,
-                 **kwargs: Any) -> List[_RequestOutput]:
+    def generate(
+        self, prompts: str | list[str], sampling_params: SamplingParams | None = None, **kwargs: Any
+    ) -> list[_RequestOutput]:
         if isinstance(prompts, str):
             prompts = [prompts]
         sp = sampling_params or SamplingParams()
-        results: List[_RequestOutput] = []
+        results: list[_RequestOutput] = []
         for i, prompt in enumerate(prompts):
             resp = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=sp.temperature, max_tokens=sp.max_tokens,
-                top_p=sp.top_p, stop=sp.stop or None,
+                temperature=sp.temperature,
+                max_tokens=sp.max_tokens,
+                top_p=sp.top_p,
+                stop=sp.stop or None,
             )
             text = (resp.choices[0].message.content or "") if resp.choices else ""
-            results.append(_RequestOutput(
-                request_id=f"r{i}", text=text,
-                token_ids=list(range(_approx_token_count(text))),
-            ))
+            results.append(
+                _RequestOutput(
+                    request_id=f"r{i}",
+                    text=text,
+                    token_ids=list(range(_approx_token_count(text))),
+                )
+            )
         return results
 
 
@@ -165,43 +193,62 @@ class _CompatAsyncLLMEngine:
     def from_engine_args(cls, args: EngineArgs, **kwargs: Any) -> "_CompatAsyncLLMEngine":
         return cls(model=args.model, **kwargs)
 
-    def __init__(self, model: Optional[str] = None, **kwargs: Any):
+    def __init__(self, model: str | None = None, **kwargs: Any):
         from openai import AsyncOpenAI  # type: ignore
+
         self.client = AsyncOpenAI(base_url=f"{VLLM_BASE_URL}/v1", api_key="EMPTY")
         self.model = model or _get_model_id()
         self.llm_engine = _MockLLMEngine(EngineArgs(model=self.model, **kwargs))
         print(f"  [vllm_compat] Docker server (async): {VLLM_BASE_URL}, model={self.model}")
 
-    async def generate(self, prompt: str,
-                       sampling_params: Optional[SamplingParams] = None,
-                       request_id: str = "default", **kwargs: Any) -> AsyncIterator[_RequestOutput]:
+    async def generate(
+        self,
+        prompt: str,
+        sampling_params: SamplingParams | None = None,
+        request_id: str = "default",
+        **kwargs: Any,
+    ) -> AsyncIterator[_RequestOutput]:
         sp = sampling_params or SamplingParams()
         full_text = ""
         stream = await self.client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=sp.temperature, max_tokens=sp.max_tokens,
-            top_p=sp.top_p, stop=sp.stop or None, stream=True,
+            temperature=sp.temperature,
+            max_tokens=sp.max_tokens,
+            top_p=sp.top_p,
+            stop=sp.stop or None,
+            stream=True,
         )
         async for chunk in stream:
             if chunk.choices and chunk.choices[0].delta.content:
                 full_text += chunk.choices[0].delta.content
-                yield _RequestOutput(request_id=request_id, text=full_text, finished=False,
-                                     token_ids=list(range(_approx_token_count(full_text))))
-        yield _RequestOutput(request_id=request_id, text=full_text, finished=True,
-                             token_ids=list(range(_approx_token_count(full_text))))
+                yield _RequestOutput(
+                    request_id=request_id,
+                    text=full_text,
+                    finished=False,
+                    token_ids=list(range(_approx_token_count(full_text))),
+                )
+        yield _RequestOutput(
+            request_id=request_id,
+            text=full_text,
+            finished=True,
+            token_ids=list(range(_approx_token_count(full_text))),
+        )
 
 
 # ── 模式 2: 真 vllm (无 _C 校验, 延迟到首次调用时报错) ──
+
 
 def _try_import_real_vllm():
     """尝试 import 真 vllm. 失败 (含 _C 缺失) 时 raise_with_help."""
     try:
         import vllm  # type: ignore
         import vllm._C  # type: ignore  # noqa  # 触发 _C 加载
+
         return vllm
     except (ImportError, ModuleNotFoundError, OSError) as e:
         from shared._error_helper import raise_with_help
+
         raise_with_help(
             f"vllm._C 编译扩展不可用: {e}",
             "修复路径: 1) Linux + `pip install vllm`; 2) WSL2 + 同上; "
@@ -212,7 +259,8 @@ def _try_import_real_vllm():
 
 # ── 公开 API: 自动调度 ──
 
-def LLM(model: Optional[str] = None, **kwargs: Any):
+
+def LLM(model: str | None = None, **kwargs: Any):
     """兼容 vllm.LLM, 自动调度 Docker / 真 vllm."""
     if USE_DOCKER:
         return _CompatLLM(model=model, **kwargs)

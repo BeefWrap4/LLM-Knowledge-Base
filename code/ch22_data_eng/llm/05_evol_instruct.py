@@ -16,7 +16,7 @@
 #   2. 演化操作（添加约束/深化推理/多步推理）如何影响 SFT 数据的难度分布？
 #   3. WizardLM 是如何基于 Evol-Instruct 超过 Alpaca 的？数据演化的边界在哪里？
 
-from typing import Optional, Callable
+from collections.abc import Callable
 
 EVOLVE_PROMPTS = {
     "in_depth": """你是指令复杂度演化的专家。请将以下简单指令演化为更深入、要求更高推理能力的版本。
@@ -29,7 +29,6 @@ EVOLVE_PROMPTS = {
 
 原始指令: {instruction}
 演化后的指令:""",
-
     "in_breadth": """你是指令多样性专家。请基于以下指令，创建一个涵盖更广知识面或技能范围的新指令。
 
 演化策略（请至少使用2种）：
@@ -39,7 +38,6 @@ EVOLVE_PROMPTS = {
 
 原始指令: {instruction}
 演化后的指令:""",
-
     "add_constraints": """请为以下指令添加2-3个合理但具有挑战性的约束条件。
 
 原始指令: {instruction}
@@ -50,7 +48,7 @@ EVOLVE_PROMPTS = {
 def evolve_instruction(
     instruction: str,
     evolve_type: str = "in_depth",
-    llm_callable: Optional[Callable[[str], str]] = None
+    llm_callable: Callable[[str], str] | None = None,
 ) -> str:
     """
     对指令进行演化

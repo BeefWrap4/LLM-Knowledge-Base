@@ -17,39 +17,40 @@
 
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
+
 try:
-    from langchain.chains import SequentialChain, LLMChain
+    from langchain.chains import LLMChain, SequentialChain
+
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
     _SKIP_REASON = str(_e).split("\n")[0]
 if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
     _sys.exit(0)
-print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
+print(
+    "OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)"
+)
 from langchain_core.prompts import PromptTemplate
 
 # Wave 30+: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 时 raise
 from shared.chatmodel_factory import make_chat_model
+
 llm = make_chat_model()  # 默认厂商 (deepseek)
 
 # 第一链：生成大纲
 chain1 = LLMChain(
     llm=llm,
-    prompt=PromptTemplate(
-        input_variables=["topic"],
-        template="为关于'{topic}'的博客文章生成一个3点大纲。"
-    ),
-    output_key="outline"
+    prompt=PromptTemplate(input_variables=["topic"], template="为关于'{topic}'的博客文章生成一个3点大纲。"),
+    output_key="outline",
 )
 
 # 第二链：基于大纲写正文
 chain2 = LLMChain(
     llm=llm,
     prompt=PromptTemplate(
-        input_variables=["outline"],
-        template="基于以下大纲，写一篇300字的博客文章：\n\n{outline}"
+        input_variables=["outline"], template="基于以下大纲，写一篇300字的博客文章：\n\n{outline}"
     ),
-    output_key="article"
+    output_key="article",
 )
 
 # 串联
@@ -57,7 +58,7 @@ overall_chain = SequentialChain(
     chains=[chain1, chain2],
     input_variables=["topic"],
     output_variables=["outline", "article"],
-    verbose=True
+    verbose=True,
 )
 
 result = overall_chain.invoke({"topic": "大模型应用框架选型"})

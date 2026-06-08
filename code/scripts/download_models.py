@@ -26,9 +26,9 @@
   2. HuggingFace 镜像 hf-mirror.com (1-3 MB/s)
   3. HuggingFace 直连 (海外用户)
 """
+
 import argparse
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -60,10 +60,17 @@ MODELS_TO_DOWNLOAD = {
         "local_name": "Qwen2.5-0.5B-Instruct",
         "size_gb": 1.0,
         "tier": "llm-small",
-        "chapters": ["ch12_transformer_architecture", "ch13_prompt_engineering",
-                     "ch14_rag", "ch15_agent", "ch16_finetuning",
-                     "ch17_evaluation", "ch18_llm_frameworks",
-                     "ch19_distributed", "ch29_context_engineering"],
+        "chapters": [
+            "ch12_transformer_architecture",
+            "ch13_prompt_engineering",
+            "ch14_rag",
+            "ch15_agent",
+            "ch16_finetuning",
+            "ch17_evaluation",
+            "ch18_llm_frameworks",
+            "ch19_distributed",
+            "ch29_context_engineering",
+        ],
         "required": True,
     },
     # === LLM 中等 (--llm-medium 时下载) ===
@@ -152,7 +159,7 @@ def download_modelscope(repo_id: str, local_dir: Path) -> bool:
     try:
         from modelscope import snapshot_download
     except ImportError:
-        print(f"  [WARN] modelscope 未安装, pip install modelscope")
+        print("  [WARN] modelscope 未安装, pip install modelscope")
         return False
     try:
         snapshot_download(repo_id=repo_id, local_dir=str(local_dir))
@@ -168,10 +175,11 @@ def download_hf_mirror(repo_id: str, local_dir: Path) -> bool:
     env["HF_ENDPOINT"] = "https://hf-mirror.com"
     try:
         from huggingface_hub import snapshot_download
+
         snapshot_download(repo_id=repo_id, local_dir=str(local_dir), env=env)
         return True
     except ImportError:
-        print(f"  [WARN] huggingface_hub 未安装, pip install huggingface_hub")
+        print("  [WARN] huggingface_hub 未安装, pip install huggingface_hub")
         return False
     except Exception as e:
         print(f"  [WARN] hf-mirror 下载失败: {e}")

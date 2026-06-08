@@ -17,35 +17,40 @@
 # 3. 特征重要性有哪些评估方法?（基于不纯度 / 基于置换 / SHAP）
 
 import pandas as pd
+from sklearn.datasets import make_classification
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, roc_auc_score
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV, train_test_split
-from sklearn.metrics import classification_report, roc_auc_score
-from sklearn.datasets import make_classification
+
 
 def main():
     # 1. 数据
-    X, y = make_classification(n_samples=2000, n_features=10, n_informative=5,
-                               n_redundant=2, n_classes=2, weights=[0.7, 0.3],
-                               random_state=42)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
-                                                        stratify=y, random_state=42)
+    X, y = make_classification(
+        n_samples=2000,
+        n_features=10,
+        n_informative=5,
+        n_redundant=2,
+        n_classes=2,
+        weights=[0.7, 0.3],
+        random_state=42,
+    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
 
     # 2. 构建 Pipeline — 防止数据泄漏
-    pipeline = Pipeline([
-        ('scaler', StandardScaler()),
-        ('classifier', RandomForestClassifier(random_state=42))
-    ])
+    pipeline = Pipeline(
+        [("scaler", StandardScaler()), ("classifier", RandomForestClassifier(random_state=42))]
+    )
 
     # 3. 超参数搜索
     param_grid = {
-        'classifier__n_estimators': [50, 100, 200],
-        'classifier__max_depth': [3, 5, 7, None],
-        'classifier__max_features': ['sqrt', 'log2']
+        "classifier__n_estimators": [50, 100, 200],
+        "classifier__max_depth": [3, 5, 7, None],
+        "classifier__max_features": ["sqrt", "log2"],
     }
 
-    grid = GridSearchCV(pipeline, param_grid, cv=5, scoring='roc_auc', n_jobs=-1)
+    grid = GridSearchCV(pipeline, param_grid, cv=5, scoring="roc_auc", n_jobs=-1)
     grid.fit(X_train, y_train)
 
     # 4. 评估
@@ -59,7 +64,7 @@ def main():
     print(f"\n分类报告:\n{classification_report(y_test, y_pred)}")
 
     # 5. 特征重要性
-    rf = best_model.named_steps['classifier']
+    rf = best_model.named_steps["classifier"]
     importances = pd.Series(rf.feature_importances_)
     print(f"\n特征重要性:\n{importances.sort_values(ascending=False)}")
 

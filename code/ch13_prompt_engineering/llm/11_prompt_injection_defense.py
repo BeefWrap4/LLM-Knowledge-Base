@@ -15,8 +15,8 @@
 # - 间接注入 (indirect prompt injection) 如何防御？
 # - 结构化输出校验如何与 RLHF 安全对齐互补？
 
-import re
 import json
+import re
 
 
 # 策略1：输入层防御 - 敏感词过滤 + 语义检测
@@ -34,8 +34,14 @@ class PromptGuard:
 
     # 敏感操作关键词
     DANGEROUS_KEYWORDS = [
-        "删除数据库", "drop table", "rm -rf", "exec(",
-        "eval(", "__import__", "os.system", "subprocess",
+        "删除数据库",
+        "drop table",
+        "rm -rf",
+        "exec(",
+        "eval(",
+        "__import__",
+        "os.system",
+        "subprocess",
     ]
 
     @classmethod
@@ -72,12 +78,12 @@ def separated_prompt_architecture(system_prompt: str, user_input: str) -> list[d
     return [
         {
             "role": "system",
-            "content": system_prompt  # 系统指令，优先级高
+            "content": system_prompt,  # 系统指令，优先级高
         },
         {
             "role": "user",
-            "content": user_input     # 用户输入，被明确定义为用户角色
-        }
+            "content": user_input,  # 用户输入，被明确定义为用户角色
+        },
     ]
 
 

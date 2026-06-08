@@ -49,10 +49,11 @@ class RAGMCPTool:
                 def __init__(self, content, meta):
                     self.page_content = content
                     self.metadata = meta
+
             docs = [
                 MockDoc(
-                    f"关于「{query}」的检索结果 {i+1}（filter={filters}）",
-                    {"source": f"mock_doc_{i+1}.md", "score": 0.9 - i * 0.1},
+                    f"关于「{query}」的检索结果 {i + 1}（filter={filters}）",
+                    {"source": f"mock_doc_{i + 1}.md", "score": 0.9 - i * 0.1},
                 )
                 for i in range(self.top_k)
             ]
@@ -94,15 +95,19 @@ class RAGMCPTool:
 
 if __name__ == "__main__":
     import asyncio
+
     tool = RAGMCPTool(vectorstore=None, embedder=None, top_k=3)
     print("Tool Definition:")
     import json
+
     print(json.dumps(tool.get_tool_definition(), ensure_ascii=False, indent=2))
     print("\nTool Call Result:")
-    result = asyncio.run(tool.handle_tool_call(
-        "knowledge_base_search",
-        {"query": "年假政策", "filters": {"source": "hr.pdf"}},
-    ))
+    result = asyncio.run(
+        tool.handle_tool_call(
+            "knowledge_base_search",
+            {"query": "年假政策", "filters": {"source": "hr.pdf"}},
+        )
+    )
     for r in result:
         print("---")
         print(r["text"])

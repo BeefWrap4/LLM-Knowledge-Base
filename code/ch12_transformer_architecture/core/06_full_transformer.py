@@ -17,9 +17,10 @@
 
 # ==== 自包含的依赖 (源自教程 12.2-12.4) ====
 
+import math
+
 import torch
 import torch.nn as nn
-import math
 
 
 class ScaledDotProductAttention(nn.Module):
@@ -33,7 +34,7 @@ class ScaledDotProductAttention(nn.Module):
         d_k = Q.size(-1)
         scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(d_k)
         if mask is not None:
-            scores = scores.masked_fill(mask == 0, float('-inf'))
+            scores = scores.masked_fill(mask == 0, float("-inf"))
         attn_weights = torch.softmax(scores, dim=-1)
         attn_weights = self.dropout(attn_weights)
         output = torch.matmul(attn_weights, V)
@@ -86,20 +87,18 @@ class SinusoidalPositionalEncoding(nn.Module):
         self.dropout = nn.Dropout(dropout)
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(
-            torch.arange(0, d_model, 2).float() *
-            (-math.log(10000.0) / d_model)
-        )
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
-        self.register_buffer('pe', pe.unsqueeze(0))
+        self.register_buffer("pe", pe.unsqueeze(0))
 
     def forward(self, x):
-        x = x + self.pe[:, :x.size(1), :]
+        x = x + self.pe[:, : x.size(1), :]
         return self.dropout(x)
 
 
 # ==== 12.9 节主代码 ====
+
 
 class TransformerEncoderLayer(nn.Module):
     """Transformer Encoder Layer — 包含 Self-Attention + FFN"""
@@ -112,7 +111,7 @@ class TransformerEncoderLayer(nn.Module):
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(d_ff, d_model),
-            nn.Dropout(dropout)
+            nn.Dropout(dropout),
         )
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
@@ -140,7 +139,7 @@ class TransformerDecoderLayer(nn.Module):
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(d_ff, d_model),
-            nn.Dropout(dropout)
+            nn.Dropout(dropout),
         )
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
@@ -148,15 +147,11 @@ class TransformerDecoderLayer(nn.Module):
 
     def forward(self, x, encoder_output, src_mask=None, tgt_mask=None):
         # Masked Self-Attention
-        self_attn_out, _ = self.self_attn(
-            self.norm1(x), self.norm1(x), self.norm1(x), tgt_mask
-        )
+        self_attn_out, _ = self.self_attn(self.norm1(x), self.norm1(x), self.norm1(x), tgt_mask)
         x = x + self_attn_out
 
         # Cross Attention (Q from decoder, K/V from encoder)
-        cross_attn_out, _ = self.cross_attn(
-            self.norm2(x), encoder_output, encoder_output, src_mask
-        )
+        cross_attn_out, _ = self.cross_attn(self.norm2(x), encoder_output, encoder_output, src_mask)
         x = x + cross_attn_out
 
         # FFN
@@ -169,9 +164,17 @@ class TransformerDecoderLayer(nn.Module):
 class Transformer(nn.Module):
     """完整 Transformer 模型"""
 
-    def __init__(self, src_vocab_size, tgt_vocab_size, d_model=512,
-                 num_heads=8, num_layers=6, d_ff=2048, max_len=5000,
-                 dropout=0.1):
+    def __init__(
+        self,
+        src_vocab_size,
+        tgt_vocab_size,
+        d_model=512,
+        num_heads=8,
+        num_layers=6,
+        d_ff=2048,
+        max_len=5000,
+        dropout=0.1,
+    ):
         super().__init__()
 
         self.d_model = d_model
@@ -184,16 +187,14 @@ class Transformer(nn.Module):
         self.pos_encoding = SinusoidalPositionalEncoding(d_model, max_len, dropout)
 
         # 编码器
-        self.encoder_layers = nn.ModuleList([
-            TransformerEncoderLayer(d_model, num_heads, d_ff, dropout)
-            for _ in range(num_layers)
-        ])
+        self.encoder_layers = nn.ModuleList(
+            [TransformerEncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)]
+        )
 
         # 解码器
-        self.decoder_layers = nn.ModuleList([
-            TransformerDecoderLayer(d_model, num_heads, d_ff, dropout)
-            for _ in range(num_layers)
-        ])
+        self.decoder_layers = nn.ModuleList(
+            [TransformerDecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)]
+        )
 
         # 输出层
         self.output_layer = nn.Linear(d_model, tgt_vocab_size)

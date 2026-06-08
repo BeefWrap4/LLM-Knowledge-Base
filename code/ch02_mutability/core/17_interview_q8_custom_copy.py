@@ -23,6 +23,7 @@
 
 import copy
 
+
 class CustomCopy:
     def __init__(self, data):
         self.data = data
@@ -39,6 +40,7 @@ class CustomCopy:
         new_obj = CustomCopy(new_data)
         memo[id(self)] = new_obj
         return new_obj
+
 
 if __name__ == "__main__":
     # 演示

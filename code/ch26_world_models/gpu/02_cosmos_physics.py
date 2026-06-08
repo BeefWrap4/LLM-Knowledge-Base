@@ -25,6 +25,7 @@ Cosmos 是 NVIDIA 的世界基础模型系列:
 Cosmos-7B fp16 ~14GB, 在 34GB 单卡可跑 (4-bit 量化更舒适).
 本 demo: 尝试 config load 验证架构 + 真物理仿真 rollout (gravity, friction, collision).
 """
+
 import sys
 from pathlib import Path
 
@@ -33,8 +34,8 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 import math
+
 import numpy as np
-import torch
 
 from shared.gpu_guard import require_nvidia_gpu
 
@@ -47,13 +48,14 @@ def check_hardware():
 def try_load_cosmos_config():
     """尝试从 HF 加载 Cosmos-1.0-7B config (无权重), 验证架构可访问."""
     from transformers import AutoConfig
+
     model_id = "nvidia/Cosmos-1.0-7B"
     print(f"目标模型: {model_id} (~14GB fp16)\n")
     print("步骤 1: 从 HuggingFace 加载 config (无权重, 仅几十 KB)...")
 
     try:
         config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
-        print(f"  ✅ config 加载成功")
+        print("  ✅ config 加载成功")
         print(f"     架构: {config.architectures}")
         print(f"     hidden_size: {config.hidden_size}")
         print(f"     num_layers : {config.num_hidden_layers}")
@@ -62,8 +64,8 @@ def try_load_cosmos_config():
         return True
     except Exception as e:
         print(f"  ⚠️  config 加载失败: {type(e).__name__}: {str(e)[:120]}")
-        print(f"     注: Cosmos 是 gated repo, 需 NVIDIA NGC 账号 + HF 认证")
-        print(f"     解决: 访问 https://huggingface.co/nvidia/Cosmos-1.0-7B 申请 access")
+        print("     注: Cosmos 是 gated repo, 需 NVIDIA NGC 账号 + HF 认证")
+        print("     解决: 访问 https://huggingface.co/nvidia/Cosmos-1.0-7B 申请 access")
         return False
 
 
@@ -112,7 +114,7 @@ class CosmosSimulator:
 
     def energy(self) -> float:
         """动能 (J), 物理守恒监控指标."""
-        return float(0.5 * np.sum(self.vel ** 2))
+        return float(0.5 * np.sum(self.vel**2))
 
 
 def main() -> None:
@@ -128,8 +130,7 @@ def main() -> None:
     print(f"  参数: g=9.8 m/s², restitution={sim.RESTITUTION}, friction={sim.FRICTION}\n")
 
     initial_energy = sim.energy()
-    print(f"  t= 0: KE = {initial_energy:.4f} J, "
-          f"y_min = {sim.pos[:, 1].min():.3f}")
+    print(f"  t= 0: KE = {initial_energy:.4f} J, y_min = {sim.pos[:, 1].min():.3f}")
 
     traj = sim.rollout(n_steps=60)
     for t in [10, 30, 59]:
@@ -139,9 +140,10 @@ def main() -> None:
         sim_t.pos = traj[min(t, len(traj) - 1)].copy() if t == 0 else traj[t].copy()
         # 近似 KE 估算
         vel_approx = (traj[min(t + 1, len(traj) - 1)] - traj[max(t - 1, 0)]) / (2 * sim.DT)
-        ke = float(0.5 * np.sum(vel_approx ** 2))
-        print(f"  t={t:2d}: y_mean = {pos_t[:, 1].mean():.3f}, "
-              f"y_min = {pos_t[:, 1].min():.3f}, KE ≈ {ke:.4f} J")
+        ke = float(0.5 * np.sum(vel_approx**2))
+        print(
+            f"  t={t:2d}: y_mean = {pos_t[:, 1].mean():.3f}, y_min = {pos_t[:, 1].min():.3f}, KE ≈ {ke:.4f} J"
+        )
 
     print()
     print("=" * 60)

@@ -21,6 +21,7 @@
 #   - "Window vs Compaction?"    →  Window 简单粗暴; Compaction 保留语义摘要
 
 from __future__ import annotations
+
 from collections import deque
 from dataclasses import dataclass, field
 
@@ -28,6 +29,7 @@ from dataclasses import dataclass, field
 @dataclass
 class SlidingWindowMemory:
     """保留最近 K 轮 (user+assistant 算 1 轮) 的对话, 旧的自动出队。"""
+
     k_turns: int = 5
     _turns: deque = field(default_factory=deque)
 
@@ -56,6 +58,7 @@ class SlidingWindowMemory:
 def compare_policies() -> None:
     """对比 Sliding Window 与 Compaction 的取舍。"""
     import json
+
     long_history = [
         ("我叫 Alice, 喜欢科幻片", "已记录"),
         ("我住在北京", "已记录"),
@@ -74,8 +77,10 @@ def compare_policies() -> None:
         sw.add_turn(u, a)
     print(f"SlidingWindow(K=3) 保留消息数: {len(sw.to_messages())}  (含 system)")
     print(f"  估算 tokens: {sw.token_estimate()}")
-    print(f"  早期信息 ('我喜欢科幻片', '北京', '工程师') 是否还在: ",
-          "科幻片" in json.dumps(sw.to_messages(), ensure_ascii=False))
+    print(
+        "  早期信息 ('我喜欢科幻片', '北京', '工程师') 是否还在: ",
+        "科幻片" in json.dumps(sw.to_messages(), ensure_ascii=False),
+    )
 
     print("\n→ Sliding Window 优点: 实现简单, O(1) 插入")
     print("→ 缺点: 早期 '我喜欢科幻片' 等关键事实已丢失, 后续推荐会受影响")

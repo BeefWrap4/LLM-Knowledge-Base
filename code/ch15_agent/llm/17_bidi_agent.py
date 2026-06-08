@@ -18,21 +18,23 @@
 Strands BidiAgent - 双向语音对话示例
 展示全双工音频流处理
 """
+
 import asyncio
 
 
 class AudioConfig:
     """音频配置（实际由 strands.voice.AudioConfig 提供）"""
 
-    def __init__(self, input_sample_rate=16000, output_sample_rate=24000,
-                 vad_sensitivity=0.6):
+    def __init__(self, input_sample_rate=16000, output_sample_rate=24000, vad_sensitivity=0.6):
         self.input_sample_rate = input_sample_rate
         self.output_sample_rate = output_sample_rate
         self.vad_sensitivity = vad_sensitivity
 
     def __repr__(self):
-        return (f"AudioConfig(in={self.input_sample_rate}Hz, "
-                f"out={self.output_sample_rate}Hz, vad={self.vad_sensitivity})")
+        return (
+            f"AudioConfig(in={self.input_sample_rate}Hz, "
+            f"out={self.output_sample_rate}Hz, vad={self.vad_sensitivity})"
+        )
 
 
 class BidiAgent:
@@ -68,10 +70,10 @@ class BidiAgent:
 
         # 工具调用
         if "search_flight" in self.tools:
-            flight = await self.tools["search_flight"](
-                origin="北京", destination="上海", date="2026-06-07"
+            flight = await self.tools["search_flight"](origin="北京", destination="上海", date="2026-06-07")
+            await _maybe_await(
+                on_agent_speech, f"为您找到航班 {flight['flight']}，票价 {flight['price']} 元。"
             )
-            await _maybe_await(on_agent_speech, f"为您找到航班 {flight['flight']}，票价 {flight['price']} 元。")
         else:
             await _maybe_await(on_agent_speech, "请告诉我出发地和目的地。")
 

@@ -30,6 +30,7 @@ PEP 8 — Python 代码风格指南（面试可能问到）
 5. import：标准库 → 第三方 → 本地，每组空一行
 """
 
+
 # 文档字符串规范
 def calculate_area(length: float, width: float) -> float:
     """计算矩形面积。
@@ -52,20 +53,19 @@ def calculate_area(length: float, width: float) -> float:
         raise ValueError("长度和宽度必须为正数")
     return length * width
 
+
 # 演示
 print(f"面积: {calculate_area(3.0, 4.0)}")
 
 # 类型注解（Python 3.5+，大型项目推荐）
-from typing import List, Dict, Optional, Union
 
-def process_data(
-    items: List[int],
-    config: Optional[Dict[str, Union[str, int]]] = None
-) -> List[str]:
+
+def process_data(items: list[int], config: dict[str, str | int] | None = None) -> list[str]:
     """带类型注解的函数"""
     if config is None:
         config = {}
     return [str(item) for item in items]
+
 
 # 演示
 print(f"处理结果: {process_data([1, 2, 3])}")

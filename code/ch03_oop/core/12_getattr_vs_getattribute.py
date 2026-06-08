@@ -23,6 +23,7 @@ __getattr__:     仅在属性不存在时调用
 __getattribute__: 任何属性访问都调用（包括存在的属性）
 """
 
+
 class AttributeDemo:
     def __init__(self):
         self.existing = "我存在"
@@ -32,7 +33,7 @@ class AttributeDemo:
         print(f"__getattr__ 被调用: '{name}' 不存在")
         if name == "dynamic":
             value = f"动态创建的 {name}"
-            setattr(self, name, value)   # 缓存
+            setattr(self, name, value)  # 缓存
             return value
         raise AttributeError(f"'{type(self).__name__}' 没有 '{name}' 属性")
 
@@ -47,10 +48,11 @@ class AttributeDemo:
         print(f"__setattr__: {name} = {value!r}")
         super().__setattr__(name, value)
 
+
 obj = AttributeDemo()
-print(obj.existing)    # 先 __getattribute__，返回值
-print(obj.dynamic)     # 先 __getattribute__（找不到），再 __getattr__
-print(obj.dynamic)     # 第二次直接从 __getattribute__ 找到（已缓存）
+print(obj.existing)  # 先 __getattribute__，返回值
+print(obj.dynamic)  # 先 __getattribute__（找不到），再 __getattr__
+print(obj.dynamic)  # 第二次直接从 __getattribute__ 找到（已缓存）
 # obj.nonexistent      # __getattribute__ → __getattr__ → AttributeError
 
 """

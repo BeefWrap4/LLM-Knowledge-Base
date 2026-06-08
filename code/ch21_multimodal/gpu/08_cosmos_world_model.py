@@ -16,13 +16,13 @@
 #   3. guidance_scale 在条件视频生成中起什么作用？
 
 
-
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 import os
 
@@ -55,12 +55,10 @@ def main():
         print("cosmos package not installed. Skipping real mode.")
         return
 
-    pipe = CosmosPredictPipeline.from_pretrained(
-        "nvidia/Cosmos-1.0-Diffusion-7B-Video2World"
-    )
+    pipe = CosmosPredictPipeline.from_pretrained("nvidia/Cosmos-1.0-Diffusion-7B-Video2World")
     future_frames = pipe(
-        init_frames=current_obs,           # [B, T_in, H, W, 3]
-        actions=robot_action_seq,           # [B, T_out, action_dim]
+        init_frames=current_obs,  # [B, T_in, H, W, 3]
+        actions=robot_action_seq,  # [B, T_out, action_dim]
         num_future_frames=64,
         guidance_scale=7.0,
     ).frames

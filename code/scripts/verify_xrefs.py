@@ -13,6 +13,7 @@
   - 误判的 Python list 文字 (包含逗号的短内容)
   - 代码块 (```...```) 内的内容 (虽然 Obsidian 也解析, 但减少假阳)
 """
+
 import re
 import sys
 from collections import defaultdict
@@ -78,7 +79,7 @@ def main() -> int:
             broken.append((target, refs))
 
     # Print
-    print(f"=== Tutorial Cross-Reference Verification ===\n")
+    print("=== Tutorial Cross-Reference Verification ===\n")
     print(f"Repo: {REPO}")
     print(f"Total .md files: {len(md_files)}")
     print(f"Unique wiki link targets: {len(all_links)}")

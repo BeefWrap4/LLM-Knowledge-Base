@@ -24,6 +24,7 @@ GRPO 是 DeepSeek-R1 用的 RL 算法:
 
 Loss = clip_surrogate + β * KL(policy || ref)
 """
+
 import sys
 from pathlib import Path
 
@@ -32,8 +33,8 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 import torch
+
 from shared.gpu_guard import require_nvidia_gpu
-from shared._error_helper import raise_with_help
 
 
 def check_hardware():
@@ -42,10 +43,10 @@ def check_hardware():
 
 
 def grpo_loss(
-    log_probs: torch.Tensor,        # [B*K, T] 当前策略 token-level logp
-    old_log_probs: torch.Tensor,    # [B*K, T] 旧策略 token-level logp
-    ref_log_probs: torch.Tensor,    # [B*K, T] 参考策略 token-level logp
-    rewards: torch.Tensor,          # [B*K]   每条样本的标量 reward
+    log_probs: torch.Tensor,  # [B*K, T] 当前策略 token-level logp
+    old_log_probs: torch.Tensor,  # [B*K, T] 旧策略 token-level logp
+    ref_log_probs: torch.Tensor,  # [B*K, T] 参考策略 token-level logp
+    rewards: torch.Tensor,  # [B*K]   每条样本的标量 reward
     beta: float = 0.04,
     clip_range: float = 0.2,
 ) -> torch.Tensor:
@@ -82,7 +83,7 @@ def main():
     total = B * K
 
     log_probs = (torch.randn(total, T, device="cuda") * 0.1 - 1.0).requires_grad_(True)
-    old_log_probs = (log_probs.detach() + torch.randn_like(log_probs) * 0.01)
+    old_log_probs = log_probs.detach() + torch.randn_like(log_probs) * 0.01
     ref_log_probs = torch.randn(total, T, device="cuda") * 0.1 - 1.0
 
     # 模拟组内 reward (组内高低不齐 → z-score 后 advantages 正负对称)

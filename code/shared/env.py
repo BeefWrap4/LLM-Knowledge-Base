@@ -5,13 +5,12 @@
 """
 See: tutorial/Ch15.3 (token 管理), Ch18_LLM工程框架实战 §18.1
 """
+
 import os
-import sys
 from pathlib import Path
-from typing import Optional
 
 
-def _find_dotenv(start: Path) -> Optional[Path]:
+def _find_dotenv(start: Path) -> Path | None:
     """向上查找 .env 文件 (最多 5 层, 支持 code/.env, repo/.env, ~/work/.env)."""
     for parent in [start, *start.parents[:5]]:
         candidate = parent / ".env"
@@ -35,7 +34,7 @@ except ImportError:
     pass  # dotenv 可选
 
 
-def get_api_key(provider: str = "openai") -> Optional[str]:
+def get_api_key(provider: str = "openai") -> str | None:
     """获取 LLM provider 的 API key.
 
     Examples:
@@ -64,7 +63,7 @@ def get_api_key(provider: str = "openai") -> Optional[str]:
     return os.environ.get(env_var)
 
 
-def get_env(key: str, default: Optional[str] = None) -> Optional[str]:
+def get_env(key: str, default: str | None = None) -> str | None:
     """Simple env var getter."""
     return os.environ.get(key, default)
 

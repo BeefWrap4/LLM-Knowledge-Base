@@ -30,37 +30,37 @@ datatrove_pipeline_config = {
         "data_folder": "/data/raw_cc/",
         "glob_pattern": "*.jsonl.gz",
         "text_key": "text",
-        "id_key": "doc_id"
+        "id_key": "doc_id",
     },
     "processing": [
         {
             "type": "GopherQualityFilter",  # 基于困惑度的质量过滤
             "model_name": "gpt2",
-            "threshold": 1000
+            "threshold": 1000,
         },
         {
             "type": "MinHashDedup",  # MinHash 去重
             "num_perm": 128,
             "threshold": 0.8,
-            "ngram_size": 5
+            "ngram_size": 5,
         },
         {
             "type": "LanguageFilter",  # 语言过滤
             "language": "en",
-            "confidence_threshold": 0.65
+            "confidence_threshold": 0.65,
         },
         {
             "type": "PIIRemover",  # PII 去除
             "email": True,
             "phone": True,
-            "ip": True
-        }
+            "ip": True,
+        },
     ],
     "writer": {
         "type": "JsonlWriter",
         "output_folder": "/data/cleaned_corpus/",
-        "compression": "gzip"
-    }
+        "compression": "gzip",
+    },
 }
 
 
@@ -69,8 +69,10 @@ def main():
     print(f"Reader: {datatrove_pipeline_config['reader']['type']}")
     print(f"  数据源: {datatrove_pipeline_config['reader']['data_folder']}")
     print(f"\n处理步骤数: {len(datatrove_pipeline_config['processing'])}")
-    for i, step in enumerate(datatrove_pipeline_config['processing'], 1):
-        print(f"  [{i}] {step['type']}: {json.dumps({k: v for k, v in step.items() if k != 'type'}, ensure_ascii=False)}")
+    for i, step in enumerate(datatrove_pipeline_config["processing"], 1):
+        print(
+            f"  [{i}] {step['type']}: {json.dumps({k: v for k, v in step.items() if k != 'type'}, ensure_ascii=False)}"
+        )
     print(f"\nWriter: {datatrove_pipeline_config['writer']['type']}")
     print(f"  输出: {datatrove_pipeline_config['writer']['output_folder']}")
 

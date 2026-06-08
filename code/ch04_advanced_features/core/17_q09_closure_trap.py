@@ -30,9 +30,11 @@ i 的最终值是 4。所有 lambda 都引用同一个 i，所以都返回 4 * 2
 修复方法：lambda x, i=i: i * x。
 """
 
+
 # 错误版本
 def make_multipliers_buggy():
     return [lambda x: i * x for i in range(5)]
+
 
 # 修复版本
 def make_multipliers_fixed():
@@ -40,5 +42,5 @@ def make_multipliers_fixed():
 
 
 if __name__ == "__main__":
-    print("buggy :", [m(2) for m in make_multipliers_buggy()])   # [8, 8, 8, 8, 8]
-    print("fixed :", [m(2) for m in make_multipliers_fixed()])   # [0, 2, 4, 6, 8]
+    print("buggy :", [m(2) for m in make_multipliers_buggy()])  # [8, 8, 8, 8, 8]
+    print("fixed :", [m(2) for m in make_multipliers_fixed()])  # [0, 2, 4, 6, 8]

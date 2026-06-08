@@ -41,6 +41,7 @@ except:
 # 自定义深拷贝行为:__deepcopy__
 # ─────────────────────────────────────────────────────────────
 
+
 class Node:
     """链表节点 — 自定义深拷贝行为"""
 
@@ -67,6 +68,7 @@ class Node:
     def __repr__(self):
         return f"Node({self.value})"
 
+
 # 构建链表 1 -> 2 -> 3
 node3 = Node(3)
 node2 = Node(2, node3)
@@ -75,7 +77,7 @@ node1 = Node(1, node2)
 node1_copy = copy.deepcopy(node1)
 
 print(f"值独立? {node1_copy.value == node1.value and node1_copy is not node1}")  # True
-print(f"next独立? {node1_copy.next is not node1.next}")    # True
+print(f"next独立? {node1_copy.next is not node1.next}")  # True
 print(f"cache共享? {node1_copy.shared_cache is node1.shared_cache}")  # True — 故意共享
 
 if __name__ == "__main__":

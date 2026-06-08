@@ -22,6 +22,7 @@ from collections import Counter
 # Mock fasttext 以避免在无 fasttext 环境下报错
 try:
     import fasttext  # type: ignore
+
     FASTTEXT_AVAILABLE = True
 except ImportError:
     FASTTEXT_AVAILABLE = False
@@ -58,8 +59,9 @@ class TextQualityFilter:
             return False, "too_long"
 
         # 2. 特殊字符比例
-        special_ratio = sum(1 for c in text_stripped
-                            if not c.isalnum() and not c.isspace()) / max(len(text_stripped), 1)
+        special_ratio = sum(1 for c in text_stripped if not c.isalnum() and not c.isspace()) / max(
+            len(text_stripped), 1
+        )
         if special_ratio > 0.3:
             return False, f"high_special_char_ratio_{special_ratio:.2f}"
 
@@ -71,7 +73,7 @@ class TextQualityFilter:
                 return False, f"high_upper_ratio_{upper_ratio:.2f}"
 
         # 4. 行重复检测
-        lines = text_stripped.split('\n')
+        lines = text_stripped.split("\n")
         if len(lines) > 5:
             line_counts = Counter(lines)
             most_common_ratio = line_counts.most_common(1)[0][1] / len(lines)
@@ -79,8 +81,23 @@ class TextQualityFilter:
                 return False, f"high_line_repetition_{most_common_ratio:.2f}"
 
         # 5. 停用词比例（以英文为例）
-        stopwords = {'the', 'a', 'an', 'is', 'are', 'was', 'were',
-                     'in', 'on', 'at', 'to', 'for', 'of', 'and', 'or'}
+        stopwords = {
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "and",
+            "or",
+        }
         words = text_stripped.lower().split()
         if len(words) > 20:
             stopword_ratio = sum(1 for w in words if w in stopwords) / len(words)
@@ -93,11 +110,14 @@ class TextQualityFilter:
         """语言检测过滤"""
         if self.lang_model is None:
             return True, "lang_skipped"
-        text_clean = re.sub(r'\s+', ' ', text.strip())[:500]  # 取前500字符
+        text_clean = re.sub(r"\s+", " ", text.strip())[:500]  # 取前500字符
         pred = self.lang_model.predict(text_clean)
         detected_lang = pred[0][0]
         confidence = pred[1][0]
-        return detected_lang == target_lang and confidence > 0.7, f"{detected_lang}_{confidence:.2f}"
+        return (
+            detected_lang == target_lang and confidence > 0.7,
+            f"{detected_lang}_{confidence:.2f}",
+        )
 
     def full_filter(self, text: str, target_lang: str = "__label__en") -> dict:
         """综合过滤"""
@@ -117,12 +137,14 @@ def main():
     # 使用示例
     filter_obj = TextQualityFilter()
 
-    good_text = ("Machine learning is a field of inquiry devoted to understanding "
-                 "and building methods that learn from data. It is seen as a part "
-                 "of artificial intelligence. Machine learning algorithms build a "
-                 "model based on sample data, known as training data, in order to "
-                 "make predictions or decisions without being explicitly programmed "
-                 "to do so.")
+    good_text = (
+        "Machine learning is a field of inquiry devoted to understanding "
+        "and building methods that learn from data. It is seen as a part "
+        "of artificial intelligence. Machine learning algorithms build a "
+        "model based on sample data, known as training data, in order to "
+        "make predictions or decisions without being explicitly programmed "
+        "to do so."
+    )
     bad_text = "asdf jkl; @#$%^&* !!! " * 10  # 低质量文本
 
     print("Good text:", filter_obj.full_filter(good_text))

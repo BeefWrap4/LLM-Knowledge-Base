@@ -15,9 +15,11 @@
 #   2. 为什么流式推理比 batch 推理的 TTFT (time-to-first-token) 短？
 #   3. o3 streaming 与 o1 的 SDK 兼容性差异？
 """OpenAI o3 流式推理 (真实 streaming)."""
-import sys
+
 import os
+import sys
 from pathlib import Path
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
@@ -39,6 +41,7 @@ def main():
     api_key = get_openai_key()
 
     from openai import OpenAI
+
     client = OpenAI(api_key=api_key)
 
     print("=== OpenAI o3 流式推理 ===\n")

@@ -60,7 +60,8 @@ class GraphRAG:
             triples = self.extract_entities_relations(doc)
             for t in triples:
                 self.graph.add_edge(
-                    t["subject"], t["object"],
+                    t["subject"],
+                    t["object"],
                     relation=t["relation"],
                     source=doc[:100],
                 )
@@ -95,6 +96,7 @@ class GraphRAG:
 
         # 多跳邻居遍历
         from collections import deque
+
         visited = {best_node}
         queue = deque([(best_node, 0)])
         paths = []

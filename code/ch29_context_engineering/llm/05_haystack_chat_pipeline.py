@@ -21,8 +21,8 @@
 #   - "多轮对话如何保留 context?"                →  messages[] 累积, 由 checkpointer 持久化
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any
 
 
 @dataclass
@@ -53,27 +53,26 @@ class MockChatPromptBuilder:
 
 def build_context_engineered_pipeline() -> MockChatPromptBuilder:
     """Context = Instructions + RAG + Tools + History 四维同时注入。"""
-    return MockChatPromptBuilder(template=[
-        {
-            "role": "system",
-            "template": (
-                "你是一个企业知识助手, 回答须引用文档。\n"
-                "可用工具: {{ tools_list }}\n"
-                "用户偏好: {{ user_preferences }}"
-            ),
-        },
-        {
-            "role": "system",
-            "template": (
-                "相关文档片段:\n"
-                "{% for d in documents %}- {{ d }}\n{% endfor %}"
-            ),
-        },
-        {
-            "role": "user",
-            "template": "{{ question }}",
-        },
-    ])
+    return MockChatPromptBuilder(
+        template=[
+            {
+                "role": "system",
+                "template": (
+                    "你是一个企业知识助手, 回答须引用文档。\n"
+                    "可用工具: {{ tools_list }}\n"
+                    "用户偏好: {{ user_preferences }}"
+                ),
+            },
+            {
+                "role": "system",
+                "template": ("相关文档片段:\n{% for d in documents %}- {{ d }}\n{% endfor %}"),
+            },
+            {
+                "role": "user",
+                "template": "{{ question }}",
+            },
+        ]
+    )
 
 
 def run_demo() -> None:

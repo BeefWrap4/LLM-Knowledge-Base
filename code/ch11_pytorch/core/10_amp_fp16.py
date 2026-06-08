@@ -16,10 +16,11 @@
 #  2. BF16 与 FP16 的指数位/尾数位差异, 为什么 BF16 不用 Loss Scaling?
 #  3. autocast 的粒度 (装饰器/with/模块级) 与 dtypes 决策策略?
 import torch
-from torch.cuda.amp import autocast, GradScaler
+from torch.cuda.amp import GradScaler, autocast
 
 # 混合精度训练（PyTorch）
 scaler = GradScaler()  # 梯度缩放，防止 FP16 下溢
+
 
 # 训练循环骨架（无真实数据, 仅展示 API 接入点）
 def amp_train_step(model, batch_X, batch_y, criterion, optimizer, scaler, device):
@@ -42,6 +43,7 @@ def amp_train_step(model, batch_X, batch_y, criterion, optimizer, scaler, device
 if __name__ == "__main__":
     # 在 CPU 上跑一遍最小验证, 确保 API 接线正确
     import torch.nn as nn
+
     model = nn.Linear(20, 3)
     crit = nn.CrossEntropyLoss()
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)

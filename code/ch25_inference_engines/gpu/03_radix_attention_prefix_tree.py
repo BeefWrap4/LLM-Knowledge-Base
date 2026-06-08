@@ -28,7 +28,9 @@ vLLM 0.21 用 ``enable_prefix_caching=True`` 启用, 内部在
   - ``block_size=16``: radix tree 的粒度 (按 block hash, 不是单 token)
   - 共享 prefix 越长, 命中越多; 短 prefix 不值得 (hash 开销 vs compute 节省)
 """
+
 from __future__ import annotations
+
 import sys
 import time
 from pathlib import Path
@@ -37,8 +39,7 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import require_nvidia_gpu, gpu_summary
-
+from shared.gpu_guard import gpu_summary, require_nvidia_gpu
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 # 真实场景: shared system prompt + few-shot 模板 + 4 个不同问题
@@ -87,7 +88,7 @@ def main() -> None:
         max_num_seqs=4,
         max_model_len=512,
         block_size=16,
-        enable_prefix_caching=True,   # 关键: 启用 radix attention
+        enable_prefix_caching=True,  # 关键: 启用 radix attention
         enforce_eager=True,
     )
 
@@ -105,6 +106,7 @@ def main() -> None:
     # 先打 shared prefix 长度
     shared_tok = len(llm.llm_engine.model_config.hf_config.vocab_size)  # 占位, 实际取下面
     from transformers import AutoTokenizer
+
     tok = AutoTokenizer.from_pretrained(MODEL)
     shared_ids = tok(SHARED_PREFIX, add_special_tokens=False).input_ids
     full_ids = [tok(p, add_special_tokens=False).input_ids for p in prompts]

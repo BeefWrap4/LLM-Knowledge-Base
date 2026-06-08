@@ -18,17 +18,17 @@
 
 
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 """
 DeepSpeed ZeRO Stage 2/3 完整训练示例
 启动方式: deepspeed --num_gpus=8 04_deepspeed_zero.py --deepspeed ds_config.json
 """
-import os
 import argparse
 
 
@@ -41,8 +41,8 @@ def train_with_deepspeed_api():
     args = parser.parse_args()
 
     try:
-        import torch
         import deepspeed
+        import torch
     except ImportError:
         print("[Mock Mode] deepspeed/torch not installed. Showing conceptual demo.")
         _demo_deepspeed_concept()
@@ -108,6 +108,7 @@ def _add_config_arguments(parser):
     """兼容性: 不同版本的 deepspeed.add_config_arguments"""
     try:
         import deepspeed
+
         return deepspeed.add_config_arguments(parser)
     except (ImportError, AttributeError):
         return parser

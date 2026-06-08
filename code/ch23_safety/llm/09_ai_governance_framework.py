@@ -22,13 +22,13 @@
 2. 需要跨部门协作（技术+法务+合规+业务）
 """
 
-from enum import Enum
-from typing import List, Dict
 from datetime import datetime
+from enum import Enum
 
 
 class AIRiskLevel(Enum):
     """AI系统风险等级（参考EU AI Act）"""
+
     MINIMAL = "最低风险"
     LIMITED = "有限风险"
     HIGH = "高风险"
@@ -49,17 +49,17 @@ class AIGovernanceFramework:
 
     def __init__(self):
         self.ai_inventory = []  # AI系统清单
-        self.policies = {}       # 治理政策
-        self.audit_log = []      # 审计日志
+        self.policies = {}  # 治理政策
+        self.audit_log = []  # 审计日志
 
     def register_ai_system(
         self,
         name: str,
         description: str,
         use_case: str,
-        model_info: Dict,
-        data_sources: List[str],
-        risk_level: AIRiskLevel
+        model_info: dict,
+        data_sources: list[str],
+        risk_level: AIRiskLevel,
     ) -> str:
         """注册AI系统到治理清单
 
@@ -76,12 +76,12 @@ class AIGovernanceFramework:
             "registered_at": datetime.now().isoformat(),
             "approved": False,
             "last_review": None,
-            "compliance_status": {}
+            "compliance_status": {},
         }
         self.ai_inventory.append(system)
         return f"System '{name}' registered with risk level: {risk_level.value}"
 
-    def conduct_impact_assessment(self, system_name: str) -> Dict:
+    def conduct_impact_assessment(self, system_name: str) -> dict:
         """AI影响评估（参考EU AI Act高风险要求）
 
         面试常问：什么情况需要做影响评估？
@@ -97,22 +97,19 @@ class AIGovernanceFramework:
                 "safety": "需要评估对人身安全、公共安全的潜在风险",
                 "fairness": "需要评估对不同群体的差异化影响",
                 "transparency": "需要评估用户是否能理解AI决策",
-                "accountability": "需要明确AI决策的责任归属"
+                "accountability": "需要明确AI决策的责任归属",
             },
-            "mitigation_required": []
+            "mitigation_required": [],
         }
         return assessment
 
-    def generate_model_card(self, system_name: str) -> Dict:
+    def generate_model_card(self, system_name: str) -> dict:
         """生成模型卡片（Model Card）
 
         模型卡片是AI透明度的关键工具，
         参考Google Model Cards for Model Reporting框架。
         """
-        system = next(
-            (s for s in self.ai_inventory if s["name"] == system_name),
-            None
-        )
+        system = next((s for s in self.ai_inventory if s["name"] == system_name), None)
         if not system:
             return {"error": f"System '{system_name}' not found in inventory"}
 
@@ -121,27 +118,23 @@ class AIGovernanceFramework:
                 "name": system["name"],
                 "version": system["model_info"].get("version", "N/A"),
                 "type": system["model_info"].get("type", "N/A"),
-                "release_date": datetime.now().isoformat()
+                "release_date": datetime.now().isoformat(),
             },
             "intended_use": {
                 "primary_use_case": system["use_case"],
                 "out_of_scope_uses": [],
-                "intended_users": system["model_info"].get("users", [])
+                "intended_users": system["model_info"].get("users", []),
             },
-            "performance": {
-                "metrics": {},
-                "evaluation_data": {},
-                "limitations": []
-            },
+            "performance": {"metrics": {}, "evaluation_data": {}, "limitations": []},
             "ethical_considerations": {
                 "bias_assessment": "待补充",
                 "privacy_analysis": "待补充",
-                "safety_testing": "待补充"
+                "safety_testing": "待补充",
             },
             "recommendations": {
                 "monitoring": "建议每月审查",
-                "human_oversight": "高风险系统需要人工审核"
-            }
+                "human_oversight": "高风险系统需要人工审核",
+            },
         }
 
 
@@ -158,19 +151,19 @@ if __name__ == "__main__":
         use_case="消费信贷审批",
         model_info={"version": "v1.2.0", "type": "XGBoost+LLM", "users": ["银行客户经理"]},
         data_sources=["交易历史", "征信报告", "用户画像"],
-        risk_level=AIRiskLevel.HIGH
+        risk_level=AIRiskLevel.HIGH,
     )
     print(f"\n[1] 系统注册: {registration}")
 
     # 2. 影响评估
     assessment = framework.conduct_impact_assessment("LoanApprovalBot")
-    print(f"\n[2] 影响评估维度:")
+    print("\n[2] 影响评估维度:")
     for dim, desc in assessment["dimensions"].items():
         print(f"  - {dim}: {desc}")
 
     # 3. 生成模型卡片
     card = framework.generate_model_card("LoanApprovalBot")
-    print(f"\n[3] 模型卡片生成:")
+    print("\n[3] 模型卡片生成:")
     for section, content in card.items():
         if isinstance(content, dict):
             print(f"  [{section}]:")

@@ -24,14 +24,13 @@ Human-in-the-Loop 实现模式
 """
 
 from enum import Enum
-from typing import Dict, List, Optional
 
 
 class HITLMode(Enum):
-    PRE_REVIEW = "前置审核"      # 先人后机
-    POST_REVIEW = "后置审核"     # 先机后人
-    EXCEPTION = "异常触发"       # 低置信转人
-    COLLABORATIVE = "协同决策"   # 人机协同
+    PRE_REVIEW = "前置审核"  # 先人后机
+    POST_REVIEW = "后置审核"  # 先机后人
+    EXCEPTION = "异常触发"  # 低置信转人
+    COLLABORATIVE = "协同决策"  # 人机协同
 
 
 class HumanInTheLoop:
@@ -41,23 +40,19 @@ class HumanInTheLoop:
         self.mode = mode
         self.confidence_threshold = confidence_threshold
 
-    def process(self, ai_output, confidence: float) -> Dict:
+    def process(self, ai_output, confidence: float) -> dict:
         """根据HITL模式处理AI输出"""
 
         if self.mode == HITLMode.PRE_REVIEW:
             # 所有输出先送人工审核
-            return {
-                "action": "HUMAN_REVIEW",
-                "ai_output": ai_output,
-                "status": "waiting_approval"
-            }
+            return {"action": "HUMAN_REVIEW", "ai_output": ai_output, "status": "waiting_approval"}
 
         elif self.mode == HITLMode.POST_REVIEW:
             # AI先输出，异步采样审核
             return {
                 "action": "PUBLISH",
                 "ai_output": ai_output,
-                "status": "will_be_sampled_for_review"
+                "status": "will_be_sampled_for_review",
             }
 
         elif self.mode == HITLMode.EXCEPTION:
@@ -67,14 +62,14 @@ class HumanInTheLoop:
                     "action": "PUBLISH",
                     "ai_output": ai_output,
                     "confidence": confidence,
-                    "status": "auto_approved"
+                    "status": "auto_approved",
                 }
             else:
                 return {
                     "action": "HUMAN_REVIEW",
                     "ai_output": ai_output,
                     "confidence": confidence,
-                    "status": "low_confidence_escalated"
+                    "status": "low_confidence_escalated",
                 }
 
         elif self.mode == HITLMode.COLLABORATIVE:
@@ -83,7 +78,7 @@ class HumanInTheLoop:
                 "action": "SUGGEST",
                 "ai_output": ai_output,
                 "confidence": confidence,
-                "instruction": "请人类决策者审核AI建议并做出最终决定"
+                "instruction": "请人类决策者审核AI建议并做出最终决定",
             }
 
 

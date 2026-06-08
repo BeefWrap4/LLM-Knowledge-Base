@@ -23,7 +23,6 @@
 3. 如何集成到CI/CD流程中
 """
 
-
 # Garak CLI 使用示例（面试中口述即可）
 GARAK_CLI_EXAMPLES = """
 # 安装
@@ -62,7 +61,7 @@ def run_garak_scan(
     model_name: str,
     probes: str = "dan,encoding,toxicity",
     report_format: str = "html",
-    report_prefix: str = "audit"
+    report_prefix: str = "audit",
 ) -> dict:
     """程序化调用Garak执行安全扫描
 

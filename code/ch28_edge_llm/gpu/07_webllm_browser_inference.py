@@ -15,6 +15,7 @@
 #   2. WebGPU 相比 WebAssembly 在 LLM 推理上的性能差距?
 #   3. 浏览器推理的工程挑战 (模型分发/缓存/版本)?
 """WebLLM 浏览器推理示例: 真实用 playwright 打开 mlc.ai/web-llm, 输入 prompt, 截屏."""
+
 from __future__ import annotations
 
 import sys
@@ -27,10 +28,9 @@ if str(_code_root) not in sys.path:
 
 from shared._error_helper import raise_with_help
 
-
 # 浏览器侧 (供前端工程师复制) 的 JS 调用模板.
 # 真实运行时, 模型权重由浏览器在客户端下载 + 编译, 无需服务端.
-WEBLLM_JS_TEMPLATE = '''\
+WEBLLM_JS_TEMPLATE = """\
 // 浏览器侧调用: 完整前端代码, 复制到 .html 即可
 // 1. npm i @mlc-ai/web-llm
 // 2. 需要 Chromium 113+ 或 Safari 17+ 才能用 WebGPU
@@ -53,7 +53,7 @@ const reply = await engine.chat.completions.create({
   messages: [{ role: "user", content: "Hello!" }],
 });
 console.log(reply.choices[0].message.content);
-'''
+"""
 
 
 def run_webllm_in_browser(

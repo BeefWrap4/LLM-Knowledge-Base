@@ -14,8 +14,8 @@
 #   - ProcessPoolExecutor 和 ThreadPoolExecutor 的取舍？
 #   - 为什么 CPU 密集型任务首选 ProcessPoolExecutor？
 #   - executor.map 和 submit 返回的 Future 在哪个进程中执行？
-from concurrent.futures import ProcessPoolExecutor
 import math
+from concurrent.futures import ProcessPoolExecutor
 
 
 def is_prime(n):

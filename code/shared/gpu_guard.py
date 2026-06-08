@@ -5,9 +5,9 @@
 """
 See: tutorial/Ch11_深度学习与PyTorch, Ch25_推理引擎与高性能服务 §25.4
 """
+
 import shutil
 import sys
-from typing import Optional
 
 
 def require_cuda(min_gb: float = 0) -> dict:
@@ -29,16 +29,13 @@ def require_cuda(min_gb: float = 0) -> dict:
     try:
         import torch  # noqa: F401  - heavy import lazy
     except ImportError:
-        sys.exit(
-            "❌  torch not installed. Run: pip install -r requirements-gpu.txt"
-        )
+        sys.exit("❌  torch not installed. Run: pip install -r requirements-gpu.txt")
 
     import torch
 
     if not torch.cuda.is_available():
         sys.exit(
-            "❌  torch.cuda.is_available() is False.\n"
-            "   笔记本/Mac 正常. 跳过 gpu tier, 跑 core/ 或 llm/。"
+            "❌  torch.cuda.is_available() is False.\n   笔记本/Mac 正常. 跳过 gpu tier, 跑 core/ 或 llm/。"
         )
 
     free_bytes, total_bytes = torch.cuda.mem_get_info()
@@ -63,6 +60,7 @@ def gpu_summary() -> str:
         return "GPU: not detected (no nvidia-smi)"
     try:
         import torch
+
         if not torch.cuda.is_available():
             return "GPU: not available (CPU mode)"
         return (
@@ -92,6 +90,7 @@ def _has_torch() -> bool:
     """检查 torch 是否已安装."""
     try:
         import torch  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -100,36 +99,42 @@ def _has_torch() -> bool:
 def _torch_cuda_available() -> bool:
     """torch.cuda.is_available() 包装 (用于 mock)."""
     import torch
+
     return torch.cuda.is_available()
 
 
 def _torch_device_count() -> int:
     """torch.cuda.device_count() 包装 (用于 mock)."""
     import torch
+
     return torch.cuda.device_count()
 
 
 def _torch_device_props(idx: int):
     """torch.cuda.get_device_properties(idx) 包装 (用于 mock)."""
     import torch
+
     return torch.cuda.get_device_properties(idx)
 
 
 def _platform_system() -> str:
     """platform.system() 包装 (用于 mock)."""
     import platform
+
     return platform.system()
 
 
 def _platform_machine() -> str:
     """platform.machine() 包装 (用于 mock)."""
     import platform
+
     return platform.machine()
 
 
 def _httpx_get(url: str, timeout: float = 2.0):
     """httpx.get 包装 (用于 mock + 避免未安装 httpx 时崩溃)."""
     import httpx
+
     return httpx.get(url, timeout=timeout)
 
 
@@ -198,8 +203,9 @@ def require_ollama(model: str = "llama3.2:3b") -> None:
     Raises:
         RuntimeError: Ollama 未运行 / 模型缺失.
     """
-    from shared._error_helper import raise_with_help
     import httpx
+
+    from shared._error_helper import raise_with_help
 
     try:
         r = _httpx_get("http://localhost:11434/api/tags", timeout=2.0)

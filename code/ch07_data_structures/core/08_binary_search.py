@@ -122,4 +122,3 @@ if __name__ == "__main__":
     assert find_min_rotated([4, 5, 6, 7, 0, 1, 2]) == 0
     assert find_min_rotated([11, 13, 15, 17]) == 11
     assert find_min_rotated([2, 1]) == 1
-

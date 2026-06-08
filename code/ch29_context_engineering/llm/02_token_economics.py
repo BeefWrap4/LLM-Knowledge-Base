@@ -21,16 +21,35 @@
 #   - "200K context 是否值得用?"     →  看质量, 64K 后存在 Context Rot
 
 from __future__ import annotations
-from dataclasses import dataclass
 
+from dataclasses import dataclass
 
 # 2026 主流模型定价 (USD per 1M tokens, 公开口径, mock)
 PRICING = {
-    "claude-sonnet-4":   {"in": 3.0,  "out": 15.0,  "cache_write": 3.75,  "cache_read": 0.30,  "ctx": 200_000},
-    "gpt-5":             {"in": 2.5,  "out": 10.0,  "cache_write": 0.0,   "cache_read": 0.0,   "ctx": 1_000_000},
-    "gemini-2.5-pro":    {"in": 1.25, "out": 5.0,   "cache_write": 0.0,   "cache_read": 0.0,   "ctx": 1_000_000},
-    "deepseek-v3.2":     {"in": 0.27, "out": 1.1,   "cache_write": 0.0,   "cache_read": 0.0,   "ctx": 128_000},
+    "claude-sonnet-4": {
+        "in": 3.0,
+        "out": 15.0,
+        "cache_write": 3.75,
+        "cache_read": 0.30,
+        "ctx": 200_000,
+    },
+    "gpt-5": {"in": 2.5, "out": 10.0, "cache_write": 0.0, "cache_read": 0.0, "ctx": 1_000_000},
+    "gemini-2.5-pro": {
+        "in": 1.25,
+        "out": 5.0,
+        "cache_write": 0.0,
+        "cache_read": 0.0,
+        "ctx": 1_000_000,
+    },
+    "deepseek-v3.2": {
+        "in": 0.27,
+        "out": 1.1,
+        "cache_write": 0.0,
+        "cache_read": 0.0,
+        "ctx": 128_000,
+    },
 }
+
 
 # 经验值 (mock): 在不同 context 长度下, 模型对中后段信息的"关注度"
 def attention_quality(context_len_tokens: int) -> float:
@@ -78,14 +97,20 @@ def estimate(model: str, input_tokens: int, output_tokens: int, cache_hit: float
     cache_saving = cached / 1e6 * (p["in"] - p["cache_read"])
     out_cost = output_tokens / 1e6 * p["out"]
     # 延迟: TTFT ∝ √(input_tokens) (粗略), TPOT 固定 25ms
-    ttft = 0.05 + 0.0001 * (input_tokens ** 0.5)
+    ttft = 0.05 + 0.0001 * (input_tokens**0.5)
     tpot = 0.025
     latency = ttft + tpot * output_tokens
     return CostEstimate(
-        model=model, input_tokens=input_tokens, output_tokens=output_tokens,
-        cache_hit_ratio=cache_hit, input_cost=in_cost, output_cost=out_cost,
-        cache_saving=cache_saving, total_usd=in_cost + out_cost,
-        latency_s=latency, quality=attention_quality(input_tokens),
+        model=model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cache_hit_ratio=cache_hit,
+        input_cost=in_cost,
+        output_cost=out_cost,
+        cache_saving=cache_saving,
+        total_usd=in_cost + out_cost,
+        latency_s=latency,
+        quality=attention_quality(input_tokens),
     )
 
 

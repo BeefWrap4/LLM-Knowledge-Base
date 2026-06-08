@@ -16,7 +16,6 @@
 #  - 如何用 MLflow Nested Run 表达"父实验 + 子样本"的层级关系？
 
 import itertools
-import os
 
 try:
     import mlflow
@@ -40,16 +39,16 @@ def main():
 
     # 网格搜索
     for temp, model, style in itertools.product(
-        search_space["temperature"],
-        search_space["model"],
-        search_space["prompt_style"]
+        search_space["temperature"], search_space["model"], search_space["prompt_style"]
     ):
         with mlflow.start_run(run_name=f"{model}_t{temp}_{style}"):
-            mlflow.log_params({
-                "temperature": temp,
-                "model": model,
-                "prompt_style": style,
-            })
+            mlflow.log_params(
+                {
+                    "temperature": temp,
+                    "model": model,
+                    "prompt_style": style,
+                }
+            )
 
             # 模拟：在每个父 run 中对每个测试用例开一个 nested run
             test_cases = [

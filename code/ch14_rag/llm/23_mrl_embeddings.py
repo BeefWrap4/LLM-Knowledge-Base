@@ -22,6 +22,7 @@ def get_mrl_embedding(text: str, dimensions: int = 512, api_key: str = None):
     """支持 256, 512, 1024, 3072 维动态选择"""
     if api_key:
         from openai import OpenAI
+
         client = OpenAI(api_key=api_key)
         response = client.embeddings.create(
             model="text-embedding-3-large",
@@ -31,9 +32,10 @@ def get_mrl_embedding(text: str, dimensions: int = 512, api_key: str = None):
         return response.data[0].embedding
     # Mock: 用确定种子生成对应维度向量
     import numpy as np
+
     rng = np.random.default_rng(hash(text) % (2**32))
     v = rng.normal(size=dimensions).astype("float32")
-    v /= (np.linalg.norm(v) + 1e-12)
+    v /= np.linalg.norm(v) + 1e-12
     return v.tolist()
 
 

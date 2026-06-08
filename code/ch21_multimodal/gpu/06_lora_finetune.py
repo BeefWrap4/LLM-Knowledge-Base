@@ -16,13 +16,13 @@
 #   3. target_modules 的选择对 LoRA 效果有什么影响？
 
 
-
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 import os
 
@@ -38,8 +38,13 @@ def build_lora_config():
         lora_alpha=256,
         lora_dropout=0.05,
         target_modules=[
-            "q_proj", "k_proj", "v_proj", "o_proj",
-            "gate_proj", "up_proj", "down_proj",
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
         ],
         bias="none",
     )
@@ -53,7 +58,7 @@ def main():
         # 不加载真实模型，演示 LoRA 注入与参数统计
         import torch
         import torch.nn as nn
-        from peft import LoraConfig, get_peft_model, TaskType
+        from peft import LoraConfig, TaskType, get_peft_model
 
         # 构造一个 toy 线性模型模拟 LLM
         class ToyLLM(nn.Module):
@@ -73,9 +78,18 @@ def main():
         base = ToyLLM()
         cfg = LoraConfig(
             task_type=TaskType.CAUSAL_LM,
-            r=8, lora_alpha=16, lora_dropout=0.05,
-            target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                            "gate_proj", "up_proj", "down_proj"],
+            r=8,
+            lora_alpha=16,
+            lora_dropout=0.05,
+            target_modules=[
+                "q_proj",
+                "k_proj",
+                "v_proj",
+                "o_proj",
+                "gate_proj",
+                "up_proj",
+                "down_proj",
+            ],
             bias="none",
         )
         peft_model = get_peft_model(base, cfg)
@@ -96,7 +110,7 @@ def main():
     else:
         # 真实模式
         import torch
-        from peft import LoraConfig, get_peft_model, TaskType
+        from peft import LoraConfig, TaskType, get_peft_model
         from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 
         bnb_config = BitsAndBytesConfig(

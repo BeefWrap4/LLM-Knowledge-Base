@@ -22,15 +22,18 @@ QLoRA = 4-bit NF4 量化 (NormalFloat) base + LoRA adapter
 - LoRA adapter: 16-bit 训练
 - 显存节省: 0.5B 模型 4-bit 量化后 ~0.4GB (vs 1GB fp16)
 """
+
 import sys
 from pathlib import Path
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 import torch
-from shared.gpu_guard import require_nvidia_gpu
+
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import require_nvidia_gpu
 
 
 def check_hardware():
@@ -61,22 +64,20 @@ def main():
 
     model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")
     if not Path(model_path).exists():
-        raise_with_help(
-            f"需要 {model_path}", "运行 `make download-models-default`."
-        )
+        raise_with_help(f"需要 {model_path}", "运行 `make download-models-default`.")
 
+    from peft import (
+        LoraConfig,
+        TaskType,
+        get_peft_model,
+        prepare_model_for_kbit_training,
+    )
     from transformers import (
         AutoModelForCausalLM,
         AutoTokenizer,
-        TrainingArguments,
-        Trainer,
         BitsAndBytesConfig,
-    )
-    from peft import (
-        LoraConfig,
-        get_peft_model,
-        TaskType,
-        prepare_model_for_kbit_training,
+        Trainer,
+        TrainingArguments,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -100,9 +101,7 @@ def main():
         quantization_config=bnb_config,
         device_map="auto",
     )
-    print(
-        f"  4-bit 加载后 VRAM: {torch.cuda.memory_allocated() / 1024**3:.2f}GB"
-    )
+    print(f"  4-bit 加载后 VRAM: {torch.cuda.memory_allocated() / 1024**3:.2f}GB")
 
     # QLoRA 必须: prepare_model_for_kbit_training
     model = prepare_model_for_kbit_training(model)
@@ -145,17 +144,17 @@ def main():
     losses = [e["loss"] for e in trainer.state.log_history if "loss" in e]
 
     if losses:
-        print(f"\n=== 训练完成 ===")
+        print("\n=== 训练完成 ===")
         print(f"  initial loss: {losses[0]:.4f}")
         print(f"  final loss:   {losses[-1]:.4f}")
         if losses[-1] < losses[0]:
             print(f"  ✅ loss 下降: {losses[0]:.4f} → {losses[-1]:.4f}")
         else:
-            print(f"  ⚠️  loss 未明显下降 (合成随机数据, 这是正常)")
+            print("  ⚠️  loss 未明显下降 (合成随机数据, 这是正常)")
 
     vram = torch.cuda.max_memory_allocated() / (1024**3)
     print(f"  peak VRAM: {vram:.2f}GB / 34GB")
-    print(f"  (对比 fp16 LoRA 节省 ~50%)")
+    print("  (对比 fp16 LoRA 节省 ~50%)")
 
 
 if __name__ == "__main__":

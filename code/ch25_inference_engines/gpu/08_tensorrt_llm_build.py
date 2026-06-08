@@ -29,6 +29,7 @@ TensorRT-LLM 是 NVIDIA 的 LLM 推理编译器:
 注意: 官方 TensorRT-LLM 在 Windows 上**不可用**; 缺 CLI 时本脚本会
 通过 `shared._error_helper.raise_with_help` 输出明确安装指引.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -40,8 +41,8 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import require_nvidia_gpu  # noqa: E402
 from shared._error_helper import raise_with_help  # noqa: E402
+from shared.gpu_guard import require_nvidia_gpu  # noqa: E402
 
 
 def check_hardware() -> None:
@@ -107,13 +108,20 @@ def build_engine(
 
     cmd = [
         trtllm_build,
-        "--checkpoint_dir", checkpoint_dir,
-        "--output_dir", output_dir,
-        "--max_batch_size", str(max_batch_size),
-        "--max_seq_len", str(max_seq_len),
-        "--gemm_plugin", "fp16",
-        "--attention_plugin", "trtllm",
-        "--tp_size", str(tp_size),
+        "--checkpoint_dir",
+        checkpoint_dir,
+        "--output_dir",
+        output_dir,
+        "--max_batch_size",
+        str(max_batch_size),
+        "--max_seq_len",
+        str(max_seq_len),
+        "--gemm_plugin",
+        "fp16",
+        "--attention_plugin",
+        "trtllm",
+        "--tp_size",
+        str(tp_size),
     ]
 
     print(f"[trtllm-build] {' '.join(cmd)}")
@@ -167,7 +175,7 @@ def main() -> None:
     print("示例:")
     print("  curl http://localhost:8000/v1/chat/completions \\")
     print("    -H 'Content-Type: application/json' \\")
-    print("    -d '{\"model\":\"qwen\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}'")
+    print('    -d \'{"model":"qwen","messages":[{"role":"user","content":"hi"}]}\'')
 
 
 if __name__ == "__main__":

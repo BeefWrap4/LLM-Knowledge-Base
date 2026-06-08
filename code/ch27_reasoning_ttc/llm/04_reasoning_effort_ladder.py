@@ -21,9 +21,11 @@
   - medium: 平衡
   - high:   长推理, 慢但准
 """
-import sys
+
 import os
+import sys
 from pathlib import Path
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
@@ -45,6 +47,7 @@ def main():
     api_key = get_deepseek_key()
 
     from openai import OpenAI
+
     client = OpenAI(
         api_key=api_key,
         base_url="https://api.deepseek.com/v1",

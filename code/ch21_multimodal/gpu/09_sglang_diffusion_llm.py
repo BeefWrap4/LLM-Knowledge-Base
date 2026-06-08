@@ -45,16 +45,11 @@ def main():
     @sgl.function
     def diffusion_complete(s, prompt):
         s += prompt
-        s += sgl.gen("answer",
-                     max_tokens=512,
-                     diffusion_steps=16,
-                     temperature=0.7)
+        s += sgl.gen("answer", max_tokens=512, diffusion_steps=16, temperature=0.7)
 
     runtime = sgl.RuntimeEndpoint("http://localhost:30000")
     sgl.set_default_backend(runtime)
-    state = diffusion_complete.run(
-        prompt="用Python实现快速排序，并解释复杂度。\n\n"
-    )
+    state = diffusion_complete.run(prompt="用Python实现快速排序，并解释复杂度。\n\n")
     print(state["answer"])
 
 

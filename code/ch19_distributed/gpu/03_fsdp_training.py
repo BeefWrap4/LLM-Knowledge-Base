@@ -32,17 +32,19 @@ FSDP 核心: 参数 + 梯度 + 优化器状态 在 N 个 rank 间分片
   (hostname 包含中文/特殊字符时, gloo 无法解析网络设备).
   推荐在 Linux / WSL2 / Docker 内运行; Windows 用户建议在 WSL2 中跑本例.
 """
+
 import os
 import sys
-import torch
 from pathlib import Path
+
+import torch
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import require_nvidia_gpu
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import require_nvidia_gpu
 
 
 def check_hardware():
@@ -56,6 +58,7 @@ def _init_distributed(world_size: int):
     - 多卡: accelerate 自动设好 env, 用 nccl 后端
     """
     import torch.distributed as dist
+
     if dist.is_initialized():
         return
 
@@ -68,8 +71,10 @@ def _init_distributed(world_size: int):
         # 调用 makeDeviceForHostname 解析本机网络设备, 在中文/特殊 hostname
         # 的 Windows 上会失败. 这是 PyTorch gloo v1 on Windows 的已知 bug.
         import tempfile
+
         init_file = tempfile.NamedTemporaryFile(
-            delete=False, suffix=".pt_init",
+            delete=False,
+            suffix=".pt_init",
             dir=os.environ.get("TEMP", "/tmp"),
         )
         init_file.close()
@@ -144,10 +149,11 @@ def main():
 
     # PyTorch 2.9+ 新签名: transformer_auto_wrap_policy 需要 partial 绑定
     # (FSDP 内部会传入 module/recurse/nonwrapped_numel 三个位置参数)
-    from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
-    from torch.distributed.fsdp import MixedPrecision, BackwardPrefetch
-    from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
     from functools import partial
+
+    from torch.distributed.fsdp import BackwardPrefetch, MixedPrecision
+    from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+    from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
     from transformers.models.qwen2.modeling_qwen2 import Qwen2DecoderLayer
 
     auto_wrap_policy = partial(
@@ -197,15 +203,14 @@ def main():
             losses.append(loss.item())
             if step % 10 == 0 and local_rank == 0:
                 vram_now = torch.cuda.memory_allocated() / (1024**3)
-                print(f"[rank {local_rank}] step {step:3d} | loss={loss.item():.4f} | "
-                      f"vram={vram_now:.2f}GB")
+                print(f"[rank {local_rank}] step {step:3d} | loss={loss.item():.4f} | vram={vram_now:.2f}GB")
             step += 1
 
     if local_rank == 0:
         avg_loss = sum(losses) / len(losses)
         vram_final = torch.cuda.memory_allocated() / (1024**3)
         vram_peak = torch.cuda.max_memory_allocated() / (1024**3)
-        print(f"\n=== FSDP 训练完成 ===")
+        print("\n=== FSDP 训练完成 ===")
         print(f"  total steps: {len(losses)}")
         print(f"  avg loss: {avg_loss:.4f}")
         print(f"  final loss: {losses[-1]:.4f}")
@@ -218,6 +223,7 @@ def main():
 
     if world_size > 1:
         import torch.distributed as dist
+
         dist.destroy_process_group()
 
 
@@ -235,8 +241,8 @@ def _demo_fsdp_concepts(model, model_path: str, vram_before: float, vram_after_l
     n_params = sum(p.numel() for p in model.parameters())
     n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"  model: {model_path.split('/')[-1]}")
-    print(f"  total params:     {n_params/1e6:.1f}M")
-    print(f"  trainable params: {n_trainable/1e6:.1f}M")
+    print(f"  total params:     {n_params / 1e6:.1f}M")
+    print(f"  trainable params: {n_trainable / 1e6:.1f}M")
     print(f"  vram before load: {vram_before:.2f}GB")
     print(f"  vram after load:  {vram_after_load:.2f}GB")
     print(f"  model weights:    ~{vram_after_load - vram_before:.2f}GB (BF16)")
@@ -246,14 +252,13 @@ def _demo_fsdp_concepts(model, model_path: str, vram_before: float, vram_after_l
     full_mem = n_params * 2 / 1e9  # BF16 = 2 bytes
     print(f"  无 FSDP (DDP): 每 rank 完整副本 = {full_mem:.2f}GB")
     print(f"  FSDP N=1:     {full_mem:.2f}GB  (不分片, 但可省 optimizer state)")
-    print(f"  FSDP N=2:     {full_mem/2:.2f}GB  (参数+grad+opt 各分 1/2)")
-    print(f"  FSDP N=4:     {full_mem/4:.2f}GB")
-    print(f"  FSDP N=8:     {full_mem/8:.2f}GB")
+    print(f"  FSDP N=2:     {full_mem / 2:.2f}GB  (参数+grad+opt 各分 1/2)")
+    print(f"  FSDP N=4:     {full_mem / 4:.2f}GB")
+    print(f"  FSDP N=8:     {full_mem / 8:.2f}GB")
     # AdamW 状态: fp32 master + 2 momentum = 12 bytes/param
     adam_state_gb = n_params * 12 / 1e9
     print(f"  AdamW 状态 (全精度, BF16 模型): {adam_state_gb:.2f}GB")
-    print(f"  实际节省: 约 {full_mem + adam_state_gb:.2f}GB → "
-          f"{(full_mem + adam_state_gb)/8:.2f}GB (8 卡)")
+    print(f"  实际节省: 约 {full_mem + adam_state_gb:.2f}GB → {(full_mem + adam_state_gb) / 8:.2f}GB (8 卡)")
 
     print("\n[3/3] 真实训练演示 (无 FSDP, 验证 Qwen2.5 可训练 + loss 下降):")
     # 真跑 30 step 训练, 证明 Qwen2.5-0.5B 在 5090D 上能 fine-tune
@@ -281,7 +286,7 @@ def _demo_fsdp_concepts(model, model_path: str, vram_before: float, vram_after_l
         if step % 5 == 0:
             print(f"  step {step:3d} | loss={loss.item():.4f}")
 
-    print(f"\n  30 step 完成:")
+    print("\n  30 step 完成:")
     print(f"    initial loss: {losses[0]:.4f}")
     print(f"    final loss:   {losses[-1]:.4f}")
     if losses[-1] < losses[0]:

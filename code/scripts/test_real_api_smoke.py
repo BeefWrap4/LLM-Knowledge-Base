@@ -25,6 +25,7 @@ Usage:
     export DEEPSEEK_API_KEY=sk-xxx
     python code/scripts/test_real_api_smoke.py
 """
+
 from __future__ import annotations
 
 import os
@@ -44,7 +45,7 @@ REPRESENTATIVE_FILES = [
     "ch18_llm_frameworks/llm/01_langchain_basic_chain.py",
     "ch20_llmops/llm/07_langsmith_prompt_debug.py",
     "ch22_data_eng/llm/04_self_instruct.py",
-    "ch27_reasoning_ttc/llm/01_o3_api_basic.py",   # 需 OPENAI_API_KEY, 否则友好抛错
+    "ch27_reasoning_ttc/llm/01_o3_api_basic.py",  # 需 OPENAI_API_KEY, 否则友好抛错
     "ch29_context_engineering/llm/12_full_context_pipeline.py",
     "ch13_prompt_engineering/llm/04_zero_shot_cot.py",  # 替补 1 (ch16 无 llm/)
 ]
@@ -111,7 +112,9 @@ def run_file(path: Path) -> tuple[str, str]:
     try:
         result = subprocess.run(
             [sys.executable, str(path)],
-            capture_output=True, text=True, timeout=TIMEOUT_PER_FILE,
+            capture_output=True,
+            text=True,
+            timeout=TIMEOUT_PER_FILE,
             cwd=str(CODE),
         )
         if result.returncode != 0:

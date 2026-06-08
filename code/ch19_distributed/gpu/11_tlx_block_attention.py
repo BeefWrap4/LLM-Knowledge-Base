@@ -19,11 +19,12 @@
 
 
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 import torch
 
@@ -32,9 +33,10 @@ def main():
     # PyTorch 2.5+ 才有 flex_attention
     try:
         from torch.nn.attention.flex_attention import (
-            flex_attention,
             create_block_mask,
+            flex_attention,
         )
+
         has_flex = True
     except ImportError:
         has_flex = False
@@ -50,9 +52,7 @@ def main():
         return (q_block >= kv_block) & (q_block - kv_block < 4)
 
     if has_flex:
-        block_mask = create_block_mask(
-            causal_block_mask, B=1, H=1, Q_LEN=131072, KV_LEN=131072
-        )
+        block_mask = create_block_mask(causal_block_mask, B=1, H=1, Q_LEN=131072, KV_LEN=131072)
         print(f"Block mask 形状: {block_mask.shape}")
 
         # 编译后内核自动使用 TLX warp-specialized path
@@ -75,8 +75,7 @@ def main():
                 kv_block = kv_idx // block_size
                 if causal_block_mask(0, 0, q_idx, kv_idx):
                     attn_kv_blocks.append(kv_block)
-            print(f"  q_idx={q_idx:6d} (block {q_block:4d}) → "
-                  f"attends to KV blocks {attn_kv_blocks}")
+            print(f"  q_idx={q_idx:6d} (block {q_block:4d}) → attends to KV blocks {attn_kv_blocks}")
 
     print("=" * 60)
     print("TLX 加速效果 (PyTorch 2.9+ 官方数据):")

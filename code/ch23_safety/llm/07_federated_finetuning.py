@@ -24,7 +24,6 @@
 """
 
 import copy
-from typing import List, Dict
 
 
 class FederatedFineTuning:
@@ -40,13 +39,13 @@ class FederatedFineTuning:
     def __init__(self, global_model=None, num_clients: int = 10):
         self.global_model = global_model
         self.num_clients = num_clients
-        self.client_models = [
-            copy.deepcopy(global_model) for _ in range(num_clients)
-        ] if global_model is not None else [None] * num_clients
+        self.client_models = (
+            [copy.deepcopy(global_model) for _ in range(num_clients)]
+            if global_model is not None
+            else [None] * num_clients
+        )
 
-    def client_update(
-        self, client_id: int, local_data, local_epochs: int = 3
-    ):
+    def client_update(self, client_id: int, local_data, local_epochs: int = 3):
         """客户端本地更新
 
         面试要点：说明为什么需要多轮本地更新
@@ -62,7 +61,7 @@ class FederatedFineTuning:
         # return model.get_parameters()
         return {"client_id": client_id, "epochs": local_epochs, "params": "mock"}
 
-    def server_aggregate(self, client_updates: List, noise_scale: float = 1.0):
+    def server_aggregate(self, client_updates: list, noise_scale: float = 1.0):
         """服务端聚合（FedAvg算法）
 
         面试要点：
@@ -81,7 +80,7 @@ class FederatedFineTuning:
             "aggregated": "mock_params",
         }
 
-    def train_round(self, clients_data: List) -> Dict:
+    def train_round(self, clients_data: list) -> dict:
         """一轮联邦训练"""
         # 1. 选择参与客户端
         # 2. 分发全局模型
@@ -100,10 +99,7 @@ class FederatedFineTuning:
 
 
 # ========== 隐私风险评估 ==========
-def membership_inference_risk(
-    model_confidence_on_train: float,
-    model_confidence_on_test: float
-) -> str:
+def membership_inference_risk(model_confidence_on_train: float, model_confidence_on_test: float) -> str:
     """评估成员推断攻击风险
 
     原理：如果训练集上的置信度显著高于测试集，

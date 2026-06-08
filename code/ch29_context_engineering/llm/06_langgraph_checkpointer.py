@@ -21,13 +21,15 @@
 #   - "thread_id 的作用?"                →  同一会话的所有 state 共享一个 thread, 跨 turn 累积
 
 from __future__ import annotations
+
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
 
 
 @dataclass
 class AgentState:
     """LangGraph-style state — 跨 turn 累积, 关键载体。"""
+
     messages: list[dict] = field(default_factory=list)
     summary: str = ""
     tool_calls: list[dict] = field(default_factory=list)

@@ -26,11 +26,13 @@
 本 demo: 真训练 dynamics model (50 步) + 100 步 imagined rollout.
 生产: DreamerV3 / IRIS / Cosmos-1 在 latent space 做想象.
 """
+
 import sys
+from pathlib import Path
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from pathlib import Path
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
@@ -53,9 +55,12 @@ class DynamicsModel(nn.Module):
     def __init__(self, state_dim: int = 14, action_dim: int = 7, hidden: int = 128):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(state_dim + action_dim, hidden), nn.ReLU(),
-            nn.Linear(hidden, hidden), nn.ReLU(),
-            nn.Linear(hidden, hidden), nn.ReLU(),
+            nn.Linear(state_dim + action_dim, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, hidden),
+            nn.ReLU(),
             nn.Linear(hidden, state_dim),
         )
 
@@ -63,7 +68,9 @@ class DynamicsModel(nn.Module):
         return self.net(torch.cat([s, a], dim=-1))
 
 
-def dynamics_loss(model: DynamicsModel, s: torch.Tensor, a: torch.Tensor, s_next: torch.Tensor) -> torch.Tensor:
+def dynamics_loss(
+    model: DynamicsModel, s: torch.Tensor, a: torch.Tensor, s_next: torch.Tensor
+) -> torch.Tensor:
     """训练: 预测 Δs = s_{t+1} - s_t."""
     pred = model(s, a)
     target = s_next - s
@@ -94,8 +101,10 @@ class SimplePolicy(nn.Module):
     def __init__(self, state_dim: int = 14, action_dim: int = 7):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(state_dim, 64), nn.ReLU(),
-            nn.Linear(64, action_dim), nn.Tanh(),
+            nn.Linear(state_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64, action_dim),
+            nn.Tanh(),
         )
 
     def forward(self, s: torch.Tensor) -> torch.Tensor:
@@ -153,9 +162,9 @@ def main() -> None:
     real_traj = np.array(real_states).squeeze(1)
     # 对比 imagined vs "真实"
     err_per_step = np.linalg.norm(traj - real_traj, axis=1)
-    print(f"  误差 (L2) 每 20 步: " + ", ".join(
-        f"t={t}→{err_per_step[t]:.3f}" for t in [0, 20, 40, 60, 80, 100]
-    ))
+    print(
+        "  误差 (L2) 每 20 步: " + ", ".join(f"t={t}→{err_per_step[t]:.3f}" for t in [0, 20, 40, 60, 80, 100])
+    )
 
     print()
     print("=" * 60)

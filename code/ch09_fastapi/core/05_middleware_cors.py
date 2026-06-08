@@ -14,11 +14,12 @@
 #   1. FastAPI 的 add_middleware 与 @app.middleware("http") 装饰器的区别？
 #   2. CORS 中 allow_credentials=True 与 allow_origins=["*"] 能否同时使用？
 #   3. 自定义中间件中 call_next 的执行位置为什么决定了计时准确性？
+import logging
+import time
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-import time
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -36,16 +37,14 @@ app.add_middleware(
 # GZip 压缩 - 大模型响应通常较大
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+
 # 自定义中间件：请求日志与耗时统计
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.time()
     response = await call_next(request)
     duration = time.time() - start
-    logger.info(
-        f"{request.method} {request.url.path} "
-        f"- {response.status_code} - {duration:.3f}s"
-    )
+    logger.info(f"{request.method} {request.url.path} - {response.status_code} - {duration:.3f}s")
     response.headers["X-Response-Time"] = f"{duration:.3f}s"
     return response
 

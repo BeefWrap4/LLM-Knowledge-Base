@@ -18,6 +18,7 @@ Checks (7 项):
   6. Smoke test sample: 跑 5 个代表性 core 例子
   7. LLM doctor (optional): 若环境有 API Key 跑诊断
 """
+
 import os
 import subprocess
 import sys
@@ -29,8 +30,12 @@ REPO = CODE.parent
 
 def check_wiki_links() -> bool:
     print("\n--- [1/7] Wiki link integrity ---")
-    r = subprocess.run([sys.executable, str(CODE / "scripts" / "verify_xrefs.py")],
-                       capture_output=True, text=True, cwd=str(REPO))
+    r = subprocess.run(
+        [sys.executable, str(CODE / "scripts" / "verify_xrefs.py")],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO),
+    )
     # Filter out the summary lines we want
     for line in r.stdout.splitlines():
         if line.startswith("===") or "BROKEN" in line or "Resolved:" in line or "Broken:" in line:
@@ -70,12 +75,21 @@ def check_code_health() -> bool:
 
 def check_sync_links() -> bool:
     print("\n--- [4/7] Tutorial ↔ Code bidirectional sync ---")
-    r = subprocess.run([sys.executable, str(CODE / "scripts" / "sync_links.py")],
-                       capture_output=True, text=True, cwd=str(REPO))
+    r = subprocess.run(
+        [sys.executable, str(CODE / "scripts" / "sync_links.py")],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO),
+    )
     # Extract the key summary lines
     for line in r.stdout.splitlines():
-        if "教程章节总数" in line or "Code 例子含" in line or "教程章节有 code 覆盖" in line \
-           or line.startswith("=== PASS") or line.startswith("=== FAIL"):
+        if (
+            "教程章节总数" in line
+            or "Code 例子含" in line
+            or "教程章节有 code 覆盖" in line
+            or line.startswith("=== PASS")
+            or line.startswith("=== FAIL")
+        ):
             print(f"  {line.strip()}")
     return r.returncode == 0
 
@@ -93,14 +107,14 @@ def check_ci_llm_mock_safety() -> bool:
     mock_set = os.environ.get("LLM_MOCK") == "1"
 
     if in_ci and not mock_set:
-        print(f"  [WARN] CI 环境未设 LLM_MOCK=1, 可能意外调真实 API")
-        print(f"         建议: GitHub Actions workflow 加 `env: LLM_MOCK: '1'`")
+        print("  [WARN] CI 环境未设 LLM_MOCK=1, 可能意外调真实 API")
+        print("         建议: GitHub Actions workflow 加 `env: LLM_MOCK: '1'`")
     elif mock_set:
-        print(f"  [OK]   LLM_MOCK=1, 走 mock 路径 (CI 友好)")
+        print("  [OK]   LLM_MOCK=1, 走 mock 路径 (CI 友好)")
     elif in_ci:
-        print(f"  [OK]   CI 环境且未设 LLM_MOCK (例如 real-api job, 显式走真实 API)")
+        print("  [OK]   CI 环境且未设 LLM_MOCK (例如 real-api job, 显式走真实 API)")
     else:
-        print(f"  [INFO] 本地非 CI 环境, LLM_MOCK 未设 (会调真实 API 或抛缺 Key 错)")
+        print("  [INFO] 本地非 CI 环境, LLM_MOCK 未设 (会调真实 API 或抛缺 Key 错)")
     return True  # advisory, 不阻塞
 
 
@@ -119,8 +133,9 @@ def check_smoke() -> bool:
         if not script.is_file():
             print(f"  SKIP  {rel} (missing)")
             continue
-        r = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
-                           cwd=str(CODE), timeout=30)
+        r = subprocess.run(
+            [sys.executable, str(script)], capture_output=True, text=True, cwd=str(CODE), timeout=30
+        )
         ok = r.returncode == 0 and "OK" in r.stdout
         mark = "OK  " if ok else "FAIL"
         print(f"  {mark}  {rel}")
@@ -161,6 +176,7 @@ def check_llm_doctor() -> bool:
     sys.path.insert(0, str(CODE))  # 让 shared 可 import
     try:
         from shared.provider_registry import PROVIDERS
+
         has_key = any(p.has_key() for p in PROVIDERS.values() if p.name != "mock")
     except Exception as e:
         print(f"  WARN  provider_registry 不可用: {e}")
@@ -168,8 +184,13 @@ def check_llm_doctor() -> bool:
     if not has_key:
         print("  SKIP (no LLM API key in env — using mock for everything)")
         return True
-    r = subprocess.run([sys.executable, str(CODE / "scripts" / "llm_doctor.py")],
-                       capture_output=True, text=True, cwd=str(CODE), timeout=120)
+    r = subprocess.run(
+        [sys.executable, str(CODE / "scripts" / "llm_doctor.py")],
+        capture_output=True,
+        text=True,
+        cwd=str(CODE),
+        timeout=120,
+    )
     for line in r.stdout.splitlines():
         if "[✓]" in line or "[✗]" in line or "passed" in line or "Result:" in line:
             print(f"  {line.strip()}")

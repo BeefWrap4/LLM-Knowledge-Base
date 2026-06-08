@@ -76,6 +76,7 @@ class HyDERewriter:
             return self.embedder.encode(hypothetical_doc, normalize_embeddings=True)
         # Mock embedding
         import numpy as np
+
         rng = np.random.default_rng(hash(query) % 2**32)
         vec = rng.normal(size=64).astype("float32")
         vec /= np.linalg.norm(vec)

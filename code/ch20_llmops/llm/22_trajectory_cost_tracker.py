@@ -98,7 +98,11 @@ if __name__ == "__main__":
 
     with tracker.trajectory("帮我写一个 Python 装饰器") as (traj_id, _cost_attrs):
         # 模拟 2 次 LLM + 1 次 TOOL
-        for kind, model in [("LLM", "claude-sonnet-4-6"), ("TOOL", None), ("LLM", "claude-haiku-4-5")]:
+        for kind, model in [
+            ("LLM", "claude-sonnet-4-6"),
+            ("TOOL", None),
+            ("LLM", "claude-haiku-4-5"),
+        ]:
             with tracer.start_as_current_span(f"{kind}.{model or 'tool'}") as sp:
                 tracker.attribute_subspan(sp, traj_id)
                 sp.set_attribute("openinference.span.kind", kind)

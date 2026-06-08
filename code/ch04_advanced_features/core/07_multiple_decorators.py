@@ -29,6 +29,7 @@ def func():
 
 from functools import wraps
 
+
 def decorator_a(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -36,7 +37,9 @@ def decorator_a(func):
         result = func(*args, **kwargs)
         print("A - 后")
         return result
+
     return wrapper
+
 
 def decorator_b(func):
     @wraps(func)
@@ -45,12 +48,15 @@ def decorator_b(func):
         result = func(*args, **kwargs)
         print("  B - 后")
         return result
+
     return wrapper
+
 
 @decorator_a
 @decorator_b
 def target():
     print("    目标函数")
+
 
 target()
 # A - 前

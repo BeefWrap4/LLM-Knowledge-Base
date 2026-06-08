@@ -21,9 +21,11 @@ o3 是 OpenAI 的 reasoning model, 通过 reasoning_effort 控制推理深度:
   - medium: 平衡
   - high: 深度推理 (类比 o1-pro)
 """
-import sys
+
 import os
+import sys
 from pathlib import Path
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
@@ -45,6 +47,7 @@ def main():
     api_key = get_openai_key()
 
     from openai import OpenAI
+
     client = OpenAI(api_key=api_key)
 
     print("=== OpenAI o3 推理模型 ===\n")

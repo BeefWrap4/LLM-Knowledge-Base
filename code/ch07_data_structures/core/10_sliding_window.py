@@ -51,7 +51,7 @@ def min_window(s: str, t: str) -> str:
     from collections import Counter
 
     need = Counter(t)  # t 中每个字符需要的次数
-    missing = len(t)   # 还缺少的字符总数
+    missing = len(t)  # 还缺少的字符总数
 
     left = start = end = 0
 
@@ -87,7 +87,7 @@ def find_anagrams(s: str, p: str) -> list[int]:
         return []
 
     p_count = Counter(p)
-    window_count = Counter(s[:len(p) - 1])
+    window_count = Counter(s[: len(p) - 1])
     result = []
 
     for i in range(len(p) - 1, len(s)):
@@ -123,4 +123,3 @@ if __name__ == "__main__":
     assert find_anagrams("cbaebabacd", "abc") == [0, 6]
     assert find_anagrams("abab", "ab") == [0, 1, 2]
     assert find_anagrams("a", "ab") == []
-

@@ -19,12 +19,8 @@
 面试中常被问到：如何量化AI模型的公平性？
 """
 
-from typing import Dict
 
-
-def demographic_parity(
-    positive_rates: Dict[str, float]
-) -> float:
+def demographic_parity(positive_rates: dict[str, float]) -> float:
     """
     人口统计均等（Demographic Parity）
 
@@ -41,9 +37,9 @@ def demographic_parity(
 
 
 def equalized_odds(
-    tpr: Dict[str, float],  # True Positive Rate per group
-    fpr: Dict[str, float]   # False Positive Rate per group
-) -> Dict[str, float]:
+    tpr: dict[str, float],  # True Positive Rate per group
+    fpr: dict[str, float],  # False Positive Rate per group
+) -> dict[str, float]:
     """
     机会均等（Equalized Odds）
 
@@ -54,16 +50,12 @@ def equalized_odds(
         "tpr_disparity": max(tpr.values()) - min(tpr.values()),
         "fpr_disparity": max(fpr.values()) - min(fpr.values()),
         "fair": (
-            max(tpr.values()) - min(tpr.values()) < 0.05
-            and max(fpr.values()) - min(fpr.values()) < 0.05
-        )
+            max(tpr.values()) - min(tpr.values()) < 0.05 and max(fpr.values()) - min(fpr.values()) < 0.05
+        ),
     }
 
 
-def disparate_impact_ratio(
-    positive_rate_privileged: float,
-    positive_rate_unprivileged: float
-) -> float:
+def disparate_impact_ratio(positive_rate_privileged: float, positive_rate_unprivileged: float) -> float:
     """
     差异影响比率（Disparate Impact）
 
@@ -73,7 +65,7 @@ def disparate_impact_ratio(
     DI = P(positive|unprivileged) / P(positive|privileged)
     """
     if positive_rate_privileged == 0:
-        return float('inf')
+        return float("inf")
     return positive_rate_unprivileged / positive_rate_privileged
 
 
@@ -84,7 +76,7 @@ if __name__ == "__main__":
     dp = demographic_parity(groups)
     di = disparate_impact_ratio(0.85, 0.62)
 
-    print(f"=== 公平性指标计算（贷款审批场景）===")
+    print("=== 公平性指标计算（贷款审批场景）===")
     print(f"男性通过率: {groups['男性申请人']:.2%}")
     print(f"女性通过率: {groups['女性申请人']:.2%}")
     print(f"人口统计均等差异: {dp:.3f}")
@@ -95,8 +87,7 @@ if __name__ == "__main__":
     tpr = {"男性": 0.80, "女性": 0.65}
     fpr = {"男性": 0.10, "女性": 0.15}
     eo = equalized_odds(tpr, fpr)
-    print(f"\n机会均等（Equalized Odds）:")
+    print("\n机会均等（Equalized Odds）:")
     print(f"  TPR差异: {eo['tpr_disparity']:.3f}")
     print(f"  FPR差异: {eo['fpr_disparity']:.3f}")
     print(f"  公平判定: {'✅ 公平' if eo['fair'] else '❌ 不公平'}")
-

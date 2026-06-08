@@ -22,7 +22,7 @@
     A
    / \
   B   C
-   \ /
+   \\ /
     D
 
 D 继承 B 和 C，B 和 C 都继承 A。
@@ -30,24 +30,29 @@ D 继承 B 和 C，B 和 C 都继承 A。
 Python 的 C3 线性化确保 A 只被调用一次！
 """
 
+
 class A:
     def method(self):
         print("A.method")
 
+
 class B(A):
     def method(self):
         print("B.method")
-        super().method()   # 调用 MRO 中的下一个
+        super().method()  # 调用 MRO 中的下一个
+
 
 class C(A):
     def method(self):
         print("C.method")
         super().method()
 
+
 class D(B, C):
     def method(self):
         print("D.method")
         super().method()
+
 
 # MRO: D -> B -> C -> A -> object
 print("MRO:", [c.__name__ for c in D.__mro__])

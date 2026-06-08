@@ -18,11 +18,12 @@
 
 
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 """
 混合精度训练的最佳实践 —— BF16 优先 (2026 年推荐)
@@ -51,9 +52,7 @@ class MyModel(nn.Module):
 def make_data(n=8, in_dim=64):
     x = torch.randn(n, in_dim)
     y = torch.randint(0, 10, (n,))
-    return torch.utils.data.DataLoader(
-        torch.utils.data.TensorDataset(x, y), batch_size=2
-    )
+    return torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x, y), batch_size=2)
 
 
 # ============================================================
@@ -90,12 +89,10 @@ def train_with_bf16():
 # 方式二: DeepSpeed 的 BF16 配置 (JSON 模板, 这里转成 Python dict)
 # ============================================================
 DEEPSPEED_BF16_CONFIG = {
-    "bf16": {
-        "enabled": True
-    },
+    "bf16": {"enabled": True},
     "fp16": {
-        "enabled": False   # 只启用 BF16
-    }
+        "enabled": False  # 只启用 BF16
+    },
 }
 
 
@@ -106,6 +103,7 @@ def make_fsdp_bf16_policy():
     """FSDP 的 BF16 MixedPrecision 策略"""
     try:
         from torch.distributed.fsdp import MixedPrecision
+
         return MixedPrecision(
             param_dtype=torch.bfloat16,
             reduce_dtype=torch.bfloat16,

@@ -26,12 +26,9 @@ def call_anthropic(question: str):
         max_tokens=16000,
         thinking={
             "type": "enabled",
-            "budget_tokens": 5000  # 最多使用 5000 tokens 进行思考
+            "budget_tokens": 5000,  # 最多使用 5000 tokens 进行思考
         },
-        messages=[{
-            "role": "user",
-            "content": question
-        }]
+        messages=[{"role": "user", "content": question}],
     )
 
 

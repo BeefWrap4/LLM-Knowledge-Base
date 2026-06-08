@@ -16,11 +16,12 @@
 # - 当候选示例规模达到百万级时，如何高效检索？(ANN/Faiss)
 
 
-
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
+
 try:
     from sentence_transformers import SentenceTransformer
+
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
     _SKIP_REASON = str(_e).split("\n")[0]
@@ -67,7 +68,7 @@ class DynamicFewShotSelector:
         self.examples = examples
         if HAS_ST:
             try:
-                self.embedder = SentenceTransformer('BAAI/bge-small-zh-v1.5')
+                self.embedder = SentenceTransformer("BAAI/bge-small-zh-v1.5")
             except Exception as e:
                 # 网络/HF 离线时 fallback 到 mock
                 print(f"[mock] SentenceTransformer 加载失败 ({type(e).__name__}), 使用哈希嵌入")
@@ -75,10 +76,7 @@ class DynamicFewShotSelector:
         else:
             print("[mock] sentence-transformers 未安装，使用哈希嵌入演示")
             self.embedder = _MockEmbedder()
-        self.embeddings = self.embedder.encode(
-            [ex["input"] for ex in examples],
-            normalize_embeddings=True
-        )
+        self.embeddings = self.embedder.encode([ex["input"] for ex in examples], normalize_embeddings=True)
 
     def retrieve(self, query: str, top_k: int = 3) -> list[dict]:
         """检索与 query 最相似的 top_k 个示例"""

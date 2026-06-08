@@ -20,12 +20,12 @@ import torch.nn as nn
 
 # PyTorch 内置 LSTM
 lstm = nn.LSTM(
-    input_size=128,   # 输入特征维度
+    input_size=128,  # 输入特征维度
     hidden_size=256,  # 隐藏状态维度
-    num_layers=2,     # LSTM 层数
-    batch_first=True, # 输入格式 (batch, seq, feature)
-    dropout=0.3,      # 层间 dropout
-    bidirectional=True # 双向 LSTM
+    num_layers=2,  # LSTM 层数
+    batch_first=True,  # 输入格式 (batch, seq, feature)
+    dropout=0.3,  # 层间 dropout
+    bidirectional=True,  # 双向 LSTM
 )
 
 

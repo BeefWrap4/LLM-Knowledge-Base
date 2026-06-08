@@ -15,6 +15,7 @@
 #   2. MLX 为什么特别适合 Apple Silicon 端侧 LLM 推理?
 #   3. mlx-community 模型仓库的 Q4 量化模型有什么优势?
 """Apple MLX 基础推理 (真实 mlx_lm 调用, 需 Apple Silicon)."""
+
 from __future__ import annotations
 
 import sys

@@ -25,11 +25,13 @@ HIL-SERL (Luo et al. 2024) = SAC + 人类干预 + 奖励 shaping
 本 demo: 真实 SAC Q-network 训练 loop (50 步), 演示 TD loss.
 生产 HIL-SERL: 配合 LeRobot + 真实遥操硬件.
 """
+
 import sys
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pathlib import Path
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
@@ -48,8 +50,10 @@ class QNetwork(nn.Module):
     def __init__(self, state_dim: int = 14, action_dim: int = 7, hidden: int = 256):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(state_dim + action_dim, hidden), nn.ReLU(),
-            nn.Linear(hidden, hidden), nn.ReLU(),
+            nn.Linear(state_dim + action_dim, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, hidden),
+            nn.ReLU(),
             nn.Linear(hidden, 1),
         )
 
@@ -99,7 +103,7 @@ def main() -> None:
     n_params = sum(p.numel() for p in q_net.parameters())
 
     print(f"  Q 网络: 14+7 → 256 → 256 → 1, 参数量 {n_params:,}")
-    print(f"  训练: 50 步 TD 学习, γ=0.99\n")
+    print("  训练: 50 步 TD 学习, γ=0.99\n")
 
     losses = []
     for step in range(50):

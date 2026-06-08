@@ -16,13 +16,13 @@
 #   3. 对比学习为什么需要大 batch size？
 
 
-
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 import torch
 import torch.nn as nn
@@ -54,8 +54,8 @@ class SimpleCLIP(nn.Module):
 
     def forward(self, image, text):
         # 编码
-        image_embeds = self.encode_image(image)   # [B, d]
-        text_embeds = self.encode_text(text)       # [B, d]
+        image_embeds = self.encode_image(image)  # [B, d]
+        text_embeds = self.encode_text(text)  # [B, d]
         # 计算相似度矩阵
         logit_scale = self.logit_scale.exp()
         logits_per_image = logit_scale * image_embeds @ text_embeds.T  # [B, B]
@@ -75,9 +75,7 @@ class DummyVisionEncoder(nn.Module):
     def __init__(self, output_dim=768):
         super().__init__()
         self.output_dim = output_dim
-        self.body = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Linear(3, output_dim)
-        )
+        self.body = nn.Sequential(nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Linear(3, output_dim))
 
     def forward(self, x):
         # x: [B, 3, H, W] -> 平均池化到 [B, 3] -> Linear -> [B, output_dim]

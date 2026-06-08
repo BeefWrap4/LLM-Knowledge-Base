@@ -23,6 +23,7 @@
   3. confidence > 0.7 → 直接用; > 0.3 → 中等 (标记 review)
   4. < 0.3 → 回退到更大模型 (e.g. Qwen2.5-7B-Instruct)
 """
+
 import math
 import sys
 from pathlib import Path
@@ -32,8 +33,9 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 import torch
-from shared.gpu_guard import require_nvidia_gpu
+
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import require_nvidia_gpu
 
 
 def check_hardware():
@@ -74,15 +76,13 @@ def main():
     print(f"VRAM total: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f}GB\n")
 
     tokenizer = AutoTokenizer.from_pretrained(model_path)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_path, torch_dtype=torch.bfloat16, device_map="auto"
-    )
+    model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16, device_map="auto")
     model.eval()
 
     test_prompts = [
-        "Q: 1+1=? A:",                              # 简单 (高置信度)
-        "Q: 解释薛定谔的猫, 一句话. A:",            # 中等
-        "Q: 列出 5 个不存在的化学元素. A:",          # 模型可能胡扯 (低置信度)
+        "Q: 1+1=? A:",  # 简单 (高置信度)
+        "Q: 解释薛定谔的猫, 一句话. A:",  # 中等
+        "Q: 列出 5 个不存在的化学元素. A:",  # 模型可能胡扯 (低置信度)
     ]
 
     for prompt in test_prompts:

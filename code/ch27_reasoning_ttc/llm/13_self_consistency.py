@@ -18,6 +18,7 @@
 
 核心: 同问题采样 N 个不同 CoT，统计答案频次，选众数。
 """
+
 from __future__ import annotations
 
 import random
@@ -40,8 +41,7 @@ def mock_sample_chain(question: str, n: int) -> list[str]:
     return [random.choice(answers) for _ in range(n)]
 
 
-def self_consistency(question: str, n: int = 16,
-                     ground_truth: str = "42") -> SCResult:
+def self_consistency(question: str, n: int = 16, ground_truth: str = "42") -> SCResult:
     samples = mock_sample_chain(question, n)
     cnt = Counter(samples)
     final, top_count = cnt.most_common(1)[0]
@@ -63,8 +63,7 @@ def main() -> None:
     for N in (1, 4, 8, 16, 32, 64):
         r = self_consistency("What is 6*7?", n=N, ground_truth="42")
         dist = " ".join(f"{k}:{v}" for k, v in sorted(r.answer_counts.items()))
-        print(f"  {N:>4} | {r.final:>6} | {r.confidence:>9.1%}  | "
-              f"{r.accuracy:>5.1%}   [{dist}]")
+        print(f"  {N:>4} | {r.final:>6} | {r.confidence:>9.1%}  | {r.accuracy:>5.1%}   [{dist}]")
 
     # 多样性来源
     print("\n=== 多样性策略 ===")

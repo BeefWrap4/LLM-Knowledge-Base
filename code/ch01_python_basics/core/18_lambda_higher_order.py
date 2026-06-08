@@ -19,20 +19,20 @@ Lambda 与高阶函数 — 函数式编程基础
 """
 
 import math
-from functools import reduce, partial, lru_cache
+from functools import lru_cache, partial, reduce
 
 # ─────────────────────────────────────────────────────────────
 # Lambda 表达式
 # ─────────────────────────────────────────────────────────────
 
 # Lambda 是匿名函数，语法限制：只能有一个表达式，不能包含语句
-square = lambda x: x ** 2
-print(f"square(5) = {square(5)}")   # 25
+square = lambda x: x**2
+print(f"square(5) = {square(5)}")  # 25
 
 # Lambda 的典型应用场景：作为回调函数
-pairs = [(1, 'one'), (2, 'two'), (3, 'three'), (4, 'four')]
+pairs = [(1, "one"), (2, "two"), (3, "three"), (4, "four")]
 pairs.sort(key=lambda pair: pair[1])  # 按字符串排序
-print(f"按字符串排序: {pairs}")   # [(4, 'four'), (1, 'one'), (3, 'three'), (2, 'two')]
+print(f"按字符串排序: {pairs}")  # [(4, 'four'), (1, 'one'), (3, 'three'), (2, 'two')]
 
 # ─────────────────────────────────────────────────────────────
 # 三大高阶函数：map / filter / reduce
@@ -66,10 +66,7 @@ students = [
 ]
 
 # 按分数降序，分数相同按姓名升序
-sorted_students = sorted(
-    students,
-    key=lambda s: (-s["score"], s["name"])
-)
+sorted_students = sorted(students, key=lambda s: (-s["score"], s["name"]))
 print(f"排序结果: {sorted_students}")
 # [{'name': 'Bob', 'score': 92}, {'name': 'David', 'score': 92},
 #  {'name': 'Alice', 'score': 85}, {'name': 'Charlie', 'score': 78}]
@@ -82,6 +79,7 @@ print(f"排序结果: {sorted_students}")
 base_2_log = partial(lambda base, x: math.log(x, base), 2)
 print(f"log2(8) = {base_2_log(8)}")  # 3.0 (log2(8))
 
+
 # lru_cache — 函数结果缓存（面试常考，用于记忆化递归）
 @lru_cache(maxsize=128)
 def fibonacci(n):
@@ -89,6 +87,7 @@ def fibonacci(n):
     if n < 2:
         return n
     return fibonacci(n - 1) + fibonacci(n - 2)
+
 
 print(f"fib(100) = {fibonacci(100)}")  # 354224848179261915075（瞬间完成）
 print(f"缓存信息: {fibonacci.cache_info()}")

@@ -16,9 +16,10 @@
 # 2. 软间隔 SVM 中参数 C 的作用是什么?（容错 vs 间隔）
 # 3. RBF 核中的 gamma 参数对模型复杂度有何影响?
 
-from sklearn.svm import SVC
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+
 
 def main():
     iris = load_iris()
@@ -27,11 +28,11 @@ def main():
     )
 
     # 线性核 SVM
-    svm_linear = SVC(kernel='linear', C=1.0)
+    svm_linear = SVC(kernel="linear", C=1.0)
     svm_linear.fit(X_train, y_train)
 
     # RBF 核 SVM — 适合非线性问题
-    svm_rbf = SVC(kernel='rbf', C=1.0, gamma='scale')
+    svm_rbf = SVC(kernel="rbf", C=1.0, gamma="scale")
     svm_rbf.fit(X_train, y_train)
 
     print(f"线性核 SVM: {svm_linear.score(X_test, y_test):.4f}")

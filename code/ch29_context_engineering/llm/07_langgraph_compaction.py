@@ -21,15 +21,15 @@
 #   - "Compaction 保留什么?"          →  用户偏好/关键事实/最近 N 轮 + 摘要
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Callable
+
+from dataclasses import dataclass
 
 
 @dataclass
 class CompactionPolicy:
-    max_tokens: int = 4_000           # 触发阈值
-    keep_last_turns: int = 4          # 保留最近 K 轮原样
-    summary_max_chars: int = 600      # 摘要长度
+    max_tokens: int = 4_000  # 触发阈值
+    keep_last_turns: int = 4  # 保留最近 K 轮原样
+    summary_max_chars: int = 600  # 摘要长度
 
 
 @dataclass
@@ -82,7 +82,12 @@ def run_demo() -> None:
     # 构造一个超长对话
     history = []
     for i in range(30):
-        history.append({"role": "user", "content": f"问题 #{i}: 我叫 Alice, 喜欢科幻片, 住在北京, 是一名工程师"})
+        history.append(
+            {
+                "role": "user",
+                "content": f"问题 #{i}: 我叫 Alice, 喜欢科幻片, 住在北京, 是一名工程师",
+            }
+        )
         history.append({"role": "assistant", "content": f"回答 #{i}: 已记录你的偏好。"})
 
     print("=== 压缩前 ===")
@@ -95,7 +100,7 @@ def run_demo() -> None:
     print(f"  节省: {(1 - c.approx_tokens(compacted) / c.approx_tokens(history)):.0%}")
     print("\n--- 第 1 条 (摘要) ---")
     print(compacted[0]["content"])
-    print(f"\n--- 后续 {len(compacted)-1} 条保留原样 ---")
+    print(f"\n--- 后续 {len(compacted) - 1} 条保留原样 ---")
 
 
 if __name__ == "__main__":

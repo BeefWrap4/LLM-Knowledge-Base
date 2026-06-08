@@ -20,8 +20,8 @@
 #   - "如何缓解?"                  →  检索/压缩/Sub-Agent 隔离 context
 
 from __future__ import annotations
+
 import random
-from typing import Callable
 
 
 # 模拟"事实召回"任务: 把 N 个事实塞进 context, 末尾提问其中一个
@@ -72,8 +72,13 @@ def run_demo() -> None:
     print("-" * 60)
     for n in [500, 2_000, 8_000, 32_000, 128_000]:
         r = sim.run_experiment(n, trials=300)
-        head, mid, late, tail = r[int(n*0.05)], r[int(n*0.25)], r[int(n*0.75)], r[int(n*0.95)]
-        print(f"{n:>10,d}   | {head:>8.2f} {mid:>8.2f} {late:>8.2f} {tail:>8.2f} | {head-tail:+.2f}")
+        head, mid, late, tail = (
+            r[int(n * 0.05)],
+            r[int(n * 0.25)],
+            r[int(n * 0.75)],
+            r[int(n * 0.95)],
+        )
+        print(f"{n:>10,d}   | {head:>8.2f} {mid:>8.2f} {late:>8.2f} {tail:>8.2f} | {head - tail:+.2f}")
     print("\n观察: 头部召回率显著高于尾部, 体现 Context Rot。")
 
 

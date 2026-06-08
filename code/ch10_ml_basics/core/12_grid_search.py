@@ -16,30 +16,23 @@
 # 2. 贝叶斯优化（Bayesian Optimization）的核心思想?
 # 3. n_jobs=-1 的含义? 为什么 GridSearch 容易并行化?
 
-from sklearn.linear_model import LogisticRegression
 from sklearn.datasets import make_classification
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV, train_test_split
+
 
 def main():
-    X, y = make_classification(n_samples=1000, n_features=10, n_informative=5,
-                               random_state=42)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
-                                                        random_state=42)
+    X, y = make_classification(n_samples=1000, n_features=10, n_informative=5, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # 网格搜索
     param_grid = {
-        'C': [0.001, 0.01, 0.1, 1, 10, 100],
-        'penalty': ['l1', 'l2'],
-        'solver': ['liblinear']  # liblinear 支持 l1 和 l2
+        "C": [0.001, 0.01, 0.1, 1, 10, 100],
+        "penalty": ["l1", "l2"],
+        "solver": ["liblinear"],  # liblinear 支持 l1 和 l2
     }
 
-    grid = GridSearchCV(
-        LogisticRegression(max_iter=1000),
-        param_grid,
-        cv=5,
-        scoring='roc_auc',
-        n_jobs=-1
-    )
+    grid = GridSearchCV(LogisticRegression(max_iter=1000), param_grid, cv=5, scoring="roc_auc", n_jobs=-1)
     grid.fit(X_train, y_train)
 
     print(f"最优参数: {grid.best_params_}")

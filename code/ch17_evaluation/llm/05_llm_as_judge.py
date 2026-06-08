@@ -1,5 +1,6 @@
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
+
 _code_root = _Path_setup(__file__).resolve().parent.parent.parent
 if str(_code_root) not in _sys_path_setup.path:
     _sys_path_setup.path.insert(0, str(_code_root))
@@ -45,6 +46,7 @@ class LLMJudge:
             # Wave 16: 改用 UnifiedClient (deepseek/kimi/siliconflow/MiniMax)
             try:
                 from shared.llm_client import UnifiedClient
+
                 self.client = UnifiedClient(provider="openai" if os.environ.get("OPENAI_API_KEY") else None)
             except ImportError as exc:
                 print(f"[mock] UnifiedClient 不可用 ({exc}), 切换 mock 模式")

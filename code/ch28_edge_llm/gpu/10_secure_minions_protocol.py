@@ -34,6 +34,7 @@
   - 云端: 永不暴露模型权重
   - 通信: mTLS 加密 + 双向认证
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -45,7 +46,6 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from typing import Tuple
 
 # 让脚本既能 `python file.py` 也能 `import` 找到 shared/
 _code_root = Path(__file__).resolve().parent.parent.parent
@@ -109,18 +109,29 @@ def _generate_self_signed_cert(
     # 1) 生成私钥 (RSA 2048)
     subprocess.run(
         [openssl, "genrsa", "-out", str(key_path), "2048"],
-        check=True, capture_output=True, text=True,
+        check=True,
+        capture_output=True,
+        text=True,
     )
     # 2) 生成自签名证书 (有效期 1 天, demo 足够)
     subprocess.run(
         [
-            openssl, "req", "-new", "-x509",
-            "-key", str(key_path),
-            "-out", str(cert_path),
-            "-days", "1",
-            "-subj", f"/CN={common_name}",
+            openssl,
+            "req",
+            "-new",
+            "-x509",
+            "-key",
+            str(key_path),
+            "-out",
+            str(cert_path),
+            "-days",
+            "1",
+            "-subj",
+            f"/CN={common_name}",
         ],
-        check=True, capture_output=True, text=True,
+        check=True,
+        capture_output=True,
+        text=True,
     )
 
 
@@ -177,7 +188,7 @@ def simulate_mtls_handshake(
             server_ready.set()
             try:
                 conn, _ = raw_sock.accept()
-            except socket.timeout:
+            except TimeoutError:
                 server_result["error"] = "accept timeout"
                 return
             with conn:
@@ -185,12 +196,14 @@ def simulate_mtls_handshake(
                     tls_conn = ctx.wrap_socket(conn, server_side=True)
                     # 互相读 1 字节确认握手完成
                     data = tls_conn.recv(64)
-                    server_result.update({
-                        "cipher": tls_conn.cipher()[0] if tls_conn.cipher() else "?",
-                        "protocol": tls_conn.version(),
-                        "peer_cn": "?",
-                        "received": data.decode("utf-8", errors="replace"),
-                    })
+                    server_result.update(
+                        {
+                            "cipher": tls_conn.cipher()[0] if tls_conn.cipher() else "?",
+                            "protocol": tls_conn.version(),
+                            "peer_cn": "?",
+                            "received": data.decode("utf-8", errors="replace"),
+                        }
+                    )
                     # 读 peer cert CN
                     peer_cert = tls_conn.getpeercert(binary_form=False)
                     if peer_cert:
@@ -241,7 +254,7 @@ def simulate_mtls_handshake(
                 handshake_ms = (time.perf_counter() - start) * 1000
                 client_cipher = tls_sock.cipher()[0] if tls_sock.cipher() else "?"
                 client_protocol = tls_sock.version()
-    except (ssl.SSLError, socket.error, OSError) as e:
+    except (ssl.SSLError, OSError) as e:
         raise_with_help(
             f"mTLS 客户端连接失败: {e}",
             "检查 openssl 是否正确生成证书 / 端口是否被占用.",
@@ -274,11 +287,11 @@ def run_secure_minions_demo() -> dict:
 
     # 1) 端侧生成 session key
     session_key = generate_minion_session_key()
-    print(f"\n[1] 端侧生成 ephemeral session key (256-bit)")
+    print("\n[1] 端侧生成 ephemeral session key (256-bit)")
     print(f"    key preview: {session_key[:8].hex()}...{session_key[-4:].hex()}")
 
     # 2) 端云 mTLS 握手
-    print(f"\n[2] 端云 mTLS 握手 (TLSv1.3 + AES-256-GCM)...")
+    print("\n[2] 端云 mTLS 握手 (TLSv1.3 + AES-256-GCM)...")
     handshake = simulate_mtls_handshake()
     print(f"    client → server  cipher: {handshake['client_cipher']}")
     print(f"    client ← server  protocol: {handshake['client_protocol']}")
@@ -289,27 +302,25 @@ def run_secure_minions_demo() -> dict:
 
     # 3) 端侧对 token IDs 做 SHA-256
     mock_tokens = [9906, 1917, 3186]  # 模拟 tokenizer.encode("Hello world!")
-    print(f"\n[3] 端侧对 token IDs 做 SHA-256 (隐私保护)")
+    print("\n[3] 端侧对 token IDs 做 SHA-256 (隐私保护)")
     print(f"    原始 tokens: {mock_tokens}  (永不离开端侧)")
     token_hash = hash_tokens_for_transmission(mock_tokens)
     print(f"    token SHA-256: {token_hash[:32]}...{token_hash[-8:]}")
 
     # 4) 加密 session 请求 (模拟)
-    request_fingerprint = hashlib.sha256(
-        session_key + token_hash.encode()
-    ).hexdigest()
-    print(f"\n[4] 加密 session 请求 (TLS channel 保护)")
+    request_fingerprint = hashlib.sha256(session_key + token_hash.encode()).hexdigest()
+    print("\n[4] 加密 session 请求 (TLS channel 保护)")
     print(f"    request fingerprint: {request_fingerprint[:32]}...{request_fingerprint[-8:]}")
 
     # 5) 云端 LLM 推理 (mock) + 返回加密 response
-    print(f"\n[5] 云端 LLM 推理 (mock) + 加密 response")
+    print("\n[5] 云端 LLM 推理 (mock) + 加密 response")
     mock_response_tokens = [13, 5782, 318, 1128, 13, 0]  # 模拟 "<|im_start|>..."
     response_hash = hash_tokens_for_transmission(mock_response_tokens)
     print(f"    response tokens 数量: {len(mock_response_tokens)}")
     print(f"    response SHA-256: {response_hash[:32]}...{response_hash[-8:]}")
 
     # 6) 端侧解密
-    print(f"\n[6] 端侧解密 response (TLS channel 保护)")
+    print("\n[6] 端侧解密 response (TLS channel 保护)")
     print(f"    端侧收到: {len(mock_response_tokens)} 个 token (无模型权重)")
 
     return {

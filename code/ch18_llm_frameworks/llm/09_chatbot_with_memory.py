@@ -17,19 +17,24 @@
 
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
+
 try:
     from langchain.agents import AgentExecutor, create_openai_functions_agent
-    from langchain_openai import ChatOpenAI
     from langchain.memory import ConversationSummaryBufferMemory
+    from langchain_openai import ChatOpenAI
+
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
     _SKIP_REASON = str(_e).split("\n")[0]
 if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
     _sys.exit(0)
-print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
+print(
+    "OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)"
+)
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
+
 _code_root = _Path_setup(__file__).resolve().parent.parent.parent
 if str(_code_root) not in _sys_path_setup.path:
     _sys_path_setup.path.insert(0, str(_code_root))
@@ -43,9 +48,11 @@ if str(_code_root) not in _sys_path_setup.path:
 3. 自动工具选择与调用
 4. 流式输出支持
 """
+import json
+
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import tool
-import json
+
 
 # ===== Step 1: 定义工具 =====
 @tool
@@ -53,10 +60,12 @@ def weather_tool(city: str) -> str:
     """查询城市天气。输入城市名称。"""
     return json.dumps({"city": city, "temp": "26°C", "condition": "晴"})
 
+
 @tool
 def calculator(expr: str) -> str:
     """执行数学计算。输入表达式如 '2+3*4'。"""
     return str(eval(expr, {"__builtins__": {}}, {"abs": abs, "pow": pow}))
+
 
 @tool
 def knowledge_search(query: str) -> str:
@@ -69,9 +78,11 @@ def knowledge_search(query: str) -> str:
     results = [v for k, v in kb.items() if query.lower() in k]
     return results[0] if results else "未找到相关知识。"
 
+
 # ===== Step 2: 配置记忆 =====
 # Wave 30+: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 时 raise
 from shared.chatmodel_factory import make_chat_model
+
 llm = make_chat_model()  # 默认厂商
 
 memory = ConversationSummaryBufferMemory(
@@ -83,17 +94,22 @@ memory = ConversationSummaryBufferMemory(
 )
 
 # ===== Step 3: 构建 Agent =====
-prompt = ChatPromptTemplate.from_messages([
-    ("system", """你是一个智能助手，名为"小智"。你可以：
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """你是一个智能助手，名为"小智"。你可以：
 1. 查询天气信息
 2. 执行数学计算
 3. 搜索知识库
 
-请根据用户的问题选择合适的工具。回答要亲切、准确。"""),
-    MessagesPlaceholder(variable_name="chat_history"),
-    ("human", "{input}"),
-    MessagesPlaceholder(variable_name="agent_scratchpad"),
-])
+请根据用户的问题选择合适的工具。回答要亲切、准确。""",
+        ),
+        MessagesPlaceholder(variable_name="chat_history"),
+        ("human", "{input}"),
+        MessagesPlaceholder(variable_name="agent_scratchpad"),
+    ]
+)
 
 tools = [weather_tool, calculator, knowledge_search]
 

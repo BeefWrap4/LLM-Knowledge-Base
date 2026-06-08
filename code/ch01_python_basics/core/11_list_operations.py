@@ -64,14 +64,15 @@ print(f"x 仍然为: {x}")  # Python 3: 10（x 不变）；Python 2: 4（x 被�
 lst = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 # 切片语法：lst[start:stop:step]
-print(lst[2:7])       # [2, 3, 4, 5, 6]      从索引2到6
-print(lst[:4])        # [0, 1, 2, 3]          从头到3
-print(lst[::2])       # [0, 2, 4, 6, 8]       步长2
-print(lst[::-1])      # [9, 8, 7, ..., 0]     反转列表
+print(lst[2:7])  # [2, 3, 4, 5, 6]      从索引2到6
+print(lst[:4])  # [0, 1, 2, 3]          从头到3
+print(lst[::2])  # [0, 2, 4, 6, 8]       步长2
+print(lst[::-1])  # [9, 8, 7, ..., 0]     反转列表
 
 # 🎯 面试陷阱：切片越界不报错
-print(lst[5:100])     # [5, 6, 7, 8, 9] — 不抛异常！
+print(lst[5:100])  # [5, 6, 7, 8, 9] — 不抛异常！
 # print(lst[100])     # IndexError！— 索引越界才报错
+
 
 # 删除偶数索引元素（正确 vs 错误写法）
 def remove_even_indices_wrong(lst):
@@ -81,18 +82,22 @@ def remove_even_indices_wrong(lst):
             del lst[i]  # 删除后索引偏移！
     return lst
 
+
 def remove_even_indices_right(lst):
     """✅ 正确：切片删除"""
-    del lst[::2]        # 一次性删除所有偶数索引
+    del lst[::2]  # 一次性删除所有偶数索引
     return lst
+
 
 # 或者用列表推导式重建
 def remove_even_indices(lst):
     return [val for i, val in enumerate(lst) if i % 2 == 1]
 
+
 # ─────────────────────────────────────────────────────────────
 # 列表去重的 N 种方法（按效率排序，面试常考）
 # ─────────────────────────────────────────────────────────────
+
 
 def deduplicate_methods(data):
     """列表去重方法对比"""
@@ -114,6 +119,7 @@ def deduplicate_methods(data):
     methods["loop"] = result
 
     return methods
+
 
 data = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3]
 results = deduplicate_methods(data)

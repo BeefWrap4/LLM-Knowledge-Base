@@ -15,21 +15,21 @@
 #  1. Xavier 初始化 vs He 初始化的方差推导差异? 各适合哪种激活函数?
 #  2. mode='fan_in' 与 'fan_out' 的区别? Conv2d 为何通常用 fan_out?
 #  3. 正交初始化 (orthogonal) 为什么对 RNN 特别有效?
-import torch
 import torch.nn as nn
 
 # PyTorch 自动初始化
 # nn.Linear 默认使用 Kaiming Uniform (for ReLU)
 # nn.Conv2d 默认使用 Kaiming Uniform
 
+
 # 手动初始化
 def init_weights(m):
     if isinstance(m, nn.Linear):
-        nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
+        nn.init.kaiming_normal_(m.weight, nonlinearity="relu")
         if m.bias is not None:
             nn.init.zeros_(m.bias)
     elif isinstance(m, nn.Conv2d):
-        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
 
 
 if __name__ == "__main__":

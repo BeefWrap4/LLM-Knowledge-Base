@@ -32,7 +32,7 @@ def run_gemini_cache_demo():
         display_name="company-handbook-cache",
         system_instruction="你是企业知识库助手。",
         contents=[large_handbook_doc],  # 长文档列表
-        ttl="3600s"  # 1 小时 TTL
+        ttl="3600s",  # 1 小时 TTL
     )
 
     # 2. 使用缓存进行推理

@@ -17,36 +17,35 @@
 
 
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 """
 大模型推理服务 —— FastAPI + vLLM 后端
 支持 OpenAI 兼容 API、流式输出、并发控制
 """
 
+import asyncio
+import logging
 import os
 import time
-import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Optional, AsyncGenerator
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
-import logging
 
 # 配置结构化日志
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("llm-server")
+
 
 # ====== 配置 ======
 class ServerConfig:
@@ -57,12 +56,15 @@ class ServerConfig:
     MAX_CONCURRENT_REQUESTS: int = int(os.getenv("MAX_CONCURRENT_REQUESTS", "64"))
     PORT: int = int(os.getenv("PORT", "8000"))
 
+
 config = ServerConfig()
+
 
 # ====== 请求/响应模型 ======
 class ChatMessage(BaseModel):
     role: str
     content: str
+
 
 class ChatCompletionRequest(BaseModel):
     model: str = "qwen2.5-72b"
@@ -72,12 +74,15 @@ class ChatCompletionRequest(BaseModel):
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
     stream: bool = False
 
+
 # ====== 信号量控制并发 ======
 semaphore = asyncio.Semaphore(config.MAX_CONCURRENT_REQUESTS)
+
 
 # ====== Mock 引擎：用于无 GPU 环境演示 ======
 class MockVLLMEngine:
     """无 GPU 环境下的伪 vLLM AsyncLLMEngine。"""
+
     async def generate(self, prompt, sampling_params, request_id):
         # 模拟一个分词的输出序列
         tokens = ["Hello", " there", "!", " This", " is", " a", " mock", " response", "."]
@@ -89,7 +94,7 @@ class MockVLLMEngine:
 
 
 class _MockResult:
-    def __init__(self, text, token_count):
+    def __init__(self, text, token_count, prompt: str = ""):
         out = _MockOutput()
         out.text = text
         out.token_ids = text.split()
@@ -110,8 +115,8 @@ async def lifespan(app: FastAPI):
 
     # 尝试真实加载 vLLM，失败则使用 Mock
     try:
-        from vllm.engine.async_llm_engine import AsyncLLMEngine
         from vllm.engine.arg_utils import AsyncEngineArgs
+        from vllm.engine.async_llm_engine import AsyncLLMEngine
 
         engine_args = AsyncEngineArgs(
             model=config.MODEL_PATH,
@@ -135,6 +140,7 @@ async def lifespan(app: FastAPI):
         del app.state.engine
     logger.info("Server shutting down.")
 
+
 # ====== FastAPI 应用 ======
 app = FastAPI(title="LLM Inference Server", version="1.0.0", lifespan=lifespan)
 
@@ -145,11 +151,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ====== 端点 ======
 @app.get("/health")
 async def health():
     """K8s Readiness / Liveness Probe 端点"""
     return {"status": "healthy", "model_loaded": hasattr(app.state, "engine")}
+
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest, raw_request: Request):
@@ -168,6 +176,7 @@ async def chat_completions(request: ChatCompletionRequest, raw_request: Request)
             logger.error(f"Generation error: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
+
 # ====== 推理核心 ======
 async def _generate_completion(request: ChatCompletionRequest) -> dict:
     """同步（一次性）生成"""
@@ -179,8 +188,9 @@ async def _generate_completion(request: ChatCompletionRequest) -> dict:
         class SamplingParams:
             def __init__(self, **kwargs):
                 self.params = kwargs
+
         def random_uuid():
-            return f"mock-{int(time.time()*1000)}"
+            return f"mock-{int(time.time() * 1000)}"
 
     prompt = _build_prompt(request.messages)
     sampling_params = SamplingParams(
@@ -202,11 +212,13 @@ async def _generate_completion(request: ChatCompletionRequest) -> dict:
         "id": request_id,
         "object": "chat.completion",
         "model": request.model,
-        "choices": [{
-            "index": 0,
-            "message": {"role": "assistant", "content": completion_text},
-            "finish_reason": "stop",
-        }],
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": completion_text},
+                "finish_reason": "stop",
+            }
+        ],
         "usage": {
             "prompt_tokens": len(final_output.prompt_token_ids),
             "completion_tokens": len(final_output.outputs[0].token_ids),
@@ -214,17 +226,20 @@ async def _generate_completion(request: ChatCompletionRequest) -> dict:
         },
     }
 
+
 async def _stream_generate(request: ChatCompletionRequest) -> AsyncGenerator[str, None]:
     """流式 SSE（Server-Sent Events）生成"""
     try:
         from vllm.sampling_params import SamplingParams
         from vllm.utils import random_uuid
     except ImportError:
+
         class SamplingParams:
             def __init__(self, **kwargs):
                 self.params = kwargs
+
         def random_uuid():
-            return f"mock-{int(time.time()*1000)}"
+            return f"mock-{int(time.time() * 1000)}"
 
     import json
 
@@ -238,19 +253,19 @@ async def _stream_generate(request: ChatCompletionRequest) -> AsyncGenerator[str
             )
 
             request_id = random_uuid()
-            async for result in app.state.engine.generate(
-                prompt, sampling_params, request_id
-            ):
+            async for result in app.state.engine.generate(prompt, sampling_params, request_id):
                 text = result.outputs[0].text
                 chunk = {
                     "id": request_id,
                     "object": "chat.completion.chunk",
                     "model": request.model,
-                    "choices": [{
-                        "index": 0,
-                        "delta": {"content": text},
-                        "finish_reason": None,
-                    }],
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {"content": text},
+                            "finish_reason": None,
+                        }
+                    ],
                 }
                 yield f"data: {json.dumps(chunk)}\n\n"
 
@@ -259,12 +274,14 @@ async def _stream_generate(request: ChatCompletionRequest) -> AsyncGenerator[str
             logger.error(f"Streaming error: {e}")
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
+
 def _build_prompt(messages: list[ChatMessage]) -> str:
     """将消息列表构建为模型 Prompt"""
-    return "".join(
-        f"<|im_start|>{msg.role}\n{msg.content}<|im_end|>\n"
-        for msg in messages
-    ) + "<|im_start|>assistant\n"
+    return (
+        "".join(f"<|im_start|>{msg.role}\n{msg.content}<|im_end|>\n" for msg in messages)
+        + "<|im_start|>assistant\n"
+    )
+
 
 # ====== 入口 ======
 if __name__ == "__main__":

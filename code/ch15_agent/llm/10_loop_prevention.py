@@ -15,6 +15,7 @@
 #   2. A→B→A→B 这种震荡模式怎么识别？窗口长度怎么选？
 #   3. 死循环防御的副作用：可能误杀正常重试（连续 create_ticket + verify）。如何折中？
 
+
 class LoopPrevention:
     """死循环防范机制"""
 
@@ -39,7 +40,7 @@ class LoopPrevention:
 
         # 检查2：相同动作重复
         self.action_history.append(action)
-        recent_actions = self.action_history[-self.similarity_threshold:]
+        recent_actions = self.action_history[-self.similarity_threshold :]
         if len(recent_actions) >= self.similarity_threshold:
             if len(set(recent_actions)) == 1:
                 return False, f"连续 {self.similarity_threshold} 次执行相同动作"
@@ -60,7 +61,7 @@ def main():
     print("=== 场景1：连续 3 次相同动作 ===")
     for i in range(5):
         ok, reason = lp.check("search(query='python')")
-        print(f"  step {i+1}: ok={ok} | {reason}")
+        print(f"  step {i + 1}: ok={ok} | {reason}")
         if not ok:
             break
 
@@ -70,7 +71,7 @@ def main():
     actions = ["search", "calculator", "search", "calculator", "search"]
     for i, a in enumerate(actions):
         ok, reason = lp2.check(a)
-        print(f"  step {i+1} action={a}: ok={ok} | {reason}")
+        print(f"  step {i + 1} action={a}: ok={ok} | {reason}")
         if not ok:
             break
 
@@ -79,7 +80,7 @@ def main():
     lp3 = LoopPrevention(max_steps=4)
     for i in range(6):
         ok, reason = lp3.check(f"action_{i}")
-        print(f"  step {i+1}: ok={ok} | {reason}")
+        print(f"  step {i + 1}: ok={ok} | {reason}")
     print("\nOK")
 
 

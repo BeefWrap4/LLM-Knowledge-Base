@@ -17,9 +17,10 @@
 # 3. 为什么 Lasso 能产生稀疏解而 Ridge 只能将参数收缩到接近 0?
 
 import numpy as np
-from sklearn.linear_model import LinearRegression, Ridge, Lasso
-from sklearn.model_selection import train_test_split
+from sklearn.linear_model import Lasso, LinearRegression, Ridge
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+
 
 def main():
     # 生成模拟数据

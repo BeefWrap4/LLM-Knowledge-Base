@@ -1,12 +1,11 @@
 """统一错误格式化 — 所有 RuntimeError 走这个出口."""
-from typing import Optional
 
 
 def format_error(
     message: str,
     hint: str,
-    file_path: Optional[str] = None,
-    line: Optional[int] = None,
+    file_path: str | None = None,
+    line: int | None = None,
 ) -> str:
     """生成统一格式的错误信息.
 

@@ -15,8 +15,8 @@
 #   - loop.run_in_executor(None, ...) 第一个参数传 None 含义？
 #   - asyncio.to_thread 与 run_in_executor 的关系？
 import asyncio
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import time
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 
 def blocking_io(filename):
@@ -45,9 +45,9 @@ async def main():
 
     # IO 密集型阻塞操作 → 线程池
     result = await loop.run_in_executor(
-        None,           # None 使用默认线程池
-        blocking_io,    # 同步函数
-        "data.txt"      # 函数参数
+        None,  # None 使用默认线程池
+        blocking_io,  # 同步函数
+        "data.txt",  # 函数参数
     )
     print(f"方案1 结果: {result}")
 

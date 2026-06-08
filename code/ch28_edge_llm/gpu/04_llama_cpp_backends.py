@@ -15,6 +15,7 @@
 #   2. 为什么 Hexagon NPU 后端只支持部分模型 (受限于算子)?
 #   3. 跨平台端侧部署时, 如何选择 backend?
 """演示 llama.cpp 多平台后端选择 + 真实 Llama() 后端配置."""
+
 from __future__ import annotations
 
 import platform
@@ -27,17 +28,16 @@ if str(_code_root) not in sys.path:
 
 from shared._error_helper import raise_with_help
 
-
 # llama.cpp 支持的后端矩阵
 BACKENDS = [
-    ("Metal",    "Apple Silicon",  "GPU", "macOS / iOS 原生",           "✅"),
-    ("CUDA",     "NVIDIA GPU",     "GPU", "Linux/Windows 数据中心",     "✅"),
-    ("Vulkan",   "Cross-platform", "GPU", "Linux/Windows/Android 通用", "✅"),
-    ("OpenCL",   "Adreno/Mali",    "GPU", "Android GPU 兼容路径",        "✅"),
-    ("Hexagon",  "Snapdragon NPU", "NPU", "高通手机/车载",              "🆕 2026"),
-    ("CANN",     "华为昇腾 NPU",   "NPU", "Atlas 推理卡",               "🆕 2026"),
-    ("MUSA",     "Moore Threads",  "GPU", "国产 GPU 适配",              "🆕 2026"),
-    ("CPU",      "任意 x86/ARM",   "CPU", "AVX2/AVX-512/NEON 加速",    "✅"),
+    ("Metal", "Apple Silicon", "GPU", "macOS / iOS 原生", "✅"),
+    ("CUDA", "NVIDIA GPU", "GPU", "Linux/Windows 数据中心", "✅"),
+    ("Vulkan", "Cross-platform", "GPU", "Linux/Windows/Android 通用", "✅"),
+    ("OpenCL", "Adreno/Mali", "GPU", "Android GPU 兼容路径", "✅"),
+    ("Hexagon", "Snapdragon NPU", "NPU", "高通手机/车载", "🆕 2026"),
+    ("CANN", "华为昇腾 NPU", "NPU", "Atlas 推理卡", "🆕 2026"),
+    ("MUSA", "Moore Threads", "GPU", "国产 GPU 适配", "🆕 2026"),
+    ("CPU", "任意 x86/ARM", "CPU", "AVX2/AVX-512/NEON 加速", "✅"),
 ]
 
 
@@ -52,11 +52,11 @@ def compile_commands() -> None:
     """演示 llama.cpp 的编译选项 - 不同后端."""
     print("\n--- 编译选项 (CMake) ---")
     cmds = [
-        ("Metal (macOS)",    "CMAKE_ARGS='-DGGML_METAL=ON' pip install llama-cpp-python"),
+        ("Metal (macOS)", "CMAKE_ARGS='-DGGML_METAL=ON' pip install llama-cpp-python"),
         ("CUDA (Linux/Win)", "CMAKE_ARGS='-DGGML_CUDA=ON' pip install llama-cpp-python"),
-        ("Vulkan (Linux)",   "CMAKE_ARGS='-DGGML_VULKAN=ON' pip install llama-cpp-python"),
+        ("Vulkan (Linux)", "CMAKE_ARGS='-DGGML_VULKAN=ON' pip install llama-cpp-python"),
         ("OpenCL (Android)", "cmake -B build -DGGML_OPENCL=ON -DANDROID_ABI=arm64-v8a .."),
-        ("Hexagon NPU",      "cmake -B build -DGGML_HEXAGON=ON && cmake --build build"),
+        ("Hexagon NPU", "cmake -B build -DGGML_HEXAGON=ON && cmake --build build"),
     ]
     for name, cmd in cmds:
         print(f"  {name}:")
@@ -73,7 +73,7 @@ def _select_backend() -> tuple[str, int]:
     machine = platform.machine()
 
     if system == "Darwin" and machine == "arm64":
-        return "Metal", -1   # 全部卸载到 Apple GPU
+        return "Metal", -1  # 全部卸载到 Apple GPU
     if system == "Linux" and machine in ("x86_64", "AMD64"):
         return "CUDA/Vulkan", -1  # 假设有 NVIDIA
     if system == "Windows":
@@ -101,8 +101,7 @@ def main() -> None:
     except ImportError as e:
         raise_with_help(
             f"无法 import llama_cpp: {e}",
-            "运行 `pip install llama-cpp-python`. "
-            f"当前 backend={backend}, 需匹配编译选项.",
+            f"运行 `pip install llama-cpp-python`. 当前 backend={backend}, 需匹配编译选项.",
         )
 
     model_path = str(_code_root / "models" / "llama-3.2-3b-instruct-q4_k_m.gguf")
@@ -128,7 +127,7 @@ def main() -> None:
     response = llm(prompt, max_tokens=64, temperature=0.0)
     text = response["choices"][0]["text"].strip()
     print(f"Response ({backend}): {text}")
-    print(f"\n✅ backend 验证完成 (若 text 正常生成 → backend 工作)")
+    print("\n✅ backend 验证完成 (若 text 正常生成 → backend 工作)")
 
 
 if __name__ == "__main__":

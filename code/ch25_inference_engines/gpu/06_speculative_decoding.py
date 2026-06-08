@@ -30,7 +30,9 @@ vLLM 0.21.0 启用方式 (LLM 构造参数):
 vLLM 同时支持无模型的 Medusa / EAGLE / n-gram 方案, 此处演示同模型
 self-speculative (单模型 demo, 实际生产用小 draft).
 """
+
 from __future__ import annotations
+
 import sys
 from pathlib import Path
 
@@ -38,8 +40,7 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import require_nvidia_gpu, gpu_summary
-
+from shared.gpu_guard import gpu_summary, require_nvidia_gpu
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"  # 1GB, 已下载到本地 HF cache
 
@@ -78,8 +79,8 @@ def main() -> None:
         gpu_memory_utilization=0.5,
         max_num_seqs=4,
         max_model_len=512,
-        speculative_model=MODEL,             # 同模型 self-speculative demo
-        num_speculative_tokens=5,            # K=5 draft tokens
+        speculative_model=MODEL,  # 同模型 self-speculative demo
+        num_speculative_tokens=5,  # K=5 draft tokens
         enforce_eager=True,
     )
 
@@ -103,7 +104,7 @@ def main() -> None:
         print(f"  [{i}] prompt={ptoks}t -> gen={ctoks}t")
         print(f"       text={text!r}")
         if n_draft:
-            print(f"       draft={n_draft}  accepted={n_acc}  rate={100*n_acc/max(n_draft,1):.0f}%")
+            print(f"       draft={n_draft}  accepted={n_acc}  rate={100 * n_acc / max(n_draft, 1):.0f}%")
     print()
     print("=" * 60)
     print("Speculative Decoding 关键 takeaway:")

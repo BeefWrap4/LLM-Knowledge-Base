@@ -16,9 +16,10 @@
 # 2. 决策树有哪些剪枝策略? 预剪枝 vs 后剪枝?
 # 3. 为什么决策树对特征尺度不敏感, 但容易过拟合?
 
-from sklearn.tree import DecisionTreeClassifier, export_text
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier, export_text
+
 
 def main():
     iris = load_iris()

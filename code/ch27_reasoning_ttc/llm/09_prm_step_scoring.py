@@ -21,10 +21,13 @@ PRM 对每一步推理打分, 而非只对最终答案:
   - 推理: 给定 (s_0, a_0, s_1, a_1, ..., s_n), 标每步质量
   - 应用: 推理时搜索 (best-of-N, MCTS)
 """
+
 import sys
+from pathlib import Path
+
 import torch
 import torch.nn as nn
-from pathlib import Path
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
@@ -32,10 +35,12 @@ if str(_code_root) not in sys.path:
 
 class PRMScorer(nn.Module):
     """PRM: 输入 (state, action) 嵌入, 输出 step score."""
+
     def __init__(self, hidden: int = 64):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(hidden * 2, 128), nn.ReLU(),
+            nn.Linear(hidden * 2, 128),
+            nn.ReLU(),
             nn.Linear(128, 1),
         )
 
@@ -56,10 +61,10 @@ def main():
 
     print(f"  推理步骤数: {n_steps}")
     print(f"  PRM scores: {[f'{s.item():.3f}' for s in scores]}")
-    print(f"\n  应用:")
-    print(f"    - Best-of-N: 生成 N 个轨迹, 用 PRM 选最高分")
-    print(f"    - MCTS: 用 PRM 作 leaf evaluation, 引导 search")
-    print(f"    - 训练数据: 自动标注 step reward (vs 人工)")
+    print("\n  应用:")
+    print("    - Best-of-N: 生成 N 个轨迹, 用 PRM 选最高分")
+    print("    - MCTS: 用 PRM 作 leaf evaluation, 引导 search")
+    print("    - 训练数据: 自动标注 step reward (vs 人工)")
 
 
 if __name__ == "__main__":

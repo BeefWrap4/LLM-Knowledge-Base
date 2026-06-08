@@ -22,7 +22,7 @@ def back_translation_augment(
     translate_func,  # 翻译函数 (text, source_lang, target_lang) -> translated_text
     source_lang: str = "zh",
     pivot_lang: str = "en",
-    num_variants: int = 2
+    num_variants: int = 2,
 ) -> list[str]:
     """
     通过回译生成数据增强变体

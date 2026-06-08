@@ -19,6 +19,7 @@
 
 class ListNode:
     """单向链表节点"""
+
     def __init__(self, val=0, next=None):
         self.val = val
         self.next = next
@@ -59,9 +60,9 @@ def reverse_list(head: ListNode) -> ListNode:
     prev, curr = None, head
     while curr:
         next_temp = curr.next  # 暂存下一个节点
-        curr.next = prev       # 反转当前指针
-        prev = curr            # prev 前移
-        curr = next_temp       # curr 前移
+        curr.next = prev  # 反转当前指针
+        prev = curr  # prev 前移
+        curr = next_temp  # curr 前移
     return prev  # 新的头节点
 
 
@@ -144,6 +145,7 @@ def merge_two_lists(l1: ListNode, l2: ListNode) -> ListNode:
 # ========== 面试高频题4：LRU 缓存 ==========
 class DLinkedNode:
     """双向链表节点，用于 LRU Cache"""
+
     def __init__(self, key=0, val=0):
         self.key = key
         self.val = val

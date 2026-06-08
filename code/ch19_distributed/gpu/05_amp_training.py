@@ -19,11 +19,12 @@
 
 
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 import torch
 
@@ -33,6 +34,7 @@ import torch
 # ============================================================
 class MyModel(torch.nn.Module):
     """简单的两层 MLP, 用于演示 AMP 的工作流程"""
+
     def __init__(self, in_dim=64, hidden=128, out_dim=10):
         super().__init__()
         self.net = torch.nn.Sequential(
@@ -49,9 +51,7 @@ def make_dataloader(n=8, in_dim=64):
     """构造一个 8 个样本的 mock dataloader"""
     x = torch.randn(n, in_dim)
     y = torch.randint(0, 10, (n,))
-    return torch.utils.data.DataLoader(
-        torch.utils.data.TensorDataset(x, y), batch_size=2
-    )
+    return torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x, y), batch_size=2)
 
 
 # ============================================================
@@ -63,10 +63,10 @@ def train_with_amp(model, dataloader, optimizer):
     注意: BF16 不需要 GradScaler!
     """
     try:
-        from torch.cuda.amp import autocast, GradScaler
+        from torch.cuda.amp import GradScaler, autocast
     except ImportError:
         # PyTorch 新版本用 torch.amp
-        from torch.amp import autocast, GradScaler
+        from torch.amp import GradScaler, autocast
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     scaler = GradScaler(init_scale=2**16)  # 初始缩放因子 65536
@@ -91,8 +91,7 @@ def train_with_amp(model, dataloader, optimizer):
         scaler.step(optimizer)
         scaler.update()
 
-        print(f"  Step {step}, loss={loss.item():.4f}, "
-              f"scale={scaler.get_scale():.0f}")
+        print(f"  Step {step}, loss={loss.item():.4f}, scale={scaler.get_scale():.0f}")
         if step >= 2:
             break
 

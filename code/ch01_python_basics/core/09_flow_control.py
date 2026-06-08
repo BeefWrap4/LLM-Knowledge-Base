@@ -30,8 +30,8 @@ print(f"状态: {status}")
 
 # 链式比较（Python 特色）
 x = 5
-print(1 < x < 10)    # True — 等价于 1 < x and x < 10
-print(1 < x > 3)     # True — 可读性差，不推荐
+print(1 < x < 10)  # True — 等价于 1 < x and x < 10
+print(1 < x > 3)  # True — 可读性差，不推荐
 
 # ─────────────────────────────────────────────────────────────
 # for 循环 — 遍历序列
@@ -50,6 +50,7 @@ for name, score in zip(names, scores):
 
 # zip 长度不一致时的处理
 from itertools import zip_longest
+
 a = [1, 2, 3]
 b = ["a", "b"]
 for x, y in zip_longest(a, b, fillvalue="N/A"):
@@ -59,6 +60,7 @@ for x, y in zip_longest(a, b, fillvalue="N/A"):
 # break / continue / else（for-else 是面试常考点）
 # ─────────────────────────────────────────────────────────────
 
+
 def find_prime(n: int) -> bool:
     """
     for-else 结构：循环正常结束（未 break）时执行 else
@@ -66,7 +68,7 @@ def find_prime(n: int) -> bool:
     """
     if n < 2:
         return False
-    for i in range(2, int(n ** 0.5) + 1):
+    for i in range(2, int(n**0.5) + 1):
         if n % i == 0:
             print(f"{n} = {i} × {n // i}")
             break
@@ -76,8 +78,9 @@ def find_prime(n: int) -> bool:
         return True
     return False
 
-find_prime(17)   # 17 是质数
-find_prime(15)   # 15 = 3 × 5
+
+find_prime(17)  # 17 是质数
+find_prime(15)  # 15 = 3 × 5
 
 if __name__ == "__main__":
     print("OK")

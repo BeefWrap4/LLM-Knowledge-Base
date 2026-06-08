@@ -33,17 +33,22 @@ L(C) = C + merge(L(B1), L(B2), ..., [B1, B2, ...])
 # MRO 计算示例
 # ─────────────────────────────────────────────────────────────
 
+
 class Base:
     pass
+
 
 class X(Base):
     pass
 
+
 class Y(Base):
     pass
 
+
 class Z(X, Y):
     pass
+
 
 print(f"Z 的 MRO: {[c.__name__ for c in Z.__mro__]}")
 # ['Z', 'X', 'Y', 'Base', 'object']
@@ -98,14 +103,30 @@ class E(C, B): pass  # ✅ MRO: E -> C -> B -> A -> object
       F 无法同时满足这两个顺序。
 """
 
+
 # 验证
-class A2: pass
-class B2(A2): pass
-class C2(A2): pass
-class D2(B2, C2): pass
-class E2(C2, B2): pass
+class A2:
+    pass
+
+
+class B2(A2):
+    pass
+
+
+class C2(A2):
+    pass
+
+
+class D2(B2, C2):
+    pass
+
+
+class E2(C2, B2):
+    pass
+
 
 try:
+
     class F2(D2, E2):
         pass
 except TypeError as e:

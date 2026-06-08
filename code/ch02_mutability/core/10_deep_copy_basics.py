@@ -28,19 +28,16 @@ import copy
 # 深拷贝基础演示
 # ─────────────────────────────────────────────────────────────
 
+
 def demo_deep_copy():
-    original = [
-        [1, 2, 3],
-        {"a": [4, 5]},
-        (6, 7)
-    ]
+    original = [[1, 2, 3], {"a": [4, 5]}, (6, 7)]
     deep = copy.deepcopy(original)
 
     print("=== 深拷贝后的状态 ===")
-    print(f"外层相同? {original is deep}")           # False
-    print(f"子列表相同? {original[0] is deep[0]}")    # False — 深拷贝创建了新的!
-    print(f"子字典相同? {original[1] is deep[1]}")    # False
-    print(f"子元组相同? {original[2] is deep[2]}")    # True — 元组不可变,不需要拷贝
+    print(f"外层相同? {original is deep}")  # False
+    print(f"子列表相同? {original[0] is deep[0]}")  # False — 深拷贝创建了新的!
+    print(f"子字典相同? {original[1] is deep[1]}")  # False
+    print(f"子元组相同? {original[2] is deep[2]}")  # True — 元组不可变,不需要拷贝
     print(f"字典内列表相同? {original[1]['a'] is deep[1]['a']}")  # False
 
     # 任意修改深拷贝,都不影响原对象
@@ -48,9 +45,10 @@ def demo_deep_copy():
     deep[1]["a"].append(888)
     deep[1]["b"] = "new"
 
-    print(f"\n修改后:")
-    print(f"  original: {original}")   # 完全不变
+    print("\n修改后:")
+    print(f"  original: {original}")  # 完全不变
     print(f"  deep: {deep}")
+
 
 if __name__ == "__main__":
     demo_deep_copy()

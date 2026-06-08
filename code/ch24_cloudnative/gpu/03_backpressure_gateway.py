@@ -20,15 +20,15 @@
 
 import asyncio
 import time
-from dataclasses import dataclass, field
 from collections import deque
+from dataclasses import dataclass, field
 from enum import Enum
 
 
 class ReqPriority(Enum):
-    HIGH = 0      # 实时对话
-    NORMAL = 1    # API 调用
-    LOW = 2       # 批量任务
+    HIGH = 0  # 实时对话
+    NORMAL = 1  # API 调用
+    LOW = 2  # 批量任务
 
 
 @dataclass
@@ -110,9 +110,7 @@ class BackpressureGateway:
 
     def get_stats(self) -> dict:
         """获取网关统计"""
-        self.stats["current_queue_depth"] = sum(
-            len(q) for q in self._queues.values()
-        )
+        self.stats["current_queue_depth"] = sum(len(q) for q in self._queues.values())
         return self.stats
 
 
@@ -136,11 +134,13 @@ async def demo():
 
     # 触发队列满拒绝
     for i in range(20):
-        await gw.submit(InferenceRequest(
-            request_id=f"overflow-{i}",
-            priority=ReqPriority.LOW,
-            payload={"prompt": "x"},
-        ))
+        await gw.submit(
+            InferenceRequest(
+                request_id=f"overflow-{i}",
+                priority=ReqPriority.LOW,
+                payload={"prompt": "x"},
+            )
+        )
 
     print("\nFinal stats:", gw.get_stats())
 

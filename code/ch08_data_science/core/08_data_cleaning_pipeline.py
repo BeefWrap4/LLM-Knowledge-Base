@@ -15,8 +15,8 @@
 #   2. IQR 异常值处理有哪几种策略（删除 / clip / 变换 / 鲁棒模型）？
 #   3. 类别特征 One-Hot 与 Label 编码的适用场景分别是什么？
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 
 def data_cleaning_pipeline(df: pd.DataFrame) -> pd.DataFrame:
@@ -42,7 +42,7 @@ def data_cleaning_pipeline(df: pd.DataFrame) -> pd.DataFrame:
         df[col].fillna(df[col].median(), inplace=True)
 
     # 类别列：用众数填充
-    cat_cols = df.select_dtypes(include=['object']).columns
+    cat_cols = df.select_dtypes(include=["object"]).columns
     for col in cat_cols:
         df[col].fillna(df[col].mode()[0], inplace=True)
 
@@ -73,6 +73,7 @@ def data_cleaning_pipeline(df: pd.DataFrame) -> pd.DataFrame:
 
     # Step 5: 类别特征编码
     from sklearn.preprocessing import LabelEncoder
+
     le = LabelEncoder()
     for col in cat_cols:
         if df[col].nunique() < 10:  # 低基数类别
@@ -85,6 +86,7 @@ def data_cleaning_pipeline(df: pd.DataFrame) -> pd.DataFrame:
 
     # Step 6: 数值特征标准化
     from sklearn.preprocessing import StandardScaler
+
     scaler = StandardScaler()
     df[num_cols] = scaler.fit_transform(df[num_cols])
 
@@ -113,11 +115,13 @@ A:
 
 if __name__ == "__main__":
     # 构造一个含缺失/重复/类别/数值的混合 DataFrame 用于演示
-    demo_df = pd.DataFrame({
-        'age': [25, np.nan, 35, 25, 200, 40, 35, np.nan, 28],
-        'salary': [5000.0, 6000.0, 7000.0, 5000.0, 999999.0, 8000.0, 7000.0, 6500.0, 5500.0],
-        'dept': ['Tech', 'HR', 'Tech', 'Tech', 'Sales', 'HR', 'Tech', 'Sales', None],
-        'city': ['BJ', 'SH', 'BJ', 'BJ', 'GZ', 'SH', 'BJ', 'GZ', 'SH']
-    })
+    demo_df = pd.DataFrame(
+        {
+            "age": [25, np.nan, 35, 25, 200, 40, 35, np.nan, 28],
+            "salary": [5000.0, 6000.0, 7000.0, 5000.0, 999999.0, 8000.0, 7000.0, 6500.0, 5500.0],
+            "dept": ["Tech", "HR", "Tech", "Tech", "Sales", "HR", "Tech", "Sales", None],
+            "city": ["BJ", "SH", "BJ", "BJ", "GZ", "SH", "BJ", "GZ", "SH"],
+        }
+    )
     cleaned = data_cleaning_pipeline(demo_df)
     print(cleaned.head())

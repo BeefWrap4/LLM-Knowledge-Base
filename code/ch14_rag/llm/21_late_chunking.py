@@ -24,6 +24,7 @@ def late_chunking(document: str, chunk_size: int = 512, api_key: str = None):
     """
     if api_key:
         import requests
+
         response = requests.post(
             "https://api.jina.ai/v1/embeddings",
             headers={"Authorization": f"Bearer {api_key}"},
@@ -40,12 +41,13 @@ def late_chunking(document: str, chunk_size: int = 512, api_key: str = None):
     # Mock: 模拟 N_chunks 个 1024 维向量
     n_chunks = max(1, len(document) // chunk_size)
     import numpy as np
+
     rng = np.random.default_rng(hash(document) % (2**32))
     return rng.normal(size=(n_chunks, 1024)).astype("float32").tolist()
 
 
 if __name__ == "__main__":
-    doc = ("RAG 是检索增强生成。" * 100)  # 长文档
+    doc = "RAG 是检索增强生成。" * 100  # 长文档
     chunks = late_chunking(doc, chunk_size=512, api_key=None)
     if isinstance(chunks, list):
         print(f"Late Chunking 产出 {len(chunks)} 个 chunk 向量, dim={len(chunks[0])}")

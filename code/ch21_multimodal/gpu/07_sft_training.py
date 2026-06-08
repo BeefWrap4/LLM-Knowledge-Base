@@ -16,19 +16,20 @@
 #   3. gradient_checkpointing 为什么对 ViT-L + 7B LLM 组合至关重要？
 
 
-
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 import os
 
 
 def build_collate_fn_template():
     """返回 collate_fn 模板（不实际加载 processor）。"""
+
     def collate_fn(batch):
         """将图像和对话整理为模型输入（结构示意）"""
         images = []
@@ -44,6 +45,7 @@ def build_collate_fn_template():
             "images": images,
             "conversations": conversations,
         }
+
     return collate_fn
 
 
@@ -105,24 +107,25 @@ def main():
             print(f"TrainingArguments init skipped: {e}")
         print("SFT training script structure demo OK")
     else:
-        from datasets import load_dataset
-        from transformers import AutoProcessor, AutoModelForVision2Seq, Trainer
         from peft import LoraConfig, get_peft_model
+        from transformers import AutoModelForVision2Seq, AutoProcessor, Trainer
 
         model_id = "llava-hf/llava-1.5-7b-hf"
         processor = AutoProcessor.from_pretrained(model_id)
-        model = AutoModelForVision2Seq.from_pretrained(
-            model_id, torch_dtype=None, device_map="auto"
-        )
+        model = AutoModelForVision2Seq.from_pretrained(model_id, torch_dtype=None, device_map="auto")
         lora_config = LoraConfig(
-            r=64, lora_alpha=128,
+            r=64,
+            lora_alpha=128,
             target_modules=["q_proj", "v_proj", "o_proj", "k_proj"],
-            lora_dropout=0.05, bias="none",
+            lora_dropout=0.05,
+            bias="none",
         )
         model = get_peft_model(model, lora_config)
         trainer = Trainer(
-            model=model, args=build_training_args(),
-            train_dataset=None, data_collator=build_collate_fn_template(),
+            model=model,
+            args=build_training_args(),
+            train_dataset=None,
+            data_collator=build_collate_fn_template(),
         )
         # trainer.train()  # 真实训练时取消注释
 

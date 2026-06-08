@@ -26,45 +26,53 @@ Python 参数传递：传对象引用（Pass by Object Reference）
 # 不可变对象的参数传递
 # ─────────────────────────────────────────────────────────────
 
+
 def increment(x):
     """试图修改不可变整数 — 不会影外部"""
-    x += 1           # 创建新的 int 对象，局部变量 x 指向新对象
-    print(f"函数内 x = {x}")   # 11
+    x += 1  # 创建新的 int 对象，局部变量 x 指向新对象
+    print(f"函数内 x = {x}")  # 11
+
 
 a = 10
 increment(a)
-print(f"函数外 a = {a}")       # 10 — 不变！
+print(f"函数外 a = {a}")  # 10 — 不变！
 
 # ─────────────────────────────────────────────────────────────
 # 可变对象的参数传递
 # ─────────────────────────────────────────────────────────────
 
+
 def append_item(lst, item):
     """修改可变列表 — 会影响外部！"""
     lst.append(item)  # 原地修改列表
 
+
 my_list = [1, 2, 3]
 append_item(my_list, 4)
-print(f"函数外 my_list = {my_list}")       # [1, 2, 3, 4] — 被修改了！
+print(f"函数外 my_list = {my_list}")  # [1, 2, 3, 4] — 被修改了！
 
 # ─────────────────────────────────────────────────────────────
 # 陷阱：默认参数的延迟绑定 ⭐⭐⭐⭐⭐
 # ─────────────────────────────────────────────────────────────
+
 
 def add_item_bad(item, items=[]):
     """❌ 危险！默认参数在函数定义时求值，只创建一次"""
     items.append(item)
     return items
 
-print(add_item_bad(1))   # [1]
-print(add_item_bad(2))   # [1, 2] — 列表保留了上次的结果！
+
+print(add_item_bad(1))  # [1]
+print(add_item_bad(2))  # [1, 2] — 列表保留了上次的结果！
+
 
 def add_item_good(item, items=None):
     """✅ 正确！用 None 作为哨兵值，在函数体内创建新列表"""
     if items is None:
-        items = []       # 每次调用都创建新列表
+        items = []  # 每次调用都创建新列表
     items.append(item)
     return items
+
 
 print(add_item_good(1))  # [1]
 print(add_item_good(2))  # [2] — 正确！

@@ -14,38 +14,42 @@
 #   1. Query / Path / Body 三类参数是如何被 FastAPI 区分的？
 #   2. response_model 的作用是什么？和返回类型注解有何区别？
 #   3. Pydantic Field 中的 ge/le/min_length 如何参与自动校验？
-from fastapi import FastAPI, HTTPException, Query, Path
+
+from fastapi import FastAPI, HTTPException, Path, Query
 from pydantic import BaseModel, Field
-from typing import Optional
 
 app = FastAPI(title="LLM Service API", version="1.0.0")
+
 
 # ========== 数据模型定义 ==========
 class ChatRequest(BaseModel):
     """聊天请求模型 - Pydantic 自动验证"""
+
     message: str = Field(min_length=1, max_length=2000, description="用户消息")
     temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="采样温度")
     max_tokens: int = Field(default=512, ge=1, le=4096, description="最大生成长度")
 
     model_config = {
         "json_schema_extra": {
-            "examples": [
-                {"message": "你好，请介绍FastAPI", "temperature": 0.7, "max_tokens": 512}
-            ]
+            "examples": [{"message": "你好，请介绍FastAPI", "temperature": 0.7, "max_tokens": 512}]
         }
     }
 
+
 class ChatResponse(BaseModel):
     """聊天响应模型"""
+
     reply: str
     tokens_used: int
     model: str
+
 
 # ========== 路由定义 ==========
 @app.get("/health", summary="健康检查")
 async def health_check():
     """最简单的端点，用于服务探活"""
     return {"status": "ok", "service": "llm-api"}
+
 
 @app.post("/chat", response_model=ChatResponse, summary="对话接口")
 async def chat(request: ChatRequest):
@@ -58,21 +62,21 @@ async def chat(request: ChatRequest):
     reply = f"收到消息：{request.message[:50]}..."
     return ChatResponse(reply=reply, tokens_used=42, model="gpt-4o")
 
+
 @app.get("/models/{model_id}", summary="获取模型信息")
-async def get_model(
-    model_id: str = Path(description="模型ID", pattern=r"^[a-zA-Z0-9-_]+$")
-):
+async def get_model(model_id: str = Path(description="模型ID", pattern=r"^[a-zA-Z0-9-_]+$")):
     """路径参数 + 正则校验"""
     models_db = {"gpt-4o": "OpenAI", "qwen-72b": "阿里", "llama-3": "Meta"}
     if model_id not in models_db:
         raise HTTPException(status_code=404, detail=f"模型 {model_id} 不存在")
     return {"model_id": model_id, "provider": models_db[model_id]}
 
+
 @app.get("/search", summary="搜索接口")
 async def search(
     q: str = Query(min_length=2, description="搜索关键词"),
     limit: int = Query(default=10, ge=1, le=100),
-    offset: int = Query(default=0, ge=0)
+    offset: int = Query(default=0, ge=0),
 ):
     """查询参数 + 分页验证"""
     return {"query": q, "limit": limit, "offset": offset, "results": []}

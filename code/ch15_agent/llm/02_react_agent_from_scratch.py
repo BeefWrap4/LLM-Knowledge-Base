@@ -1,6 +1,7 @@
 # ---
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
+
 _code_root = _Path_setup(__file__).resolve().parent.parent.parent
 if str(_code_root) not in _sys_path_setup.path:
     _sys_path_setup.path.insert(0, str(_code_root))
@@ -24,10 +25,10 @@ if str(_code_root) not in _sys_path_setup.path:
 """
 从零实现 ReAct Agent - 完整可运行代码
 """
-import json
-import re
 import os
-from typing import Callable, Any
+import re
+from collections.abc import Callable
+
 
 class Tool:
     """工具基类"""
@@ -48,10 +49,12 @@ class Tool:
 
     def to_prompt_format(self) -> str:
         """转换为 Prompt 中的工具描述"""
-        params_desc = "\n".join([
-            f"  - {k}: {v.get('description', v.get('type', 'string'))}"
-            for k, v in self.params_schema.get("properties", {}).items()
-        ])
+        params_desc = "\n".join(
+            [
+                f"  - {k}: {v.get('description', v.get('type', 'string'))}"
+                for k, v in self.params_schema.get("properties", {}).items()
+            ]
+        )
         return f"- {self.name}: {self.description}\n参数：\n{params_desc}"
 
 
@@ -65,7 +68,7 @@ class ReActAgent:
     def __init__(self, llm_api_key: str = None):
         self.tools: dict[str, Tool] = {}
         self.memory: list[dict] = []  # 历史记录
-        self.max_iterations = 10      # 最大迭代次数，防止无限循环
+        self.max_iterations = 10  # 最大迭代次数，防止无限循环
         self.llm_api_key = llm_api_key or os.getenv("OPENAI_API_KEY")
 
         # ReAct Prompt 模板
@@ -101,11 +104,12 @@ Thought: """
         """调用 LLM（Wave 17: 改用 UnifiedClient 支持 deepseek/kimi/siliconflow/MiniMax）"""
         try:
             from shared.llm_client import UnifiedClient
+
             client = UnifiedClient()
             resp = client.chat(
                 messages=[
                     {"role": "system", "content": "你是一个严格遵循 ReAct 格式的智能助手。"},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": prompt},
                 ],
                 temperature=0.1,
                 # 注: stop 参数仅 OpenAI/Anthropic 支持, 其他厂商忽略
@@ -122,24 +126,24 @@ Thought: """
         # 简单规则匹配模拟决策
         if "weather" in history.lower() or "天气" in history or "温度" in history:
             if "Observation" not in history:
-                return "我需要先查询天气信息。\nAction: weather_api(city=\"北京\")"
+                return '我需要先查询天气信息。\nAction: weather_api(city="北京")'
             elif "calculator" not in history and "average" in history.lower() or "平均" in history:
-                return "现在计算体温平均值。\nAction: calculator(expression=\"(36.5+37.0+36.8)/3\")"
+                return '现在计算体温平均值。\nAction: calculator(expression="(36.5+37.0+36.8)/3")'
             else:
                 return "所有信息已获取。\nFinal Answer: 北京今天气温为 25°C，天气晴朗。三人体温平均值为 36.77°C。"
 
         if "search" in history.lower() or "查" in history:
             if "Observation" not in history:
-                return "我需要搜索相关信息。\nAction: search(query=\"Python GIL\")"
+                return '我需要搜索相关信息。\nAction: search(query="Python GIL")'
             else:
                 return "已找到相关信息。\nFinal Answer: Python GIL（全局解释器锁）是 CPython 中防止多线程并发执行字节码的机制。"
 
-        return "我需要分析当前情况。\nAction: search(query=\"一般信息\")"
+        return '我需要分析当前情况。\nAction: search(query="一般信息")'
 
     def _parse_action(self, text: str) -> tuple[str, dict] | None:
         """从 LLM 输出解析 Action"""
         # 匹配 Action: tool_name(param1="value", param2="value")
-        action_pattern = r'Action:\s*(\w+)\((.*)\)'
+        action_pattern = r"Action:\s*(\w+)\((.*)\)"
         match = re.search(action_pattern, text)
 
         if not match:
@@ -161,14 +165,14 @@ Thought: """
 
     def _extract_final_answer(self, text: str) -> str | None:
         """提取 Final Answer"""
-        match = re.search(r'Final Answer:\s*(.+)', text, re.DOTALL)
+        match = re.search(r"Final Answer:\s*(.+)", text, re.DOTALL)
         if match:
             return match.group(1).strip()
         return None
 
     def _extract_thought(self, text: str) -> str:
         """提取 Thought"""
-        match = re.search(r'Thought:\s*(.+?)(?=Action:|Final Answer:|$)', text, re.DOTALL)
+        match = re.search(r"Thought:\s*(.+?)(?=Action:|Final Answer:|$)", text, re.DOTALL)
         if match:
             return match.group(1).strip()
         return ""
@@ -191,8 +195,7 @@ Thought: """
         for i in range(self.max_iterations):
             # 构建完整 Prompt
             prompt = self.react_prompt_template.format(
-                tools_description=self._build_tools_description(),
-                history=history
+                tools_description=self._build_tools_description(), history=history
             )
 
             # 调用 LLM 生成 Thought + Action
@@ -228,12 +231,14 @@ Thought: """
                 observation = tool.execute(**params)
 
             # 记录步骤
-            steps.append({
-                "type": "action",
-                "thought": thought,
-                "action": f"{tool_name}({params})",
-                "observation": observation,
-            })
+            steps.append(
+                {
+                    "type": "action",
+                    "thought": thought,
+                    "action": f"{tool_name}({params})",
+                    "observation": observation,
+                }
+            )
 
             # 更新历史
             history += f"{llm_output}\nObservation: {observation}\n"
@@ -248,6 +253,7 @@ Thought: """
 
 
 # ============ 工具函数定义 ============
+
 
 def weather_api(city: str, date: str = "今天") -> str:
     """模拟天气查询"""
@@ -288,36 +294,43 @@ def search(query: str) -> str:
 
 # ============ 使用示例 ============
 
+
 def main():
     """主函数 - 运行 ReAct Agent"""
     agent = ReActAgent()
 
     # 注册工具
-    agent.register_tool(Tool(
-        name="weather_api",
-        description="查询指定城市的天气信息",
-        func=weather_api,
-        params_schema={"properties": {
-            "city": {"type": "string", "description": "城市名称"},
-            "date": {"type": "string", "description": "日期，如'今天'、'明天'"}
-        }}
-    ))
-    agent.register_tool(Tool(
-        name="calculator",
-        description="执行数学计算",
-        func=calculator,
-        params_schema={"properties": {
-            "expression": {"type": "string", "description": "数学表达式，如(36.5+37.0)/2"}
-        }}
-    ))
-    agent.register_tool(Tool(
-        name="search",
-        description="搜索引擎，查询一般知识",
-        func=search,
-        params_schema={"properties": {
-            "query": {"type": "string", "description": "搜索关键词"}
-        }}
-    ))
+    agent.register_tool(
+        Tool(
+            name="weather_api",
+            description="查询指定城市的天气信息",
+            func=weather_api,
+            params_schema={
+                "properties": {
+                    "city": {"type": "string", "description": "城市名称"},
+                    "date": {"type": "string", "description": "日期，如'今天'、'明天'"},
+                }
+            },
+        )
+    )
+    agent.register_tool(
+        Tool(
+            name="calculator",
+            description="执行数学计算",
+            func=calculator,
+            params_schema={
+                "properties": {"expression": {"type": "string", "description": "数学表达式，如(36.5+37.0)/2"}}
+            },
+        )
+    )
+    agent.register_tool(
+        Tool(
+            name="search",
+            description="搜索引擎，查询一般知识",
+            func=search,
+            params_schema={"properties": {"query": {"type": "string", "description": "搜索关键词"}}},
+        )
+    )
 
     # 执行任务
     task = "查询北京今天天气，然后计算36.5、37.0、36.8的平均值"
@@ -327,13 +340,13 @@ def main():
     print(f"最终答案：{result['final_answer']}")
     print(f"迭代次数：{result['iterations']}")
     print("\n详细步骤：")
-    for i, step in enumerate(result['steps'], 1):
+    for i, step in enumerate(result["steps"], 1):
         print(f"\n--- 步骤 {i} ---")
-        if step['type'] == 'action':
+        if step["type"] == "action":
             print(f"Thought: {step['thought']}")
             print(f"Action: {step['action']}")
             print(f"Observation: {step['observation']}")
-        elif step['type'] == 'final':
+        elif step["type"] == "final":
             print(f"Thought: {step['thought']}")
             print(f"Final Answer: {step['answer']}")
     print("\nOK")

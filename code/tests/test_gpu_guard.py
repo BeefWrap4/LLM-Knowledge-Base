@@ -5,16 +5,20 @@
 """
 See: tutorial/Ch25_推理引擎与高性能服务 §25.4
 """
-import pytest
-from unittest.mock import patch, MagicMock
 
-from shared.gpu_guard import require_nvidia_gpu, require_apple_silicon, require_ollama
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from shared.gpu_guard import require_apple_silicon, require_nvidia_gpu, require_ollama
 
 
 def test_require_nvidia_gpu_no_cuda():
     """未检测到 CUDA 时抛 RuntimeError (含中文 + 提示)."""
-    with patch("shared.gpu_guard._has_torch", return_value=True), \
-         patch("shared.gpu_guard._torch_cuda_available", return_value=False):
+    with (
+        patch("shared.gpu_guard._has_torch", return_value=True),
+        patch("shared.gpu_guard._torch_cuda_available", return_value=False),
+    ):
         with pytest.raises(RuntimeError, match="需要 NVIDIA GPU"):
             require_nvidia_gpu(min_vram_gb=8)
 
@@ -22,10 +26,12 @@ def test_require_nvidia_gpu_no_cuda():
 def test_require_nvidia_gpu_insufficient_vram():
     """显存不足 (4GB < 8GB) 抛 RuntimeError."""
     fake_props = MagicMock(total_memory=4 * 1e9)  # 4GB
-    with patch("shared.gpu_guard._has_torch", return_value=True), \
-         patch("shared.gpu_guard._torch_cuda_available", return_value=True), \
-         patch("shared.gpu_guard._torch_device_count", return_value=1), \
-         patch("shared.gpu_guard._torch_device_props", return_value=fake_props):
+    with (
+        patch("shared.gpu_guard._has_torch", return_value=True),
+        patch("shared.gpu_guard._torch_cuda_available", return_value=True),
+        patch("shared.gpu_guard._torch_device_count", return_value=1),
+        patch("shared.gpu_guard._torch_device_props", return_value=fake_props),
+    ):
         with pytest.raises(RuntimeError, match="显存.*4.0GB.*< 8GB"):
             require_nvidia_gpu(min_vram_gb=8)
 
@@ -33,10 +39,12 @@ def test_require_nvidia_gpu_insufficient_vram():
 def test_require_nvidia_gpu_sufficient():
     """24GB 显存通过检查, 不抛错."""
     fake_props = MagicMock(total_memory=24 * 1e9)
-    with patch("shared.gpu_guard._has_torch", return_value=True), \
-         patch("shared.gpu_guard._torch_cuda_available", return_value=True), \
-         patch("shared.gpu_guard._torch_device_count", return_value=1), \
-         patch("shared.gpu_guard._torch_device_props", return_value=fake_props):
+    with (
+        patch("shared.gpu_guard._has_torch", return_value=True),
+        patch("shared.gpu_guard._torch_cuda_available", return_value=True),
+        patch("shared.gpu_guard._torch_device_count", return_value=1),
+        patch("shared.gpu_guard._torch_device_props", return_value=fake_props),
+    ):
         require_nvidia_gpu(min_vram_gb=8)  # 不抛错
 
 
@@ -50,6 +58,7 @@ def test_require_apple_silicon_on_linux():
 def test_require_ollama_not_running():
     """Ollama 服务不可达抛 RuntimeError."""
     import httpx
+
     with patch("shared.gpu_guard._httpx_get", side_effect=httpx.ConnectError("ConnectError")):
         with pytest.raises(RuntimeError, match="Ollama 未运行"):
             require_ollama("llama3.2:3b")
@@ -74,7 +83,9 @@ def test_require_ollama_missing_model():
 
 def test_require_apple_silicon_on_intel_mac():
     """Intel Mac (Darwin + x86_64) → 抛错."""
-    with patch("shared.gpu_guard._platform_system", return_value="Darwin"), \
-         patch("shared.gpu_guard._platform_machine", return_value="x86_64"):
+    with (
+        patch("shared.gpu_guard._platform_system", return_value="Darwin"),
+        patch("shared.gpu_guard._platform_machine", return_value="x86_64"),
+    ):
         with pytest.raises(RuntimeError, match="需要 Apple Silicon"):
             require_apple_silicon()

@@ -20,10 +20,12 @@
 本文件模拟 10 个 LLM 请求, 记录 SLO 指标. 生产环境替换 simulate_request()
 为真实 vLLM 调用即可.
 """
+
+import random
 import sys
 import time
-import random
 from pathlib import Path
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
@@ -31,7 +33,8 @@ if str(_code_root) not in sys.path:
 from shared._error_helper import raise_with_help
 
 try:
-    from prometheus_client import Histogram, Counter, start_http_server
+    from prometheus_client import Counter, Histogram, start_http_server
+
     HAS_PROMETHEUS = True
 except ImportError:
     HAS_PROMETHEUS = False
@@ -42,10 +45,8 @@ def setup_metrics():
     if not HAS_PROMETHEUS:
         return None, None, None
     return (
-        Histogram("llm_ttft_seconds", "Time to first token",
-                  buckets=(0.05, 0.1, 0.2, 0.5, 1.0, 2.0)),
-        Histogram("llm_tpot_seconds", "Time per output token",
-                  buckets=(0.01, 0.02, 0.05, 0.1, 0.2, 0.5)),
+        Histogram("llm_ttft_seconds", "Time to first token", buckets=(0.05, 0.1, 0.2, 0.5, 1.0, 2.0)),
+        Histogram("llm_tpot_seconds", "Time per output token", buckets=(0.01, 0.02, 0.05, 0.1, 0.2, 0.5)),
         Counter("llm_requests_total", "Total LLM requests"),
     )
 
@@ -73,9 +74,10 @@ def simulate_request(req_id: int, ttft_hist, tpot_hist, req_counter) -> dict:
     avg_tpot_ms = total_tpot / num_tokens * 1000
 
     req_counter.inc()
-    print(f"  [{req_id:2d}] TTFT={ttft*1000:5.0f}ms | {num_tokens:3d} tokens | "
-          f"avg TPOT={avg_tpot_ms:5.1f}ms")
-    return {"ttft_ms": ttft*1000, "tpot_ms": avg_tpot_ms, "tokens": num_tokens}
+    print(
+        f"  [{req_id:2d}] TTFT={ttft * 1000:5.0f}ms | {num_tokens:3d} tokens | avg TPOT={avg_tpot_ms:5.1f}ms"
+    )
+    return {"ttft_ms": ttft * 1000, "tpot_ms": avg_tpot_ms, "tokens": num_tokens}
 
 
 def main():
@@ -105,7 +107,7 @@ def main():
         avg_ttft = sum(r["ttft_ms"] for r in results) / len(results)
         avg_tpot = sum(r["tpot_ms"] for r in results) / len(results)
         print()
-        print(f"=== SLO 汇总 (10 请求) ===")
+        print("=== SLO 汇总 (10 请求) ===")
         print(f"  avg TTFT: {avg_ttft:.0f}ms (SLO < 200ms) {'✅' if avg_ttft < 200 else '❌'}")
         print(f"  avg TPOT: {avg_tpot:.1f}ms (SLO < 50ms) {'✅' if avg_tpot < 50 else '❌'}")
         print()

@@ -16,10 +16,11 @@
 # 2. Bagging 中 "数据随机" 与 "特征随机" 分别通过什么实现?
 # 3. OOB (Out-of-Bag) 误差是什么? 为什么能替代交叉验证?
 
+from sklearn.datasets import load_iris
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
-from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
+
 
 def main():
     iris = load_iris()
@@ -28,10 +29,10 @@ def main():
     )
 
     rf = RandomForestClassifier(
-        n_estimators=100,    # 树的数量
-        max_depth=5,         # 限制单棵树深度
-        max_features='sqrt', # 每次分裂随机选 sqrt(m) 个特征
-        random_state=42
+        n_estimators=100,  # 树的数量
+        max_depth=5,  # 限制单棵树深度
+        max_features="sqrt",  # 每次分裂随机选 sqrt(m) 个特征
+        random_state=42,
     )
     rf.fit(X_train, y_train)
 

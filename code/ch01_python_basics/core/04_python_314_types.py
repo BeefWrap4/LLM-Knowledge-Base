@@ -21,7 +21,7 @@
 # 1. 泛型类型别名语法 — 使用 type 语句（PEP 695 的延伸）
 from typing import TypeVar
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 # Python 3.12+ 方式
 # Point = tuple[float, float]

@@ -27,15 +27,15 @@ import itertools
 # ─────────────────────────────────────────────────────────────
 
 # count(start, step) —— 无限计数
-counter = itertools.count(10, 2)   # 10, 12, 14, 16, ...
-print([next(counter) for _ in range(5)])   # [10, 12, 14, 16, 18]
+counter = itertools.count(10, 2)  # 10, 12, 14, 16, ...
+print([next(counter) for _ in range(5)])  # [10, 12, 14, 16, 18]
 
 # cycle(iterable) —— 无限循环
 c = itertools.cycle("AB")
-print([next(c) for _ in range(5)])   # ['A', 'B', 'A', 'B', 'A']
+print([next(c) for _ in range(5)])  # ['A', 'B', 'A', 'B', 'A']
 
 # repeat(elem, [n]) —— 重复元素
-print(list(itertools.repeat("x", 3)))   # ['x', 'x', 'x']
+print(list(itertools.repeat("x", 3)))  # ['x', 'x', 'x']
 
 # ─────────────────────────────────────────────────────────────
 # 有限迭代器（面试高频）
@@ -43,19 +43,19 @@ print(list(itertools.repeat("x", 3)))   # ['x', 'x', 'x']
 
 # islice —— 切片迭代器（不需要序列支持索引）
 data = iter(range(100))
-slice_10_20 = itertools.islice(data, 10, 20)   # 取第 10-19 个
-print(list(slice_10_20))   # [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+slice_10_20 = itertools.islice(data, 10, 20)  # 取第 10-19 个
+print(list(slice_10_20))  # [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 
 # chain —— 连接多个迭代器
 list1 = [1, 2, 3]
 list2 = ["a", "b", "c"]
 merged = itertools.chain(list1, list2)
-print(list(merged))   # [1, 2, 3, 'a', 'b', 'c']
+print(list(merged))  # [1, 2, 3, 'a', 'b', 'c']
 
 # 展平嵌套列表
 nested = [[1, 2], [3, 4], [5, 6]]
 flat = itertools.chain.from_iterable(nested)
-print(list(flat))     # [1, 2, 3, 4, 5, 6]
+print(list(flat))  # [1, 2, 3, 4, 5, 6]
 
 # groupby —— 按连续相同值分组（面试常考）
 data = ["A", "A", "B", "B", "B", "A", "C", "C"]

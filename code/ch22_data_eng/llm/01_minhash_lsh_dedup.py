@@ -17,11 +17,12 @@
 #   3. LSH 是如何将 O(n²) 的相似文档对比较降低到近似 O(n) 的？
 
 
-
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
+
 try:
     from datasketch import MinHash, MinHashLSH
+
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
     _SKIP_REASON = str(_e).split("\n")[0]
@@ -33,15 +34,15 @@ import re
 
 def tokenize(text: str, n: int = 3) -> list[str]:
     """将文本转为 n-gram 字符集合"""
-    text = re.sub(r'\s+', ' ', text.lower())
-    return [text[i:i + n] for i in range(len(text) - n + 1)]
+    text = re.sub(r"\s+", " ", text.lower())
+    return [text[i : i + n] for i in range(len(text) - n + 1)]
 
 
 def create_minhash(text: str, num_perm: int = 128) -> MinHash:
     """为文档创建 MinHash 签名"""
     m = MinHash(num_perm=num_perm)
     for shingle in tokenize(text, n=5):
-        m.update(shingle.encode('utf-8'))
+        m.update(shingle.encode("utf-8"))
     return m
 
 

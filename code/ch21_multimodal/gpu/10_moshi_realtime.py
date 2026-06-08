@@ -15,8 +15,8 @@
 #   2. Mimi codec 为什么能做到 12.5Hz 超低码率？
 #   3. Inner Monologue 机制如何提升语音回复的语义连贯性？
 
-import os
 import asyncio
+import os
 
 
 async def main_async():
@@ -59,6 +59,16 @@ async def main_async():
         return
 
     client = MoshiClient("ws://localhost:8998")
+
+    async def mic_stream():
+        """占位麦克风流: 真实部署时替换为 PyAudio/sounddevice 捕获"""
+        if False:
+            yield b""
+        return
+
+    async def speaker_play(chunk: bytes) -> None:
+        """占位扬声器播放: 真实部署时替换为 sounddevice 输出"""
+        _ = chunk
 
     async def send_audio():
         async for chunk in mic_stream():

@@ -27,6 +27,7 @@ SGLang 是 UC Berkeley 的 LLM serving 框架, 特色:
     --model-path Qwen/Qwen2.5-7B-Instruct \\
     --port 30000 --mem-fraction-static 0.8
 """
+
 import sys
 from pathlib import Path
 
@@ -34,8 +35,8 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import require_nvidia_gpu
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import require_nvidia_gpu
 
 
 def check_hardware():

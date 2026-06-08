@@ -54,19 +54,21 @@ if __name__ == "__main__":
     # 填充掩码示例
     # 假设 pad_idx=0, 有效 token 标号非 0
     batch = 2
-    seq = torch.tensor([
-        [1, 2, 3, 4, 0, 0],   # 后两个是 pad
-        [5, 6, 0, 0, 0, 0],   # 后四个是 pad
-    ])
+    seq = torch.tensor(
+        [
+            [1, 2, 3, 4, 0, 0],  # 后两个是 pad
+            [5, 6, 0, 0, 0, 0],  # 后四个是 pad
+        ]
+    )
     pad_mask = create_padding_mask(seq, pad_idx=0)
     print(f"\nPadding mask shape: {pad_mask.shape}  # (batch, 1, 1, seq_len)")
     print(f"Padding mask[0, 0, 0, :]: {pad_mask[0, 0, 0, :].int().tolist()}")
-    print(f"  # 1=有效 token, 0=pad (应忽略)")
+    print("  # 1=有效 token, 0=pad (应忽略)")
 
     # 验证: 广播维度允许与 attention scores 相乘
     # attention scores: (batch, num_heads, seq_len, seq_len)
     scores = torch.randn(batch, 4, 6, 6)
-    masked = scores.masked_fill(pad_mask == 0, float('-inf'))
+    masked = scores.masked_fill(pad_mask == 0, float("-inf"))
     print(f"\nscores shape: {scores.shape}")
     print(f"masked scores[0, 0, 0, :]: {masked[0, 0, 0, :].tolist()}")
     print("  # pad 位置变为 -inf, softmax 后贡献为 0")

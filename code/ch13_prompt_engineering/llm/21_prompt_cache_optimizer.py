@@ -15,9 +15,6 @@
 # - 命中率公式：cache_read / (cache_read + new_input)
 # - 当 system_prompt 太短时该如何处理？(预热 / pad)
 
-import hashlib
-from typing import Optional
-
 
 class PromptCacheOptimizer:
     """
@@ -62,11 +59,7 @@ class PromptCacheOptimizer:
         return sum(len(str(m)) for m in messages) // 4
 
     def build_request_with_cache(
-        self,
-        system_prompt: str,
-        examples: list[dict],
-        user_query: str,
-        dynamic_context: str = ""
+        self, system_prompt: str, examples: list[dict], user_query: str, dynamic_context: str = ""
     ) -> dict:
         """
         构建最优缓存请求：
@@ -75,21 +68,20 @@ class PromptCacheOptimizer:
         """
         cached_prefix = {
             "type": "text",
-            "text": system_prompt + "\n\n" + self._format_examples(examples)
+            "text": system_prompt + "\n\n" + self._format_examples(examples),
         }
         dynamic_part = {
             "type": "text",
-            "text": f"<context>{dynamic_context}</context>\n<query>{user_query}</query>"
+            "text": f"<context>{dynamic_context}</context>\n<query>{user_query}</query>",
         }
         return {
             "system": [cached_prefix],
-            "messages": [{"role": "user", "content": [dynamic_part]}]
+            "messages": [{"role": "user", "content": [dynamic_part]}],
         }
 
     def _format_examples(self, examples: list[dict]) -> str:
         return "\n".join(
-            f"示例{i+1}：\n输入：{ex['input']}\n输出：{ex['output']}"
-            for i, ex in enumerate(examples)
+            f"示例{i + 1}：\n输入：{ex['input']}\n输出：{ex['output']}" for i, ex in enumerate(examples)
         )
 
 
@@ -97,10 +89,10 @@ if __name__ == "__main__":
     # 使用示例
     optimizer = PromptCacheOptimizer()
     request = optimizer.build_request_with_cache(
-        system_prompt="你是一个 SQL 专家。" * 50,   # 重复以达到 1024+ tokens
+        system_prompt="你是一个 SQL 专家。" * 50,  # 重复以达到 1024+ tokens
         examples=[{"input": "...", "output": "..."}] * 5,
         user_query="查询最近 7 天的订单",
-        dynamic_context="表结构：orders(id, user_id, amount, created_at)"
+        dynamic_context="表结构：orders(id, user_id, amount, created_at)",
     )
     # 该请求可获得约 80-90% 的缓存命中率
 

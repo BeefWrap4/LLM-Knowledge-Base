@@ -30,31 +30,58 @@
     - 2 × 24 layers × 2 × 64 × 2 = 12,288 bytes/token
     - 12,288 × 4096 × 32 ≈ 1.5 GB → 单 16GB 显卡足以
 """
+
 from __future__ import annotations
+
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class ModelConfig:
     """LLM 架构关键参数 (GQA 友好)."""
+
     name: str
     num_hidden_layers: int
-    num_attention_heads: int   # 实际 q heads (GQA 时常 > num_kv_heads)
+    num_attention_heads: int  # 实际 q heads (GQA 时常 > num_kv_heads)
     head_dim: int
-    num_kv_heads: int          # GQA 共享 KV heads; MQA 时 = 1
+    num_kv_heads: int  # GQA 共享 KV heads; MQA 时 = 1
     hidden_size: int
 
 
 # 真实模型配置 (2026 常见, 数字来自 HF config.json)
 KNOWN_MODELS: dict[str, ModelConfig] = {
-    "qwen2.5-0.5b": ModelConfig("Qwen2.5-0.5B",  num_hidden_layers=24, num_attention_heads=14,
-                                 head_dim=64,  num_kv_heads=2,  hidden_size=896),
-    "qwen2.5-7b":   ModelConfig("Qwen2.5-7B",    num_hidden_layers=28, num_attention_heads=28,
-                                 head_dim=128, num_kv_heads=4,  hidden_size=3584),
-    "qwen2.5-72b":  ModelConfig("Qwen2.5-72B",   num_hidden_layers=80, num_attention_heads=64,
-                                 head_dim=128, num_kv_heads=8,  hidden_size=8192),
-    "llama-3.1-8b": ModelConfig("Llama-3.1-8B",  num_hidden_layers=32, num_attention_heads=32,
-                                 head_dim=128, num_kv_heads=8,  hidden_size=4096),
+    "qwen2.5-0.5b": ModelConfig(
+        "Qwen2.5-0.5B",
+        num_hidden_layers=24,
+        num_attention_heads=14,
+        head_dim=64,
+        num_kv_heads=2,
+        hidden_size=896,
+    ),
+    "qwen2.5-7b": ModelConfig(
+        "Qwen2.5-7B",
+        num_hidden_layers=28,
+        num_attention_heads=28,
+        head_dim=128,
+        num_kv_heads=4,
+        hidden_size=3584,
+    ),
+    "qwen2.5-72b": ModelConfig(
+        "Qwen2.5-72B",
+        num_hidden_layers=80,
+        num_attention_heads=64,
+        head_dim=128,
+        num_kv_heads=8,
+        hidden_size=8192,
+    ),
+    "llama-3.1-8b": ModelConfig(
+        "Llama-3.1-8B",
+        num_hidden_layers=32,
+        num_attention_heads=32,
+        head_dim=128,
+        num_kv_heads=8,
+        hidden_size=4096,
+    ),
 }
 
 
@@ -90,9 +117,9 @@ def total_kv_cache(
         "per_token_kb": per_token / 1024,
         "per_seq_bytes": per_seq,
         "total_bytes": total,
-        "total_gb": total / (1024 ** 3),
+        "total_gb": total / (1024**3),
         "per_gpu_bytes": per_gpu,
-        "per_gpu_gb": per_gpu / (1024 ** 3),
+        "per_gpu_gb": per_gpu / (1024**3),
         "dtype_bytes": dtype_bytes,
         "max_seq_len": max_seq_len,
         "max_num_seqs": max_num_seqs,
@@ -143,10 +170,18 @@ def main() -> None:
         print(f"  total           = {info['total_gb']:.1f} GB")
         print(f"  per-GPU (单卡)  = {info['per_gpu_gb']:.1f} GB  → {recommend_gpu(info['per_gpu_gb'])}")
         # TP=2/4 演示
-        info_tp2 = total_kv_cache(cfg, max_seq_len=32768, max_num_seqs=64, dtype_bytes=dtype, tensor_parallel_size=2)
-        print(f"  TP=2 per-GPU    = {info_tp2['per_gpu_gb']:.1f} GB  → {recommend_gpu(info_tp2['per_gpu_gb'])}")
-        info_tp4 = total_kv_cache(cfg, max_seq_len=32768, max_num_seqs=64, dtype_bytes=dtype, tensor_parallel_size=4)
-        print(f"  TP=4 per-GPU    = {info_tp4['per_gpu_gb']:.1f} GB  → {recommend_gpu(info_tp4['per_gpu_gb'])}")
+        info_tp2 = total_kv_cache(
+            cfg, max_seq_len=32768, max_num_seqs=64, dtype_bytes=dtype, tensor_parallel_size=2
+        )
+        print(
+            f"  TP=2 per-GPU    = {info_tp2['per_gpu_gb']:.1f} GB  → {recommend_gpu(info_tp2['per_gpu_gb'])}"
+        )
+        info_tp4 = total_kv_cache(
+            cfg, max_seq_len=32768, max_num_seqs=64, dtype_bytes=dtype, tensor_parallel_size=4
+        )
+        print(
+            f"  TP=4 per-GPU    = {info_tp4['per_gpu_gb']:.1f} GB  → {recommend_gpu(info_tp4['per_gpu_gb'])}"
+        )
 
     print()
     print("=" * 70)
@@ -160,7 +195,7 @@ def main() -> None:
     # GQA 节省比例
     gqa_t = total_kv_cache(cfg_gqa, max_seq_len=4096, max_num_seqs=32, dtype_bytes=2)["total_gb"]
     mha_t = total_kv_cache(cfg_mha, max_seq_len=4096, max_num_seqs=32, dtype_bytes=2)["total_gb"]
-    print(f"\n  GQA 节省: {100*(1 - gqa_t/mha_t):.1f}% (相对 MHA)")
+    print(f"\n  GQA 节省: {100 * (1 - gqa_t / mha_t):.1f}% (相对 MHA)")
 
 
 if __name__ == "__main__":

@@ -19,18 +19,18 @@
 结合规则引擎和语义分析的Prompt Injection检测
 """
 
-import re
 import math
-from typing import Tuple, List
+import re
 from dataclasses import dataclass
 
 
 @dataclass
 class InjectionResult:
     """检测结果"""
+
     is_malicious: bool
     risk_score: float  # 0.0 ~ 1.0
-    matched_patterns: List[str]
+    matched_patterns: list[str]
     reason: str
 
 
@@ -111,12 +111,10 @@ class PromptInjectionDetector:
             is_malicious=is_malicious,
             risk_score=risk_score,
             matched_patterns=matched,
-            reason=reason
+            reason=reason,
         )
 
-    def _calculate_score(
-        self, high: int, medium: int, low: int, text: str
-    ) -> float:
+    def _calculate_score(self, high: int, medium: int, low: int, text: str) -> float:
         """计算风险评分（0.0 ~ 1.0）"""
         # 基础分：不同等级不同权重
         base_score = min(1.0, high * 0.4 + medium * 0.2 + low * 0.1)
@@ -134,6 +132,7 @@ class PromptInjectionDetector:
 
 
 # ========== 面试扩展：与LLM结合的语义检测 ==========
+
 
 class HybridInjectionDetector(PromptInjectionDetector):
     """混合注入检测器：规则引擎 + LLM语义分析"""

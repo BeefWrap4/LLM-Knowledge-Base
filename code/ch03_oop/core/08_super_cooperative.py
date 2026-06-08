@@ -22,25 +22,30 @@ super() 在多继承中的协同调用（Cooperative Multiple Inheritance）
 核心设计模式：所有类都调用 super()，确保 MRO 链完整执行
 """
 
+
 class Base:
     def __init__(self):
         print("Base.__init__")
-        super().__init__()   # 关键：即使是基类也要调用 super()
+        super().__init__()  # 关键：即使是基类也要调用 super()
+
 
 class FeatureA(Base):
     def __init__(self):
         print("FeatureA.__init__")
         super().__init__()
 
+
 class FeatureB(Base):
     def __init__(self):
         print("FeatureB.__init__")
         super().__init__()
 
+
 class MyClass(FeatureA, FeatureB):
     def __init__(self):
         print("MyClass.__init__")
         super().__init__()
+
 
 # MRO: MyClass -> FeatureA -> FeatureB -> Base -> object
 obj = MyClass()
@@ -53,20 +58,24 @@ obj = MyClass()
 # 🎯 面试陷阱：忘记调用 super()
 # ─────────────────────────────────────────────────────────────
 
+
 class BadA:
     def __init__(self):
         print("BadA.__init__")
         # ❌ 没有调用 super()
+
 
 class BadB:
     def __init__(self):
         print("BadB.__init__")
         super().__init__()
 
+
 class BadChild(BadA, BadB):
     def __init__(self):
         print("BadChild.__init__")
         super().__init__()
+
 
 # MRO: BadChild -> BadA -> BadB -> object
 BadChild()

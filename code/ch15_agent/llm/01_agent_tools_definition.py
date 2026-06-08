@@ -20,23 +20,17 @@ TOOLS = [
     {
         "name": "web_search",
         "description": "搜索引擎，用于获取最新信息",
-        "parameters": {
-            "query": {"type": "string", "description": "搜索关键词"}
-        }
+        "parameters": {"query": {"type": "string", "description": "搜索关键词"}},
     },
     {
         "name": "calculator",
         "description": "计算器，执行数学运算",
-        "parameters": {
-            "expression": {"type": "string", "description": "数学表达式"}
-        }
+        "parameters": {"expression": {"type": "string", "description": "数学表达式"}},
     },
     {
         "name": "database_query",
         "description": "数据库查询",
-        "parameters": {
-            "sql": {"type": "string", "description": "SQL 语句"}
-        }
+        "parameters": {"sql": {"type": "string", "description": "SQL 语句"}},
     },
     {
         "name": "send_email",
@@ -44,8 +38,8 @@ TOOLS = [
         "parameters": {
             "to": {"type": "string"},
             "subject": {"type": "string"},
-            "body": {"type": "string"}
-        }
+            "body": {"type": "string"},
+        },
     },
 ]
 

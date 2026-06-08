@@ -16,13 +16,13 @@
 # 2. 为什么 PCA 之前必须做标准化?（消除量纲影响）
 # 3. 如何选择保留的主成分数量?（累计方差贡献率 ≥ 95%）
 
+from sklearn.datasets import make_classification
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-from sklearn.datasets import make_classification
+
 
 def main():
-    X, _ = make_classification(n_samples=1000, n_features=20, n_informative=10,
-                               random_state=42)
+    X, _ = make_classification(n_samples=1000, n_features=20, n_informative=10, random_state=42)
 
     # 标准化 + PCA
     scaler = StandardScaler()

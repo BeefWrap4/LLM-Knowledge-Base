@@ -19,7 +19,7 @@ import torch
 
 # ========== 基础求导 ==========
 x = torch.tensor(2.0, requires_grad=True)
-y = x ** 3 + 2 * x
+y = x**3 + 2 * x
 
 # 反向传播
 y.backward()

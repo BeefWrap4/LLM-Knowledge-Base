@@ -46,6 +46,7 @@ def is_anagram(s: str, t: str) -> bool:
         return False
 
     from collections import Counter
+
     return Counter(s) == Counter(t)
 
 
@@ -99,4 +100,3 @@ if __name__ == "__main__":
     assert hs.contains(2) is True
     hs.remove(2)
     assert hs.contains(2) is False
-

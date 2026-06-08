@@ -15,13 +15,14 @@
 #  - 1% 采样跑 Judge 的成本估算公式？
 #  - bad case 自动入训练集的反馈回路有哪些工程陷阱（标签噪声、时序）？
 
-import random
 import queue
+import random
+
 from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from opentelemetry.sdk.resources import Resource
 
 provider = TracerProvider(resource=Resource.create({"service.name": "in-prod-eval"}))
 exporter = InMemorySpanExporter()
@@ -66,12 +67,14 @@ def with_judge(llm_call_span, response_text: str, query: str, ground_truth=None)
             },
         )
     if scores["hallucination"] < 0.3:
-        bad_case_queue.put({
-            "trace_id": format(llm_call_span.get_span_context().trace_id, "032x"),
-            "query": query,
-            "response": response_text,
-            "scores": scores,
-        })
+        bad_case_queue.put(
+            {
+                "trace_id": format(llm_call_span.get_span_context().trace_id, "032x"),
+                "query": query,
+                "response": response_text,
+                "scores": scores,
+            }
+        )
     return scores
 
 
@@ -87,7 +90,5 @@ if __name__ == "__main__":
                 sampled += 1
     print(f"sampled_judges: {sampled}, bad_cases_in_queue: {bad_case_queue.qsize()}")
     spans = exporter.get_finished_spans()
-    judge_event_count = sum(
-        1 for s in spans for e in s.events if e.name.startswith("judge.")
-    )
+    judge_event_count = sum(1 for s in spans for e in s.events if e.name.startswith("judge."))
     print(f"judge events on spans: {judge_event_count}")

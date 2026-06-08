@@ -16,9 +16,10 @@
 # 2. 高斯 / 多项式 / 伯努利朴素贝叶斯分别适用于什么数据?
 # 3. 朴素贝叶斯为何对小规模数据和高维稀疏数据（文本）效果好?
 
-from sklearn.naive_bayes import GaussianNB
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
+
 
 def main():
     iris = load_iris()

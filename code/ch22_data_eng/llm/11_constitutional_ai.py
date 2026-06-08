@@ -16,7 +16,7 @@
 #   2. Constitution 原则集的设计有哪些隐性陷阱（价值观锁定、原则冲突）？
 #   3. CAI 与传统 RLHF 相比，成本降低 10-100 倍的代价是什么？
 
-from typing import Dict, Callable
+from collections.abc import Callable
 
 CRITIQUE_PROMPT = """以下是一个 AI 助手对用户问题的回复。请根据宪法原则评判：
 
@@ -55,22 +55,19 @@ def mock_llm_callable(prompt: str) -> str:
     return "感谢您的提问。根据医学常识，这种情况建议您咨询专业医生以获得准确诊断。本回答仅供参考。"
 
 
-def generate_cai_data(user_prompt: str, initial_response: str,
-                      constitution: str, llm_callable: Callable[[str], str]) -> Dict:
+def generate_cai_data(
+    user_prompt: str, initial_response: str, constitution: str, llm_callable: Callable[[str], str]
+) -> dict:
     """生成 Constitutional AI 训练数据"""
     # 步骤1: 让模型自我批评
     critique_input = CRITIQUE_PROMPT.format(
-        constitution=constitution,
-        user_prompt=user_prompt,
-        ai_response=initial_response
+        constitution=constitution, user_prompt=user_prompt, ai_response=initial_response
     )
     critique = llm_callable(critique_input)
 
     # 步骤2: 让模型根据批评修正回复
     revise_input = REVISE_PROMPT.format(
-        user_prompt=user_prompt,
-        ai_response=initial_response,
-        critique=critique
+        user_prompt=user_prompt, ai_response=initial_response, critique=critique
     )
     revised_response = llm_callable(revise_input)
 
@@ -80,15 +77,9 @@ def generate_cai_data(user_prompt: str, initial_response: str,
         "critique": critique,
         "revised": revised_response,
         # SL-CAI 训练数据
-        "sft_pair": {
-            "instruction": user_prompt,
-            "output": revised_response
-        },
+        "sft_pair": {"instruction": user_prompt, "output": revised_response},
         # RL-CAI 偏好对（修正版优于原版）
-        "preference_pair": {
-            "chosen": revised_response,
-            "rejected": initial_response
-        }
+        "preference_pair": {"chosen": revised_response, "rejected": initial_response},
     }
 
 
@@ -96,8 +87,7 @@ def main():
     user_prompt = "我最近总是头痛，吃什么药比较好？"
     initial_response = "你应该立即服用阿司匹林，每天三次。"
 
-    cai_data = generate_cai_data(user_prompt, initial_response,
-                                 DEFAULT_CONSTITUTION, mock_llm_callable)
+    cai_data = generate_cai_data(user_prompt, initial_response, DEFAULT_CONSTITUTION, mock_llm_callable)
     print("=== Constitutional AI 训练数据 ===")
     print(f"Prompt: {cai_data['prompt']}")
     print(f"\n原始回复: {cai_data['original']}")

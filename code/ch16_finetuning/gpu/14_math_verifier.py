@@ -25,6 +25,7 @@
   - ast 解析 (无 eval 注入风险)
   - 字符串 + 数值双轨比对
 """
+
 import ast
 import re
 import sys
@@ -63,7 +64,7 @@ def _eval_node(node):
         if isinstance(node.op, ast.Mod):
             return left % right
         if isinstance(node.op, ast.Pow):
-            return left ** right
+            return left**right
     if isinstance(node, ast.UnaryOp):
         if isinstance(node.op, ast.USub):
             return -_eval_node(node.operand)
@@ -127,8 +128,8 @@ def main():
         ("100/4", "25", True),
         ("1/3 + 1/3 + 1/3", "1", True),
         ("3.14 * 2", "6.28", True),
-        ("1 + 1", "2.0", True),    # 字符串不同但数值等
-        ("1 + 1", "3", False),      # 数值不等
+        ("1 + 1", "2.0", True),  # 字符串不同但数值等
+        ("1 + 1", "3", False),  # 数值不等
     ]
     correct = 0
     for expected, predicted, want in test_cases:
@@ -149,8 +150,10 @@ def main():
     ]
     for output, gt in rlvr_cases:
         total, info = composite_reward(output, gt)
-        print(f"  total={total:.2f} | acc={info['accuracy']} "
-              f"| boxed={info['has_boxed']} | think={info['has_think']}")
+        print(
+            f"  total={total:.2f} | acc={info['accuracy']} "
+            f"| boxed={info['has_boxed']} | think={info['has_think']}"
+        )
         print(f"    pred='{output[:60]}...' gt='{gt}'")
 
 

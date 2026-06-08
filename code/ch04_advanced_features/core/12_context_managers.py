@@ -25,6 +25,7 @@
 # 类实现上下文管理器
 # ─────────────────────────────────────────────────────────────
 
+
 class DatabaseConnection:
     """
     数据库连接上下文管理器
@@ -38,7 +39,7 @@ class DatabaseConnection:
         """进入 with 块时调用 —— 获取资源"""
         print(f"🔗 连接数据库: {self.connection_string}")
         self.connection = f"<连接: {self.connection_string}>"
-        return self   # 返回的资源会被 as 变量接收
+        return self  # 返回的资源会被 as 变量接收
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """退出 with 块时调用 —— 释放资源"""
@@ -56,6 +57,7 @@ class DatabaseConnection:
         print(f"执行 SQL: {sql}")
         return f"[{sql}] 的结果"
 
+
 # 使用
 with DatabaseConnection("mysql://localhost/mydb") as db:
     result = db.query("SELECT * FROM users")
@@ -71,6 +73,7 @@ with DatabaseConnection("mysql://localhost/mydb") as db:
 
 from contextlib import contextmanager
 
+
 @contextmanager
 def db_connection(connection_string):
     """
@@ -85,10 +88,11 @@ def db_connection(connection_string):
     connection = f"<连接: {connection_string}>"
 
     try:
-        yield connection   # ← 这行相当于 return，控制权交给 with 块
+        yield connection  # ← 这行相当于 return，控制权交给 with 块
     finally:
         # ── __exit__ 部分（finally 保证一定执行）──
         print("🔒 关闭数据库连接")
+
 
 # 使用
 with db_connection("postgresql://localhost/prod") as conn:
@@ -98,17 +102,20 @@ with db_connection("postgresql://localhost/prod") as conn:
 # 多个上下文管理器
 # ─────────────────────────────────────────────────────────────
 
+
 @contextmanager
 def file_reader(filepath):
-    f = open(filepath, "r")
+    f = open(filepath)
     try:
         yield f
     finally:
         f.close()
 
+
 @contextmanager
 def timer_ctx(name):
     import time
+
     start = time.perf_counter()
     try:
         yield

@@ -16,7 +16,7 @@
 #  - 双规范导出时如何避免属性命名冲突（属性重命名 / prefix）？
 
 from opentelemetry import trace
-from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION
+from opentelemetry.sdk.resources import SERVICE_NAME, SERVICE_VERSION, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -32,6 +32,7 @@ trace.set_tracer_provider(provider)
 try:
     from openinference.instrumentation.langchain import LangChainInstrumentor
     from openinference.instrumentation.openai import OpenAIInstrumentor
+
     LangChainInstrumentor().instrument(tracer_provider=provider)
     OpenAIInstrumentor().instrument(tracer_provider=provider)
     _HAS_OI = True
@@ -42,7 +43,14 @@ except Exception:
 # OpenInference SpanKind 枚举（mocked）
 OPENINFERENCE_SPAN_KIND = "openinference.span.kind"
 SPAN_KIND_VALUES = {
-    "CHAIN", "LLM", "RETRIEVER", "TOOL", "AGENT", "EMBEDDING", "RERANKER", "UNKNOWN",
+    "CHAIN",
+    "LLM",
+    "RETRIEVER",
+    "TOOL",
+    "AGENT",
+    "EMBEDDING",
+    "RERANKER",
+    "UNKNOWN",
 }
 
 
@@ -56,10 +64,15 @@ def instrument_retrieval(query: str, top_k: int = 5):
 
         # 业务执行（离线 mock）
         docs = [
-            type("Doc", (), {
-                "metadata": {"id": f"doc_{i}", "score": 0.9 - i * 0.1},
-                "page_content": f"document content {i}",
-            })() for i in range(min(top_k, 3))
+            type(
+                "Doc",
+                (),
+                {
+                    "metadata": {"id": f"doc_{i}", "score": 0.9 - i * 0.1},
+                    "page_content": f"document content {i}",
+                },
+            )()
+            for i in range(min(top_k, 3))
         ]
 
         span.set_attribute("retrieval.document.count", len(docs))

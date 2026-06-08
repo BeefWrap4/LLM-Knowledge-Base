@@ -15,6 +15,7 @@
 #   2. Q4_K_M 和 Q5_K_M 在端侧 7B 推理时怎么选?
 #   3. llama.cpp 的 mmap 加载机制如何实现秒级启动?
 """llama.cpp + GGUF 量化等级对比 + 真实 llama-cpp-python 推理."""
+
 from __future__ import annotations
 
 import sys
@@ -26,17 +27,16 @@ if str(_code_root) not in sys.path:
 
 from shared._error_helper import raise_with_help
 
-
 # GGUF 量化类型: 精度 vs 模型大小 vs 适用场景
 QUANT_TABLE = [
-    ("Q2_K",   2,  2.7, "大",     "极致压缩, 质量损失明显, 嵌入式/IoT"),
-    ("Q3_K_M", 3,  3.3, "中等",   "M = medium, 平衡压缩与质量"),
-    ("Q4_0",   4,  3.8, "小",     "老式对称量化, 已被 Q4_K 取代"),
-    ("Q4_K_M", 4,  4.1, "极小",   "⭐ 端侧 7B 黄金标准, 推荐默认"),
-    ("Q5_K_M", 5,  4.8, "几乎无", "质量优先, 内存允许时选这个"),
-    ("Q6_K",   6,  5.5, "几乎无", "接近 FP16, 高端 PC/工作站"),
-    ("Q8_0",   8,  7.2, "无",     "几乎无损, 研究/基准测试用"),
-    ("F16",   16,  13.5, "无",    "半精度, 部署用得少"),
+    ("Q2_K", 2, 2.7, "大", "极致压缩, 质量损失明显, 嵌入式/IoT"),
+    ("Q3_K_M", 3, 3.3, "中等", "M = medium, 平衡压缩与质量"),
+    ("Q4_0", 4, 3.8, "小", "老式对称量化, 已被 Q4_K 取代"),
+    ("Q4_K_M", 4, 4.1, "极小", "⭐ 端侧 7B 黄金标准, 推荐默认"),
+    ("Q5_K_M", 5, 4.8, "几乎无", "质量优先, 内存允许时选这个"),
+    ("Q6_K", 6, 5.5, "几乎无", "接近 FP16, 高端 PC/工作站"),
+    ("Q8_0", 8, 7.2, "无", "几乎无损, 研究/基准测试用"),
+    ("F16", 16, 13.5, "无", "半精度, 部署用得少"),
 ]
 
 
@@ -52,11 +52,11 @@ def device_recommendation() -> None:
     """根据设备内存推荐量化等级."""
     print("\n--- 端侧设备推荐 ---")
     devices = [
-        ("iPhone 15 Pro",        8,  "3B Q4_K_M  (1.8GB)"),
-        ("MacBook Air M2",      16,  "7B Q4_K_M  (4.1GB)"),
-        ("MacBook Pro M3 Max",  64,  "70B Q4_K_M (40GB)"),
-        ("Snapdragon 8 Gen 3",  12,  "7B Q4_K_M  (4.1GB)"),
-        ("RTX 4090",            24,  "70B Q4_K_M (40GB) - 量化"),
+        ("iPhone 15 Pro", 8, "3B Q4_K_M  (1.8GB)"),
+        ("MacBook Air M2", 16, "7B Q4_K_M  (4.1GB)"),
+        ("MacBook Pro M3 Max", 64, "70B Q4_K_M (40GB)"),
+        ("Snapdragon 8 Gen 3", 12, "7B Q4_K_M  (4.1GB)"),
+        ("RTX 4090", 24, "70B Q4_K_M (40GB) - 量化"),
     ]
     print(f"{'设备':<25} {'内存GB':<8} {'推荐配置'}")
     print("-" * 60)
@@ -93,9 +93,9 @@ def main() -> None:
     print(f"加载 GGUF: {model_path}")
     llm = Llama(
         model_path=model_path,
-        n_ctx=2048,           # 上下文窗口
-        n_threads=4,          # CPU 线程数 (macOS 推荐 = 物理核数)
-        n_gpu_layers=0,       # 0=纯CPU; Metal/MPS 用 -1; CUDA 用 -1
+        n_ctx=2048,  # 上下文窗口
+        n_threads=4,  # CPU 线程数 (macOS 推荐 = 物理核数)
+        n_gpu_layers=0,  # 0=纯CPU; Metal/MPS 用 -1; CUDA 用 -1
         verbose=True,
     )
 

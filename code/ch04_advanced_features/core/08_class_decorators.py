@@ -29,11 +29,12 @@ from functools import wraps
 # 类作为装饰器（通过 __call__）
 # ─────────────────────────────────────────────────────────────
 
+
 class CountCalls:
     """类装饰器 —— 统计函数被调用次数"""
 
     def __init__(self, func):
-        wraps(func)(self)   # 等价于 @wraps(func)，但 self 是类实例
+        wraps(func)(self)  # 等价于 @wraps(func)，但 self 是类实例
         self.count = 0
 
     def __call__(self, *args, **kwargs):
@@ -44,29 +45,36 @@ class CountCalls:
     def __get__(self, instance, owner):
         """支持实例方法绑定 —— 将实例绑定到第一个参数"""
         from functools import partial
+
         return partial(self.__call__, instance)
+
 
 @CountCalls
 def greet(name):
     return f"Hello {name}"
 
-greet("Alice")   # 被调用第 1 次
-greet("Bob")     # 被调用第 2 次
+
+greet("Alice")  # 被调用第 1 次
+greet("Bob")  # 被调用第 2 次
 print(f"总调用次数: {greet.count}")
 
 # ─────────────────────────────────────────────────────────────
 # 类装饰器 —— 给类添加功能
 # ─────────────────────────────────────────────────────────────
 
+
 def singleton_class(cls):
     """类装饰器 —— 将任意类变为单例"""
     instances = {}
+
     @wraps(cls)
     def wrapper(*args, **kwargs):
         if cls not in instances:
             instances[cls] = cls(*args, **kwargs)
         return instances[cls]
+
     return wrapper
+
 
 @singleton_class
 class Database:
@@ -74,10 +82,11 @@ class Database:
         self.url = url
         print(f"初始化数据库: {url}")
 
+
 db1 = Database("mysql://localhost")
 db2 = Database("postgresql://remote")
-print(f"同一实例? {db1 is db2}")    # True
-print(f"URL: {db2.url}")             # mysql://localhost
+print(f"同一实例? {db1 is db2}")  # True
+print(f"URL: {db2.url}")  # mysql://localhost
 
 
 if __name__ == "__main__":

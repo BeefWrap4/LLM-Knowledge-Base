@@ -47,25 +47,28 @@
 # 用 type 动态创建类
 # ─────────────────────────────────────────────────────────────
 
+
 def say_hello(self):
     return f"Hello, I'm {self.name}"
 
+
 # type(name, bases, namespace)
 DynamicClass = type(
-    "DynamicClass",           # 类名
-    (object,),                # 基类元组
-    {                         # 属性字典
+    "DynamicClass",  # 类名
+    (object,),  # 基类元组
+    {  # 属性字典
         "__init__": lambda self, name: setattr(self, "name", name),
         "say_hello": say_hello,
-    }
+    },
 )
 
 obj = DynamicClass("Dynamic")
-print(obj.say_hello())   # "Hello, I'm Dynamic"
+print(obj.say_hello())  # "Hello, I'm Dynamic"
 
 # ─────────────────────────────────────────────────────────────
 # 自定义元类
 # ─────────────────────────────────────────────────────────────
+
 
 class ValidateMeta(type):
     """
@@ -117,14 +120,17 @@ class ValidateMeta(type):
         super().__init__(name, bases, namespace)
         cls.class_timestamp = "2025-01-01"
 
+
 class Product(metaclass=ValidateMeta):
     """使用自定义元类的类"""
+
     name = ""
     price = 0.0
 
     def __init__(self, name, price):
         self.name = name
         self.price = price
+
 
 # Product 的创建过程中 ValidateMeta.__new__ 和 __init__ 被调用
 print(f"Product.class_timestamp: {Product.class_timestamp}")
@@ -133,8 +139,10 @@ print(f"Product.class_timestamp: {Product.class_timestamp}")
 # 元类实现单例（回顾）
 # ─────────────────────────────────────────────────────────────
 
+
 class SingletonMeta(type):
     """单例元类 —— 控制实例创建"""
+
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
@@ -142,13 +150,15 @@ class SingletonMeta(type):
             cls._instances[cls] = super().__call__(*args, **kwargs)
         return cls._instances[cls]
 
+
 class AppConfig(metaclass=SingletonMeta):
     def __init__(self):
         self.debug = False
 
+
 c1 = AppConfig()
 c2 = AppConfig()
-print(f"元类单例: {c1 is c2}")   # True
+print(f"元类单例: {c1 is c2}")  # True
 
 # ─────────────────────────────────────────────────────────────
 # 元类的应用场景（面试常问）

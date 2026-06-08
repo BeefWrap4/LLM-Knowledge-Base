@@ -14,28 +14,45 @@
 #   1. SSE 与 WebSocket 在协议层和适用场景上的核心差异？
 #   2. StreamingResponse 的 media_type="text/event-stream" 起到什么作用？
 #   3. 在 yield 异步生成器中如何优雅处理客户端断连 (GeneratorExit)？
-from fastapi import FastAPI, Query
-from fastapi.responses import StreamingResponse
 import asyncio
 import json
 
+from fastapi import FastAPI, Query
+from fastapi.responses import StreamingResponse
+
 app = FastAPI(title="LLM Streaming Demo")
+
 
 async def generate_tokens_stream(prompt: str):
     """模拟 LLM 流式生成"""
-    tokens = ["Fast", "API", "是", "一个", "现代", "、", "高性能", "的",
-              "Python", "Web", "框架", "，", "特别适合", "构建", "LLM", "服务", "。"]
+    tokens = [
+        "Fast",
+        "API",
+        "是",
+        "一个",
+        "现代",
+        "、",
+        "高性能",
+        "的",
+        "Python",
+        "Web",
+        "框架",
+        "，",
+        "特别适合",
+        "构建",
+        "LLM",
+        "服务",
+        "。",
+    ]
     full_response = ""
     for token in tokens:
         await asyncio.sleep(0.05)  # 模拟推理延迟（示例加速）
         full_response += token
-        chunk = {
-            "token": token,
-            "choices": [{"delta": {"content": token}}]
-        }
+        chunk = {"token": token, "choices": [{"delta": {"content": token}}]}
         yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
     # 发送结束标记
     yield f"data: {json.dumps({'done': True, 'full_text': full_response})}\n\n"
+
 
 @app.get("/chat/stream", summary="流式对话（SSE）")
 async def chat_stream(message: str = Query(min_length=1)):
@@ -46,7 +63,7 @@ async def chat_stream(message: str = Query(min_length=1)):
     return StreamingResponse(
         generate_tokens_stream(message),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
 
 
@@ -73,6 +90,7 @@ if __name__ == "__main__":
     payloads = [json.loads(c.removeprefix("data: ").strip()) for c in chunks]
     last = payloads[-1]
     assert last.get("done") is True
-    assert last["full_text"].endswith("LLM服务。"), \
+    assert last["full_text"].endswith("LLM服务。"), (
         f"full_text 应以 'LLM服务。' 结尾, 实际: {last['full_text']!r}"
+    )
     print(f"累计产出 {len(chunks)} 个 SSE chunk，完整文本: {last['full_text']}")

@@ -21,13 +21,14 @@
 Python 通过命名约定实现封装（非强制）
 """
 
+
 class Temperature:
     """
     温度类 —— 封装 Celsius 和 Fahrenheit 的转换逻辑
     """
 
     def __init__(self, celsius: float = 0):
-        self._celsius = celsius   # 内部使用下划线前缀
+        self._celsius = celsius  # 内部使用下划线前缀
 
     @property
     def celsius(self) -> float:
@@ -55,6 +56,7 @@ class Temperature:
     def kelvin(self) -> float:
         """开尔文"""
         return self._celsius + 273.15
+
 
 # 使用 —— 封装隐藏了转换公式
 t = Temperature(25)

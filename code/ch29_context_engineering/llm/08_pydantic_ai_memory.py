@@ -21,14 +21,15 @@
 #   - "记忆系统设计原则?"       →  分层/选择性/可检索/可更新/隐私
 
 from __future__ import annotations
+
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass
 class ShortTermMemory:
     """STM: 当前会话的对话历史 (in-context, 速度优先)。"""
+
     capacity: int = 20
     messages: deque = field(default_factory=lambda: deque(maxlen=20))
 
@@ -42,6 +43,7 @@ class ShortTermMemory:
 @dataclass
 class LongTermMemory:
     """LTM: 用户偏好/事实, 向量检索 (mock 为关键词命中)。"""
+
     facts: list[dict] = field(default_factory=list)  # [{"text","tags"}]
 
     def add(self, text: str, tags: list[str]) -> None:
@@ -51,7 +53,9 @@ class LongTermMemory:
         q = set(query.lower().split())
         scored = []
         for f in self.facts:
-            s = len(q & set(" ".join(f["tags"]).lower().split())) + (0.5 if any(w in f["text"].lower() for w in q) else 0)
+            s = len(q & set(" ".join(f["tags"]).lower().split())) + (
+                0.5 if any(w in f["text"].lower() for w in q) else 0
+            )
             if s > 0:
                 scored.append((s, f))
         scored.sort(key=lambda x: -x[0])
@@ -61,6 +65,7 @@ class LongTermMemory:
 @dataclass
 class EpisodicMemory:
     """Episodic: 过去事件的摘要, 按时间索引。"""
+
     episodes: list[dict] = field(default_factory=list)  # [{"ts","summary"}]
 
     def add(self, summary: str) -> None:
@@ -73,6 +78,7 @@ class EpisodicMemory:
 @dataclass
 class ProceduralMemory:
     """Procedural: 技能/工具使用流程 (instructable, 可被 prompt 注入)。"""
+
     skills: list[str] = field(default_factory=list)
 
     def add(self, skill: str) -> None:

@@ -1,5 +1,6 @@
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
+
 _code_root = _Path_setup(__file__).resolve().parent.parent.parent
 if str(_code_root) not in _sys_path_setup.path:
     _sys_path_setup.path.insert(0, str(_code_root))
@@ -42,7 +43,7 @@ def call_openai_structured(user_text: str):
     return _client.chat(
         messages=[
             {"role": "system", "content": "从用户描述中提取结构化信息。"},
-            {"role": "user", "content": user_text}
+            {"role": "user", "content": user_text},
         ],
         # 注: 真实 json_schema 仅 OpenAI 支持; 其他厂商会回退到普通 JSON 模式
     )

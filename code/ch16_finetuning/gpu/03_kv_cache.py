@@ -24,6 +24,7 @@ KV Cache 显存公式:
 GQA (Grouped Query Attention) 通过 num_kv_heads < num_heads 节省 KV cache.
 例: Qwen2.5-7B 28 layers, 28 query heads, 4 kv heads → 节省 7x.
 """
+
 from dataclasses import dataclass
 
 
@@ -43,10 +44,10 @@ class ModelKVConfig:
 # 主流模型 KV cache 配置 (来源: HuggingFace config.json)
 CONFIGS = {
     "qwen2.5-0.5b": ModelKVConfig("Qwen2.5-0.5B", 24, 2, 64, num_query_heads=14),  # GQA
-    "qwen2.5-7b":   ModelKVConfig("Qwen2.5-7B",  28, 4, 128, num_query_heads=28), # GQA
-    "qwen2.5-72b":  ModelKVConfig("Qwen2.5-72B", 80, 8, 128, num_query_heads=64), # GQA
-    "llama-3-8b":   ModelKVConfig("Llama-3-8B",  32, 8, 128, num_query_heads=32), # GQA
-    "llama-2-7b":   ModelKVConfig("Llama-2-7B",  32, 32, 128),                    # MHA
+    "qwen2.5-7b": ModelKVConfig("Qwen2.5-7B", 28, 4, 128, num_query_heads=28),  # GQA
+    "qwen2.5-72b": ModelKVConfig("Qwen2.5-72B", 80, 8, 128, num_query_heads=64),  # GQA
+    "llama-3-8b": ModelKVConfig("Llama-3-8B", 32, 8, 128, num_query_heads=32),  # GQA
+    "llama-2-7b": ModelKVConfig("Llama-2-7B", 32, 32, 128),  # MHA
 }
 
 
@@ -75,9 +76,7 @@ def main():
     for cfg in CONFIGS.values():
         per_tok = kv_per_token(cfg) / 1024
         gqa_ratio = cfg.num_query_heads / cfg.num_kv_heads
-        print(
-            f"{cfg.name:<15} {cfg.num_kv_heads:>10} {per_tok:>9.1f}KB {gqa_ratio:>11.1f}x"
-        )
+        print(f"{cfg.name:<15} {cfg.num_kv_heads:>10} {per_tok:>9.1f}KB {gqa_ratio:>11.1f}x")
 
     # 2) 不同 ctx 长度 + batch 大小下的总 KV cache
     print("\n总 KV cache (4K ctx, batch=32, fp16):")

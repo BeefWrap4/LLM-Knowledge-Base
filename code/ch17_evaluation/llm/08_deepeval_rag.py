@@ -19,6 +19,7 @@
 
 DeepEval 是一个面向 LLM 应用的测试框架，类似于"LLM 的 pytest"。
 """
+
 import os
 
 
@@ -36,14 +37,14 @@ def run_deepeval_test() -> None:
 
     try:
         from deepeval import assert_test
-        from deepeval.test_case import LLMTestCase
         from deepeval.metrics import (
             AnswerRelevancyMetric,
-            FaithfulnessMetric,
-            ContextualRecallMetric,
             ContextualPrecisionMetric,
+            ContextualRecallMetric,
+            FaithfulnessMetric,
             HallucinationMetric,
         )
+        from deepeval.test_case import LLMTestCase
     except ImportError as exc:
         print(f"[mock] deepeval 未安装 ({exc})，使用模拟输出")
         return

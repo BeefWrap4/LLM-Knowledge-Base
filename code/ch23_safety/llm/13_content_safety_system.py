@@ -23,13 +23,13 @@
 3. 多级判定策略：规则过滤 → 模型检测 → 人工审核
 """
 
-from enum import Enum
-from typing import Dict, List, Optional
 from dataclasses import dataclass
+from enum import Enum
 
 
 class ContentCategory(Enum):
     """内容安全类别"""
+
     POLITICAL = "涉政"
     ADULT = "涉黄"
     VIOLENCE = "涉暴"
@@ -41,11 +41,12 @@ class ContentCategory(Enum):
 @dataclass
 class ContentSafetyResult:
     """内容安全检查结果"""
+
     is_safe: bool
-    categories_detected: List[ContentCategory]
-    confidence_scores: Dict[ContentCategory, float]
+    categories_detected: list[ContentCategory]
+    confidence_scores: dict[ContentCategory, float]
     action: str  # PASS / BLOCK / REVIEW / MODIFY
-    modified_content: Optional[str] = None
+    modified_content: str | None = None
 
 
 class ContentSafetySystem:
@@ -61,10 +62,10 @@ class ContentSafetySystem:
             # 实际使用中会接入专业敏感词库
         ],
         ContentCategory.ADULT: [
-            r'(?i)\b(?:explicit_sexual_terms_pattern)\b',
+            r"(?i)\b(?:explicit_sexual_terms_pattern)\b",
         ],
         ContentCategory.VIOLENCE: [
-            r'(?i)\b(?:violence_related_patterns)\b',
+            r"(?i)\b(?:violence_related_patterns)\b",
         ],
     }
 
@@ -73,7 +74,7 @@ class ContentSafetySystem:
         enable_rule_filter: bool = True,
         enable_ml_classifier: bool = True,
         enable_llm_check: bool = True,
-        human_review_threshold: float = 0.6
+        human_review_threshold: float = 0.6,
     ):
         """
         Args:
@@ -133,23 +134,20 @@ class ContentSafetySystem:
             is_safe = False
 
         return ContentSafetyResult(
-            is_safe=is_safe,
-            categories_detected=detected,
-            confidence_scores=scores,
-            action=action
+            is_safe=is_safe, categories_detected=detected, confidence_scores=scores, action=action
         )
 
-    def _rule_based_filter(self, text: str) -> Dict:
+    def _rule_based_filter(self, text: str) -> dict:
         """规则过滤（L1）"""
         # 实现正则/关键词匹配
         return {"detected": [], "scores": {}}
 
-    def _ml_classifier(self, text: str) -> Dict:
+    def _ml_classifier(self, text: str) -> dict:
         """ML分类器（L2）"""
         # 实际中使用微调的分类模型
         return {"detected": [], "scores": {}}
 
-    def _llm_review(self, text: str, initial_detected: List) -> Dict:
+    def _llm_review(self, text: str, initial_detected: list) -> dict:
         """LLM审核（L3）
 
         面试中可用伪代码描述：

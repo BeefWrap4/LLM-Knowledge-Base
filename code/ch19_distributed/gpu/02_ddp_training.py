@@ -23,18 +23,20 @@
   双卡真实:   accelerate launch --num_processes 2 02_ddp_training.py
   4 卡:       accelerate launch --num_processes 4 02_ddp_training.py
 """
+
 import os
 import sys
+from pathlib import Path
+
 import torch
 import torch.distributed as dist
-from pathlib import Path
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import require_nvidia_gpu
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import require_nvidia_gpu
 
 
 def check_hardware():
@@ -44,6 +46,7 @@ def check_hardware():
 
 class SyntheticDataset(torch.utils.data.Dataset):
     """合成 dataset (避免下载大语料)."""
+
     def __init__(self, size: int = 200, seq_len: int = 64):
         self.size = size
         self.seq_len = seq_len
@@ -96,7 +99,9 @@ def main():
     # DDP 包装
     if world_size > 1:
         model = torch.nn.parallel.DistributedDataParallel(
-            model, device_ids=[local_rank], output_device=local_rank,
+            model,
+            device_ids=[local_rank],
+            output_device=local_rank,
         )
 
     # 合成 dataset + DDP-aware sampler
@@ -107,9 +112,7 @@ def main():
         )
     else:
         sampler = None
-    loader = torch.utils.data.DataLoader(
-        dataset, batch_size=2, sampler=sampler, shuffle=(sampler is None)
-    )
+    loader = torch.utils.data.DataLoader(dataset, batch_size=2, sampler=sampler, shuffle=(sampler is None))
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
 
@@ -138,14 +141,14 @@ def main():
     # 汇总 (仅 rank 0)
     if local_rank == 0:
         avg_loss = sum(losses) / len(losses)
-        print(f"\n=== 训练完成 ===")
+        print("\n=== 训练完成 ===")
         print(f"  total steps: {len(losses)}")
         print(f"  avg loss: {avg_loss:.4f}")
         print(f"  final loss: {losses[-1]:.4f}")
         if losses[-1] < losses[0]:
             print(f"  loss 下降: {losses[0]:.4f} -> {losses[-1]:.4f}")
         else:
-            print(f"  loss 未下降 (可能需调整 lr / 模型容量)")
+            print("  loss 未下降 (可能需调整 lr / 模型容量)")
 
     if world_size > 1:
         dist.destroy_process_group()

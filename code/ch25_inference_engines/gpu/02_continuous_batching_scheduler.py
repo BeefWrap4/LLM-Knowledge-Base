@@ -29,7 +29,9 @@ vLLM 的连续批处理通过以下机制实现 (vllm/v1/core/scheduler.py):
 注意: vLLM 的 scheduler 是内部类 (需 vllm._C), 行为通过 ``AsyncLLMEngine.generate``
 async 迭代器暴露. 多个并发任务 = 多个并发请求被自动批处理.
 """
+
 from __future__ import annotations
+
 import asyncio
 import sys
 import time
@@ -39,8 +41,7 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import require_nvidia_gpu, gpu_summary
-
+from shared.gpu_guard import gpu_summary, require_nvidia_gpu
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 N_CONCURRENT = 8
@@ -83,7 +84,7 @@ async def run() -> None:
     # 故意把 import 放在 async 函数内, 避免顶层 import vllm._C
     # shared.vllm_compat: 设了 VLLM_BASE_URL → 走 Docker OpenAI 协议; 否则按需 import 真 vllm
     try:
-        from shared.vllm_compat import AsyncLLMEngine, AsyncEngineArgs, SamplingParams
+        from shared.vllm_compat import AsyncEngineArgs, AsyncLLMEngine, SamplingParams
     except ModuleNotFoundError as e:
         if "vllm._C" in str(e):
             print("=" * 60)
@@ -124,10 +125,7 @@ async def run() -> None:
     print(f"\nLaunching {N_CONCURRENT} concurrent requests...")
 
     t_start = time.perf_counter()
-    tasks = [
-        stream_one(engine, p, f"r{i}", sampling)
-        for i, p in enumerate(PROMPTS)
-    ]
+    tasks = [stream_one(engine, p, f"r{i}", sampling) for i, p in enumerate(PROMPTS)]
     results = await asyncio.gather(*tasks)
     t_total = time.perf_counter() - t_start
 
@@ -136,8 +134,9 @@ async def run() -> None:
     print(f"{'req':<6} {'ttft(ms)':<10} {'total(ms)':<11} {'tokens':<8} text")
     print("-" * 80)
     for r in results:
-        print(f"{r['req_id']:<6} {r['ttft_ms']:<10.1f} {r['total_ms']:<11.1f} "
-              f"{r['n_tokens']:<8} {r['text']!r}")
+        print(
+            f"{r['req_id']:<6} {r['ttft_ms']:<10.1f} {r['total_ms']:<11.1f} {r['n_tokens']:<8} {r['text']!r}"
+        )
     print()
     print("=" * 60)
     print("Continuous Batching 关键 takeaway:")

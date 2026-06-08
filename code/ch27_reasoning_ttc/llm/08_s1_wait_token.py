@@ -19,9 +19,11 @@
 Wait Token: 在 reasoning 末尾追加 "Wait" 触发模型继续思考.
 S1 论文发现, 简单 "Wait" 比无触发平均提升 30% 准确率.
 """
-import sys
+
 import os
+import sys
 from pathlib import Path
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
@@ -40,6 +42,7 @@ def wait_token_demo():
     api_key = get_deepseek_key()
 
     from openai import OpenAI
+
     client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
 
     print("=== S1 Wait Token 演示 ===\n")
@@ -49,7 +52,8 @@ def wait_token_demo():
     # 第一轮: 不加 wait
     print("--- 轮 1: 不加 wait ---")
     resp1 = client.chat.completions.create(
-        model="deepseek-reasoner", messages=[{"role": "user", "content": question}],
+        model="deepseek-reasoner",
+        messages=[{"role": "user", "content": question}],
         max_tokens=2048,
     )
     msg1 = resp1.choices[0].message
@@ -60,14 +64,16 @@ def wait_token_demo():
 
     # 第二轮: 加 "Wait" 继续
     if not content1 or "?" in content1:
-        print(f"\n--- 轮 2: 加 'Wait' 继续 ---")
+        print("\n--- 轮 2: 加 'Wait' 继续 ---")
         messages = [
             {"role": "user", "content": question},
             {"role": "assistant", "content": reasoning1 + content1},
             {"role": "user", "content": "Wait, verify your answer and explain more carefully."},
         ]
         resp2 = client.chat.completions.create(
-            model="deepseek-reasoner", messages=messages, max_tokens=2048,
+            model="deepseek-reasoner",
+            messages=messages,
+            max_tokens=2048,
         )
         msg2 = resp2.choices[0].message
         reasoning2 = getattr(msg2, "reasoning_content", "") or ""

@@ -18,6 +18,7 @@
 
 Snell et al. 2024 论文: 在 MATH 任务上, N=256 时准确率从 ~50% 提升到 ~90%。
 """
+
 from __future__ import annotations
 
 import random
@@ -80,8 +81,9 @@ def main() -> None:
     print("=== Best-of-N 单次执行 ===")
     for N in (1, 4, 16):
         s = best_of_n("What is 2+2?", N)
-        print(f"  N={N:>3}  best_answer={s.answer!r}  "
-              f"verifier={s.verifier_score:.3f}  correct={s.is_correct}")
+        print(
+            f"  N={N:>3}  best_answer={s.answer!r}  verifier={s.verifier_score:.3f}  correct={s.is_correct}"
+        )
 
     # Scaling law
     print("\n=== BoN scaling (1000 trials) ===")

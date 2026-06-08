@@ -59,10 +59,7 @@ def find_growth() -> None:
     gc.collect()
     after = snapshot()
 
-    growth = {
-        t: after.get(t, 0) - before.get(t, 0)
-        for t in set(before) | set(after)
-    }
+    growth = {t: after.get(t, 0) - before.get(t, 0) for t in set(before) | set(after)}
     print("[对象增长 TOP 10]")
     for obj_type, count in sorted(growth.items(), key=lambda x: -x[1])[:10]:
         if count > 0:

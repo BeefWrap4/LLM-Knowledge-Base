@@ -22,15 +22,16 @@ import torch.nn as nn
 model = nn.Linear(10, 2)  # 占位模型
 optimizer = torch.optim.AdamW(
     model.parameters(),
-    lr=1e-4,           # 学习率（BERT-base 通常 2e-5 ~ 5e-5）
+    lr=1e-4,  # 学习率（BERT-base 通常 2e-5 ~ 5e-5）
     betas=(0.9, 0.999),
     eps=1e-8,
-    weight_decay=0.01  # 权重衰减系数
+    weight_decay=0.01,  # 权重衰减系数
 )
 
 
 if __name__ == "__main__":
     print(f"optimizer type: {type(optimizer).__name__}")
     for i, g in enumerate(optimizer.param_groups):
-        print(f"group {i}: lr={g['lr']}, betas={g['betas']}, "
-              f"eps={g['eps']}, weight_decay={g['weight_decay']}")
+        print(
+            f"group {i}: lr={g['lr']}, betas={g['betas']}, eps={g['eps']}, weight_decay={g['weight_decay']}"
+        )

@@ -21,6 +21,7 @@
 
 import copy
 
+
 def full_comparison():
     """
     ┌─────────────────────────────────────────────────────────────────────┐
@@ -39,9 +40,9 @@ def full_comparison():
         {"key": [4, 5]},
     ]
 
-    assigned = original              # 赋值
-    shallow = copy.copy(original)    # 浅拷贝
-    deep = copy.deepcopy(original)   # 深拷贝
+    assigned = original  # 赋值
+    shallow = copy.copy(original)  # 浅拷贝
+    deep = copy.deepcopy(original)  # 深拷贝
 
     print("=" * 60)
     print(f"{'检查项':30s} {'=':>6s} {'shallow':>8s} {'deep':>8s}")
@@ -49,15 +50,30 @@ def full_comparison():
 
     checks = [
         ("外层对象相同", original is assigned, original is shallow, original is deep),
-        ("子列表相同", original[0] is assigned[0], original[0] is shallow[0], original[0] is deep[0]),
-        ("子字典相同", original[1] is assigned[1], original[1] is shallow[1], original[1] is deep[1]),
-        ("字典内列表相同", original[1]["key"] is assigned[1]["key"],
-                          original[1]["key"] is shallow[1]["key"],
-                          original[1]["key"] is deep[1]["key"]),
+        (
+            "子列表相同",
+            original[0] is assigned[0],
+            original[0] is shallow[0],
+            original[0] is deep[0],
+        ),
+        (
+            "子字典相同",
+            original[1] is assigned[1],
+            original[1] is shallow[1],
+            original[1] is deep[1],
+        ),
+        (
+            "字典内列表相同",
+            original[1]["key"] is assigned[1]["key"],
+            original[1]["key"] is shallow[1]["key"],
+            original[1]["key"] is deep[1]["key"],
+        ),
     ]
 
     for name, assigned_same, shallow_same, deep_same in checks:
-        print(f"{name:30s} {'✓' if assigned_same else '✗':>6s} {'✓' if shallow_same else '✗':>8s} {'✓' if deep_same else '✗':>8s}")
+        print(
+            f"{name:30s} {'✓' if assigned_same else '✗':>6s} {'✓' if shallow_same else '✗':>8s} {'✓' if deep_same else '✗':>8s}"
+        )
 
     # 修改验证独立性
     print("\n--- 修改 deep[0].append(999) 后 ---")
@@ -65,6 +81,7 @@ def full_comparison():
     print(f"original[0]: {original[0]}")
     print(f"shallow[0]:  {shallow[0]}")
     print(f"deep[0]:     {deep[0]}")
+
 
 if __name__ == "__main__":
     full_comparison()

@@ -18,12 +18,14 @@
 """
 Skills 加载器 - 从目录加载 SKILL.md 并提供给 Agent
 """
+
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 try:
     import yaml
+
     HAS_YAML = True
 except Exception:  # pragma: no cover
     HAS_YAML = False
@@ -32,6 +34,7 @@ except Exception:  # pragma: no cover
 @dataclass
 class Skill:
     """解析后的 Skill 对象"""
+
     name: str
     description: str
     version: str
@@ -127,9 +130,11 @@ class SkillLoader:
 def _create_demo_skills():
     """在临时目录中创建几个示例 SKILL.md"""
     import tempfile
+
     tmp = Path(tempfile.mkdtemp())
     (tmp / "code-review" / "__init__.py").parent.mkdir(parents=True, exist_ok=True)
-    (tmp / "code-review" / "SKILL.md").write_text('''---
+    (tmp / "code-review" / "SKILL.md").write_text(
+        """---
 name: code-review
 description: 对 Git diff 进行多维度代码审查，包括安全、性能、可读性
 version: 1.0.0
@@ -169,10 +174,13 @@ outputs:
 ## 回退策略
 - diff 格式无法解析 → 报告错误并跳过审查
 - 工具调用失败 → 重试 1 次 → 仍失败则返回降级报告
-''', encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
 
     (tmp / "data-summary").mkdir(parents=True, exist_ok=True)
-    (tmp / "data-summary" / "SKILL.md").write_text('''---
+    (tmp / "data-summary" / "SKILL.md").write_text(
+        """---
 name: data-summary
 description: 对 CSV 数据生成摘要
 version: 0.1.0
@@ -191,7 +199,9 @@ tags:
 1. 加载 CSV 文件
 2. 统计基本指标
 3. 输出摘要报告
-''', encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     return tmp
 
 

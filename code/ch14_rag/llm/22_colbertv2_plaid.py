@@ -27,12 +27,13 @@ class ColBERTMockModel:
 
     def encode(self, texts, is_query: bool = False, show_progress_bar: bool = False):
         import numpy as np
+
         rng = np.random.default_rng(sum(map(ord, "".join(texts))) % (2**32) + int(is_query))
         out = []
         for t in texts:
             n = min(self.max_tokens, max(1, len(t.split()) + 1))
             v = rng.normal(size=(n, self.dim)).astype("float32")
-            v /= (np.linalg.norm(v, axis=1, keepdims=True) + 1e-12)
+            v /= np.linalg.norm(v, axis=1, keepdims=True) + 1e-12
             out.append(v)
         return out
 
@@ -52,6 +53,7 @@ class PLAIDMockIndex:
 
     def retrieve(self, queries_embeddings, k: int = 5):
         import numpy as np
+
         results = []
         for q in queries_embeddings:
             scores = []

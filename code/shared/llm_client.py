@@ -22,18 +22,22 @@ Usage:
     client = UnifiedClient(provider="kimi", model="moonshot-v1-128k")
     resp = client.chat("分析这份 10 万字报告")
 """
+
 import os
 import sys
-from typing import Any, Optional
+from typing import Any
 
-from shared.provider_registry import (
-    Provider, get_default_provider, get_provider, PROVIDERS,
-)
 from shared._mock_fallback import deterministic_response
+from shared.provider_registry import (
+    Provider,
+    get_default_provider,
+    get_provider,
+)
 
 # OpenAI SDK 是可选依赖 (anthropic 走自己的 SDK)
 try:
     from openai import OpenAI
+
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
@@ -44,9 +48,9 @@ class UnifiedClient:
 
     def __init__(
         self,
-        provider: Optional[str] = None,
-        model: Optional[str] = None,
-        api_key: Optional[str] = None,
+        provider: str | None = None,
+        model: str | None = None,
+        api_key: str | None = None,
         timeout: float = 60.0,
     ):
         self.provider: Provider = get_provider(provider) if provider else get_default_provider()
@@ -60,6 +64,7 @@ class UnifiedClient:
             return
         if not self.api_key or self.api_key == "YOUR_API_KEY":
             from shared._error_helper import raise_with_help
+
             raise_with_help(
                 f"厂商 {self.provider.name} 缺 API Key (env {self.provider.env_key}).",
                 "运行 `make llm-doctor` 诊断; 或参考 README §环境配置.",
@@ -73,15 +78,18 @@ class UnifiedClient:
         elif self.provider.api_style == "anthropic":
             try:
                 from anthropic import Anthropic
+
                 self.client = Anthropic(api_key=self.api_key, timeout=timeout)
             except ImportError:
                 from shared._error_helper import raise_with_help
+
                 raise_with_help(
                     f"厂商 {self.provider.name} 需 anthropic SDK.",
                     "运行 `pip install anthropic`.",
                 )
         else:
             from shared._error_helper import raise_with_help
+
             raise_with_help(
                 f"厂商 {self.provider.name} 不支持或 openai SDK 缺失.",
                 "运行 `make install-llm`.",
@@ -94,9 +102,9 @@ class UnifiedClient:
     def chat(
         self,
         prompt: str = "",
-        system: Optional[str] = None,
-        messages: Optional[list[dict]] = None,
-        model: Optional[str] = None,
+        system: str | None = None,
+        messages: list[dict] | None = None,
+        model: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 1024,
         **kwargs: Any,
@@ -175,6 +183,7 @@ class UnifiedClient:
 
 class _LLMResponse:
     """统一响应对象 — 简化访问."""
+
     def __init__(self, content, usage, raw, model, provider, mock):
         self.content = content
         self.usage = usage
@@ -191,7 +200,8 @@ class _LLMResponse:
 # 便捷函数 — 推荐使用 (1 行)
 # ────────────────────────────────────────────────────────────────
 
-def quick_chat(prompt: str, system: Optional[str] = None, **kwargs) -> str:
+
+def quick_chat(prompt: str, system: str | None = None, **kwargs) -> str:
     """最简调用: quick_chat("讲个笑话") -> str."""
     return UnifiedClient().chat(prompt=prompt, system=system, **kwargs).content
 

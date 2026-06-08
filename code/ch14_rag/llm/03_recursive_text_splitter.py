@@ -16,33 +16,38 @@
 #   3. 分隔符顺序（"\n\n" → "\n" → "。"）的意义是什么？
 
 
-
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
+
 try:
     from langchain.text_splitter import RecursiveCharacterTextSplitter
+
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
     _SKIP_REASON = str(_e).split("\n")[0]
 if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
     _sys.exit(0)
-print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
+print(
+    "OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)"
+)
 
 
 # 递归字符分块：按优先级尝试不同分隔符
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=512,        # 每个 chunk 的目标大小
-    chunk_overlap=128,     # 相邻 chunk 的重叠量（关键！保持上下文连贯）
-    length_function=len,   # 长度计算函数
+    chunk_size=512,  # 每个 chunk 的目标大小
+    chunk_overlap=128,  # 相邻 chunk 的重叠量（关键！保持上下文连贯）
+    length_function=len,  # 长度计算函数
     # 分隔符优先级：先按大段落分，不行再按句子，最后按字符
     separators=[
-        "\n\n",      # 优先：段落分隔
-        "\n",        # 其次：换行
-        "。", "！", "？",  # 再其次：句子结束符
-        "；",        # 分号
-        " ",         # 空格
-        ""           # 最后：任意字符
+        "\n\n",  # 优先：段落分隔
+        "\n",  # 其次：换行
+        "。",
+        "！",
+        "？",  # 再其次：句子结束符
+        "；",  # 分号
+        " ",  # 空格
+        "",  # 最后：任意字符
     ],
     is_separator_regex=False,
 )

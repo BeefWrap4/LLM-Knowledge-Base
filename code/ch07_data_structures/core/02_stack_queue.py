@@ -22,18 +22,18 @@ from collections import deque
 # ========== 栈（LIFO） ==========
 # 使用 list 即可
 stack = []
-stack.append(1)    # 入栈: O(1)
+stack.append(1)  # 入栈: O(1)
 stack.append(2)
-top = stack[-1]    # 查看栈顶: O(1)
-stack.pop()        # 出栈: O(1)
+top = stack[-1]  # 查看栈顶: O(1)
+stack.pop()  # 出栈: O(1)
 
 # ========== 队列（FIFO） ==========
 # 使用 deque，list.pop(0) 是 O(n) 不推荐使用
 queue = deque()
-queue.append(1)     # 入队: O(1)
+queue.append(1)  # 入队: O(1)
 queue.append(2)
-front = queue[0]    # 查看队首: O(1)
-queue.popleft()     # 出队: O(1)
+front = queue[0]  # 查看队首: O(1)
+queue.popleft()  # 出队: O(1)
 
 
 # ========== 面试高频题：用栈实现队列 ==========
@@ -43,8 +43,9 @@ class MyQueue:
 
     push: O(1)    pop: 均摊 O(1)    peek: 均摊 O(1)
     """
+
     def __init__(self):
-        self.stack_in = []   # 入队栈
+        self.stack_in = []  # 入队栈
         self.stack_out = []  # 出队栈
 
     def push(self, x: int) -> None:
@@ -72,6 +73,7 @@ class MinStack:
 
     使用辅助栈存储每个状态下的最小值
     """
+
     def __init__(self):
         self.stack = []
         self.min_stack = []  # 辅助栈，存储当前最小值
@@ -140,4 +142,3 @@ if __name__ == "__main__":
 
     # 测试单调栈
     assert next_greater_elements([2, 1, 2, 4, 3]) == [4, 2, 4, -1, -1]
-

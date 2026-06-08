@@ -18,12 +18,12 @@
 SandboxAgent - 隔离的代码执行环境
 基于 OpenAI Agents SDK v0.14.0 沙箱模式
 """
+
 import re
 import shutil
 import subprocess
 import tempfile
 import uuid
-
 
 # 1. 基础沙箱 Agent 配置（实际由 OpenAI Agents SDK 提供）
 SANDBOX_CONFIG = {
@@ -54,17 +54,25 @@ def python_executor(code: str) -> str:
 
         result = subprocess.run(
             [
-                "docker", "run",
-                "--name", container_name,
+                "docker",
+                "run",
+                "--name",
+                container_name,
                 "--rm",
-                "-m", "512m",
-                "--cpus", "1.0",
-                "--network", "none",
-                "-v", f"{code_path}:/tmp/code.py:ro",
+                "-m",
+                "512m",
+                "--cpus",
+                "1.0",
+                "--network",
+                "none",
+                "-v",
+                f"{code_path}:/tmp/code.py:ro",
                 "--read-only",
-                "--tmpfs", "/tmp:size=100m",
+                "--tmpfs",
+                "/tmp:size=100m",
                 "python:3.12-slim",
-                "python", "/tmp/code.py",
+                "python",
+                "/tmp/code.py",
             ],
             capture_output=True,
             text=True,
@@ -81,7 +89,8 @@ def python_executor(code: str) -> str:
     finally:
         subprocess.run(
             ["docker", "rm", "-f", container_name],
-            capture_output=True, timeout=5,
+            capture_output=True,
+            timeout=5,
         )
 
 
@@ -129,9 +138,12 @@ class DefenseInDepth:
 
 def demo_sandbox():
     cases = [
-        ("safe code", "import numpy as np\narr = np.array([1, 2, 3, 4, 5])\nprint(f'Mean: {arr.mean()}, Std: {arr.std()}')"),
+        (
+            "safe code",
+            "import numpy as np\narr = np.array([1, 2, 3, 4, 5])\nprint(f'Mean: {arr.mean()}, Std: {arr.std()}')",
+        ),
         ("os.system", "import os\nos.system('rm -rf /tmp/important')"),
-        ("eval", "eval('__import__(\"os\").system(\"whoami\")')"),
+        ("eval", 'eval(\'__import__("os").system("whoami")\')'),
         ("read /etc", "open('/etc/passwd', 'r').read()"),
     ]
 

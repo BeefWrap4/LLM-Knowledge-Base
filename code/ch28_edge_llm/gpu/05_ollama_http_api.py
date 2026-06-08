@@ -15,6 +15,7 @@
 #   2. Ollama 的 OpenAI 兼容端点路径是什么?
 #   3. 如何在 Python 中以 OpenAI SDK 客户端调用本地 Ollama?
 """Ollama 本地 LLM 服务的两种 API 调用方式 (真实调用, 非打印代码字符串)."""
+
 from __future__ import annotations
 
 import sys

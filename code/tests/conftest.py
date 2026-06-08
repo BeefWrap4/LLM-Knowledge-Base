@@ -5,6 +5,7 @@
 """
 See: code/README.md §验证
 """
+
 import sys
 from pathlib import Path
 
@@ -25,8 +26,11 @@ def code_root() -> Path:
 @pytest.fixture
 def chapter_dir(code_root):
     """Factory: 返回某章的路径."""
+
     def _make(chapter: str) -> Path:
         return code_root / chapter
+
     return _make
+
 
 print("OK")

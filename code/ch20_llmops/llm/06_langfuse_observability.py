@@ -17,11 +17,12 @@
 
 import os
 import uuid
-from typing import Any, Dict, List
+from typing import Any
 
 try:
     from langfuse import Langfuse
-    from langfuse.decorators import observe, langfuse_context
+    from langfuse.decorators import langfuse_context, observe
+
     _HAS_LANGFUSE = bool(os.getenv("LANGFUSE_SECRET_KEY") and os.getenv("LANGFUSE_PUBLIC_KEY"))
 except ImportError:
     Langfuse = None  # type: ignore
@@ -50,8 +51,10 @@ class _MockContext:
 def _noop_observe(*dargs, **dkwargs):
     if dargs and callable(dargs[0]) and not isinstance(dargs[0], type):
         return dargs[0]
+
     def _wrap(fn):
         return fn
+
     return _wrap
 
 
@@ -68,7 +71,7 @@ if not _HAS_LANGFUSE:
 
 
 @observe(name="customer-support-agent")
-def handle_customer_query(query: str, conversation_history: List) -> Dict[str, Any]:
+def handle_customer_query(query: str, conversation_history: list) -> dict[str, Any]:
     """客户支持 Agent，LangFuse 自动追踪全链路"""
     langfuse_context.update_current_trace(
         name=f"support-{query[:30]}",
@@ -94,12 +97,12 @@ def classify_intent(query: str) -> str:
 
 
 @observe()
-def retrieve_knowledge(query: str, intent: str) -> List[str]:
+def retrieve_knowledge(query: str, intent: str) -> list[str]:
     return ["doc1", "doc2"]
 
 
 @observe()
-def generate_response(query: str, docs: List, history: List) -> str:
+def generate_response(query: str, docs: list, history: list) -> str:
     return "Generated answer..."
 
 

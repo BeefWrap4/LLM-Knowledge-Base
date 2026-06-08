@@ -29,6 +29,7 @@
 # 手写迭代器 —— 理解底层机制
 # ─────────────────────────────────────────────────────────────
 
+
 class CountDown:
     """倒计时迭代器 —— 从 n 数到 1"""
 
@@ -37,27 +38,28 @@ class CountDown:
 
     def __iter__(self):
         """返回迭代器对象（自身）"""
-        self.current = self.start   # 重置计数器
+        self.current = self.start  # 重置计数器
         return self
 
     def __next__(self):
         """返回下一个值"""
         if self.current <= 0:
-            raise StopIteration     # 迭代结束的信号
+            raise StopIteration  # 迭代结束的信号
         num = self.current
         self.current -= 1
         return num
 
+
 # 使用
 countdown = CountDown(5)
 for n in countdown:
-    print(n, end=" ")   # 5 4 3 2 1
+    print(n, end=" ")  # 5 4 3 2 1
 print()
 
 # 等价于：
 countdown = CountDown(3)
-iterator = iter(countdown)   # 调用 __iter__()
-for _ in range(5):           # 用 for 循环自动处理 StopIteration (PEP 479)
+iterator = iter(countdown)  # 调用 __iter__()
+for _ in range(5):  # 用 for 循环自动处理 StopIteration (PEP 479)
     try:
         print(next(iterator))  # 5, 4, 3, 2, 1
     except StopIteration:
@@ -71,13 +73,17 @@ for _ in range(5):           # 用 for 循环自动处理 StopIteration (PEP 479
 
 # 可迭代对象可多次遍历
 lst = [1, 2, 3]
-for x in lst: print(x, end=" ")   # 1 2 3
-for x in lst: print(x, end=" ")   # 1 2 3 — 再次遍历
+for x in lst:
+    print(x, end=" ")  # 1 2 3
+for x in lst:
+    print(x, end=" ")  # 1 2 3 — 再次遍历
 
 # 迭代器只能遍历一次
 it = iter([1, 2, 3])
-for x in it: print(x, end=" ")    # 1 2 3
-for x in it: print(x, end=" ")    # 无输出 — 迭代器已耗尽！
+for x in it:
+    print(x, end=" ")  # 1 2 3
+for x in it:
+    print(x, end=" ")  # 无输出 — 迭代器已耗尽！
 
 
 if __name__ == "__main__":

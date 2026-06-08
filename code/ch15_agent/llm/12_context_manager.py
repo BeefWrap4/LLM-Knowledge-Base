@@ -15,6 +15,7 @@
 #   2. 摘要替代早期历史会不会丢失关键信息？怎么校验摘要质量？
 #   3. 任务分隔符（task_separator）在多用户多任务场景下的工程意义？
 
+
 class ContextManager:
     """上下文管理 - 防止污染"""
 
@@ -30,11 +31,11 @@ class ContextManager:
         3. 定期总结历史，替代原始对话
         """
         # 保留最近 N 轮
-        recent_history = history[-self.max_context_turns * 2:]
+        recent_history = history[-self.max_context_turns * 2 :]
 
         # 如果历史很长，用摘要替代早期对话
         if len(history) > self.max_context_turns * 2:
-            early_history = history[:-self.max_context_turns * 2]
+            early_history = history[: -self.max_context_turns * 2]
             summary = self._summarize(early_history)
             context = [summary] + recent_history
         else:
@@ -46,7 +47,7 @@ class ContextManager:
         """对早期历史进行摘要（实际中调用 LLM）"""
         return {
             "role": "system",
-            "content": f"[历史摘要] 已完成 {len(history)//2} 轮交互，关键结论：..."
+            "content": f"[历史摘要] 已完成 {len(history) // 2} 轮交互，关键结论：...",
         }
 
     def _format_prompt(self, task: str, context: list[dict]) -> str:

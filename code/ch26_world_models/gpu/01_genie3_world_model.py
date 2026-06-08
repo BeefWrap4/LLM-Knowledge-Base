@@ -26,16 +26,18 @@ Genie 3 是 Google DeepMind 的可交互世界模型, 无开源权重.
 Genie 3 真实场景: 视频帧 + 动作输入 → 下一帧视频.
 本 demo 简化: 文本描述 + 文本动作 → 下一状态描述.
 """
+
 import sys
-import torch
 from pathlib import Path
+
+import torch
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import require_nvidia_gpu
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import require_nvidia_gpu
 
 
 def check_hardware():
@@ -58,6 +60,7 @@ class TextWorldModel:
 
     def __init__(self, model_path: str):
         from transformers import AutoModelForCausalLM, AutoTokenizer
+
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.model = AutoModelForCausalLM.from_pretrained(
             model_path, torch_dtype=torch.bfloat16, device_map="auto"
@@ -70,16 +73,16 @@ class TextWorldModel:
             {"role": "system", "content": self.WORLD_MODEL_PROMPT},
             {"role": "user", "content": user_msg},
         ]
-        prompt = self.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
+        prompt = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
         with torch.no_grad():
             out = self.model.generate(
-                **inputs, max_new_tokens=max_new_tokens, do_sample=False,
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
                 pad_token_id=self.tokenizer.eos_token_id,
             )
-        new_tokens = out[0][inputs.input_ids.size(1):]
+        new_tokens = out[0][inputs.input_ids.size(1) :]
         next_state = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
         # 移除 LLM 可能复述的 "Next state:" 前缀
         next_state = next_state.replace("Next state:", "").strip()

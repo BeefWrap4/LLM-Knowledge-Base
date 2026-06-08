@@ -20,14 +20,15 @@ chunk_with_metadata = {
     "page_content": "年假政策：员工每年享有 15 天带薪年假...",
     "metadata": {
         "source": "公司人事手册_v2024.pdf",  # 来源文档
-        "page": 15,                           # 页码
-        "section": "第三章 休假制度",          # 章节
-        "doc_type": "policy",                 # 文档类型
-        "created_at": "2024-01-15",           # 创建日期
+        "page": 15,  # 页码
+        "section": "第三章 休假制度",  # 章节
+        "doc_type": "policy",  # 文档类型
+        "created_at": "2024-01-15",  # 创建日期
     },
 }
 
 
 if __name__ == "__main__":
     import json
+
     print(json.dumps(chunk_with_metadata, ensure_ascii=False, indent=2))

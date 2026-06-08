@@ -17,7 +17,6 @@
 #   3. UltraFeedback 的 4 维度 × 5 级评分体系设计理念是什么？比单一奖励好在哪？
 
 import json
-from typing import Dict, Optional
 
 JUDGE_PROMPT = """你是一个公正的 AI 回复评判官。请对以下两个回复进行评估：
 
@@ -42,7 +41,7 @@ JUDGE_PROMPT = """你是一个公正的 AI 回复评判官。请对以下两个�
 }}"""
 
 
-def _parse_judgment(judgment_str: str) -> Dict:
+def _parse_judgment(judgment_str: str) -> dict:
     """Mock 解析 judge 输出 - 真实场景应使用 json.loads 或 Pydantic"""
     # 这里假设 judge_llm 已经返回了 dict；在独立运行时模拟一份样本
     return {
@@ -52,20 +51,17 @@ def _parse_judgment(judgment_str: str) -> Dict:
     }
 
 
-def mock_judge_llm(prompt: str) -> Dict:
+def mock_judge_llm(prompt: str) -> dict:
     """Mock 一个 LLM Judge - 实际可使用 GPT-4 / Claude / Prometheus"""
     # 在真实场景下，调用 LLM 后用 json.loads 解析
     return _parse_judgment(prompt)
 
 
-def generate_preference_pair(prompt: str, response_a: str,
-                             response_b: str, judge_llm) -> Optional[Dict]:
+def generate_preference_pair(prompt: str, response_a: str, response_b: str, judge_llm) -> dict | None:
     """通过 AI Judge 生成偏好数据对，自动处理位置偏差"""
     # 关键：交换顺序进行二次评判，缓解 position bias
-    judgment_1 = judge_llm(JUDGE_PROMPT.format(
-        prompt=prompt, response_a=response_a, response_b=response_b))
-    judgment_2 = judge_llm(JUDGE_PROMPT.format(
-        prompt=prompt, response_a=response_b, response_b=response_a))
+    judgment_1 = judge_llm(JUDGE_PROMPT.format(prompt=prompt, response_a=response_a, response_b=response_b))
+    judgment_2 = judge_llm(JUDGE_PROMPT.format(prompt=prompt, response_a=response_b, response_b=response_a))
 
     # 两次结果一致才保留
     if judgment_1["winner"] == "A" and judgment_2["winner"] == "B":
@@ -80,7 +76,7 @@ def generate_preference_pair(prompt: str, response_a: str,
         "chosen": chosen,
         "rejected": rejected,
         "confidence": "high",
-        "scores": judgment_1["scores_a"] if chosen == response_a else judgment_1["scores_b"]
+        "scores": judgment_1["scores_a"] if chosen == response_a else judgment_1["scores_b"],
     }
 
 

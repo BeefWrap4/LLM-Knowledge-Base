@@ -17,35 +17,43 @@
 
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
+
 try:
     from langchain.memory import ConversationSummaryMemory
+
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
     _SKIP_REASON = str(_e).split("\n")[0]
 if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
     _sys.exit(0)
-print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
+print(
+    "OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)"
+)
 from langchain.chains import ConversationChain
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+
 
 class _MockChatModel:
     def invoke(self, msgs):
-        joined = " ".join([m.content for m in msgs if hasattr(m, 'content')])
+        joined = " ".join([m.content for m in msgs if hasattr(m, "content")])
         if "摘要" in joined or "Summarize" in joined or "请用一句话" in joined:
             text = "用户叫王五，在北京工作，是一名软件工程师，团队有10人。"
         elif "工作" in joined:
             text = "您是一名软件工程师。"
         else:
             text = "好的，已记录。"
-        class _R: content = text
+
+        class _R:
+            content = text
+
         return _R()
+
 
 llm = _MockChatModel()
 memory = ConversationSummaryMemory(
     llm=llm,
     return_messages=True,
-    max_token_limit=500  # 摘要的最大 Token 数
+    max_token_limit=500,  # 摘要的最大 Token 数
 )
 
 conversation = ConversationChain(llm=llm, memory=memory)

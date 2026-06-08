@@ -16,18 +16,17 @@
 # 2. StratifiedKFold 与普通 KFold 的区别? 分类任务为什么首选 StratifiedKFold?
 # 3. 留一法 (Leave-One-Out) 的适用场景与计算代价?
 
-from sklearn.linear_model import LogisticRegression
 from sklearn.datasets import make_classification
-from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+
 
 def main():
-    X, y = make_classification(n_samples=1000, n_features=10, n_informative=5,
-                               random_state=42)
+    X, y = make_classification(n_samples=1000, n_features=10, n_informative=5, random_state=42)
 
     # 5-Fold 分层交叉验证
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    cv_scores = cross_val_score(LogisticRegression(max_iter=1000), X, y,
-                                cv=skf, scoring='roc_auc')
+    cv_scores = cross_val_score(LogisticRegression(max_iter=1000), X, y, cv=skf, scoring="roc_auc")
 
     print(f"5-Fold AUC: {cv_scores}")
     print(f"均值: {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")

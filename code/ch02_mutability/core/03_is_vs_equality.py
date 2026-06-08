@@ -29,8 +29,8 @@ is  比较 id(),即两个引用是否指向同一内存地址
 
 a = [1, 2, 3]
 b = [1, 2, 3]
-print(a == b)     # True  — 值相等
-print(a is b)     # False — 不同对象
+print(a == b)  # True  — 值相等
+print(a is b)  # False — 不同对象
 
 # ─────────────────────────────────────────────────────────────
 # 小整数缓存(-5 ~ 256)
@@ -38,11 +38,11 @@ print(a is b)     # False — 不同对象
 
 a = 100
 b = 100
-print(a is b)     # True — 小整数被缓存复用
+print(a is b)  # True — 小整数被缓存复用
 
 c = 1000
 d = 1000
-print(c is d)     # False — 大整数不缓存(交互模式下可能缓存)
+print(c is d)  # False — 大整数不缓存(交互模式下可能缓存)
 
 # ─────────────────────────────────────────────────────────────
 # 字符串驻留(Interning)
@@ -50,35 +50,37 @@ print(c is d)     # False — 大整数不缓存(交互模式下可能缓存)
 
 s1 = "hello"
 s2 = "hello"
-print(s1 is s2)   # True — 编译期常量字符串被驻留
+print(s1 is s2)  # True — 编译期常量字符串被驻留
 
 s3 = "hello world! python"
 s4 = "hello world! python"
-print(s3 is s4)   # 可能 False — 长字符串不保证驻留
+print(s3 is s4)  # 可能 False — 长字符串不保证驻留
 
 # 强制驻留
 from sys import intern
+
 s5 = intern("a very long string" * 100)
 s6 = intern("a very long string" * 100)
-print(s5 is s6)   # True — 强制驻留
+print(s5 is s6)  # True — 强制驻留
 
 # ─────────────────────────────────────────────────────────────
 # 🎯 面试陷阱:空值比较
 # ─────────────────────────────────────────────────────────────
 
 # None 比较
-print(None is None)       # True — None 是单例
+print(None is None)  # True — None 是单例
 # print(None == None)     # 也返回 True,但不规范
 
 # 空容器比较
-print([] == [])           # True
-print([] is [])           # False — 两个不同的空列表
-print({} == {})           # True
-print({} is {})           # False
+print([] == [])  # True
+print([] == [])  # False — 两个不同的空列表
+print({} == {})  # True
+print({} == {})  # False
 
 # ─────────────────────────────────────────────────────────────
 # 🎯 面试真题:以下代码的输出是什么?
 # ─────────────────────────────────────────────────────────────
+
 
 def interview_trap():
     """
@@ -86,19 +88,20 @@ def interview_trap():
     """
     a = "hello"
     b = "hello"
-    print(a is b)          # True — 字符串驻留
+    print(a is b)  # True — 字符串驻留
 
     c = "".join(["he", "llo"])
-    print(a is c)          # False — 运行时拼接,不驻留
-    print(a == c)          # True — 值相等
+    print(a is c)  # False — 运行时拼接,不驻留
+    print(a == c)  # True — 值相等
 
     d = 256
     e = 256
-    print(d is e)          # True — -5~256 缓存
+    print(d is e)  # True — -5~256 缓存
 
     f = 257
     g = 257
-    print(f is g)          # False(通常)— 超出缓存范围
+    print(f is g)  # False(通常)— 超出缓存范围
+
 
 if __name__ == "__main__":
     interview_trap()

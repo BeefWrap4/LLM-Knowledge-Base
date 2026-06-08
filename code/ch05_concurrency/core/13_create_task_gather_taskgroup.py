@@ -43,7 +43,7 @@ async def main():
         task("C", 1),
         task("D", 2),
         task("E", 1),
-        return_exceptions=True  # 捕获异常而不是抛出
+        return_exceptions=True,  # 捕获异常而不是抛出
     )
     print(f"Gather 结果: {results}\n")
 

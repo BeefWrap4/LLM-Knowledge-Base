@@ -20,15 +20,16 @@
 属性访问机制 —— 面试考点
 """
 
+
 class BankAccount:
     """银行账户类 —— 演示属性封装"""
 
-    bank_name = "Python Bank"   # 类属性
+    bank_name = "Python Bank"  # 类属性
 
     def __init__(self, owner: str, balance: float):
-        self.owner = owner              # 公有属性
-        self._balance = balance          # 约定：单下划线表示"内部使用"
-        self.__password = "123456"       # 私有属性 —— 名称改写
+        self.owner = owner  # 公有属性
+        self._balance = balance  # 约定：单下划线表示"内部使用"
+        self.__password = "123456"  # 私有属性 —— 名称改写
 
     # ── property 装饰器 —— 属性访问控制 ──
     @property
@@ -48,17 +49,18 @@ class BankAccount:
         """deleter —— 删除 balance 时调用"""
         raise AttributeError("不能删除余额属性")
 
+
 # 使用
 account = BankAccount("Alice", 1000)
-print(account.balance)       # 1000 — 调用 getter
-account.balance = 2000       # 调用 setter
+print(account.balance)  # 1000 — 调用 getter
+account.balance = 2000  # 调用 setter
 # account.balance = -100    # ValueError: 余额不能为负数
 # del account.balance       # AttributeError
 
 # 私有属性的名称改写（Name Mangling）
 # __password → _BankAccount__password
-print(dir(account))          # 可看到 _BankAccount__password
-print(account._BankAccount__password)   # "123456" — 强行访问（不推荐）
+print(dir(account))  # 可看到 _BankAccount__password
+print(account._BankAccount__password)  # "123456" — 强行访问（不推荐）
 
 """
 名称改写机制：

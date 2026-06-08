@@ -24,7 +24,7 @@ SCENARIO_A = {
         "Agent": "LangGraph（复杂 Agent 工作流）",
         "编排": "LangChain（胶水代码和工具集成）",
         "部署": "vLLM + FastAPI（高性能推理服务）",
-    }
+    },
 }
 
 # 方案 B：快速落地（低代码优先）
@@ -34,7 +34,7 @@ SCENARIO_B = {
         "平台": "Dify（可视化搭建 + 知识库 + Agent）",
         "微调": "LLaMA-Factory（按需微调后导入 Dify）",
         "扩展": "Dify 插件系统（自定义工具）",
-    }
+    },
 }
 
 # 方案 C：研究探索（最强灵活）
@@ -44,7 +44,7 @@ SCENARIO_C = {
         "多Agent": "AutoGen / CrewAI（根据场景选择）",
         "数据": "LlamaIndex（知识检索）",
         "实验": "Jupyter + LangChain（快速迭代）",
-    }
+    },
 }
 
 # 方案 D：企业知识库（知识管理驱动）
@@ -54,11 +54,17 @@ SCENARIO_D = {
         "核心": "LlamaIndex（文档索引 + 检索 + 问答）",
         "界面": "Dify（内置 LlamaIndex 或 API 对接）",
         "优化": "微调 Embedding 模型（LLaMA-Factory）",
-    }
+    },
 }
 
 import json
-plans = {"方案A_全栈自研": SCENARIO_A, "方案B_快速落地": SCENARIO_B, "方案C_研究探索": SCENARIO_C, "方案D_企业知识库": SCENARIO_D}
+
+plans = {
+    "方案A_全栈自研": SCENARIO_A,
+    "方案B_快速落地": SCENARIO_B,
+    "方案C_研究探索": SCENARIO_C,
+    "方案D_企业知识库": SCENARIO_D,
+}
 print(json.dumps(plans, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":

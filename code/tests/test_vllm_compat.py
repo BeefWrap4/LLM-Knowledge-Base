@@ -12,20 +12,21 @@
   - AsyncLLMEngine 在 Docker 模式下 from_engine_args 返回 _CompatAsyncLLMEngine
   - 真 vllm 模式在 vllm._C 缺失时 raise_with_help 友好抛错
 """
+
 import importlib
-import os
 from unittest.mock import patch
 
 import pytest
 
-
 # ── env var 切换测试 ─────────────────────────────────────────
+
 
 def test_no_docker_when_env_unset(monkeypatch):
     """VLLM_BASE_URL 未设 → USE_DOCKER=False."""
     monkeypatch.delenv("VLLM_BASE_URL", raising=False)
     monkeypatch.delenv("VLLM_MODEL_ID", raising=False)
     import shared.vllm_compat
+
     importlib.reload(shared.vllm_compat)
     assert shared.vllm_compat.USE_DOCKER is False
     assert shared.vllm_compat.VLLM_BASE_URL == ""
@@ -35,6 +36,7 @@ def test_use_docker_when_env_set(monkeypatch):
     """VLLM_BASE_URL 设了 → USE_DOCKER=True, 末尾 / 被 strip."""
     monkeypatch.setenv("VLLM_BASE_URL", "http://localhost:8000/")
     import shared.vllm_compat
+
     importlib.reload(shared.vllm_compat)
     assert shared.vllm_compat.USE_DOCKER is True
     assert shared.vllm_compat.VLLM_BASE_URL == "http://localhost:8000"
@@ -42,9 +44,11 @@ def test_use_docker_when_env_set(monkeypatch):
 
 # ── SamplingParams / EngineArgs 字段测试 ──────────────────────
 
+
 def test_sampling_params_default():
     """SamplingParams 字段可访问, 默认值正确."""
     from shared.vllm_compat import SamplingParams
+
     sp = SamplingParams()
     assert sp.temperature == 0.7
     assert sp.max_tokens == 64
@@ -56,6 +60,7 @@ def test_sampling_params_default():
 def test_sampling_params_custom():
     """SamplingParams 自定义字段."""
     from shared.vllm_compat import SamplingParams
+
     sp = SamplingParams(temperature=0.5, max_tokens=128, top_p=0.9, stop=["</s>"])
     assert sp.temperature == 0.5
     assert sp.max_tokens == 128
@@ -66,6 +71,7 @@ def test_sampling_params_custom():
 def test_engine_args_construction():
     """EngineArgs 字段对齐真 vllm API."""
     from shared.vllm_compat import EngineArgs
+
     args = EngineArgs(model="test-model", max_num_seqs=16, gpu_memory_utilization=0.8)
     assert args.model == "test-model"
     assert args.max_num_seqs == 16
@@ -77,6 +83,7 @@ def test_engine_args_construction():
 def test_async_engine_args_inherits():
     """AsyncEngineArgs 继承 EngineArgs 字段."""
     from shared.vllm_compat import AsyncEngineArgs
+
     aae = AsyncEngineArgs(model="test", max_model_len=1024, enforce_eager=False)
     assert aae.model == "test"
     assert aae.max_model_len == 1024
@@ -85,6 +92,7 @@ def test_async_engine_args_inherits():
 
 # ── LLM factory 路由测试 ─────────────────────────────────────
 
+
 def test_llm_factory_routes_to_docker(monkeypatch):
     """VLLM_BASE_URL 设了 → LLM() 走 OpenAI 协议, 返回 _CompatLLM.
 
@@ -92,10 +100,12 @@ def test_llm_factory_routes_to_docker(monkeypatch):
     """
     monkeypatch.setenv("VLLM_BASE_URL", "http://localhost:8000")
     import shared.vllm_compat
+
     importlib.reload(shared.vllm_compat)
 
     # 不真实例化 OpenAI client — 直接 mock _CompatLLM
     from shared.vllm_compat import _CompatLLM
+
     with patch.object(_CompatLLM, "__init__", return_value=None):
         llm = shared.vllm_compat.LLM(model="dummy")
     assert isinstance(llm, _CompatLLM)
@@ -105,9 +115,11 @@ def test_async_engine_from_engine_args_routes_to_docker(monkeypatch):
     """VLLM_BASE_URL 设了 → AsyncLLMEngine.from_engine_args 走 Docker."""
     monkeypatch.setenv("VLLM_BASE_URL", "http://localhost:8000")
     import shared.vllm_compat
+
     importlib.reload(shared.vllm_compat)
 
     from shared.vllm_compat import AsyncEngineArgs, _CompatAsyncLLMEngine
+
     with patch.object(_CompatAsyncLLMEngine, "__init__", return_value=None):
         args = AsyncEngineArgs(model="dummy", max_model_len=512)
         engine = shared.vllm_compat.AsyncLLMEngine.from_engine_args(args)
@@ -116,14 +128,17 @@ def test_async_engine_from_engine_args_routes_to_docker(monkeypatch):
 
 # ── 真 vllm 模式错误测试 ─────────────────────────────────────
 
+
 def test_real_vllm_mode_raises_helpful_error(monkeypatch):
     """VLLM_BASE_URL 未设 + vllm 不可用 → raise_with_help (含 Docker 提示)."""
     monkeypatch.delenv("VLLM_BASE_URL", raising=False)
     import shared.vllm_compat
+
     importlib.reload(shared.vllm_compat)
 
     # patch 内置 __import__ 让 import vllm 失败
     import builtins
+
     real_import = builtins.__import__
 
     def fake_import(name, *args, **kwargs):
@@ -142,6 +157,7 @@ def test_real_vllm_mode_raises_helpful_error(monkeypatch):
 
 # ── Mock config 验证 (Docker 模式打印) ───────────────────────
 
+
 def test_mock_llm_engine_exposes_config(monkeypatch):
     """Docker 模式 _CompatLLM 提供 llm.llm_engine.vllm_config.X 访问.
 
@@ -150,14 +166,17 @@ def test_mock_llm_engine_exposes_config(monkeypatch):
     """
     monkeypatch.setenv("VLLM_BASE_URL", "http://localhost:8000")
     import shared.vllm_compat
+
     importlib.reload(shared.vllm_compat)
 
     from shared.vllm_compat import _CompatLLM
+
     with patch.object(_CompatLLM, "__init__", return_value=None):
         llm = _CompatLLM(model="dummy", max_num_seqs=4, tensor_parallel_size=2)
     # 手动初始化 (因 __init__ 被 patch)
     llm.model = "dummy"
     from shared.vllm_compat import EngineArgs, _MockLLMEngine
+
     llm.llm_engine = _MockLLMEngine(EngineArgs(model="dummy", max_num_seqs=4, tensor_parallel_size=2))
     cfg = llm.llm_engine.vllm_config
     assert cfg.cache_config.gpu_memory_utilization == 0.5

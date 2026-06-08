@@ -17,8 +17,9 @@
 
 try:
     from fastapi import FastAPI
-    from prometheus_client import Counter, Histogram, Gauge, generate_latest
+    from prometheus_client import Counter, Gauge, Histogram, generate_latest
     from starlette.responses import Response
+
     _HAS_DEPS = True
 except ImportError:
     FastAPI = None  # type: ignore
@@ -37,26 +38,15 @@ def build_app():
 
     app = FastAPI()
 
-    llm_requests_total = Counter(
-        "llm_requests_total",
-        "Total LLM requests",
-        ["model", "status"]
-    )
+    llm_requests_total = Counter("llm_requests_total", "Total LLM requests", ["model", "status"])
     llm_request_duration = Histogram(
         "llm_request_duration_seconds",
         "LLM request duration in seconds",
         ["model"],
         buckets=[0.1, 0.5, 1.0, 2.0, 3.0, 5.0, 10.0, 30.0],
     )
-    llm_token_usage = Counter(
-        "llm_token_usage_total",
-        "Total tokens used",
-        ["model", "type"]
-    )
-    llm_token_cost = Gauge(
-        "llm_token_cost_daily_total",
-        "Daily token cost in USD"
-    )
+    llm_token_usage = Counter("llm_token_usage_total", "Total tokens used", ["model", "type"])
+    llm_token_cost = Gauge("llm_token_cost_daily_total", "Daily token cost in USD")
 
     @app.get("/metrics")
     async def metrics():

@@ -17,10 +17,11 @@
 
 import json
 
+import torch
+
 # xgrammar：2025 年发布的开源结构化生成引擎
 # 安装：pip install xgrammar
 import xgrammar as xg
-import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
@@ -31,9 +32,9 @@ def run_xgrammar_demo():
         "properties": {
             "name": {"type": "string"},
             "age": {"type": "integer", "minimum": 0, "maximum": 150},
-            "skills": {"type": "array", "items": {"type": "string"}}
+            "skills": {"type": "array", "items": {"type": "string"}},
         },
-        "required": ["name", "age"]
+        "required": ["name", "age"],
     }
 
     # 2. 编译为 Grammar
@@ -43,9 +44,7 @@ def run_xgrammar_demo():
     compiled_grammar = compiler.compile_grammar(grammar)
 
     # 3. 在推理时强制约束
-    model = AutoModelForCausalLM.from_pretrained(
-        "Qwen/Qwen3-8B", torch_dtype=torch.bfloat16
-    ).cuda()
+    model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen3-8B", torch_dtype=torch.bfloat16).cuda()
 
     input_ids = tokenizer.encode("请生成一个用户信息：")
     output = model.generate(

@@ -19,11 +19,13 @@ Constitutional Classifier 调用示例（Anthropic API 2025+）
 
 mock-mode fallback: 当anthropic包不可用或无API key时使用本地规则模拟。
 """
+
 import os
 
 # 尝试导入anthropic（mock-mode下可注释）
 try:
     import anthropic
+
     HAS_ANTHROPIC = True
 except ImportError:
     HAS_ANTHROPIC = False
@@ -59,7 +61,7 @@ def call_with_constitutional_classifier(prompt: str, api_key: str = None) -> dic
         extra_headers={
             # 启用宪法分类器（生产环境默认开启）
             "anthropic-beta": "constitutional-classifiers-20250501"
-        }
+        },
     )
     return {
         "mode": "live",
@@ -88,7 +90,7 @@ if __name__ == "__main__":
     # 2. 调用演示
     test_prompt = "请解释量子计算的基本原理"
     result = call_with_constitutional_classifier(test_prompt)
-    print(f"\n[调用演示]")
+    print("\n[调用演示]")
     print(f"  模式: {result.get('mode')}")
     print(f"  提示: {result.get('prompt')[:50]}...")
     if "verdict" in result:

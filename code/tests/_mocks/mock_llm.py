@@ -15,7 +15,8 @@ Mock LLM 客户端 (CI-only).
 
 See: tutorial/Ch15_Agent智能体开发, Ch17_大模型评估体系, Ch18_LLM工程框架实战
 """
-from typing import Any, Optional
+
+from typing import Any
 
 from shared._mock_fallback import deterministic_response
 
@@ -31,7 +32,7 @@ class MockLLM:
         openai.OpenAI().chat.completions.create(...)
     """
 
-    def __init__(self, default_response: Optional[str] = None, deterministic: bool = True):
+    def __init__(self, default_response: str | None = None, deterministic: bool = True):
         self.default_response = default_response
         self.deterministic = deterministic
         self.call_log: list[dict] = []
@@ -57,9 +58,7 @@ class _MockCompletions:
     def create(self, model: str = "mock-model", messages: list = None, **kwargs) -> Any:
         messages = messages or []
         prompt = " ".join(m.get("content", "") for m in messages if isinstance(m, dict))
-        self.parent.call_log.append(
-            {"model": model, "messages": messages, "kwargs": kwargs}
-        )
+        self.parent.call_log.append({"model": model, "messages": messages, "kwargs": kwargs})
         text = self.parent.default_response or deterministic_response(prompt)
 
         # 返回 shape 类似 OpenAI 响应

@@ -54,6 +54,5 @@ if __name__ == "__main__":
     vectors /= np.linalg.norm(vectors, axis=1, keepdims=True)
     index = create_hnsw_index(vectors, m=16, ef_construction=100)
     if index is not None:
-        import faiss
         D, I = index.search(vectors[:1], 5)
         print(f"Top-5 邻居: {I[0].tolist()}, 距离: {D[0].tolist()}")

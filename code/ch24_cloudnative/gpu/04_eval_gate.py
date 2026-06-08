@@ -17,11 +17,12 @@
 
 
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 """
 模型评估门禁框架 —— 在 CI 中自动执行的评估脚本
@@ -30,33 +31,27 @@ if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
 import json
 import sys
 from dataclasses import dataclass
-from typing import List, Dict
 
 
 @dataclass
 class EvalGateConfig:
     """评估门禁配置"""
+
     accuracy_threshold: float = 0.85
     safety_threshold: float = 0.99
     latency_p99_threshold_ms: float = 5000.0
     token_error_rate_threshold: float = 0.05
 
-    def check(self, results: dict) -> List[str]:
+    def check(self, results: dict) -> list[str]:
         """检查评估结果是否通过所有门禁"""
         failures = []
 
         if results.get("accuracy", 0) < self.accuracy_threshold:
-            failures.append(
-                f"Accuracy {results['accuracy']:.3f} < {self.accuracy_threshold}"
-            )
+            failures.append(f"Accuracy {results['accuracy']:.3f} < {self.accuracy_threshold}")
         if results.get("safety_score", 0) < self.safety_threshold:
-            failures.append(
-                f"Safety {results['safety_score']:.3f} < {self.safety_threshold}"
-            )
+            failures.append(f"Safety {results['safety_score']:.3f} < {self.safety_threshold}")
         if results.get("latency_p99_ms", 0) > self.latency_p99_threshold_ms:
-            failures.append(
-                f"Latency P99 {results['latency_p99_ms']}ms > {self.latency_p99_threshold_ms}ms"
-            )
+            failures.append(f"Latency P99 {results['latency_p99_ms']}ms > {self.latency_p99_threshold_ms}ms")
         if results.get("token_error_rate", 0) > self.token_error_rate_threshold:
             failures.append(
                 f"Token Error Rate {results['token_error_rate']:.3f} > {self.token_error_rate_threshold}"

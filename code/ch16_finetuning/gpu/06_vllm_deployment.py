@@ -27,6 +27,7 @@ OpenAI 客户端:
         model='Qwen2.5-0.5B-Instruct',
         messages=[{'role': 'user', 'content': 'Hello!'}])
 """
+
 import sys
 from pathlib import Path
 
@@ -35,8 +36,9 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 import torch
-from shared.gpu_guard import require_nvidia_gpu
+
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import require_nvidia_gpu
 
 
 def check_hardware():
@@ -46,8 +48,8 @@ def check_hardware():
 def check_vllm_engine():
     """Windows 上 vllm._C 缺失 → 友好抛错."""
     try:
-        from vllm import LLM  # noqa: F401
         import vllm._C  # noqa: F401
+        from vllm import LLM  # noqa: F401
     except (ImportError, ModuleNotFoundError) as e:
         raise_with_help(
             f"vllm._C 不可用: {e}",

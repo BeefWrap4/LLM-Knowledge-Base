@@ -15,6 +15,7 @@
 #   2. 为什么 Schema 校验要在执行前而不是执行后？(防止破坏性副作用)
 #   3. 校验失败时如何让模型"知错能改"？重试 prompt 怎么写？
 
+
 class ToolHallucinationGuard:
     """工具调用幻觉防护"""
 

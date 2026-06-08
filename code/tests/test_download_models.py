@@ -3,6 +3,7 @@
 # 测试 download_models 字典结构与最小模型数
 # ---
 """测试 download_models 字典结构和最小内容."""
+
 import sys
 from pathlib import Path
 
@@ -31,9 +32,15 @@ def test_models_dict_keys():
 def test_models_dict_contains_known():
     """已知必须有的模型 key（用 key 字符串而非 model_id, 因 model_id 可能更新）."""
     required = [
-        "bge-small-zh", "bge-reranker", "qwen0_5b",
-        "qwen7b", "llama8b", "cosmos7b",
-        "pi0-vla", "r1-distill-1_5b", "mlx-qwen7b-4bit",
+        "bge-small-zh",
+        "bge-reranker",
+        "qwen0_5b",
+        "qwen7b",
+        "llama8b",
+        "cosmos7b",
+        "pi0-vla",
+        "r1-distill-1_5b",
+        "mlx-qwen7b-4bit",
         "llama-cpp-3b",
     ]
     for r in required:

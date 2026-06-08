@@ -16,7 +16,7 @@
 # - BFS 与 DFS 在 ToT 中的取舍？
 
 import random
-from heapq import heappush, heappop
+from heapq import heappop, heappush
 
 
 def call_llm(prompt: str) -> str:
@@ -26,7 +26,7 @@ def call_llm(prompt: str) -> str:
         seed = sum(ord(c) for c in prompt) % 100
         return str(random.Random(seed).uniform(3, 9))
     # 生成思路：返回若干候选
-    return "\n".join([f"思路 {i+1}：用算式组合达成目标" for i in range(3)])
+    return "\n".join([f"思路 {i + 1}：用算式组合达成目标" for i in range(3)])
 
 
 class TreeOfThoughts:
@@ -34,13 +34,13 @@ class TreeOfThoughts:
 
     def __init__(self, branch_factor: int = 3, max_depth: int = 5):
         self.branch_factor = branch_factor  # 每节点分支数
-        self.max_depth = max_depth          # 最大搜索深度
+        self.max_depth = max_depth  # 最大搜索深度
 
     def generate_thoughts(self, state: str, k: int) -> list[str]:
         """从当前状态生成 k 个候选思考步骤"""
         prompt = f"基于当前进展：{state}\n请提出 {k} 个不同的下一步思路（每行一个）："
         response = call_llm(prompt)
-        return [t.strip() for t in response.split('\n') if t.strip()][:k]
+        return [t.strip() for t in response.split("\n") if t.strip()][:k]
 
     def evaluate(self, state: str) -> float:
         """评估当前思考路径的 promising 程度（0-1）"""

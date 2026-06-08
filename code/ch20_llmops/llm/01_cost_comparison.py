@@ -15,6 +15,7 @@
 #  - 传统 ML 与 LLM 推理在成本模型上的本质差异是什么？
 #  - 为什么 Token 计量成为 LLMOps 核心指标？
 
+
 class CostComparison:
     """传统 ML vs LLM 的成本特征差异"""
 
@@ -26,15 +27,11 @@ class CostComparison:
         return {
             "daily_cost": daily_cost,
             "cost_per_1k_predictions": cost_per_1k,
-            "cost_variance": "固定（无波动）"
+            "cost_variance": "固定（无波动）",
         }
 
     @staticmethod
-    def llm_cost(
-        prompt_tokens_per_day: int,
-        completion_tokens_per_day: int,
-        model: str = "gpt-4o"
-    ):
+    def llm_cost(prompt_tokens_per_day: int, completion_tokens_per_day: int, model: str = "gpt-4o"):
         """LLM：按 Token 计费，成本波动大"""
         # 2026年参考价格（每百万 token）
         pricing = {
@@ -45,13 +42,13 @@ class CostComparison:
         }
         p = pricing.get(model, pricing["gpt-4o-mini"])
         daily_cost = (
-            prompt_tokens_per_day / 1_000_000 * p["input"] +
-            completion_tokens_per_day / 1_000_000 * p["output"]
+            prompt_tokens_per_day / 1_000_000 * p["input"]
+            + completion_tokens_per_day / 1_000_000 * p["output"]
         )
         return {
             "daily_cost": daily_cost,
             "cost_per_1k_predictions": daily_cost / (prompt_tokens_per_day / 1000),
-            "cost_variance": f"按 Token 波动（Prompt 长度变化影响大）"
+            "cost_variance": "按 Token 波动（Prompt 长度变化影响大）",
         }
 
 

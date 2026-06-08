@@ -21,7 +21,12 @@
 class FlagRerankerMock:
     """Mock FlagReranker: 模拟 FlagEmbedding 接口"""
 
-    def __init__(self, model_name: str = "BAAI/bge-reranker-v2-m3", use_fp16: bool = True, device: str = "cpu"):
+    def __init__(
+        self,
+        model_name: str = "BAAI/bge-reranker-v2-m3",
+        use_fp16: bool = True,
+        device: str = "cpu",
+    ):
         self.model_name = model_name
         self.use_fp16 = use_fp16
         self.device = device
@@ -40,9 +45,7 @@ class FlagRerankerMock:
 
 
 if __name__ == "__main__":
-    reranker = FlagRerankerMock(
-        "BAAI/bge-reranker-v2-m3", use_fp16=True, device="cpu"
-    )
+    reranker = FlagRerankerMock("BAAI/bge-reranker-v2-m3", use_fp16=True, device="cpu")
 
     query = "什么是 RAG？"
     candidates = [

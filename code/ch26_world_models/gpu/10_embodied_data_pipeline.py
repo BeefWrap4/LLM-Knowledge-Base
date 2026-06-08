@@ -26,11 +26,12 @@
 本 demo: 简化 LeRobot dataset schema + 生成合成 Aloha 数据样本.
 生产: 加载 HF Hub 上的 lerobot/* 数据集 (e.g. lerobot/aloha_sim_transfer_cube_human).
 """
-import sys
+
 import json
+import sys
+from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
-from dataclasses import dataclass, asdict
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
@@ -40,11 +41,12 @@ if str(_code_root) not in sys.path:
 @dataclass
 class EpisodeSample:
     """单帧样本 (LeRobot schema 简化版)."""
+
     timestamp: float
     episode_index: int
     frame_index: int
-    state: list       # 14-DoF 双臂状态
-    action: list      # 7-DoF 末端动作
+    state: list  # 14-DoF 双臂状态
+    action: list  # 7-DoF 末端动作
     image_shape: tuple = (3, 480, 640)  # 占位, 真实为 PNG/JPG bytes
     language_instruction: str = ""
 
@@ -63,7 +65,11 @@ class LeRobotLikeDataset:
             "observation.state": {"shape": (14,), "dtype": "float32", "names": ["joint_pos"] * 14},
             "observation.images.top": {"shape": (3, 480, 640), "dtype": "uint8"},
             "observation.images.wrist": {"shape": (3, 480, 640), "dtype": "uint8"},
-            "action": {"shape": (7,), "dtype": "float32", "names": ["x", "y", "z", "roll", "pitch", "yaw", "gripper"]},
+            "action": {
+                "shape": (7,),
+                "dtype": "float32",
+                "names": ["x", "y", "z", "roll", "pitch", "yaw", "gripper"],
+            },
         }
         self.n_episodes = 50
         self.episode_lengths = [200] * self.n_episodes  # 4 秒 @ 50Hz
@@ -87,10 +93,7 @@ class LeRobotLikeDataset:
                 t = ep_idx * self.episode_lengths[0] + step
                 phase = (t / self.fps) * 2 * 3.14159
                 state = [0.1 * (i + 1) * (0.5 + 0.1 * (i * t % 7)) for i in range(14)]
-                action = [
-                    0.05 * (1 + i) * (0.3 + 0.1 * (i * (t + 1) % 5))
-                    for i in range(7)
-                ]
+                action = [0.05 * (1 + i) * (0.3 + 0.1 * (i * (t + 1) % 5)) for i in range(7)]
                 yield EpisodeSample(
                     timestamp=t / self.fps,
                     episode_index=ep_idx,
@@ -108,7 +111,7 @@ def print_dataset_info(dataset: LeRobotLikeDataset) -> None:
     print(f"  n_episodes : {dataset.n_episodes}")
     print(f"  total frames: {dataset.total_frames:,}")
     print(f"  total time : {dataset.total_duration_s:.1f} s")
-    print(f"  features   :")
+    print("  features   :")
     for k, v in dataset.features.items():
         print(f"    {k:30s} {v['shape']} {v['dtype']}")
 

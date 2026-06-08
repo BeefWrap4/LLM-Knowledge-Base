@@ -16,6 +16,7 @@
 # Dify 知识库 API 调用示例（Python SDK） - 离线 mock 模式
 class DifyClient:
     """Mock DifyClient 模拟 dify_client.DifyClient 的关键方法"""
+
     def __init__(self, api_key):
         self.api_key = api_key
 
@@ -26,21 +27,26 @@ class DifyClient:
     def chat_messages(self, query, user, response_mode="blocking"):
         # 真实场景会通过 SSE 流式返回
         if response_mode == "streaming":
-            return iter([
-                {"answer": "公司加班按 1.5 倍工资计算，", "event": "message"},
-                {"answer": "周末 2 倍，法定节假日 3 倍。", "event": "message"},
-            ])
+            return iter(
+                [
+                    {"answer": "公司加班按 1.5 倍工资计算，", "event": "message"},
+                    {"answer": "周末 2 倍，法定节假日 3 倍。", "event": "message"},
+                ]
+            )
         return {
             "answer": "公司加班按 1.5 倍工资计算，周末 2 倍，法定节假日 3 倍。",
-            "retriever_resources": [
-                {"document_name": "员工手册.pdf", "content": "加班工资条款..."}
-            ]
+            "retriever_resources": [{"document_name": "员工手册.pdf", "content": "加班工资条款..."}],
         }
+
 
 # 方式1：上传文档到知识库
 client = DifyClient(api_key="app-xxxxxxxxxxxx")
+
+
 class _FileObj:
     name = "企业规章制度.pdf"
+
+
 uploaded = client.file_upload(file=_FileObj(), user="admin")
 print("上传结果:", uploaded)
 

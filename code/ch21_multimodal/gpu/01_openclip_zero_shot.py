@@ -16,15 +16,16 @@
 #   3. 为什么 OpenCLIP 相比原始 CLIP 更适合开源研究？
 
 
-
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 import os
+
 import torch
 import torch.nn.functional as F
 
@@ -49,14 +50,12 @@ def main():
         logit_scale = torch.tensor(2.659).exp()
     else:
         # ----- 真实模式 -----
-        from PIL import Image
         import open_clip
+        from PIL import Image
 
         model_name = "ViT-B-32"
         pretrained = "laion2b_s34b_b79k"
-        model, _, preprocess = open_clip.create_model_and_transforms(
-            model_name, pretrained=pretrained
-        )
+        model, _, preprocess = open_clip.create_model_and_transforms(model_name, pretrained=pretrained)
         tokenizer = open_clip.get_tokenizer(model_name)
         model = model.eval()
 

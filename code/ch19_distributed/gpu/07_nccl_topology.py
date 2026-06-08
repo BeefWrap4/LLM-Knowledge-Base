@@ -18,11 +18,12 @@
 
 
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 import torch.distributed as dist
 
@@ -45,8 +46,10 @@ def inspect_nccl_topology():
 
     # NCCL 版本
     try:
-        if hasattr(torch, "cuda") and torch.cuda.is_available():
-            print(f"NCCL version: {torch.cuda.nccl.version()}")
+        import torch as _torch
+
+        if hasattr(_torch, "cuda") and _torch.cuda.is_available():
+            print(f"NCCL version: {_torch.cuda.nccl.version()}")
         else:
             print("NCCL version: <unavailable in mock/CPU mode>")
     except Exception as e:

@@ -26,6 +26,7 @@ Python 支持多继承，方法解析顺序（MRO）通过 C3 线性化算法确
 # 单继承
 # ─────────────────────────────────────────────────────────────
 
+
 class Animal:
     """动物基类"""
 
@@ -38,12 +39,13 @@ class Animal:
     def introduce(self):
         return f"我是 {self.name}"
 
+
 class Dog(Animal):
     """狗 —— 继承 Animal"""
 
     def __init__(self, name: str, breed: str):
-        super().__init__(name)   # 调用父类构造方法
-        self.breed = breed        # 子类特有属性
+        super().__init__(name)  # 调用父类构造方法
+        self.breed = breed  # 子类特有属性
 
     def speak(self):
         return f"{self.name}: Woof!"
@@ -51,6 +53,7 @@ class Dog(Animal):
     def fetch(self):
         """子类特有方法"""
         return f"{self.name} 去捡球了"
+
 
 # ─────────────────────────────────────────────────────────────
 # super() 的深入理解
@@ -65,20 +68,24 @@ super() 不是调用父类，而是按照 MRO 顺序调用下一个类！
 这是理解多继承的关键！
 """
 
+
 class A:
     def __init__(self):
         print("A.__init__")
-        super().__init__()   # 按 MRO 继续调用
+        super().__init__()  # 按 MRO 继续调用
+
 
 class B(A):
     def __init__(self):
         print("B.__init__")
-        super().__init__()   # 不是直接调用 A！是按 MRO 调用下一个
+        super().__init__()  # 不是直接调用 A！是按 MRO 调用下一个
+
 
 class C(B):
     def __init__(self):
         print("C.__init__")
         super().__init__()
+
 
 # MRO: C -> B -> A -> object
 C()

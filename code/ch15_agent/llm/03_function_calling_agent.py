@@ -17,12 +17,13 @@
 """
 Function Calling 多工具 Agent - 完整实战
 """
+
 import json
 import os
-from typing import Optional
 
 try:
     import openai
+
     HAS_OPENAI = True
 except Exception:  # pragma: no cover
     HAS_OPENAI = False
@@ -39,7 +40,7 @@ class FunctionCallingAgent:
     4. 将结果返回给模型，生成最终回答
     """
 
-    def __init__(self, api_key: Optional[str] = None, mock: bool = False):
+    def __init__(self, api_key: str | None = None, mock: bool = False):
         self.model = "gpt-4"
         self.tools = []
         self.tool_functions = {}
@@ -50,19 +51,22 @@ class FunctionCallingAgent:
 
     def register_tool(self, name: str, description: str, parameters: dict, func: callable):
         """注册工具"""
-        self.tools.append({
-            "type": "function",
-            "function": {
-                "name": name,
-                "description": description,
-                "parameters": parameters,
+        self.tools.append(
+            {
+                "type": "function",
+                "function": {
+                    "name": name,
+                    "description": description,
+                    "parameters": parameters,
+                },
             }
-        })
+        )
         self.tool_functions[name] = func
 
     def _mock_response(self, user_message: str) -> "openai.types.chat.ChatCompletionMessage":
         """无 API 时的离线模拟"""
         from types import SimpleNamespace
+
         msg_lower = user_message
         if "天气" in msg_lower:
             tc_args = json.dumps({"city": "北京"})
@@ -71,7 +75,7 @@ class FunctionCallingAgent:
                 function=SimpleNamespace(name="get_weather", arguments=tc_args),
             )
             content = None
-        elif "股价" in msg_lower or "AAPL" in msg_upper if False else "AAPL" in msg_lower:
+        elif "股价" in msg_lower or "AAPL" in msg_lower:
             tc_args = json.dumps({"symbol": "AAPL"})
             tool_call = SimpleNamespace(
                 id="mock-2",
@@ -81,10 +85,12 @@ class FunctionCallingAgent:
         else:
             tool_call = None
             content = "[Mock] 暂无更多工具需要调用，最终回答：北京天气晴 25°C，AAPL 股价 182.50 USD。"
-        choice = SimpleNamespace(message=SimpleNamespace(
-            content=content,
-            tool_calls=[tool_call] if tool_call else None,
-        ))
+        choice = SimpleNamespace(
+            message=SimpleNamespace(
+                content=content,
+                tool_calls=[tool_call] if tool_call else None,
+            )
+        )
         return SimpleNamespace(choices=[choice])
 
     def execute(self, user_message: str, max_tool_calls: int = 5) -> str:
@@ -110,21 +116,23 @@ class FunctionCallingAgent:
                 return message.content
 
             # 记录助手消息（含 tool_calls）
-            self.conversation.append({
-                "role": "assistant",
-                "content": message.content or "",
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {
-                            "name": tc.function.name,
-                            "arguments": tc.function.arguments,
+            self.conversation.append(
+                {
+                    "role": "assistant",
+                    "content": message.content or "",
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments,
+                            },
                         }
-                    }
-                    for tc in message.tool_calls
-                ]
-            })
+                        for tc in message.tool_calls
+                    ],
+                }
+            )
 
             # 执行所有工具调用
             for tool_call in message.tool_calls:
@@ -137,11 +145,13 @@ class FunctionCallingAgent:
                     result = f"错误：工具 {func_name} 不存在"
 
                 # 将工具结果加入对话
-                self.conversation.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": str(result),
-                })
+                self.conversation.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": str(result),
+                    }
+                )
 
         # 达到最大工具调用次数，生成最终回答
         if self.mock:
@@ -154,6 +164,7 @@ class FunctionCallingAgent:
 
 
 # ============ 工具函数定义 ============
+
 
 def get_weather(city: str) -> str:
     """获取天气（模拟）"""
@@ -197,6 +208,7 @@ def send_notification(to: str, message: str) -> str:
 
 # ============ 使用示例 ============
 
+
 def main():
     agent = FunctionCallingAgent(mock=True)  # 默认 mock 模式避免无 key 报错
 
@@ -206,12 +218,10 @@ def main():
         description="获取指定城市的当前天气",
         parameters={
             "type": "object",
-            "properties": {
-                "city": {"type": "string", "description": "城市名称，如北京、上海"}
-            },
-            "required": ["city"]
+            "properties": {"city": {"type": "string", "description": "城市名称，如北京、上海"}},
+            "required": ["city"],
         },
-        func=get_weather
+        func=get_weather,
     )
 
     agent.register_tool(
@@ -219,12 +229,10 @@ def main():
         description="获取指定股票的当前价格",
         parameters={
             "type": "object",
-            "properties": {
-                "symbol": {"type": "string", "description": "股票代码，如 AAPL、GOOGL"}
-            },
-            "required": ["symbol"]
+            "properties": {"symbol": {"type": "string", "description": "股票代码，如 AAPL、GOOGL"}},
+            "required": ["symbol"],
         },
-        func=get_stock_price
+        func=get_stock_price,
     )
 
     agent.register_tool(
@@ -232,12 +240,10 @@ def main():
         description="搜索公司内部知识库",
         parameters={
             "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "搜索关键词"}
-            },
-            "required": ["query"]
+            "properties": {"query": {"type": "string", "description": "搜索关键词"}},
+            "required": ["query"],
         },
-        func=search_knowledge
+        func=search_knowledge,
     )
 
     agent.register_tool(
@@ -247,11 +253,11 @@ def main():
             "type": "object",
             "properties": {
                 "to": {"type": "string", "description": "接收人"},
-                "message": {"type": "string", "description": "通知内容"}
+                "message": {"type": "string", "description": "通知内容"},
             },
-            "required": ["to", "message"]
+            "required": ["to", "message"],
         },
-        func=send_notification
+        func=send_notification,
     )
 
     # 测试：需要调用多个工具的复杂查询

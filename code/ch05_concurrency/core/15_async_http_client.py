@@ -16,6 +16,7 @@
 #   - gather(return_exceptions=True) 配合 try/except 的替代方案？
 import asyncio
 import time
+
 import aiohttp
 
 
@@ -42,6 +43,7 @@ async def fetch_all(urls: list, max_concurrent: int = 100) -> list:
 
     # 共享 session（复用 TCP 连接，性能更好）
     async with aiohttp.ClientSession() as session:
+
         async def bounded_fetch(url):
             async with semaphore:
                 return await fetch(session, url)
@@ -51,10 +53,7 @@ async def fetch_all(urls: list, max_concurrent: int = 100) -> list:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # 处理异常结果
-        return [
-            r if not isinstance(r, Exception) else {"error": str(r)}
-            for r in results
-        ]
+        return [r if not isinstance(r, Exception) else {"error": str(r)} for r in results]
 
 
 async def main():

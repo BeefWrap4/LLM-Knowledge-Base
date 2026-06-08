@@ -20,9 +20,12 @@ advantage_i = (r_i - mean(r_group)) / std(r_group)
 
 无 critic model, 用组内 reward 标准化作为 baseline.
 """
+
 import sys
-import torch
 from pathlib import Path
+
+import torch
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
@@ -53,16 +56,30 @@ def main():
     print("=== GRPO Advantage 计算 ===\n")
 
     # 4 个 prompt, 每个 4 个回答
-    rewards = torch.tensor([
-        # prompt 0: 4 个回答, rewards 0.9, 0.5, 0.3, 0.1
-        0.9, 0.5, 0.3, 0.1,
-        # prompt 1: 4 个回答, rewards 0.8, 0.4, 0.6, 0.2
-        0.8, 0.4, 0.6, 0.2,
-        # prompt 2: 4 个回答, rewards 1.0, 0.0, 0.5, 0.5
-        1.0, 0.0, 0.5, 0.5,
-        # prompt 3: 4 个回答, rewards 0.7, 0.7, 0.7, 0.7
-        0.7, 0.7, 0.7, 0.7,
-    ])
+    rewards = torch.tensor(
+        [
+            # prompt 0: 4 个回答, rewards 0.9, 0.5, 0.3, 0.1
+            0.9,
+            0.5,
+            0.3,
+            0.1,
+            # prompt 1: 4 个回答, rewards 0.8, 0.4, 0.6, 0.2
+            0.8,
+            0.4,
+            0.6,
+            0.2,
+            # prompt 2: 4 个回答, rewards 1.0, 0.0, 0.5, 0.5
+            1.0,
+            0.0,
+            0.5,
+            0.5,
+            # prompt 3: 4 个回答, rewards 0.7, 0.7, 0.7, 0.7
+            0.7,
+            0.7,
+            0.7,
+            0.7,
+        ]
+    )
     group_ids = torch.tensor([0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3])
 
     advantages = grpo_advantage(rewards, group_ids)
@@ -74,10 +91,12 @@ def main():
 
     for gid in [0, 1, 2, 3]:
         mask = group_ids == gid
-        print(f"  prompt {gid}: rewards={[f'{r:.2f}' for r in rewards[mask].tolist()]}, adv={[f'{a:+.3f}' for a in advantages[mask].tolist()]}")
+        print(
+            f"  prompt {gid}: rewards={[f'{r:.2f}' for r in rewards[mask].tolist()]}, adv={[f'{a:+.3f}' for a in advantages[mask].tolist()]}"
+        )
 
-    print(f"\n  注意: prompt 3 (所有 reward 相同) → advantage 全部 0 (无 baseline)")
-    print(f"  优势: 组内相对排序, 无需学 critic model")
+    print("\n  注意: prompt 3 (所有 reward 相同) → advantage 全部 0 (无 baseline)")
+    print("  优势: 组内相对排序, 无需学 critic model")
 
 
 if __name__ == "__main__":

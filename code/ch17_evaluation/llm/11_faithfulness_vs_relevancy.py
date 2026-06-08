@@ -43,8 +43,7 @@ def main() -> None:
 
     # 高 Faithfulness + 高 Relevancy: 是最理想的情况
     answer_ideal = (
-        "Python 3.13 引入了新的实验性 GIL 实现（PEP 703），"
-        "在保证现有兼容性的同时探索无 GIL 模式的可能。"
+        "Python 3.13 引入了新的实验性 GIL 实现（PEP 703），在保证现有兼容性的同时探索无 GIL 模式的可能。"
     )
     print("[案例 理想] 高 Faithfulness + 高 Relevancy（最理想）:")
     print(f"  回答: {answer_ideal}")

@@ -45,10 +45,11 @@ configs = {
         "gradient_accumulation_steps": 16,
         "learning_rate": 2e-4,
         "num_train_epochs": 3,
-    }
+    },
 }
 
 import json
+
 print(json.dumps(configs, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":

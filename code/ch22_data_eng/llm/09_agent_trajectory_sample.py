@@ -24,43 +24,34 @@ trajectory_sample = {
     "instruction": "查询北京明天的天气并推荐合适的穿衣方案",
     "available_tools": [
         {"name": "get_weather", "params": ["city", "date"]},
-        {"name": "search_clothing_advice", "params": ["temperature", "weather_condition"]}
+        {"name": "search_clothing_advice", "params": ["temperature", "weather_condition"]},
     ],
     "trajectory": [
         {
             "step": 1,
             "thought": "用户想知道北京明天的天气和穿衣建议。先调用天气API获取数据。",
-            "action": {
-                "tool": "get_weather",
-                "params": {"city": "北京", "date": "2026-06-07"}
-            },
-            "observation": {
-                "temperature": "18-25°C",
-                "condition": "晴间多云",
-                "wind": "微风"
-            }
+            "action": {"tool": "get_weather", "params": {"city": "北京", "date": "2026-06-07"}},
+            "observation": {"temperature": "18-25°C", "condition": "晴间多云", "wind": "微风"},
         },
         {
             "step": 2,
             "thought": "温度在18-25度之间，需要搜索合适的穿衣建议。",
             "action": {
                 "tool": "search_clothing_advice",
-                "params": {"temperature": "18-25", "weather_condition": "晴间多云"}
+                "params": {"temperature": "18-25", "weather_condition": "晴间多云"},
             },
-            "observation": {
-                "advice": "建议穿着薄外套+T恤+长裤"
-            }
+            "observation": {"advice": "建议穿着薄外套+T恤+长裤"},
         },
         {
             "step": 3,
             "thought": "已经获取了所有需要的信息，可以给出最终回复。",
             "action": "FINAL_ANSWER",
-            "answer": "北京明天天气晴间多云，温度18-25°C，微风。建议穿着薄外套+T恤+长裤的搭配，灵活应对早晚温差。"
-        }
+            "answer": "北京明天天气晴间多云，温度18-25°C，微风。建议穿着薄外套+T恤+长裤的搭配，灵活应对早晚温差。",
+        },
     ],
     "outcome": "success",
     "num_steps": 3,
-    "total_tokens": 1250
+    "total_tokens": 1250,
 }
 
 

@@ -39,7 +39,7 @@ def scaled_dot_product_attention(Q, K, V, mask=None):
         attn_weights: (batch, n_queries, n_keys)
     """
     d_k = Q.size(-1)
-    scores = (Q @ K.transpose(-2, -1)) / (d_k ** 0.5)
+    scores = (Q @ K.transpose(-2, -1)) / (d_k**0.5)
     if mask is not None:
         scores = scores.masked_fill(mask == 0, float("-inf"))
     attn_weights = F.softmax(scores, dim=-1)
@@ -61,8 +61,9 @@ if __name__ == "__main__":
 
     # 验证: attention weights 每行和为 1
     row_sums = attn.sum(dim=-1)
-    assert torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-5), \
+    assert torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-5), (
         f"attention weights 行和应为 1, 实际 {row_sums}"
+    )
     print(f"attn row sums: {row_sums[0]}  # 全部接近 1.0")
 
     # 验证: output 形状正确

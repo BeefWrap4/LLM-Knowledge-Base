@@ -15,6 +15,7 @@
 #   2. RAG 场景下 LLM 的 temperature 应该如何设置？为什么？
 #   3. 如何设计 RAG Prompt 让模型"基于上下文回答"且不知道时说不知道？
 
+
 class RAGPipeline:
     """RAG 检索生成 Pipeline - 完整实现（mock LLM 演示版）"""
 
@@ -52,10 +53,12 @@ class RAGPipeline:
         """
         基于检索结果生成回答（mock，不真正调用 LLM）
         """
-        context = "\n\n---\n\n".join([
-            f"[文档 {i+1}]（相似度：{score:.3f}）\n{content}"
-            for i, (content, score) in enumerate(retrieved_docs)
-        ])
+        context = "\n\n---\n\n".join(
+            [
+                f"[文档 {i + 1}]（相似度：{score:.3f}）\n{content}"
+                for i, (content, score) in enumerate(retrieved_docs)
+            ]
+        )
         prompt = self.rag_prompt_template.format(context=context, question=query)
         if self.llm is not None:
             response = self.llm.chat.completions.create(
@@ -74,10 +77,7 @@ class RAGPipeline:
         return {
             "question": question,
             "answer": answer,
-            "sources": [
-                {"content": d[:200] + "...", "score": float(s)}
-                for d, s in docs
-            ],
+            "sources": [{"content": d[:200] + "...", "score": float(s)} for d, s in docs],
         }
 
 

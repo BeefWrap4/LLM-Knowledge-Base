@@ -17,16 +17,19 @@
 LangGraph Human-in-the-Loop 实战
 关键操作审批流：生成操作计划 → 暂停等待人工确认 → 继续执行
 """
-from langgraph.graph import StateGraph, END
+
+from typing import Annotated, Literal, TypedDict
+
 from langgraph.checkpoint.memory import MemorySaver
-from typing import TypedDict, Annotated, Literal
+from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
-from langchain_core.messages import AIMessage, HumanMessage
+
 
 class ApprovalState(TypedDict):
     messages: Annotated[list, add_messages]
     plan: str
     approved: bool
+
 
 def planner_node(state: ApprovalState) -> dict:
     """生成执行计划"""
@@ -39,6 +42,7 @@ def planner_node(state: ApprovalState) -> dict:
     """
     return {"plan": plan, "messages": [{"role": "assistant", "content": f"已生成计划：\n{plan}"}]}
 
+
 def human_approval_node(state: ApprovalState) -> dict:
     """人机协同关键节点：使用 interrupt() 暂停执行"""
     # 真实场景：interrupt() 会暂停图执行，等待外部输入
@@ -46,16 +50,22 @@ def human_approval_node(state: ApprovalState) -> dict:
     # 离线模拟：直接根据本地变量
     user_decision = "approve"  # 模拟人工输入
     if user_decision.lower() == "approve":
-        return {"approved": True, "messages": [{"role": "assistant", "content": "计划已批准，开始执行。"}]}
+        return {
+            "approved": True,
+            "messages": [{"role": "assistant", "content": "计划已批准，开始执行。"}],
+        }
     else:
         return {"approved": False, "messages": [{"role": "assistant", "content": "计划被拒绝。"}]}
+
 
 def execute_node(state: ApprovalState) -> dict:
     """执行已批准的计划"""
     return {"messages": [{"role": "assistant", "content": "执行完成：所有步骤已成功。"}]}
 
+
 def route_after_approval(state: ApprovalState) -> Literal["execute", END]:
     return "execute" if state["approved"] else END
+
 
 # 构建图
 builder = StateGraph(ApprovalState)
@@ -73,8 +83,7 @@ graph = builder.compile(checkpointer=MemorySaver())
 # 第一轮：直接调用至 execute 节点
 config = {"configurable": {"thread_id": "approval-001"}}
 result = graph.invoke(
-    {"messages": [{"role": "user", "content": "准备部署新版本"}], "approved": False},
-    config=config
+    {"messages": [{"role": "user", "content": "准备部署新版本"}], "approved": False}, config=config
 )
 
 print("=== 执行结果 ===")

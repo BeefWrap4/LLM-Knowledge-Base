@@ -18,10 +18,11 @@
 OpenAI Realtime API - 双向语音 Agent
 通过 WebSocket 维持长连接，实时交换音频流
 """
+
 import asyncio
 import base64
 import json
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 
 class OpenAIRealtimeAgent:
@@ -92,9 +93,7 @@ class OpenAIRealtimeAgent:
         """发送用户音频"""
         if self.mock:
             return
-        await self._send_event("input_audio_buffer.append", {
-            "audio": base64.b64encode(audio_chunk).decode()
-        })
+        await self._send_event("input_audio_buffer.append", {"audio": base64.b64encode(audio_chunk).decode()})
 
     async def listen(self) -> AsyncIterator[dict]:
         """监听服务器事件（mock 模式生成模拟事件）"""
@@ -106,10 +105,14 @@ class OpenAIRealtimeAgent:
                 {"type": "response.audio.delta", "delta": "MOCK_AUDIO_CHUNK_2"},
                 {"type": "response.audio_transcript.delta", "delta": "北京"},
                 {"type": "response.audio_transcript.delta", "delta": "晴"},
-                {"type": "conversation.item.created",
-                 "item": {"type": "function_call",
-                          "name": "get_weather",
-                          "arguments": json.dumps({"city": "北京"})}},
+                {
+                    "type": "conversation.item.created",
+                    "item": {
+                        "type": "function_call",
+                        "name": "get_weather",
+                        "arguments": json.dumps({"city": "北京"}),
+                    },
+                },
             ]
             for e in events:
                 yield self._normalize(e)

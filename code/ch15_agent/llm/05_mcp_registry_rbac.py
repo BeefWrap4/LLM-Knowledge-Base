@@ -17,9 +17,9 @@
 """
 MCP 工程化管理 - Server 注册中心 + 动态加载 + 权限控制
 """
-import json
-import time
+
 import hashlib
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -27,19 +27,21 @@ from enum import Enum
 
 class PermissionLevel(Enum):
     """工具权限级别"""
-    DENY = 0      # 禁止访问
-    READ = 1      # 只读访问
-    WRITE = 2     # 读写访问
-    ADMIN = 3     # 完全控制
+
+    DENY = 0  # 禁止访问
+    READ = 1  # 只读访问
+    WRITE = 2  # 读写访问
+    ADMIN = 3  # 完全控制
 
 
 @dataclass
 class MCPServerInfo:
     """MCP Server 注册信息"""
+
     name: str
     version: str
-    transport: str          # "stdio" | "sse"
-    endpoint: str           # 路径或 URL
+    transport: str  # "stdio" | "sse"
+    endpoint: str  # 路径或 URL
     tools: list[dict] = field(default_factory=list)
     permissions: dict[str, PermissionLevel] = field(default_factory=dict)
     last_heartbeat: float = 0.0
@@ -104,8 +106,9 @@ class MCPRegistry:
                     transport=server.transport,
                     endpoint=server.endpoint,
                     tools=allowed_tools,
-                    permissions={k: v for k, v in user_perms.items()
-                               if v.value >= PermissionLevel.READ.value},
+                    permissions={
+                        k: v for k, v in user_perms.items() if v.value >= PermissionLevel.READ.value
+                    },
                     health_status=server.health_status,
                     metadata=server.metadata,
                 )
@@ -114,10 +117,7 @@ class MCPRegistry:
         return available
 
     def check_permission(
-        self,
-        user_id: str,
-        tool_name: str,
-        required_level: PermissionLevel = PermissionLevel.READ
+        self, user_id: str, tool_name: str, required_level: PermissionLevel = PermissionLevel.READ
     ) -> bool:
         """检查用户是否有权限调用指定工具"""
         user_perms = self._get_user_permissions(user_id)
@@ -144,7 +144,7 @@ class MCPRegistry:
         arguments: dict,
         result: str,
         duration_ms: float,
-        success: bool
+        success: bool,
     ):
         """记录工具调用审计日志"""
         entry = {
@@ -160,7 +160,7 @@ class MCPRegistry:
 
         # 防止日志无限增长
         if len(self._audit_log) > self._max_log_entries:
-            self._audit_log = self._audit_log[-self._max_log_entries // 2:]
+            self._audit_log = self._audit_log[-self._max_log_entries // 2 :]
 
     def health_check(self) -> dict[str, str]:
         """对所有 Server 执行健康检查"""
@@ -190,6 +190,7 @@ class MCPRegistry:
 
 # ============ 使用示例 ============
 
+
 def demo_mcp_registry():
     """MCP Registry 使用演示"""
     registry = MCPRegistry()
@@ -211,16 +212,18 @@ def demo_mcp_registry():
     registry._user_roles["bob"] = ["admin"]
 
     # 3. 注册 Server
-    registry.register(MCPServerInfo(
-        name="order-system",
-        version="1.2.0",
-        transport="stdio",
-        endpoint="/servers/order-mcp",
-        tools=[
-            {"name": "query_order", "description": "查询订单"},
-            {"name": "update_order", "description": "更新订单"},
-        ],
-    ))
+    registry.register(
+        MCPServerInfo(
+            name="order-system",
+            version="1.2.0",
+            transport="stdio",
+            endpoint="/servers/order-mcp",
+            tools=[
+                {"name": "query_order", "description": "查询订单"},
+                {"name": "update_order", "description": "更新订单"},
+            ],
+        )
+    )
 
     # 4. 权限检查
     print(f"Alice 能否 query_order: {registry.check_permission('alice', 'query_order')}")

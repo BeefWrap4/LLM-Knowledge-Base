@@ -36,7 +36,8 @@ from functools import total_ordering
 # 完整魔术方法示例类
 # ─────────────────────────────────────────────────────────────
 
-@total_ordering   # 自动生成剩余比较方法
+
+@total_ordering  # 自动生成剩余比较方法
 class Vector2D:
     """
     二维向量 —— 演示各类魔术方法
@@ -59,6 +60,7 @@ class Vector2D:
         """格式化 —— format(obj, spec) 调用"""
         if format_spec == "polar":
             import math
+
             r = math.hypot(self.x, self.y)
             theta = math.degrees(math.atan2(self.y, self.x))
             return f"(r={r:.2f}, θ={theta:.1f}°)"
@@ -68,7 +70,7 @@ class Vector2D:
     def __eq__(self, other):
         if isinstance(other, Vector2D):
             return self.x == other.x and self.y == other.y
-        return NotImplemented   # 返回 NotImplemented 让 Python 尝试反向操作
+        return NotImplemented  # 返回 NotImplemented 让 Python 尝试反向操作
 
     def __lt__(self, other):
         """按模长比较"""
@@ -108,6 +110,7 @@ class Vector2D:
     def __abs__(self):
         """模长：abs(v)"""
         import math
+
         return math.hypot(self.x, self.y)
 
     # ── 4. 容器协议 ──
@@ -144,27 +147,28 @@ class Vector2D:
         print(f"退出上下文: {self}")
         if exc_type:
             print(f"  捕获异常: {exc_type.__name__}")
-        return False   # 不抑制异常
+        return False  # 不抑制异常
+
 
 # ── 使用演示 ──
 v1 = Vector2D(3, 4)
 v2 = Vector2D(1, 2)
 
-print(repr(v1))           # "Vector2D(3, 4)"
-print(str(v1))            # "(3, 4)"
-print(format(v1, "polar")) # "(r=5.00, θ=53.1°)"
+print(repr(v1))  # "Vector2D(3, 4)"
+print(str(v1))  # "(3, 4)"
+print(format(v1, "polar"))  # "(r=5.00, θ=53.1°)"
 
-print(v1 + v2)            # (4, 6)
-print(v1 * 3)             # (9, 12)
-print(3 * v1)             # (9, 12) — __rmul__
-print(abs(v1))            # 5.0
-print(v1(v2))             # 11 — 点积 (3*1 + 4*2)
+print(v1 + v2)  # (4, 6)
+print(v1 * 3)  # (9, 12)
+print(3 * v1)  # (9, 12) — __rmul__
+print(abs(v1))  # 5.0
+print(v1(v2))  # 11 — 点积 (3*1 + 4*2)
 print(v1 == Vector2D(3, 4))  # True
-print(v1 > v2)            # True (25 > 5)
+print(v1 > v2)  # True (25 > 5)
 
 # 作为字典键（需要 __hash__）
 vectors = {v1: "vector1", v2: "vector2"}
-print(vectors[Vector2D(3, 4)])   # "vector1"
+print(vectors[Vector2D(3, 4)])  # "vector1"
 
 # 上下文管理器
 with Vector2D(1, 1) as v:

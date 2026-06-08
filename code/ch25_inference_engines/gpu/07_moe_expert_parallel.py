@@ -35,7 +35,9 @@ Mixtral-8x7B 约 90GB (fp16) → 单 80GB A100 放不下, 需 EP=2/4 (2×/4× A1
 注: Mixtral 在 HF 上 ~90GB;  本地 demo 默认用 Qwen2.5-0.5B 占位 + 仅打印
    config; 真实跑需下载 Mixtral-8x7B-Instruct 权重.
 """
+
 from __future__ import annotations
+
 import sys
 from pathlib import Path
 
@@ -43,8 +45,7 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import require_nvidia_gpu, gpu_summary
-
+from shared.gpu_guard import gpu_summary, require_nvidia_gpu
 
 # 真实 MoE 模型 (按需取消注释, 默认占位)
 # MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1"  # 90GB fp16
@@ -96,8 +97,8 @@ def main() -> None:
         gpu_memory_utilization=0.5,
         max_num_seqs=4,
         max_model_len=512,
-        enable_expert_parallel=True,   # 启用 EP (MoE 模型时生效)
-        tensor_parallel_size=1,         # 占位; MoE 真实跑建议 ≥2
+        enable_expert_parallel=True,  # 启用 EP (MoE 模型时生效)
+        tensor_parallel_size=1,  # 占位; MoE 真实跑建议 ≥2
         enforce_eager=True,
     )
 

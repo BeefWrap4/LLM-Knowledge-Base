@@ -23,11 +23,11 @@
          每个阶段只处理当前数据块，不加载全部数据。
 """
 
-import os
 
 # ─────────────────────────────────────────────────────────────
 # 数据处理管道模式
 # ─────────────────────────────────────────────────────────────
+
 
 def read_chunks(filepath, chunk_size=8192):
     """阶段1：读取文件块"""
@@ -37,6 +37,7 @@ def read_chunks(filepath, chunk_size=8192):
             if not chunk:
                 break
             yield chunk
+
 
 def decode_lines(chunks):
     """阶段2：将字节块解码为文本行"""
@@ -49,11 +50,13 @@ def decode_lines(chunks):
     if buffer:
         yield buffer.decode("utf-8")
 
+
 def filter_lines(lines, keyword):
     """阶段3：过滤包含关键词的行"""
     for line in lines:
         if keyword in line:
             yield line
+
 
 def parse_records(lines):
     """阶段4：解析为结构化数据"""
@@ -66,6 +69,7 @@ def parse_records(lines):
                 "value": float(parts[2].strip()),
             }
 
+
 # 组合管道（惰性执行，不占用大量内存）
 def process_file_pipeline(filepath, keyword):
     """完整的数据处理管道"""
@@ -73,24 +77,27 @@ def process_file_pipeline(filepath, keyword):
     lines = decode_lines(chunks)
     filtered = filter_lines(lines, keyword)
     records = parse_records(filtered)
-    return records   # 返回生成器，尚未执行任何处理！
+    return records  # 返回生成器，尚未执行任何处理！
 
 
 # ─────────────────────────────────────────────────────────────
 # 实际应用：逐行读取 + 统计
 # ─────────────────────────────────────────────────────────────
 
+
 def line_count(filepath):
     """统计行数 —— 不加载整个文件"""
-    with open(filepath, "r", encoding="utf-8") as f:
-        return sum(1 for _ in f)   # 生成器表达式 + sum
+    with open(filepath, encoding="utf-8") as f:
+        return sum(1 for _ in f)  # 生成器表达式 + sum
+
 
 def grep_generator(pattern, filepath):
     """实现 grep 功能 —— 返回匹配行的生成器"""
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         for i, line in enumerate(f, 1):
             if pattern in line:
                 yield i, line.strip()
+
 
 # 统计每个 IP 的访问次数（类似 awk）
 def count_ip_frequency(logfile):
@@ -98,12 +105,12 @@ def count_ip_frequency(logfile):
     from collections import Counter
 
     def extract_ips(filepath):
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             for line in f:
                 # 假设日志格式: "IP - - [timestamp] ..."
                 parts = line.split()
                 if parts:
-                    yield parts[0]   # 第一个字段是 IP
+                    yield parts[0]  # 第一个字段是 IP
 
     return Counter(extract_ips(logfile))
 

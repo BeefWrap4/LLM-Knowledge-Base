@@ -19,14 +19,15 @@
 智能客服 Agent - 完整实战
 集成：ReAct + Function Calling + RAG + 记忆管理
 """
+
 import json
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
 
 try:
     import openai
+
     HAS_OPENAI = True
 except Exception:  # pragma: no cover
     HAS_OPENAI = False
@@ -68,12 +69,10 @@ class CustomerServiceAgent:
                     "description": "查询公司政策（如退换货、运费、会员权益等）",
                     "parameters": {
                         "type": "object",
-                        "properties": {
-                            "topic": {"type": "string", "description": "政策主题"}
-                        },
-                        "required": ["topic"]
-                    }
-                }
+                        "properties": {"topic": {"type": "string", "description": "政策主题"}},
+                        "required": ["topic"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -84,11 +83,11 @@ class CustomerServiceAgent:
                         "type": "object",
                         "properties": {
                             "order_id": {"type": "string"},
-                            "user_id": {"type": "string"}
+                            "user_id": {"type": "string"},
                         },
-                        "required": ["order_id"]
-                    }
-                }
+                        "required": ["order_id"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -100,11 +99,14 @@ class CustomerServiceAgent:
                         "properties": {
                             "user_id": {"type": "string"},
                             "issue": {"type": "string"},
-                            "priority": {"type": "string", "enum": ["low", "medium", "high", "urgent"]}
+                            "priority": {
+                                "type": "string",
+                                "enum": ["low", "medium", "high", "urgent"],
+                            },
                         },
-                        "required": ["user_id", "issue", "priority"]
-                    }
-                }
+                        "required": ["user_id", "issue", "priority"],
+                    },
+                },
             },
             {
                 "type": "function",
@@ -116,12 +118,12 @@ class CustomerServiceAgent:
                         "properties": {
                             "order_id": {"type": "string"},
                             "reason": {"type": "string"},
-                            "amount": {"type": "number"}
+                            "amount": {"type": "number"},
                         },
-                        "required": ["order_id", "reason"]
-                    }
-                }
-            }
+                        "required": ["order_id", "reason"],
+                    },
+                },
+            },
         ]
 
     def _build_system_prompt(self) -> str:
@@ -148,8 +150,13 @@ class CustomerServiceAgent:
             # 极简规则匹配：含强负面词则高强度
             negative = ["垃圾", "投诉", "差评", "退款", "欺骗"]
             angry = ["滚", "废物", "去死"]
-            intensity = 0.9 if any(w in message for w in angry) else \
-                        0.6 if any(w in message for w in negative) else 0.2
+            intensity = (
+                0.9
+                if any(w in message for w in angry)
+                else 0.6
+                if any(w in message for w in negative)
+                else 0.2
+            )
             sentiment = "angry" if intensity > 0.8 else "neutral"
             return {
                 "sentiment": sentiment,
@@ -196,11 +203,18 @@ class CustomerServiceAgent:
 
         # mock 模式下的简化决策
         if self.mock:
-            tool_name = "query_policy" if any(k in user_message for k in ["退换", "运费", "会员"]) else \
-                        "query_order" if "订单" in user_message else None
-            response_text = self._execute_tool(tool_name, {"topic": user_message, "order_id": user_message}, user_id) \
-                            if tool_name else \
-                            "您好，请告诉我您想咨询的具体问题（如退换货政策、订单状态等）。"
+            tool_name = (
+                "query_policy"
+                if any(k in user_message for k in ["退换", "运费", "会员"])
+                else "query_order"
+                if "订单" in user_message
+                else None
+            )
+            response_text = (
+                self._execute_tool(tool_name, {"topic": user_message, "order_id": user_message}, user_id)
+                if tool_name
+                else "您好，请告诉我您想咨询的具体问题（如退换货政策、订单状态等）。"
+            )
             self.conversation.append({"role": "user", "content": user_message})
             self.conversation.append({"role": "assistant", "content": response_text})
             return {
@@ -214,7 +228,7 @@ class CustomerServiceAgent:
         messages = [
             {"role": "system", "content": self.system_prompt},
             *self.conversation,
-            {"role": "user", "content": user_message}
+            {"role": "user", "content": user_message},
         ]
 
         actions = []
@@ -250,25 +264,32 @@ class CustomerServiceAgent:
                 func_name = tc.function.name
                 func_args = json.loads(tc.function.arguments)
                 result = self._execute_tool(func_name, func_args, user_id)
-                tool_results.append({
-                    "tool_call_id": tc.id,
-                    "role": "tool",
-                    "content": str(result),
-                })
+                tool_results.append(
+                    {
+                        "tool_call_id": tc.id,
+                        "role": "tool",
+                        "content": str(result),
+                    }
+                )
                 actions.append({"tool": func_name, "args": func_args, "result": result})
 
-            messages.append({
-                "role": "assistant",
-                "content": message.content or "",
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {"name": tc.function.name, "arguments": tc.function.arguments}
-                    }
-                    for tc in message.tool_calls
-                ]
-            })
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": message.content or "",
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments,
+                            },
+                        }
+                        for tc in message.tool_calls
+                    ],
+                }
+            )
             messages.extend(tool_results)
 
         return {
@@ -278,7 +299,7 @@ class CustomerServiceAgent:
             "sentiment": sentiment,
         }
 
-    def _execute_tool(self, name: Optional[str], args: dict, user_id: str) -> str:
+    def _execute_tool(self, name: str | None, args: dict, user_id: str) -> str:
         """执行工具调用（模拟实现）"""
         if name == "query_policy":
             policies = {
@@ -308,27 +329,28 @@ class CustomerServiceAgent:
 
 # ============ 使用示例 ============
 
+
 def demo():
     """智能客服 Agent 演示"""
     agent = CustomerServiceAgent(api_key="your-api-key", mock=True)
 
     # 场景1：普通政策咨询
     result1 = agent.handle("你们退换货政策是什么？")
-    print(f"用户：你们退换货政策是什么？")
+    print("用户：你们退换货政策是什么？")
     print(f"客服：{result1['response']}")
     print(f"情感：{result1['sentiment']['sentiment']}, 强度：{result1['sentiment']['intensity']}")
     print()
 
     # 场景2：订单查询
     result2 = agent.handle("帮我查一下订单 #12345")
-    print(f"用户：帮我查一下订单 #12345")
+    print("用户：帮我查一下订单 #12345")
     print(f"客服：{result2['response']}")
     print(f"执行操作：{result2['actions']}")
     print()
 
     # 场景3：情绪激动的用户
     result3 = agent.handle("你们这是什么垃圾服务！我的货都丢了一周了！我要投诉！")
-    print(f"用户：你们这是什么垃圾服务！我的货都丢了一周了！")
+    print("用户：你们这是什么垃圾服务！我的货都丢了一周了！")
     print(f"客服：{result3['response']}")
     print(f"是否转人工：{result3['escalated']}")
     print("\nOK")

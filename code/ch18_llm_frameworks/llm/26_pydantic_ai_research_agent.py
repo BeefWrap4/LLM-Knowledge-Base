@@ -16,23 +16,29 @@
 """
 Pydantic AI 实战：类型安全的研究助手 - 离线 mock 模式
 """
+
 # 真实环境: from pydantic_ai import Agent, RunContext
-from pydantic import BaseModel, Field
 from dataclasses import dataclass
+
+from pydantic import BaseModel, Field
+
 
 # ===== 1. 用 Pydantic 模型声明 Agent 输出 =====
 class ResearchReport(BaseModel):
     """研究结果的结构化输出"""
+
     summary: str = Field(description="一句话总结")
     key_points: list[str] = Field(description="3-5 个关键点")
     sources: list[str] = Field(description="引用来源列表")
     confidence: float = Field(ge=0, le=1, description="置信度 0-1")
+
 
 # ===== 2. 通过依赖注入传递上下文 =====
 @dataclass
 class Deps:
     user_id: str
     api_key: str
+
 
 # ===== 3. 定义 Agent（mock 模式：仅展示 API）=====
 # 真实代码:
@@ -48,6 +54,7 @@ class Deps:
 #     """联网搜索工具（自动注册为 LLM 可用工具）"""
 #     return f"[{query}] 的模拟搜索结果：..."
 
+
 # ===== 4. mock 运行 =====
 def mock_run(query: str, deps: Deps) -> ResearchReport:
     """模拟 Pydantic AI 的运行结果"""
@@ -61,6 +68,7 @@ def mock_run(query: str, deps: Deps) -> ResearchReport:
         sources=["官方文档", "GitHub 仓库", "社区博客"],
         confidence=0.85,
     )
+
 
 # 演示
 deps = Deps(user_id="alice", api_key="sk-...")

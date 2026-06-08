@@ -17,19 +17,22 @@
 
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
+
 try:
     from langchain.agents import AgentExecutor, create_openai_functions_agent
+
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
     _SKIP_REASON = str(_e).split("\n")[0]
 if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
     _sys.exit(0)
-print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
+print(
+    "OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)"
+)
+
 from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-import json
+
 
 # ===== 方式1: 使用 @tool 装饰器 =====
 @tool
@@ -43,6 +46,7 @@ def get_weather(city: str) -> str:
     }
     return weather_data.get(city, f"未找到{city}的天气数据")
 
+
 @tool
 def calculate(expression: str) -> str:
     """执行数学计算。参数 expression 为数学表达式字符串，如 '2+3*4'。"""
@@ -51,6 +55,7 @@ def calculate(expression: str) -> str:
         return f"计算结果：{expression} = {result}"
     except Exception as e:
         return f"计算错误：{str(e)}"
+
 
 @tool
 def search_database(query: str, limit: int = 5) -> str:
@@ -66,6 +71,7 @@ def search_database(query: str, limit: int = 5) -> str:
         if query.lower() in k or query.lower() in v:
             results.append(f"[{k}]: {v[:100]}...")
     return "\n".join(results[:limit]) or "未找到匹配结果"
+
 
 # 工具列表
 tools = [get_weather, calculate, search_database]

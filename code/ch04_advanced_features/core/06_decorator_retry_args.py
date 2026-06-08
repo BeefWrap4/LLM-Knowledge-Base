@@ -24,12 +24,13 @@
     第三层：包装函数（实际调用）
 """
 
-from functools import wraps
 import time
+from functools import wraps
 
 # ─────────────────────────────────────────────────────────────
 # 面试真题：手写重试装饰器
 # ─────────────────────────────────────────────────────────────
+
 
 def retry(max_attempts=3, delay=1, exceptions=(Exception,)):
     """
@@ -45,6 +46,7 @@ def retry(max_attempts=3, delay=1, exceptions=(Exception,)):
         def fetch_data():
             ...
     """
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -55,12 +57,14 @@ def retry(max_attempts=3, delay=1, exceptions=(Exception,)):
                     if attempt == max_attempts:
                         print(f"❌ {func.__name__} 在 {max_attempts} 次尝试后失败: {e}")
                         raise
-                    print(f"⚠️ {func.__name__} 第 {attempt} 次失败: {e}，"
-                          f"{delay}秒后重试...")
+                    print(f"⚠️ {func.__name__} 第 {attempt} 次失败: {e}，{delay}秒后重试...")
                     time.sleep(delay)
-            return None   # 不会执行到这里
+            return None  # 不会执行到这里
+
         return wrapper
+
     return decorator
+
 
 # 使用重试装饰器
 @retry(max_attempts=3, delay=0.1, exceptions=(ConnectionError,))
@@ -70,6 +74,7 @@ def unstable_api(call_count=[0]):
     if call_count[0] < 3:
         raise ConnectionError("连接超时")
     return f"成功！（第 {call_count[0]} 次）"
+
 
 print(unstable_api())
 # ⚠️ unstable_api 第 1 次失败: 连接超时，0.1秒后重试...

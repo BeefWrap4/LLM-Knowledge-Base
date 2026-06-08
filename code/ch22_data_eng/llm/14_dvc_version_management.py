@@ -17,7 +17,6 @@
 #   3. 大模型训练中如何将代码版本（Git）+ 数据版本（DVC）+ 模型版本（Model Registry）三者联动？
 
 import json
-import os
 
 # DVC 数据版本管理概念示例
 # 实际使用需要通过命令行或 API
@@ -100,7 +99,7 @@ def demo_dvc_metadata():
         "meta": {
             "dvc-version": "3.0.0",
             "created": "2026-06-01T00:00:00.000Z",
-        }
+        },
     }
     print(json.dumps(dvc_metadata, ensure_ascii=False, indent=2))
     print("\n# 实际该文件保存在 data/pretrain_corpus_v1.parquet.dvc")

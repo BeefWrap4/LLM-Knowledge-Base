@@ -36,6 +36,7 @@
 # 集合的典型应用场景
 # ─────────────────────────────────────────────────────────────
 
+
 def find_duplicates(data: list) -> set:
     """利用集合快速查找重复元素"""
     seen = set()
@@ -47,10 +48,12 @@ def find_duplicates(data: list) -> set:
             seen.add(item)
     return duplicates
 
+
 def find_common(list1: list, list2: list) -> set:
     """查找两个列表的共同元素"""
     # 方式1：集合交集（O(n + m)）
     return set(list1) & set(list2)
+
 
 # 演示
 print(f"重复元素: {find_duplicates([1, 2, 3, 2, 4, 3, 5])}")

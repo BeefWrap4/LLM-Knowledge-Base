@@ -16,31 +16,33 @@
 #   3. 当数据存在 99 分位数之外的离群点时，为什么更推荐 clip 而非直接删除？
 
 import matplotlib
+
 matplotlib.use("Agg")
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
+import numpy as np
+import pandas as pd
 
 # ========== 步骤 1: 加载数据 ==========
 # 生成模拟电商数据
 np.random.seed(42)
 n = 10000
 
-df = pd.DataFrame({
-    'user_id': range(1, n + 1),
-    'age': np.random.randint(18, 65, n),
-    'gender': np.random.choice(['M', 'F', 'Unknown'], n, p=[0.48, 0.48, 0.04]),
-    'city': np.random.choice(['BJ', 'SH', 'GZ', 'SZ', 'HZ', 'CD'], n),
-    'purchase_amount': np.random.exponential(500, n),
-    'category': np.random.choice(['Electronics', 'Clothing', 'Food', 'Books'], n),
-    'is_member': np.random.choice([0, 1], n, p=[0.6, 0.4]),
-    'order_date': pd.date_range('2024-01-01', periods=n, freq='min')
-})
+df = pd.DataFrame(
+    {
+        "user_id": range(1, n + 1),
+        "age": np.random.randint(18, 65, n),
+        "gender": np.random.choice(["M", "F", "Unknown"], n, p=[0.48, 0.48, 0.04]),
+        "city": np.random.choice(["BJ", "SH", "GZ", "SZ", "HZ", "CD"], n),
+        "purchase_amount": np.random.exponential(500, n),
+        "category": np.random.choice(["Electronics", "Clothing", "Food", "Books"], n),
+        "is_member": np.random.choice([0, 1], n, p=[0.6, 0.4]),
+        "order_date": pd.date_range("2024-01-01", periods=n, freq="min"),
+    }
+)
 
 # 添加一些缺失值和异常值
-df.loc[np.random.choice(n, 100, replace=False), 'age'] = np.nan
-df.loc[np.random.choice(n, 50, replace=False), 'purchase_amount'] *= 10
+df.loc[np.random.choice(n, 100, replace=False), "age"] = np.nan
+df.loc[np.random.choice(n, 50, replace=False), "purchase_amount"] *= 10
 
 print(f"数据集大小: {df.shape}")
 print(df.head())
@@ -57,47 +59,45 @@ print(df.isnull().sum())
 
 # ========== 步骤 3: 数据清洗 ==========
 # 处理缺失值
-df['age'].fillna(df['age'].median(), inplace=True)
+df["age"].fillna(df["age"].median(), inplace=True)
 
 # 处理异常值（截断到 99% 分位数）
-amount_99 = df['purchase_amount'].quantile(0.99)
-df['purchase_amount'] = df['purchase_amount'].clip(upper=amount_99)
+amount_99 = df["purchase_amount"].quantile(0.99)
+df["purchase_amount"] = df["purchase_amount"].clip(upper=amount_99)
 
 # ========== 步骤 4: 特征工程 ==========
 # 年龄分段
-df['age_group'] = pd.cut(df['age'], bins=[0, 25, 35, 45, 100],
-                          labels=['青年', '壮年', '中年', '老年'])
+df["age_group"] = pd.cut(df["age"], bins=[0, 25, 35, 45, 100], labels=["青年", "壮年", "中年", "老年"])
 
 # 消费等级
-df['spending_level'] = pd.qcut(df['purchase_amount'], q=4,
-                                labels=['低', '中', '高', '很高'])
+df["spending_level"] = pd.qcut(df["purchase_amount"], q=4, labels=["低", "中", "高", "很高"])
 
 # ========== 步骤 5: 分析 & 可视化 ==========
 fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
 # 1. 各城市消费金额
-city_sales = df.groupby('city')['purchase_amount'].sum().sort_values(ascending=False)
-city_sales.plot(kind='bar', ax=axes[0, 0], color='#4A6FA5')
-axes[0, 0].set_title('各城市总消费金额')
-axes[0, 0].tick_params(axis='x', rotation=45)
+city_sales = df.groupby("city")["purchase_amount"].sum().sort_values(ascending=False)
+city_sales.plot(kind="bar", ax=axes[0, 0], color="#4A6FA5")
+axes[0, 0].set_title("各城市总消费金额")
+axes[0, 0].tick_params(axis="x", rotation=45)
 
 # 2. 年龄组分布
-df['age_group'].value_counts().plot(kind='pie', ax=axes[0, 1], autopct='%1.1f%%')
-axes[0, 1].set_title('年龄组分布')
+df["age_group"].value_counts().plot(kind="pie", ax=axes[0, 1], autopct="%1.1f%%")
+axes[0, 1].set_title("年龄组分布")
 
 # 3. 会员 vs 非会员消费
-df.boxplot(column='purchase_amount', by='is_member', ax=axes[1, 0])
-axes[1, 0].set_title('会员 vs 非会员消费金额')
-plt.suptitle('')  # 去掉 boxplot 自动生成的 suptitle
+df.boxplot(column="purchase_amount", by="is_member", ax=axes[1, 0])
+axes[1, 0].set_title("会员 vs 非会员消费金额")
+plt.suptitle("")  # 去掉 boxplot 自动生成的 suptitle
 
 # 4. 各类别消费趋势
-category_daily = df.groupby([df['order_date'].dt.date, 'category'])['purchase_amount'].sum().unstack()
+category_daily = df.groupby([df["order_date"].dt.date, "category"])["purchase_amount"].sum().unstack()
 category_daily.plot(ax=axes[1, 1])
-axes[1, 1].set_title('各类别消费趋势')
-axes[1, 1].legend(loc='upper left', fontsize=8)
+axes[1, 1].set_title("各类别消费趋势")
+axes[1, 1].legend(loc="upper left", fontsize=8)
 
 plt.tight_layout()
-plt.savefig('data_analysis_pipeline.png', dpi=150, bbox_inches='tight')
+plt.savefig("data_analysis_pipeline.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 # ========== 步骤 6: 输出洞察 ==========
@@ -105,7 +105,7 @@ print("\n=== 数据洞察 ===")
 print(f"总用户数: {df['user_id'].nunique()}")
 print(f"总消费金额: ¥{df['purchase_amount'].sum():,.0f}")
 print(f"人均消费: ¥{df['purchase_amount'].mean():.0f}")
-print(f"会员比例: {df['is_member'].mean()*100:.1f}%")
+print(f"会员比例: {df['is_member'].mean() * 100:.1f}%")
 print(f"最热门品类: {df['category'].mode()[0]}")
 
 if __name__ == "__main__":

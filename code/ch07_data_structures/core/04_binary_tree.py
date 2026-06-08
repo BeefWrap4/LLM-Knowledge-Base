@@ -19,6 +19,7 @@
 
 class TreeNode:
     """二叉树节点"""
+
     def __init__(self, val=0, left=None, right=None):
         self.val = val
         self.left = left
@@ -29,12 +30,14 @@ class TreeNode:
 def preorder_recursive(root: TreeNode) -> list[int]:
     """递归前序：根 -> 左 -> 右"""
     result = []
+
     def dfs(node):
         if not node:
             return
         result.append(node.val)  # 访问根
-        dfs(node.left)           # 遍历左
-        dfs(node.right)          # 遍历右
+        dfs(node.left)  # 遍历左
+        dfs(node.right)  # 遍历右
+
     dfs(root)
     return result
 
@@ -103,10 +106,7 @@ if __name__ == "__main__":
     #     2   3
     #    / \ / \
     #   4  5 6  7
-    root = TreeNode(1,
-        TreeNode(2, TreeNode(4), TreeNode(5)),
-        TreeNode(3, TreeNode(6), TreeNode(7))
-    )
+    root = TreeNode(1, TreeNode(2, TreeNode(4), TreeNode(5)), TreeNode(3, TreeNode(6), TreeNode(7)))
 
     # 前序
     assert preorder_recursive(root) == [1, 2, 4, 5, 3, 6, 7]
@@ -123,4 +123,3 @@ if __name__ == "__main__":
     assert preorder_iterative(None) == []
     assert inorder_iterative(None) == []
     assert postorder_iterative(None) == []
-

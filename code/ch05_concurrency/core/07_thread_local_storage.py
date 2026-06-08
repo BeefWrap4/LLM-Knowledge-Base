@@ -20,6 +20,7 @@ import time
 # 线程本地存储：每个线程拥有独立的数据副本
 thread_local = threading.local()
 
+
 def process_request(request_id):
     # 每个线程的 thread_local.user 互不干扰
     thread_local.user = f"User-{request_id}"
@@ -28,8 +29,10 @@ def process_request(request_id):
     # 模拟处理
     time.sleep(0.05)
 
-    print(f"线程 {threading.current_thread().name}: "
-          f"user={thread_local.user}, request={thread_local.request_id}")
+    print(
+        f"线程 {threading.current_thread().name}: user={thread_local.user}, request={thread_local.request_id}"
+    )
+
 
 # 多线程场景下（如 Web 服务器），每个请求独立存储上下文
 threads = []

@@ -21,44 +21,43 @@
 # 1. 小整数缓存
 a = 256
 b = 256
-print(f"256 is 256: {a is b}")           # True — 缓存
-print(f"256 == 256: {a == b}")         # True
+print(f"256 is 256: {a is b}")  # True — 缓存
+print(f"256 == 256: {a == b}")  # True
 
 a = 257
 b = 257
-print(f"257 is 257: {a is b}")           # False — 超出缓存
-print(f"257 == 257: {a == b}")         # True
+print(f"257 is 257: {a is b}")  # False — 超出缓存
+print(f"257 == 257: {a == b}")  # True
 
 # 2. 字符串驻留 (interning)
 s1 = "hello"  # 字面量, 自动驻留
 s2 = "hello"
-print(f"'hello' is 'hello': {s1 is s2}")    # True
+print(f"'hello' is 'hello': {s1 is s2}")  # True
 print(f"'hello' == 'hello': {s1 == s2}")  # True
 
 # 运行时拼接 — 不驻留
 s3 = "hel" + "lo"
-print(f"拼接 is: {s1 is s3}")     # False
-print(f"拼接 ==: {s1 == s3}")    # True
+print(f"拼接 is: {s1 is s3}")  # False
+print(f"拼接 ==: {s1 == s3}")  # True
 
 # 4. 列表 is vs ==
 list1 = [1, 2, 3]
 list2 = [1, 2, 3]
-print(f"\n[1,2,3] is [1,2,3]: {list1 is list2}")   # False — 不同对象
+print(f"\n[1,2,3] is [1,2,3]: {list1 is list2}")  # False — 不同对象
 print(f"[1,2,3] == [1,2,3]: {list1 == list2}")  # True — 值相等
 print(f"id(list1)={id(list1)}, id(list2)={id(list2)}")
 
 # 5. 重要: 不可变对象 is 比 == 更快
-import sys
 
 # 字符串 is 比 == 稍快 (因为不需要调用 __eq__)
 s1 = "python"
 s2 = "python"
-print(f"\nstr is 速度更快 (避免 __eq__ 调用)")
+print("\nstr is 速度更快 (避免 __eq__ 调用)")
 
 # tuple
 t1 = (1, 2, 3)
 t2 = (1, 2, 3)
-print(f"\n(1,2,3) is (1,2,3): {t1 is t2}")   # True (Py 3.10+ tuple interning)
+print(f"\n(1,2,3) is (1,2,3): {t1 is t2}")  # True (Py 3.10+ tuple interning)
 print(f"(1,2,3) == (1,2,3): {t1 == t2}")
 
 print("\nOK")

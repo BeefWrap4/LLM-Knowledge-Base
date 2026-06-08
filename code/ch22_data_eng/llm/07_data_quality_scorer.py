@@ -16,8 +16,8 @@
 #   2. type_token_ratio (TTR) 为什么能反映文本多样性？它有什么局限？
 #   3. 自动化评分和 LLM-as-Judge 各有什么优劣？如何组合使用？
 
+
 import numpy as np
-from collections import Counter
 
 
 class DataQualityScorer:
@@ -27,7 +27,7 @@ class DataQualityScorer:
     def compute_text_stats(text: str) -> dict:
         """计算文本统计特征"""
         words = text.split()
-        sentences = text.replace('!', '.').replace('?', '.').split('.')
+        sentences = text.replace("!", ".").replace("?", ".").split(".")
         sentences = [s.strip() for s in sentences if s.strip()]
 
         return {
@@ -46,6 +46,7 @@ class DataQualityScorer:
 
         if expected_format == "json":
             import json as json_module
+
             try:
                 json_module.loads(text)
                 checks["valid_json"] = True
@@ -83,8 +84,12 @@ class DataQualityScorer:
         }
 
         # 加权总分
-        weights = {"length_score": 0.2, "diversity_score": 0.3,
-                   "format_score": 0.3, "not_truncated": 0.2}
+        weights = {
+            "length_score": 0.2,
+            "diversity_score": 0.3,
+            "format_score": 0.3,
+            "not_truncated": 0.2,
+        }
         total = sum(scores[k] * weights[k] for k in weights)
 
         return {
@@ -101,7 +106,7 @@ def main():
     sample = {
         "instruction": "用 Python 实现二分查找",
         "input": "",
-        "output": "def binary_search(arr, target):\n    left, right = 0, len(arr) - 1\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    return -1"
+        "output": "def binary_search(arr, target):\n    left, right = 0, len(arr) - 1\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    return -1",
     }
     result = scorer.score_instruction_data(sample)
     print(f"总分: {result['total_score']}")

@@ -15,6 +15,7 @@
 #   2. 输入过滤 + 权限隔离 + 结构化 Prompt 三者怎么配合？
 #   3. 真正的最终防线是什么？(工具执行的二次确认 + 可信 sandbox)
 
+
 class PromptInjectionGuard:
     """Prompt Injection 防护"""
 
@@ -25,9 +26,9 @@ class PromptInjectionGuard:
         "you are now",
         "system prompt",
         "\n\n---\n\n",  # 分隔符注入
-        "<|im_start|>",   # 特殊token注入
+        "<|im_start|>",  # 特殊token注入
         "<|im_end|>",
-        "```system",      # 代码块注入
+        "```system",  # 代码块注入
     ]
 
     def scan(self, user_input: str) -> tuple[bool, str]:
@@ -70,7 +71,7 @@ def main():
     for i, (text, label) in enumerate(cases):
         safe, reason = guard.scan(text)
         preview = text[:30] + "..." if len(text) > 30 else text
-        print(f"  case {i+1} [{label}]: safe={safe!s:5} | {reason} | 内容={preview!r}")
+        print(f"  case {i + 1} [{label}]: safe={safe!s:5} | {reason} | 内容={preview!r}")
     print("\nOK")
 
 

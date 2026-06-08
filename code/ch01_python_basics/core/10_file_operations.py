@@ -22,25 +22,28 @@
 # with 语句 — 自动关闭文件（面试必考）
 # ─────────────────────────────────────────────────────────────
 
+
 # ✅ 正确写法：with 语句确保资源释放
 def read_file_safe(filepath: str) -> str:
     """安全读取文件内容"""
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
         return ""
     except UnicodeDecodeError:
         # 尝试其他编码
-        with open(filepath, "r", encoding="gbk") as f:
+        with open(filepath, encoding="gbk") as f:
             return f.read()
+
 
 # 大文件读取：逐行读取（避免内存溢出）
 def read_large_file(filepath: str):
     """逐行读取大文件，内存友好"""
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:           # 每次只读一行到内存
-            yield line.strip()   # yield 使函数成为生成器
+    with open(filepath, encoding="utf-8") as f:
+        for line in f:  # 每次只读一行到内存
+            yield line.strip()  # yield 使函数成为生成器
+
 
 # ─────────────────────────────────────────────────────────────
 # 文件模式速查表
@@ -69,6 +72,7 @@ print(f"逐行读取: {lines}")
 
 # 清理演示文件
 import os
+
 if os.path.exists(demo_file):
     os.remove(demo_file)
 

@@ -18,6 +18,7 @@ LLM API Key 健康检查 — 对每个已配置 Key 的厂商发 1 个最小请�
 
   1/2 passed. Set LLM_PROVIDER=deepseek to use as default.
 """
+
 import argparse
 import os
 import re
@@ -28,10 +29,13 @@ from pathlib import Path
 CODE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(CODE))
 
-from shared.provider_registry import (
-    PROVIDERS, list_providers, get_provider, get_default_provider,
-)
 from shared.llm_client import UnifiedClient
+from shared.provider_registry import (
+    PROVIDERS,
+    get_default_provider,
+    get_provider,
+    list_providers,
+)
 
 
 def test_provider(name: str) -> tuple[bool, str, float, str]:
@@ -56,15 +60,11 @@ def test_provider(name: str) -> tuple[bool, str, float, str]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(
-        description="LLM API Key 诊断 / 配置工具"
-    )
+    ap = argparse.ArgumentParser(description="LLM API Key 诊断 / 配置工具")
     ap.add_argument("--provider", help="只测指定厂商 (e.g. deepseek)")
     ap.add_argument("--all", action="store_true", help="测所有 6 个 (包括无 Key)")
-    ap.add_argument("--setup", action="store_true",
-                    help="交互式引导配置 API Key")
-    ap.add_argument("--check", action="store_true",
-                    help="测试已配置 Key 是否有效 (实际调一次最小 API)")
+    ap.add_argument("--setup", action="store_true", help="交互式引导配置 API Key")
+    ap.add_argument("--check", action="store_true", help="测试已配置 Key 是否有效 (实际调一次最小 API)")
     args = ap.parse_args()
 
     # 短命令路由: --setup / --check 走独立流程
@@ -138,6 +138,7 @@ def main() -> int:
 # W1-T7: --setup / --check 交互式命令
 # ────────────────────────────────────────────────────────────────
 
+
 def setup_wizard():
     """交互式引导: 帮用户配置 API Key."""
     print("=" * 60)
@@ -168,7 +169,7 @@ def setup_wizard():
     if choice == "1":
         provider = "deepseek"
         env_var = "DEEPSEEK_API_KEY"
-        print(f"\n请访问 https://platform.deepseek.com 注册并获取 API Key.")
+        print("\n请访问 https://platform.deepseek.com 注册并获取 API Key.")
     else:
         names = [p.name for p in list_providers() if p.name not in ("mock", "deepseek")]
         for i, n in enumerate(names, 1):
@@ -216,7 +217,7 @@ def setup_wizard():
     print(f"     {env_var}={'*' * 8}{api_key[-4:]}")
 
     # 测试连通性
-    print(f"\n测试调用...")
+    print("\n测试调用...")
     result = test_provider_with_key(provider, api_key)
     if result["ok"]:
         print(f"[OK] {provider} 可用 (延迟 {result['latency_ms']}ms)")
@@ -249,7 +250,11 @@ def test_provider_with_key(provider: str, api_key: str) -> dict:
         return {"ok": True, "latency_ms": round(latency)}
     except Exception as e:
         latency = (time.perf_counter() - t0) * 1000
-        return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:120]}", "latency_ms": round(latency)}
+        return {
+            "ok": False,
+            "error": f"{type(e).__name__}: {str(e)[:120]}",
+            "latency_ms": round(latency),
+        }
 
 
 def check_keys():

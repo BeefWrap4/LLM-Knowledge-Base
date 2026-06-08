@@ -24,9 +24,11 @@
 
 本 demo: 模拟预测器 + 时序动作块, 对比 chunk vs single-step 的执行曲线.
 """
+
 import sys
-import torch
 from pathlib import Path
+
+import torch
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
@@ -48,8 +50,10 @@ class ChunkedPredictor(nn.Module):
         super().__init__()
         self.K = chunk_size
         self.net = nn.Sequential(
-            nn.Linear(state_dim, hidden), nn.GELU(),
-            nn.Linear(hidden, hidden), nn.GELU(),
+            nn.Linear(state_dim, hidden),
+            nn.GELU(),
+            nn.Linear(hidden, hidden),
+            nn.GELU(),
             nn.Linear(hidden, chunk_size * action_dim),
         )
         self.action_dim = action_dim
@@ -129,7 +133,7 @@ def main() -> None:
     print(f"  trajectory shape: {tuple(traj.shape)} (T, action_dim)\n")
 
     # 展示 3 个 chunk 的边界
-    print(f"步骤 3: chunk 边界处的连续性")
+    print("步骤 3: chunk 边界处的连续性")
     for chunk_idx in [0, 5, 9]:
         boundary_t = chunk_idx * K
         if boundary_t == 0:

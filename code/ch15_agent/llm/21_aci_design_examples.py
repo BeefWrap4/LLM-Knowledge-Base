@@ -23,7 +23,7 @@ bad_tool = {
     "parameters": {
         "data": {"type": "object"},
         "options": {"type": "object"},
-    }
+    },
 }
 
 # 改进后
@@ -72,8 +72,7 @@ def read_full_file_bad(path: str) -> str:
 
 
 # 改进：分页加引用
-def read_file_with_pagination(path: str, start_line: int = 0,
-                               line_count: int = 100) -> dict:
+def read_file_with_pagination(path: str, start_line: int = 0, line_count: int = 100) -> dict:
     """
     分页读取文件
 
@@ -88,7 +87,7 @@ def read_file_with_pagination(path: str, start_line: int = 0,
     with open(path) as f:
         lines = f.readlines()
     return {
-        "content": "".join(lines[start_line:start_line + line_count]),
+        "content": "".join(lines[start_line : start_line + line_count]),
         "next_start_line": start_line + line_count,
         "total_lines": len(lines),
         "has_more": start_line + line_count < len(lines),
@@ -98,9 +97,15 @@ def read_file_with_pagination(path: str, start_line: int = 0,
 # ============ 反模式 3：工具膨胀 ============
 # 10 个专用工具
 bad_tools = [
-    "get_user_by_id", "get_user_by_email", "get_user_by_phone",
-    "get_active_users", "get_inactive_users", "get_recent_users",
-    "get_user_count", "get_user_paginated", "get_user_summary",
+    "get_user_by_id",
+    "get_user_by_email",
+    "get_user_by_phone",
+    "get_active_users",
+    "get_inactive_users",
+    "get_recent_users",
+    "get_user_count",
+    "get_user_paginated",
+    "get_user_summary",
     "search_users",
 ]
 
@@ -120,14 +125,17 @@ def main():
 
     print("\n=== 反模式 2：分页读文件（演示） ===")
     import tempfile
+
     with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
         for i in range(1, 251):
             f.write(f"line {i}\n")
         tmp_path = f.name
 
     page1 = read_file_with_pagination(tmp_path, start_line=0, line_count=100)
-    print(f"page1: total_lines={page1['total_lines']}, has_more={page1['has_more']}, "
-          f"next_start={page1['next_start_line']}")
+    print(
+        f"page1: total_lines={page1['total_lines']}, has_more={page1['has_more']}, "
+        f"next_start={page1['next_start_line']}"
+    )
     page3 = read_file_with_pagination(tmp_path, start_line=200, line_count=100)
     print(f"page3: has_more={page3['has_more']}, next_start={page3['next_start_line']}")
 

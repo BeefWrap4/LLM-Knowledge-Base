@@ -16,13 +16,15 @@
 # 推荐配置：Summary + Buffer 混合策略
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
+
 _code_root = _Path_setup(__file__).resolve().parent.parent.parent
 if str(_code_root) not in _sys_path_setup.path:
     _sys_path_setup.path.insert(0, str(_code_root))
 
 # W3-T5: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 走 raise_with_help
-from shared.chatmodel_factory import make_chat_model
 from shared._error_helper import raise_with_help
+from shared.chatmodel_factory import make_chat_model
+
 llm = make_chat_model()  # 默认厂商 (cheap mini model)
 if llm is None:
     raise_with_help(
@@ -33,7 +35,7 @@ if llm is None:
 memory_config = {
     "type": "ConversationSummaryBufferMemory",
     "llm": llm,  # 摘要用便宜模型
-    "max_token_limit": 2000,    # 总预算
+    "max_token_limit": 2000,  # 总预算
     "return_messages": True,
 }
 

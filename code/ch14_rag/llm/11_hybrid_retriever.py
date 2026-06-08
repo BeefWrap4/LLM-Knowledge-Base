@@ -42,7 +42,9 @@ class HybridRetriever:
         except ImportError:
             faiss = None
         self.dim = embeddings.shape[1]
-        self.index = faiss.IndexFlatIP(self.dim) if faiss is not None else None  # Inner Product = 余弦（已归一化）
+        self.index = (
+            faiss.IndexFlatIP(self.dim) if faiss is not None else None
+        )  # Inner Product = 余弦（已归一化）
         if self.index is not None:
             self.index.add(embeddings)
 
@@ -52,7 +54,7 @@ class HybridRetriever:
         query_embedding: np.ndarray,
         top_k: int = 10,
         alpha: float = 0.5,  # 向量权重
-        beta: float = 0.5,   # BM25 权重
+        beta: float = 0.5,  # BM25 权重
     ) -> list[tuple[int, float]]:
         """
         混合搜索 + RRF 融合
@@ -71,7 +73,7 @@ class HybridRetriever:
         if self.bm25 is not None:
             tokenized_query = query.lower().split()
             bm25_scores = np.array(self.bm25.get_scores(tokenized_query))
-            bm25_top_indices = np.argsort(bm25_scores)[::-1][:top_k * 2]
+            bm25_top_indices = np.argsort(bm25_scores)[::-1][: top_k * 2]
         else:
             bm25_top_indices = np.array([], dtype=np.int64)
 

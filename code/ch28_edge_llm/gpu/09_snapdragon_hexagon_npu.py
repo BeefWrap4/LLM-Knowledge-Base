@@ -22,6 +22,7 @@
   2. except 块展示 QNN SDK 安装与使用命令 (教学保留)
   3. 关键 NPU 硬件规格 / NPU vs GPU 权衡 / 量化推荐 (静态打印)
 """
+
 from __future__ import annotations
 
 import sys
@@ -33,16 +34,15 @@ if str(_code_root) not in sys.path:
 
 from shared._error_helper import raise_with_help  # noqa: E402
 
-
 # ============================================================
 # 1. Hexagon NPU 关键硬件特性 (Snapdragon 8 Gen 3 / X Elite)
 # ============================================================
 HEXAGON_SPECS = {
-    "峰值 TOPS (INT8)":      "45 TOPS",
-    "内存带宽":              "LPDDR5X 8533 MT/s, 77 GB/s",
-    "支持精度":              "INT4 / INT8 / INT16 / FP16",
-    "最佳 batch":            "batch_size=1 (实时推理)",
-    "上下文长度上限":        "受限于 SRAM (约 16MB, ~4K tokens for 7B)",
+    "峰值 TOPS (INT8)": "45 TOPS",
+    "内存带宽": "LPDDR5X 8533 MT/s, 77 GB/s",
+    "支持精度": "INT4 / INT8 / INT16 / FP16",
+    "最佳 batch": "batch_size=1 (实时推理)",
+    "上下文长度上限": "受限于 SRAM (约 16MB, ~4K tokens for 7B)",
 }
 
 
@@ -56,12 +56,12 @@ def npu_vs_gpu_tradeoff() -> None:
     """NPU vs GPU 推理对比."""
     print("\n--- NPU vs GPU 推理权衡 ---")
     rows = [
-        ("算子覆盖",   "专用矩阵加速 (INT8/INT4)",  "通用 (FP16/FP32)"),
-        ("能效比",     "⭐⭐⭐⭐⭐ (~5x GPU)",      "⭐⭐⭐"),
-        ("性能峰值",   "中等 (受 SRAM 限制)",         "高 (DDR 高带宽)"),
-        ("适用精度",   "INT4/INT8 (必须量化)",         "FP16 (量化可选)"),
-        ("LLM 推理",   "✅ 7B Q4 实时",                "✅ 7B Q4 高吞吐"),
-        ("训练",       "❌ 不支持反向传播",             "✅ 通用训练"),
+        ("算子覆盖", "专用矩阵加速 (INT8/INT4)", "通用 (FP16/FP32)"),
+        ("能效比", "⭐⭐⭐⭐⭐ (~5x GPU)", "⭐⭐⭐"),
+        ("性能峰值", "中等 (受 SRAM 限制)", "高 (DDR 高带宽)"),
+        ("适用精度", "INT4/INT8 (必须量化)", "FP16 (量化可选)"),
+        ("LLM 推理", "✅ 7B Q4 实时", "✅ 7B Q4 高吞吐"),
+        ("训练", "❌ 不支持反向传播", "✅ 通用训练"),
     ]
     print(f"{'维度':<12} {'NPU (Hexagon)':<35} {'GPU (Adreno)'}")
     print("-" * 80)
@@ -108,7 +108,7 @@ def show_qnn_sdk_install() -> None:
     print("替代方案: 用 llama.cpp 的 Hexagon backend 加载预编译模型")
     print("  $ cmake -B build -DGGML_HEXAGON=ON")
     print("  $ cmake --build build --config Release")
-    print("  $ ./build/bin/llama-cli -m model.Q4_K.hexagon.dlc -p \"Hello\"")
+    print('  $ ./build/bin/llama-cli -m model.Q4_K.hexagon.dlc -p "Hello"')
 
 
 # ============================================================

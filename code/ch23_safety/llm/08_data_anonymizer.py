@@ -25,7 +25,6 @@
 
 import hashlib
 import re
-from typing import List, Dict
 
 
 class DataAnonymizer:
@@ -33,10 +32,10 @@ class DataAnonymizer:
 
     # PII（个人身份信息）模式
     PII_PATTERNS = {
-        "email": r'[\w\.-]+@[\w\.-]+\.\w+',
-        "phone_cn": r'1[3-9]\d{9}',
-        "id_card": r'\d{17}[\dXx]',
-        "ip": r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',
+        "email": r"[\w\.-]+@[\w\.-]+\.\w+",
+        "phone_cn": r"1[3-9]\d{9}",
+        "id_card": r"\d{17}[\dXx]",
+        "ip": r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}",
     }
 
     def __init__(self, salt: str = ""):
@@ -77,7 +76,7 @@ class DataAnonymizer:
         """不可逆哈希"""
         return hashlib.sha256((value + self.salt).encode()).hexdigest()
 
-    def check_k_anonymity(self, dataset: List[List], k: int = 5) -> Dict:
+    def check_k_anonymity(self, dataset: list[list], k: int = 5) -> dict:
         """检查k-匿名性
 
         k-匿名性：每个准标识符组合在数据集中至少出现k次。
@@ -88,11 +87,7 @@ class DataAnonymizer:
         records = [tuple(record) for record in dataset]
         counts = Counter(records)
 
-        violations = {
-            record: count
-            for record, count in counts.items()
-            if count < k
-        }
+        violations = {record: count for record, count in counts.items() if count < k}
 
         return {
             "total_records": len(dataset),
@@ -101,7 +96,7 @@ class DataAnonymizer:
             "violations": len(violations),
             "k_anonymous": len(violations) == 0,
             "min_group_size": min(counts.values()),
-            "max_group_size": max(counts.values())
+            "max_group_size": max(counts.values()),
         }
 
 

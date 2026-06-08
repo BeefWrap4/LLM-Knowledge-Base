@@ -42,11 +42,9 @@ Final Answer: 最终答案
 def call_llm(history: str) -> str:
     """模拟 LLM：根据 history 中已有 Observation 推进下一步。"""
     if "Observation:" not in history:
-        return ("Thought: 我需要先用计算器算一下\n"
-                "Action: calculator(2*21)\n")
+        return "Thought: 我需要先用计算器算一下\nAction: calculator(2*21)\n"
     if "Final Answer" not in history:
-        return ("Thought: 已得到计算结果，可以输出答案\n"
-                "Final Answer: 42")
+        return "Thought: 已得到计算结果，可以输出答案\nFinal Answer: 42"
     return ""
 
 

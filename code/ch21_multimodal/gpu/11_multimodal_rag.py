@@ -16,7 +16,6 @@
 #   3. 多模态 RAG 相比纯文本 RAG 在哪些场景下优势明显？
 
 import os
-from typing import List, Tuple
 
 import numpy as np
 
@@ -32,8 +31,8 @@ class MultiModalRAG:
         self.retriever_model_name = retriever_model
         self.generator_model = generator_model
         # --- 文档存储 ---
-        self.doc_embeddings: List[np.ndarray] = []   # List of [num_patches, dim]
-        self.doc_images = []                          # 原始文档图像
+        self.doc_embeddings: list[np.ndarray] = []  # List of [num_patches, dim]
+        self.doc_images = []  # 原始文档图像
 
     def _load_retriever(self):
         """延迟加载真实视觉编码器（仅在非 mock 模式调用）。"""
@@ -55,8 +54,8 @@ class MultiModalRAG:
         except ImportError:
             raise ImportError("PyMuPDF (fitz) required for real PDF indexing")
 
-        from PIL import Image
         import torch
+        from PIL import Image
 
         if not hasattr(self, "retriever"):
             self._load_retriever()
@@ -67,17 +66,13 @@ class MultiModalRAG:
             pix = page.get_pixmap(dpi=dpi)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
             with torch.no_grad():
-                inputs = self.processor(images=img, return_tensors="pt").to(
-                    self.retriever.device
-                )
+                inputs = self.processor(images=img, return_tensors="pt").to(self.retriever.device)
                 embeddings = self.retriever(**inputs)  # [1, num_patches, dim]
             self.doc_embeddings.append(embeddings[0].cpu().numpy())
             self.doc_images.append(img)
         print(f"已索引 {len(doc)} 页文档")
 
-    def retrieve(
-        self, query_emb: np.ndarray, top_k: int = 3
-    ) -> List[Tuple[int, float]]:
+    def retrieve(self, query_emb: np.ndarray, top_k: int = 3) -> list[tuple[int, float]]:
         """ColBERT 风格的延迟交互：MaxSim 检索。"""
         scores = []
         for page_idx, doc_emb in enumerate(self.doc_embeddings):
@@ -85,8 +80,8 @@ class MultiModalRAG:
             # query_emb: [num_query_tokens, dim]
             q = query_emb
             d = doc_emb
-            similarity = q @ d.T                         # [Q, D]
-            max_per_query = similarity.max(axis=1)       # [Q]
+            similarity = q @ d.T  # [Q, D]
+            max_per_query = similarity.max(axis=1)  # [Q]
             score = float(max_per_query.sum())
             scores.append(score)
         top_indices = np.argsort(scores)[::-1][:top_k]

@@ -17,14 +17,13 @@
 
 import json as json_module
 import re
-from typing import Dict, Optional
 
 
 class OutputQualityMonitor:
     """LLM 输出质量自动检测器"""
 
     @staticmethod
-    def check_hallucination_indicators(response: str, context: Optional[str] = None) -> Dict:
+    def check_hallucination_indicators(response: str, context: str | None = None) -> dict:
         """启发式幻觉检测"""
         indicators = {
             "excessive_confidence": False,
@@ -34,8 +33,13 @@ class OutputQualityMonitor:
         }
 
         overconfident_phrases = [
-            "毫无疑问", "绝对是", "100%确定", "一定是",
-            "definitely", "absolutely", "without any doubt",
+            "毫无疑问",
+            "绝对是",
+            "100%确定",
+            "一定是",
+            "definitely",
+            "absolutely",
+            "without any doubt",
         ]
         for phrase in overconfident_phrases:
             if phrase in response:
@@ -49,17 +53,19 @@ class OutputQualityMonitor:
         if "但是" in response and "因此" in response:
             indicators["hallucination_risk"] = "medium"
 
-        risk_score = sum([
-            indicators["excessive_confidence"],
-            indicators["unverifiable_claims"],
-            indicators["contradiction"],
-        ])
+        risk_score = sum(
+            [
+                indicators["excessive_confidence"],
+                indicators["unverifiable_claims"],
+                indicators["contradiction"],
+            ]
+        )
         if risk_score >= 2:
             indicators["hallucination_risk"] = "high"
         return indicators
 
     @staticmethod
-    def check_safety(response: str) -> Dict:
+    def check_safety(response: str) -> dict:
         """安全检查（简化版）"""
         safety_flags = {
             "harmful_content": False,
@@ -68,9 +74,9 @@ class OutputQualityMonitor:
             "overall_safe": True,
         }
         pii_patterns = {
-            "phone": r'\b1[3-9]\d{9}\b',
-            "email": r'\b[\w.-]+@[\w.-]+\.\w+\b',
-            "id_card": r'\b\d{17}[\dXx]\b',
+            "phone": r"\b1[3-9]\d{9}\b",
+            "email": r"\b[\w.-]+@[\w.-]+\.\w+\b",
+            "id_card": r"\b\d{17}[\dXx]\b",
         }
         for pii_type, pattern in pii_patterns.items():
             if re.search(pattern, response):
@@ -80,7 +86,7 @@ class OutputQualityMonitor:
         return safety_flags
 
     @staticmethod
-    def check_format_compliance(response: str, expected_format: str = "json") -> Dict:
+    def check_format_compliance(response: str, expected_format: str = "json") -> dict:
         """格式合规检查（支持 ```json ``` 包裹）"""
         result = {"format": expected_format, "compliant": False, "error": None}
         if expected_format == "json":

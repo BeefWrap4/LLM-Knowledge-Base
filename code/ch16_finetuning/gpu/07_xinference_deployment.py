@@ -25,6 +25,7 @@ REST API 端点:
   POST {host}:9997/v1/chat/completions  (OpenAI 兼容)
   GET  {host}:9997/v1/models
 """
+
 import sys
 from pathlib import Path
 
@@ -33,6 +34,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 import httpx
+
 from shared._error_helper import raise_with_help
 
 XINFERENCE_HOST = "http://localhost:9997"
@@ -68,7 +70,7 @@ def main():
         print("  from xinference.client import Client")
         print('  c = Client("http://localhost:9997")')
         print('  uid = c.launch_model(model_name="qwen2.5-instruct",')
-        print('                       model_size_in_billions=7, n_gpu=1)')
+        print("                       model_size_in_billions=7, n_gpu=1)")
         return
 
     # 2) 调一个 chat completion
@@ -89,9 +91,11 @@ def main():
     print(f"Response:\n  {result['choices'][0]['message']['content'][:200]}")
     if "usage" in result:
         u = result["usage"]
-        print(f"  usage: prompt={u.get('prompt_tokens')} "
-              f"completion={u.get('completion_tokens')} "
-              f"total={u.get('total_tokens')}")
+        print(
+            f"  usage: prompt={u.get('prompt_tokens')} "
+            f"completion={u.get('completion_tokens')} "
+            f"total={u.get('total_tokens')}"
+        )
 
 
 if __name__ == "__main__":

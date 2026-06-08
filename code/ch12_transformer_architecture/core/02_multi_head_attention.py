@@ -56,7 +56,7 @@ class MultiHeadAttention(nn.Module):
         else:
             # 回退: 手写
             d_k = Q.size(-1)
-            scores = (Q @ K.transpose(-2, -1)) / (d_k ** 0.5)
+            scores = (Q @ K.transpose(-2, -1)) / (d_k**0.5)
             if mask is not None:
                 scores = scores.masked_fill(mask == 0, float("-inf"))
             attn_w = torch.softmax(scores, dim=-1)

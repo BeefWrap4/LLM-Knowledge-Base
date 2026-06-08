@@ -43,13 +43,14 @@ BaseException
 # try-except-else-finally 完整结构
 # ─────────────────────────────────────────────────────────────
 
+
 def safe_read_file(filepath: str) -> str:
     """
     完整的异常处理示例
     """
     content = ""
     try:
-        f = open(filepath, "r", encoding="utf-8")
+        f = open(filepath, encoding="utf-8")
         content = f.read()
     except FileNotFoundError:
         print(f"文件不存在: {filepath}")
@@ -57,7 +58,7 @@ def safe_read_file(filepath: str) -> str:
     except PermissionError:
         print(f"无权限读取: {filepath}")
         return ""
-    except Exception as e:           # 捕获其他所有异常
+    except Exception as e:  # 捕获其他所有异常
         print(f"未知错误: {e}")
         return ""
     else:
@@ -65,11 +66,12 @@ def safe_read_file(filepath: str) -> str:
         print("文件读取成功")
     finally:
         # 无论是否异常都会执行
-        if 'f' in locals() and not f.closed:
+        if "f" in locals() and not f.closed:
             f.close()
             print("文件已关闭")
 
     return content
+
 
 # 演示：文件不存在
 result = safe_read_file("__nonexistent_file__.txt")
@@ -78,22 +80,28 @@ result = safe_read_file("__nonexistent_file__.txt")
 # 自定义异常
 # ─────────────────────────────────────────────────────────────
 
+
 class ValidationError(Exception):
     """参数校验异常基类"""
+
     pass
+
 
 class AgeError(ValidationError):
     """年龄校验异常"""
+
     def __init__(self, age, message=None):
         self.age = age
         self.message = message or f"无效年龄: {age}"
         super().__init__(self.message)
+
 
 def validate_age(age: int) -> None:
     if not isinstance(age, int):
         raise TypeError(f"年龄必须是整数，收到 {type(age).__name__}")
     if age < 0 or age > 150:
         raise AgeError(age)
+
 
 # 演示：年龄校验
 for age in [25, -1, 200, "abc"]:
@@ -105,6 +113,7 @@ for age in [25, -1, 200, "abc"]:
 # ─────────────────────────────────────────────────────────────
 # 上下文管理器简化文件操作
 # ─────────────────────────────────────────────────────────────
+
 
 class FileReader:
     """自定义上下文管理器"""
@@ -129,7 +138,8 @@ class FileReader:
             self.file.close()
         if exc_type is not None:
             print(f"捕获异常: {exc_type.__name__}: {exc_val}")
-        return False   # 不抑制异常
+        return False  # 不抑制异常
+
 
 # 使用自定义上下文管理器
 # with FileReader("test.txt") as f:

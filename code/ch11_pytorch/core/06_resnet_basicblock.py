@@ -18,8 +18,10 @@
 import torch
 import torch.nn as nn
 
+
 class BasicBlock(nn.Module):
     """ResNet 基础残差块"""
+
     expansion = 1
 
     def __init__(self, in_channels, out_channels, stride=1):
@@ -35,7 +37,7 @@ class BasicBlock(nn.Module):
         if stride != 1 or in_channels != out_channels:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(in_channels, out_channels, 1, stride, bias=False),
-                nn.BatchNorm2d(out_channels)
+                nn.BatchNorm2d(out_channels),
             )
 
     def forward(self, x):

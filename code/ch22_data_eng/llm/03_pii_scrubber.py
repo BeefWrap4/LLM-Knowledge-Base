@@ -17,7 +17,6 @@
 #   3. Llama Guard 等安全分类器在 PII 检测中扮演什么角色？
 
 import re
-from typing import List, Tuple
 
 
 class PIIScrubber:
@@ -25,29 +24,31 @@ class PIIScrubber:
 
     # 常见 PII 正则模式
     PATTERNS = {
-        "EMAIL": re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'),
-        "IPV4": re.compile(r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'),
-        "PHONE_CN": re.compile(r'\b1[3-9]\d{9}\b'),
-        "PHONE_US": re.compile(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b'),
+        "EMAIL": re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"),
+        "IPV4": re.compile(r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b"),
+        "PHONE_CN": re.compile(r"\b1[3-9]\d{9}\b"),
+        "PHONE_US": re.compile(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b"),
         "URL": re.compile(r'https?://[^\s<>"{}|\[\]]+'),
-        "SSN": re.compile(r'\b\d{3}-\d{2}-\d{4}\b'),
-        "CREDIT_CARD": re.compile(r'\b(?:\d{4}[ -]?){4}\b'),
+        "SSN": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
+        "CREDIT_CARD": re.compile(r"\b(?:\d{4}[ -]?){4}\b"),
     }
 
     @classmethod
-    def scrub_text(cls, text: str, use_ner: bool = False) -> Tuple[str, List[dict]]:
+    def scrub_text(cls, text: str, use_ner: bool = False) -> tuple[str, list[dict]]:
         """对文本进行 PII 脱敏"""
         findings = []
         scrubbed = text
 
         for pii_type, pattern in cls.PATTERNS.items():
             for match in pattern.finditer(text):
-                findings.append({
-                    "type": pii_type,
-                    "value": match.group(),
-                    "start": match.start(),
-                    "end": match.end()
-                })
+                findings.append(
+                    {
+                        "type": pii_type,
+                        "value": match.group(),
+                        "start": match.start(),
+                        "end": match.end(),
+                    }
+                )
                 scrubbed = scrubbed.replace(match.group(), f"[{pii_type}]")
 
         return scrubbed, findings

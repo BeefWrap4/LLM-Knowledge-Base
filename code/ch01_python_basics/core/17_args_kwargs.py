@@ -26,6 +26,7 @@
 # def func(位置参数, 默认参数, *args, 关键字-only参数, **kwargs):
 #     pass
 
+
 def func_demo(a, b=2, *args, c=10, **kwargs):
     """
     a:     位置参数（必填）
@@ -40,6 +41,7 @@ def func_demo(a, b=2, *args, c=10, **kwargs):
     print(f"c = {c}")
     print(f"kwargs = {kwargs}")
 
+
 func_demo(1, 3, 4, 5, c=20, d=6, e=7)
 # a = 1
 # b = 3
@@ -51,19 +53,23 @@ func_demo(1, 3, 4, 5, c=20, d=6, e=7)
 # * 和 ** 的解包用法
 # ─────────────────────────────────────────────────────────────
 
+
 # * 解包可迭代对象
 def sum_three(a, b, c):
     return a + b + c
 
+
 nums = [1, 2, 3]
 print(f"解包求和: {sum_three(*nums)}")  # 6 — 等价于 sum_three(1, 2, 3)
+
 
 # ** 解包字典为关键字参数
 def greet(name, age):
     return f"{name} is {age} years old"
 
+
 person = {"name": "Alice", "age": 25}
-print(f"字典解包: {greet(**person)}")   # "Alice is 25 years old"
+print(f"字典解包: {greet(**person)}")  # "Alice is 25 years old"
 
 # 组合使用
 data = [1, 2]
@@ -74,6 +80,7 @@ config = {"c": 3}
 # 仅限关键字参数（Keyword-Only Arguments）
 # ─────────────────────────────────────────────────────────────
 
+
 def safe_divide(a, b, *, strict=False):
     """
     * 后的所有参数必须用关键字传入
@@ -81,9 +88,10 @@ def safe_divide(a, b, *, strict=False):
     """
     if strict and b == 0:
         raise ValueError("除数不能为零")
-    return a / b if b != 0 else float('inf')
+    return a / b if b != 0 else float("inf")
 
-print(f"普通除法: {safe_divide(10, 2)}")           # 5.0
+
+print(f"普通除法: {safe_divide(10, 2)}")  # 5.0
 print(f"严格除法: {safe_divide(10, 2, strict=True)}")  # strict=True 也接受非零除数
 
 if __name__ == "__main__":

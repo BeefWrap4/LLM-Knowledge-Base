@@ -4,6 +4,7 @@
 W1 已把 mock 路径下沉到 tests/_mocks/. core tier 是 Python 基础层
 (无 LLM 调用), 不应出现任何 mock/fake 残留.
 """
+
 import re
 from pathlib import Path
 
@@ -11,17 +12,23 @@ CODE_ROOT = Path(__file__).resolve().parent.parent
 
 # 禁止出现的模式
 FORBIDDEN_PATTERNS = [
-    "MockLLM", "mock_llm", "MockChat",
-    "is_mock", "USE_REAL_API",
-    "fake_llm", "FakeListChatModel", "FakeChatModel",
-    "from shared.mock_llm", "import mock_llm",
+    "MockLLM",
+    "mock_llm",
+    "MockChat",
+    "is_mock",
+    "USE_REAL_API",
+    "fake_llm",
+    "FakeListChatModel",
+    "FakeChatModel",
+    "from shared.mock_llm",
+    "import mock_llm",
 ]
 
 # 允许的例外 (注释 / docstring 提及 mock 是 OK 的)
 ALLOWED_LINE_PATTERNS = [
-    re.compile(r"^\s*#"),          # 注释
-    re.compile(r'^\s*"""'),        # docstring 起始
-    re.compile(r'^\s*""".*"""'),   # 单行 docstring
+    re.compile(r"^\s*#"),  # 注释
+    re.compile(r'^\s*"""'),  # docstring 起始
+    re.compile(r'^\s*""".*"""'),  # 单行 docstring
 ]
 
 
@@ -55,9 +62,7 @@ def test_no_mock_in_core_tier():
             for pat in FORBIDDEN_PATTERNS:
                 if pat in line:
                     rel_path = py_file.relative_to(CODE_ROOT)
-                    violations.append(
-                        f"{rel_path}:{line_no}: 出现 '{pat}'\n    {line.strip()}"
-                    )
+                    violations.append(f"{rel_path}:{line_no}: 出现 '{pat}'\n    {line.strip()}")
                     break  # 一行只报一次
 
     if violations:
@@ -73,6 +78,4 @@ def test_core_files_count():
     core_files = list(CODE_ROOT.glob("ch*/core/*.py"))
     core_files = [f for f in core_files if f.name != "__init__.py"]
     # 158 是 W2 计划目标; 实际数允许 ±10%
-    assert 100 <= len(core_files) <= 200, (
-        f"core 文件数 {len(core_files)} 偏离预期 100-200"
-    )
+    assert 100 <= len(core_files) <= 200, f"core 文件数 {len(core_files)} 偏离预期 100-200"

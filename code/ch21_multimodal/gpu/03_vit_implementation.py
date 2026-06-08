@@ -16,15 +16,14 @@
 #   3. ViT 处理不同分辨率图像的关键技巧（位置编码插值）是什么？
 
 
-
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
-import math
 import torch
 import torch.nn as nn
 
@@ -38,14 +37,12 @@ class PatchEmbedding(nn.Module):
         self.patch_size = patch_size
         self.num_patches = (img_size // patch_size) ** 2
         # 使用卷积实现 patch 切分（高效实现）
-        self.proj = nn.Conv2d(
-            in_channels, embed_dim, kernel_size=patch_size, stride=patch_size
-        )
+        self.proj = nn.Conv2d(in_channels, embed_dim, kernel_size=patch_size, stride=patch_size)
 
     def forward(self, x):
         # x: [B, 3, 224, 224]
-        x = self.proj(x)       # [B, 768, 14, 14]
-        x = x.flatten(2)       # [B, 768, 196]
+        x = self.proj(x)  # [B, 768, 14, 14]
+        x = x.flatten(2)  # [B, 768, 196]
         x = x.transpose(1, 2)  # [B, 196, 768]
         return x
 
@@ -56,9 +53,7 @@ class TransformerBlock(nn.Module):
     def __init__(self, embed_dim, num_heads, mlp_ratio=4.0, dropout=0.1):
         super().__init__()
         self.norm1 = nn.LayerNorm(embed_dim)
-        self.attn = nn.MultiheadAttention(
-            embed_dim, num_heads, dropout=dropout, batch_first=True
-        )
+        self.attn = nn.MultiheadAttention(embed_dim, num_heads, dropout=dropout, batch_first=True)
         self.norm2 = nn.LayerNorm(embed_dim)
         self.mlp = nn.Sequential(
             nn.Linear(embed_dim, int(embed_dim * mlp_ratio)),
@@ -101,10 +96,7 @@ class VisionTransformer(nn.Module):
         self.pos_drop = nn.Dropout(dropout)
         # Transformer 编码器层
         self.blocks = nn.ModuleList(
-            [
-                TransformerBlock(embed_dim, num_heads, mlp_ratio, dropout)
-                for _ in range(depth)
-            ]
+            [TransformerBlock(embed_dim, num_heads, mlp_ratio, dropout) for _ in range(depth)]
         )
         self.norm = nn.LayerNorm(embed_dim)
         # 分类头
@@ -126,7 +118,7 @@ class VisionTransformer(nn.Module):
         x = self.patch_embed(x)  # [B, 196, 768]
         # 添加 [CLS] token
         cls_tokens = self.cls_token.expand(B, -1, -1)  # [B, 1, 768]
-        x = torch.cat([cls_tokens, x], dim=1)          # [B, 197, 768]
+        x = torch.cat([cls_tokens, x], dim=1)  # [B, 197, 768]
         # 添加位置编码
         x = x + self.pos_embed
         x = self.pos_drop(x)

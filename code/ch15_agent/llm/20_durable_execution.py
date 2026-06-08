@@ -18,15 +18,16 @@
 Pydantic AI Durable Execution - 持久化执行示例
 核心思想：每个步骤产生事件，事件持久化后可重放
 """
+
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass
 class ResearchStep:
     """研究流程中的一个步骤"""
+
     step_id: str
     name: str
     status: str = "pending"
@@ -43,8 +44,9 @@ class PostgresEventStore:
         self.table_name = table_name
         self._in_memory: dict[str, list] = {}
 
-    async def append_event(self, task_id: str, event_type: str,
-                            payload: dict, checkpoint: dict = None) -> None:
+    async def append_event(
+        self, task_id: str, event_type: str, payload: dict, checkpoint: dict = None
+    ) -> None:
         """追加事件"""
         event = {
             "task_id": task_id,
@@ -87,11 +89,7 @@ async def run_research_task(task_id: str, topic: str, event_store: PostgresEvent
     completed_ids: set = set()
     if history:
         print(f"[恢复] 任务 {task_id}，已执行 {len(history)} 个事件")
-        completed_ids = {
-            e["payload"].get("step_id")
-            for e in history
-            if e["event_type"] == "step_completed"
-        }
+        completed_ids = {e["payload"].get("step_id") for e in history if e["event_type"] == "step_completed"}
 
     steps = [
         ResearchStep(step_id="1", name="搜索基础信息"),

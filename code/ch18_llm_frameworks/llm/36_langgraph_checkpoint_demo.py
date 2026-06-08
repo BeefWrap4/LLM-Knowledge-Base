@@ -34,9 +34,9 @@ for v in values:
 
 # 使用 thread_id 隔离不同会话
 config = {"configurable": {"thread_id": "conversation-1"}}
-print(f"\n=== 多会话隔离 ===")
+print("\n=== 多会话隔离 ===")
 print(f"config: {config}")
-print(f"graph.get_state_history(config) -> 状态历史列表")
+print("graph.get_state_history(config) -> 状态历史列表")
 
 if __name__ == "__main__":
     print("OK")

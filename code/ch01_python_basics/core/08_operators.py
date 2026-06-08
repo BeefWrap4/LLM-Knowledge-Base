@@ -25,16 +25,18 @@
 # is 比较内存地址，== 比较值
 a = [1, 2, 3]
 b = [1, 2, 3]
-print(a == b)   # True — 值相等
-print(a is b)   # False — 内存地址不同
+print(a == b)  # True — 值相等
+print(a is b)  # False — 内存地址不同
+
 
 # None 比较必须用 is
 def check_none(x):
     """判断 None 的正确方式"""
-    if x is None:      # ✅ 正确
+    if x is None:  # ✅ 正确
         return "是 None"
     # if x == None:    # ❌ 不规范
     return "不是 None"
+
 
 print(check_none(None))
 print(check_none(0))
@@ -43,14 +45,17 @@ print(check_none(0))
 # 短路求值（and / or）
 # ─────────────────────────────────────────────────────────────
 
+
 def get_fallback(value, default):
     """利用 or 短路求值提供默认值"""
     return value or default  # value 为 falsy 时返回 default
 
+
 # falsy 值：0, 0.0, "", [], {}, set(), None, False
-print(get_fallback("", "default"))    # "default"
-print(get_fallback("hello", "def"))    # "hello"
-print(get_fallback(0, 42))            # 42
+print(get_fallback("", "default"))  # "default"
+print(get_fallback("hello", "def"))  # "hello"
+print(get_fallback(0, 42))  # 42
+
 
 # 安全获取嵌套字典值（Python 3.8+ 海象运算符 :=）
 def get_nested(data: dict, key1: str, key2: str):
@@ -58,6 +63,7 @@ def get_nested(data: dict, key1: str, key2: str):
     if (inner := data.get(key1)) is not None:
         return inner.get(key2)
     return None
+
 
 sample = {"user": {"name": "Alice"}}
 print(f"嵌套获取: {get_nested(sample, 'user', 'name')}")

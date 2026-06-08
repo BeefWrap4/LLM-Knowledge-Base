@@ -30,7 +30,7 @@ def call_anthropic_with_cache(system_prompt, user_content):
         model="claude-sonnet-4-5",
         max_tokens=2048,
         system=system_prompt,
-        messages=[{"role": "user", "content": user_content}]
+        messages=[{"role": "user", "content": user_content}],
     )
 
 
@@ -45,8 +45,8 @@ if __name__ == "__main__":
         {
             "type": "text",
             "text": f"<company_kb>\n{kb_text}\n</company_kb>",  # 大段静态内容
-            "cache_control": {"type": "ephemeral"}  # 5 分钟缓存
-        }
+            "cache_control": {"type": "ephemeral"},  # 5 分钟缓存
+        },
     ]
 
     # 长文档（每次请求不同，但前缀可复用）
@@ -54,7 +54,11 @@ if __name__ == "__main__":
 
     user_content = [
         {"type": "text", "text": f"<document>{long_document}</document>"},
-        {"type": "text", "text": "请审查上述代码的安全漏洞。", "cache_control": {"type": "ephemeral"}}
+        {
+            "type": "text",
+            "text": "请审查上述代码的安全漏洞。",
+            "cache_control": {"type": "ephemeral"},
+        },
     ]
 
     response = call_anthropic_with_cache(system_prompt, user_content)

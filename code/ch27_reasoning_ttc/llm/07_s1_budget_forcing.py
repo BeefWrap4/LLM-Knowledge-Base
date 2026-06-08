@@ -22,9 +22,11 @@ S1 核心: 控制推理时"思考 token 数", 强制模型用尽/截断思考:
 
 参考: "Simple Test-Time Scaling" (arXiv 2501.19308) 2025
 """
-import sys
+
 import os
+import sys
 from pathlib import Path
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
@@ -47,7 +49,6 @@ def budget_forced_generation(client, model: str, prompt: str, max_budget: int = 
       2. 如 reasoning < max_budget, 追加 "Wait" 强制继续
       3. 重复, 直至 reasoning >= max_budget 或达到 N 次迭代
     """
-    from openai import OpenAI
 
     messages = [{"role": "user", "content": prompt}]
     total_reasoning = ""
@@ -57,7 +58,8 @@ def budget_forced_generation(client, model: str, prompt: str, max_budget: int = 
 
     while iterations < max_iterations:
         resp = client.chat.completions.create(
-            model=model, messages=messages,
+            model=model,
+            messages=messages,
             max_tokens=4096,
         )
         msg = resp.choices[0].message
@@ -85,12 +87,14 @@ def main():
     api_key = get_deepseek_key()
 
     from openai import OpenAI
+
     client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
 
     print("=== S1 Budget Forcing (DeepSeek-R1) ===\n")
 
     result = budget_forced_generation(
-        client, "deepseek-reasoner",
+        client,
+        "deepseek-reasoner",
         "9.11 和 9.9 哪个更大? 详细推理",
         max_budget=2000,
     )
@@ -98,10 +102,10 @@ def main():
     print(f"  reasoning length: {result['reasoning_len']} chars")
     print(f"  iterations: {result['iterations']}")
     print(f"\n  final: {result['final'][:300]}")
-    print(f"\n  S1 关键:")
-    print(f"    - max_budget: 强制模型推理 token 数")
-    print(f"    - Wait token: 触发继续思考")
-    print(f"    - Final Answer: 触发截断")
+    print("\n  S1 关键:")
+    print("    - max_budget: 强制模型推理 token 数")
+    print("    - Wait token: 触发继续思考")
+    print("    - Final Answer: 触发截断")
 
 
 if __name__ == "__main__":

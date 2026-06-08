@@ -22,15 +22,18 @@ LoRA 冻结原模型权重, 只训练低秩 adapter:
 - r=8: 参数量 < 0.1% 原模型
 - 显存节省: 训练只需存 optimizer 状态 (adapter 权重)
 """
+
 import sys
 from pathlib import Path
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 import torch
-from shared.gpu_guard import require_nvidia_gpu
+
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import require_nvidia_gpu
 
 
 def check_hardware():
@@ -68,8 +71,8 @@ def main():
             "运行 `make download-models-default`.",
         )
 
-    from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
-    from peft import LoraConfig, get_peft_model, TaskType
+    from peft import LoraConfig, TaskType, get_peft_model
+    from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
 
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     if tokenizer.pad_token is None:
@@ -125,13 +128,13 @@ def main():
 
     # 汇总
     if losses:
-        print(f"\n=== 训练完成 ===")
+        print("\n=== 训练完成 ===")
         print(f"  initial loss: {losses[0]:.4f}")
         print(f"  final loss:   {losses[-1]:.4f}")
         if losses[-1] < losses[0]:
             print(f"  ✅ loss 下降: {losses[0]:.4f} → {losses[-1]:.4f}")
         else:
-            print(f"  ⚠️  loss 未明显下降 (合成随机数据, 这是正常)")
+            print("  ⚠️  loss 未明显下降 (合成随机数据, 这是正常)")
 
     # VRAM 统计
     vram = torch.cuda.max_memory_allocated() / (1024**3)

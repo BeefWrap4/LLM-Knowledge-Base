@@ -21,10 +21,10 @@ A = np.array([[1, 2], [3, 4]])
 B = np.array([[5, 6], [7, 8]])
 
 # ========== 基本运算 ==========
-print(A + B)           # 逐元素加法
-print(A * B)           # 逐元素乘法（Hadamard 积）
-print(A @ B)           # 矩阵乘法
-print(A.dot(B))        # 等价于 A @ B
+print(A + B)  # 逐元素加法
+print(A * B)  # 逐元素乘法（Hadamard 积）
+print(A @ B)  # 矩阵乘法
+print(A.dot(B))  # 等价于 A @ B
 
 # ========== 矩阵属性 ==========
 print(f"转置: \n{A.T}")

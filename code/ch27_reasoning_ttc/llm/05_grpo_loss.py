@@ -22,20 +22,22 @@ GRPO = DeepSeek-R1 用的 RL 算法:
   - loss = -E[min(ratio * A, clip(ratio, 1-ε, 1+ε) * A)]
   - 无 critic model (vs PPO)
 """
+
 import sys
-import torch
-import torch.nn.functional as F
 from pathlib import Path
+
+import torch
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 
 def grpo_loss(
-    log_probs: torch.Tensor,         # [B, T]
-    old_log_probs: torch.Tensor,     # [B, T]
-    advantages: torch.Tensor,        # [B]
-    group_ids: torch.Tensor,         # [B] 标识 prompt 组
+    log_probs: torch.Tensor,  # [B, T]
+    old_log_probs: torch.Tensor,  # [B, T]
+    advantages: torch.Tensor,  # [B]
+    group_ids: torch.Tensor,  # [B] 标识 prompt 组
     clip: float = 0.2,
 ) -> torch.Tensor:
     """GRPO 完整 loss (含 group-relative advantage)."""
@@ -72,7 +74,7 @@ def main():
     print(f"  advantages: {advantages.tolist()}")
     print(f"  loss: {loss.item():.4f}")
     print(f"  loss requires_grad: {log_probs.grad is not None}")
-    print(f"\n  ✅ GRPO loss 可微, 支持 group-relative advantage")
+    print("\n  ✅ GRPO loss 可微, 支持 group-relative advantage")
 
 
 if __name__ == "__main__":

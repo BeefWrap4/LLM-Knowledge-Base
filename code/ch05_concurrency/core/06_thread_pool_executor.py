@@ -14,8 +14,8 @@
 #   - ThreadPoolExecutor.map() 和 submit() 的区别？
 #   - as_completed() 的工作原理？为什么要用它？
 #   - 线程池的 max_workers 应该设多大？和 IO 等待时间的关系？
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def fetch_url(url):

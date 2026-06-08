@@ -55,8 +55,8 @@ reasoning_data_sample = {
         "think_tokens": 287,
         "answer_tokens": 195,
         "source": "s1_v1",
-        "verified": True
-    }
+        "verified": True,
+    },
 }
 
 

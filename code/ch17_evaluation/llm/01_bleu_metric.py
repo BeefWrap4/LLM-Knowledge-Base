@@ -23,7 +23,7 @@ BLEU 是机器翻译评估的经典指标，通过 n-gram 表面匹配衡量生�
 
 def compute_bleu_demo() -> None:
     try:
-        from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+        from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
     except ImportError:
         print("[mock] nltk 未安装。模拟 BLEU 输出。")
         print("BLEU-1: 0.8000")

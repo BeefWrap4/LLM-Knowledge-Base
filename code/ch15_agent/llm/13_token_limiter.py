@@ -15,6 +15,7 @@
 #   2. 截断输出时如何在"截断位置"和"语义完整"之间权衡？(按段落/句子切分)
 #   3. total_consumed 应该按请求估算还是按响应实际计费？两者差异怎么对账？
 
+
 class TokenLimiter:
     """Token 限制器"""
 
@@ -53,7 +54,7 @@ def main():
 
     long_output = "这是一段超长输出 " * 100  # 约 1000 字符
     truncated = limiter.truncate_output(long_output, max_length=50)
-    print(f"\n=== 输出截断 ===")
+    print("\n=== 输出截断 ===")
     print(f"  原长度: {len(long_output)}")
     print(f"  截断后: {truncated}")
     print("\nOK")

@@ -64,7 +64,7 @@ class CanaryController:
         if idx < len(stages) - 1:
             self.current_stage = stages[idx + 1]
             self.stage_start_time = time.time()
-            print(f"🚀 推进到 {self.current_stage.name}: {self.current_stage.value*100:.0f}% 流量")
+            print(f"🚀 推进到 {self.current_stage.name}: {self.current_stage.value * 100:.0f}% 流量")
 
     def rollback(self, reason: str):
         self.current_stage = ReleaseStage.CANARY_5

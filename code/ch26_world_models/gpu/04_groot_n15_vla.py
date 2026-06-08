@@ -26,10 +26,12 @@ GR00T N1.5:
 本 demo: 训练 action expert (VLM 特征 + state → action) with 合成数据.
 生产 GR00T: Isaac Lab 仿真 + 真实遥操数据混合训练.
 """
+
 import sys
+from pathlib import Path
+
 import torch
 import torch.nn as nn
-from pathlib import Path
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
@@ -83,7 +85,7 @@ def main() -> None:
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
 
     print(f"  模型: VLM-2048 + State-14 → 1024 → 512 → 7 (参数量 {n_params:,})")
-    print(f"  训练: 50 步 MSE 监督学习\n")
+    print("  训练: 50 步 MSE 监督学习\n")
 
     losses = []
     for step in range(50):

@@ -20,16 +20,11 @@ Snell et al. 2024 核心结论 (MATH 任务):
   accuracy ≈ 1 - (c0 / compute)^α   α ≈ 0.3-0.5
   即 256× compute ≈ +40% 准确率。
 """
+
 from __future__ import annotations
 
-import math
 
-import numpy as np
-
-
-def accuracy_at_compute(
-    compute: float, base_acc: float = 0.5, alpha: float = 0.4, c0: float = 1.0
-) -> float:
+def accuracy_at_compute(compute: float, base_acc: float = 0.5, alpha: float = 0.4, c0: float = 1.0) -> float:
     """log-linear scaling: log(1-acc) = α·log(c0) - α·log(compute)
     → 简化: acc = 1 - (c0/compute)^α
     """
@@ -67,9 +62,9 @@ def main() -> None:
     # 三策略对比: 同样 compute 下哪种最准?
     print("\n=== 同样 compute=64 下三策略对比 ===")
     compute = 64
-    a_bon = accuracy_at_compute(compute)                       # 全 BoN
-    a_sc = accuracy_at_compute(compute * 0.7) * 0.97           # SC + verifier
-    a_mcts = accuracy_at_compute(compute * 0.85) * 1.02        # MCTS
+    a_bon = accuracy_at_compute(compute)  # 全 BoN
+    a_sc = accuracy_at_compute(compute * 0.7) * 0.97  # SC + verifier
+    a_mcts = accuracy_at_compute(compute * 0.85) * 1.02  # MCTS
     print(f"  Pure BoN        (64×): {a_bon:.1%}")
     print(f"  SC + PRM rerank (45×): {a_sc:.1%}")
     print(f"  MCTS+PRM        (54×): {a_mcts:.1%}  ← 通常最优")

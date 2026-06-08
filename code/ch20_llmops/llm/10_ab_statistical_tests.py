@@ -24,8 +24,10 @@ class ABStatisticalTests:
 
     @staticmethod
     def two_proportion_z_test(
-        successes_a: int, n_a: int,
-        successes_b: int, n_b: int,
+        successes_a: int,
+        n_a: int,
+        successes_b: int,
+        n_b: int,
         alpha: float = 0.05,
     ) -> dict:
         """双比例 Z 检验（用于二分类指标）"""
@@ -38,9 +40,7 @@ class ABStatisticalTests:
         p_value = 2 * (1 - stats.norm.cdf(abs(z_score)))
 
         diff = p_b - p_a
-        ci_margin = stats.norm.ppf(1 - alpha / 2) * np.sqrt(
-            p_a * (1 - p_a) / n_a + p_b * (1 - p_b) / n_b
-        )
+        ci_margin = stats.norm.ppf(1 - alpha / 2) * np.sqrt(p_a * (1 - p_a) / n_a + p_b * (1 - p_b) / n_b)
         ci_lower = diff - ci_margin
         ci_upper = diff + ci_margin
 
@@ -49,7 +49,7 @@ class ABStatisticalTests:
             "control_rate": p_a,
             "treatment_rate": p_b,
             "difference": diff,
-            "relative_change_pct": (diff / p_a * 100) if p_a > 0 else float('inf'),
+            "relative_change_pct": (diff / p_a * 100) if p_a > 0 else float("inf"),
             "z_score": z_score,
             "p_value": p_value,
             "significant": p_value < alpha,
@@ -58,7 +58,8 @@ class ABStatisticalTests:
 
     @staticmethod
     def welch_t_test(
-        values_a: list, values_b: list,
+        values_a: list,
+        values_b: list,
         alpha: float = 0.05,
     ) -> dict:
         """Welch's T 检验（用于连续指标：延迟/Token 数/评分）"""
@@ -70,7 +71,7 @@ class ABStatisticalTests:
             "control_mean": mean_a,
             "treatment_mean": mean_b,
             "difference": mean_b - mean_a,
-            "relative_change_pct": (mean_b - mean_a) / mean_a * 100 if mean_a else float('inf'),
+            "relative_change_pct": (mean_b - mean_a) / mean_a * 100 if mean_a else float("inf"),
             "t_statistic": t_stat,
             "p_value": p_value,
             "significant": p_value < alpha,
@@ -86,8 +87,9 @@ class ABStatisticalTests:
         """计算 A/B 测试所需的最小样本量"""
         z_alpha = stats.norm.ppf(1 - alpha / 2)
         z_beta = stats.norm.ppf(power)
-        h = 2 * np.arcsin(np.sqrt(baseline_rate + minimum_detectable_effect)) - \
-            2 * np.arcsin(np.sqrt(baseline_rate))
+        h = 2 * np.arcsin(np.sqrt(baseline_rate + minimum_detectable_effect)) - 2 * np.arcsin(
+            np.sqrt(baseline_rate)
+        )
         if h == 0:
             return 0
         n = 2 * ((z_alpha + z_beta) / h) ** 2
@@ -99,8 +101,10 @@ if __name__ == "__main__":
 
     # 示例1：正确率对比
     result1 = tester.two_proportion_z_test(
-        successes_a=170, n_a=200,
-        successes_b=188, n_b=200,
+        successes_a=170,
+        n_a=200,
+        successes_b=188,
+        n_b=200,
     )
     print(f"正确率对比: p={result1['p_value']:.4f}, 显著={result1['significant']}")
 

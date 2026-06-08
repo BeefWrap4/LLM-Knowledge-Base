@@ -18,21 +18,25 @@
 
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
+
 try:
     from langchain.chains import ConversationChain
+
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
     _SKIP_REASON = str(_e).split("\n")[0]
 if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
     _sys.exit(0)
-print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
+print(
+    "OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)"
+)
 from langchain.chains.router import MultiPromptChain
-from langchain_core.prompts import PromptTemplate
+
 
 class _MockChatModel:
     def invoke(self, msgs):
-        last = msgs[-1].content if hasattr(msgs[-1], 'content') else str(msgs[-1])
+        last = msgs[-1].content if hasattr(msgs[-1], "content") else str(msgs[-1])
         if "物理" in last or "量子" in last:
             text = "[物理专家] 量子纠缠是两个粒子在空间分离后仍保持关联的现象。"
         elif "数学" in last or "证明" in last:
@@ -41,8 +45,12 @@ class _MockChatModel:
             text = "[编程专家] 快速排序示例：\n```python\ndef qs(a):\n    if len(a)<=1: return a\n    p=a[0]; return qs([x for x in a[1:] if x<p])+[p]+qs([x for x in a[1:] if x>=p])\n```"
         else:
             text = "[通用] 让我想想..."
-        class _R: content = text
+
+        class _R:
+            content = text
+
         return _R()
+
 
 llm = _MockChatModel()
 
@@ -63,14 +71,10 @@ prompt_infos = [
 ]
 
 # 自动路由：LLM 根据问题内容选择最合适的专家
-router_chain = MultiPromptChain.from_prompts(
-    llm=llm,
-    prompt_infos=prompt_infos,
-    verbose=True
-)
+router_chain = MultiPromptChain.from_prompts(llm=llm, prompt_infos=prompt_infos, verbose=True)
 
 # 同一个链，自动路由到不同专家
-print(router_chain.invoke("什么是量子纠缠？"))       # → physics
+print(router_chain.invoke("什么是量子纠缠？"))  # → physics
 print(router_chain.invoke("如何用Python写快速排序？"))  # → coding
 
 if __name__ == "__main__":

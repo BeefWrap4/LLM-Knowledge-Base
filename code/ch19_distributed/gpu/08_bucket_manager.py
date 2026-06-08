@@ -18,6 +18,7 @@
 # DDP 的梯度 Bucket 机制 (源码简化)
 class _MiniBucket:
     """简化的梯度 bucket"""
+
     def __init__(self, capacity_bytes):
         self.capacity = capacity_bytes
         self.buffer = []
@@ -48,6 +49,7 @@ class BucketManager:
       Backward(Layer 27) → Bucket 满 → Async AllReduce(Layer 27-24)
       ...
     """
+
     def __init__(self, bucket_size_mb=25):
         self.bucket_size = bucket_size_mb * 1024 * 1024  # 25 MB 默认
         self.buckets = []  # 待填充的 bucket
@@ -78,8 +80,7 @@ def main():
     for layer in range(32, 0, -1):
         bm.add_gradient(f"layer_{layer}.weight", grad_size=5 * 1024 * 1024)
     print("=" * 60)
-    print("结论: 当一个 bucket 填满后, 异步 AllReduce 不阻塞后续层, "
-          "实现通信-计算重叠。")
+    print("结论: 当一个 bucket 填满后, 异步 AllReduce 不阻塞后续层, 实现通信-计算重叠。")
 
 
 if __name__ == "__main__":

@@ -18,11 +18,11 @@
 # DeepSpeed 通信重叠配置
 DEEPSPEED_COMM_OVERLAP_CONFIG = {
     "zero_optimization": {
-        "overlap_comm": True,          # ✅ 启用通信重叠
-        "reduce_bucket_size": 5e8,    # 500MB bucket (更大 = 更好重叠)
+        "overlap_comm": True,  # ✅ 启用通信重叠
+        "reduce_bucket_size": 5e8,  # 500MB bucket (更大 = 更好重叠)
         "allgather_bucket_size": 5e8,
-        "contiguous_gradients": True, # ✅ 梯度连续存储
-        "round_robin_gradients": True # ✅ 轮询梯度分组 (更好的负载均衡)
+        "contiguous_gradients": True,  # ✅ 梯度连续存储
+        "round_robin_gradients": True,  # ✅ 轮询梯度分组 (更好的负载均衡)
     }
 }
 
@@ -37,8 +37,10 @@ def make_fsdp_with_prefetch(model, local_rank):
     """
     try:
         from torch.distributed.fsdp import (
-            FullyShardedDataParallel as FSDP,
             BackwardPrefetch,
+        )
+        from torch.distributed.fsdp import (
+            FullyShardedDataParallel as FSDP,
         )
     except ImportError:
         print("[Mock Mode] FSDP not available.")

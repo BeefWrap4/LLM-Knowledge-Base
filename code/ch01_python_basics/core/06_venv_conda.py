@@ -33,13 +33,14 @@
 # │                                                             │
 # └─────────────────────────────────────────────────────────────┘
 
+
 # venv 标准用法
 def setup_venv(project_dir: str) -> None:
     """创建并激活虚拟环境的标准流程"""
     commands = [
         f"cd {project_dir}",
-        "python -m venv .venv",                    # 创建环境
-        "source .venv/bin/activate",               # Linux/Mac 激活
+        "python -m venv .venv",  # 创建环境
+        "source .venv/bin/activate",  # Linux/Mac 激活
         # ".venv\\Scripts\\activate",              # Windows 激活
         "pip install --upgrade pip",
         "pip install -r requirements.txt",
@@ -47,6 +48,7 @@ def setup_venv(project_dir: str) -> None:
     print("执行命令序列：")
     for cmd in commands:
         print(f"  $ {cmd}")
+
 
 # conda 环境管理（数据科学项目推荐）
 def setup_conda(env_name: str, python_version: str = "3.12") -> None:

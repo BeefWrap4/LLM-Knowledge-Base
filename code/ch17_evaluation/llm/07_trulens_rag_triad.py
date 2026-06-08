@@ -22,6 +22,7 @@ TruLens 提出了 RAG Triad 评估框架：
 - Context Relevance：检索的上下文是否与问题相关？
 - Groundedness：回答是否基于检索的上下文（无幻觉）？
 """
+
 import os
 
 
@@ -37,9 +38,9 @@ def setup_trulens_rag_triad() -> None:
         return
 
     try:
-        from trulens_eval import Tru, Select
-        from trulens_eval.feedback.provider.openai import OpenAI as OpenAIFeedback
+        from trulens_eval import Select, Tru
         from trulens_eval.feedback import Feedback
+        from trulens_eval.feedback.provider.openai import OpenAI as OpenAIFeedback
     except ImportError as exc:
         print(f"[mock] trulens_eval 未安装 ({exc})，使用模拟输出")
         return

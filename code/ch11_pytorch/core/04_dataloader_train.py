@@ -17,16 +17,20 @@
 #  3. @torch.no_grad() 装饰器相对 with no_grad 的优势? 何时仍需 torch.inference_mode?
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
+
 
 # ========== 本地定义的简单模型 (与 03_nn_module_mlp.py 共享相同结构) ==========
 class MLPClassifier(nn.Module):
     """简洁 MLP 分类器 — 避免跨文件 import."""
+
     def __init__(self, input_dim, hidden_dim=128, num_classes=3):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim), nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
             nn.Linear(hidden_dim, num_classes),
         )
 
@@ -45,6 +49,7 @@ class MyDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
+
 
 # ========== 标准训练循环模板 ==========
 def train_epoch(model, dataloader, criterion, optimizer, device):
@@ -77,6 +82,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device):
 
     return total_loss / total, correct / total
 
+
 @torch.no_grad()
 def evaluate(model, dataloader, criterion, device):
     model.eval()
@@ -96,15 +102,14 @@ def evaluate(model, dataloader, criterion, device):
 
     return total_loss / total, correct / total
 
+
 # ========== 完整训练流程 ==========
 from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 
-
 if __name__ == "__main__":
     # 数据
-    X, y = make_classification(n_samples=5000, n_features=20, n_classes=3,
-                               n_informative=15, random_state=42)
+    X, y = make_classification(n_samples=5000, n_features=20, n_classes=3, n_informative=15, random_state=42)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     train_dataset = MyDataset(X_train, y_train)
@@ -123,6 +128,8 @@ if __name__ == "__main__":
     for epoch in range(10):
         train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
         test_loss, test_acc = evaluate(model, test_loader, criterion, device)
-        print(f"Epoch {epoch+1:02d}: Train Loss={train_loss:.4f}, "
-              f"Train Acc={train_acc:.4f}, Test Loss={test_loss:.4f}, "
-              f"Test Acc={test_acc:.4f}")
+        print(
+            f"Epoch {epoch + 1:02d}: Train Loss={train_loss:.4f}, "
+            f"Train Acc={train_acc:.4f}, Test Loss={test_loss:.4f}, "
+            f"Test Acc={test_acc:.4f}"
+        )

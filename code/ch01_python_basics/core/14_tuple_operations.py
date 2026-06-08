@@ -30,11 +30,11 @@ t = (1, [2, 3], {"a": 4})
 # t[0] = 10        # TypeError — 不能修改元组元素
 # t[1] = [5, 6]    # TypeError — 不能替换整个列表
 
-t[1].append(4)     # ✅ 合法！修改的是列表内部，不是元组本身
-print(f"修改后: {t}")           # (1, [2, 3, 4], {'a': 4})
+t[1].append(4)  # ✅ 合法！修改的是列表内部，不是元组本身
+print(f"修改后: {t}")  # (1, [2, 3, 4], {'a': 4})
 
-t[2]["b"] = 5      # ✅ 合法！修改的是字典内部
-print(f"再加一项: {t}")           # (1, [2, 3, 4], {'a': 4, 'b': 5})
+t[2]["b"] = 5  # ✅ 合法！修改的是字典内部
+print(f"再加一项: {t}")  # (1, [2, 3, 4], {'a': 4, 'b': 5})
 
 """
 内存模型解析：
@@ -63,10 +63,11 @@ print(f"再加一项: {t}")           # (1, [2, 3, 4], {'a': 4, 'b': 5})
 
 # 1. 元组比列表更省内存（因为不可变，无需过度分配）
 import sys
+
 lst = [1, 2, 3, 4, 5]
 t = (1, 2, 3, 4, 5)
-print(f"列表内存: {sys.getsizeof(lst)} bytes")   # 列表内存更大
-print(f"元组内存: {sys.getsizeof(t)} bytes")     # 元组内存更小
+print(f"列表内存: {sys.getsizeof(lst)} bytes")  # 列表内存更大
+print(f"元组内存: {sys.getsizeof(t)} bytes")  # 元组内存更小
 
 # 2. 元组可作为字典键（列表不行）
 coord_dict = {
@@ -78,14 +79,14 @@ print(f"坐标字典: {coord_dict[(0, 0)]}")
 
 # 3. 元组拆包
 point = (3, 4)
-x, y = point           # 元组拆包
+x, y = point  # 元组拆包
 first, *rest = (1, 2, 3, 4, 5)  # 扩展拆包
 print(f"x={x}, y={y}, first={first}, rest={rest}")
 
 # 单元素元组的陷阱
-t_single = (42,)       # ✅ 必须加逗号！
-not_tuple = (42)       # ❌ 这是 int，不是 tuple
-print(type(t_single))   # <class 'tuple'>
+t_single = (42,)  # ✅ 必须加逗号！
+not_tuple = 42  # ❌ 这是 int，不是 tuple
+print(type(t_single))  # <class 'tuple'>
 print(type(not_tuple))  # <class 'int'>
 
 if __name__ == "__main__":

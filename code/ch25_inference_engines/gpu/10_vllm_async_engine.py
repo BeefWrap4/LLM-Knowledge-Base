@@ -19,15 +19,17 @@
 AsyncLLMEngine 是 vLLM 0.4+ 的核心: 单进程多请求流式 batched 生成.
 相比同步 LLMEngine, 吞吐提升 10-20x (continuous batching).
 """
+
 import asyncio
 import sys
 from pathlib import Path
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import require_nvidia_gpu
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import require_nvidia_gpu
 
 
 def check_hardware():
@@ -54,15 +56,14 @@ async def main():
     check_hardware()
     check_vllm_engine()
 
-    from shared.vllm_compat import AsyncLLMEngine, AsyncEngineArgs, SamplingParams
+    from shared.vllm_compat import AsyncEngineArgs, AsyncLLMEngine, SamplingParams
 
     # 加载模型 (0.5B 已有, 7B 需下)
     model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")
     if not Path(model_path).exists():
         raise_with_help(
             f"需要模型 {model_path}",
-            "运行 `make download-models-default` (1.7GB) 或 "
-            "`make download-models-llm` (15GB for 7B).",
+            "运行 `make download-models-default` (1.7GB) 或 `make download-models-llm` (15GB for 7B).",
         )
 
     args = AsyncEngineArgs(
@@ -92,7 +93,7 @@ async def main():
                 full_text = out.outputs[0].text
             else:
                 # 实时打印 streaming
-                new_text = out.outputs[0].text[len(full_text):]
+                new_text = out.outputs[0].text[len(full_text) :]
                 if new_text:
                     print(f"[{req_id}] {new_text}", end="", flush=True)
                     full_text = out.outputs[0].text
@@ -100,11 +101,11 @@ async def main():
         return full_text
 
     # 并发生成
-    print(f"=== 流式生成 5 个并发请求 (max_tokens=64) ===\n")
+    print("=== 流式生成 5 个并发请求 (max_tokens=64) ===\n")
     tasks = [generate_one(f"r{i}", p) for i, p in enumerate(prompts)]
     results = await asyncio.gather(*tasks)
 
-    print(f"\n=== 完成 ===")
+    print("\n=== 完成 ===")
     print(f"  总生成 tokens: ~{sum(len(r.split()) for r in results)}")
     print(f"  并发请求数: {len(results)}")
 

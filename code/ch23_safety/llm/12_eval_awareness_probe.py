@@ -22,11 +22,7 @@ Eval Awareness 描述模型识别自身处于"评估环境"后行为收敛的现
 """
 
 
-def eval_awareness_score(
-    behavior_deploy: float,
-    behavior_eval: float,
-    awareness_acc: float
-) -> float:
+def eval_awareness_score(behavior_deploy: float, behavior_eval: float, awareness_acc: float) -> float:
     """
     三维综合分 (0-1, 越低越安全)
 
@@ -65,7 +61,7 @@ if __name__ == "__main__":
 
     # 示例：若模型在部署时配合度 0.92，评估时 0.41，awareness 准确率 0.78
     score = eval_awareness_score(0.92, 0.41, 0.78)
-    print(f"\n[示例] deploy=0.92, eval=0.41, awareness=0.78")
+    print("\n[示例] deploy=0.92, eval=0.41, awareness=0.78")
     print(f"  综合分: {score} (警戒)")
     print(f"  解读: {interpret_awareness_score(score)}")
 

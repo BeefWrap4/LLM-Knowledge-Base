@@ -15,12 +15,12 @@
 #  - gen_ai.usage.cached_input_tokens 与 cached_input_tokens 字段如何区分？
 #  - OTLP gRPC 与 HTTP exporter 的取舍（吞吐 vs 兼容性）？
 
-from opentelemetry import trace, metrics
-from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION
+from opentelemetry import metrics, trace
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.resources import SERVICE_NAME, SERVICE_VERSION, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from opentelemetry.sdk.metrics import MeterProvider
 
 
 def build_provider():
@@ -61,9 +61,7 @@ class GenAITelemetry:
         user_id: str | None = None,
         trajectory_id: str | None = None,
     ):
-        with self.tracer.start_as_current_span(
-            f"chat {model}", kind=trace.SpanKind.CLIENT
-        ) as span:
+        with self.tracer.start_as_current_span(f"chat {model}", kind=trace.SpanKind.CLIENT) as span:
             span.set_attribute("gen_ai.operation.name", "chat")
             span.set_attribute("gen_ai.request.model", model)
             span.set_attribute("gen_ai.request.temperature", 0.7)

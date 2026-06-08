@@ -23,6 +23,7 @@ DeepSeek API 完全兼容 OpenAI 协议:
 
 可用 openai SDK 直接连.
 """
+
 import os
 import sys
 from pathlib import Path
@@ -66,8 +67,10 @@ def main():
     content = resp.choices[0].message.content
     print(f"  回答: {content}")
     if resp.usage:
-        print(f"  usage: total_tokens={resp.usage.total_tokens} "
-              f"(prompt={resp.usage.prompt_tokens}, completion={resp.usage.completion_tokens})")
+        print(
+            f"  usage: total_tokens={resp.usage.total_tokens} "
+            f"(prompt={resp.usage.prompt_tokens}, completion={resp.usage.completion_tokens})"
+        )
 
     # 2) deepseek-reasoner (R1) — 推理模型
     print("\n[2/2] deepseek-reasoner (R1):")
@@ -83,8 +86,7 @@ def main():
     if reasoning:
         print(f"  推理过程: {reasoning[:200]}...")
     if resp.usage:
-        print(f"  usage: total_tokens={resp.usage.total_tokens} "
-              f"(R1 通常比 V3 消耗多 5-10x)")
+        print(f"  usage: total_tokens={resp.usage.total_tokens} (R1 通常比 V3 消耗多 5-10x)")
 
 
 if __name__ == "__main__":

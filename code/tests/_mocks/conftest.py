@@ -7,6 +7,7 @@
 需要测 "no key → raise" / "real mode" 行为的单元测试.
 CI 调用方应通过 env var 或 mock_env fixture 显式启用.
 """
+
 import pytest
 
 

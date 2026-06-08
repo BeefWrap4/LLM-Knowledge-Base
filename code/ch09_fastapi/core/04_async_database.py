@@ -14,19 +14,21 @@
 #   1. create_async_engine 与 create_engine 在事件循环层面的区别？
 #   2. 异步会话中的 yield 依赖如何处理 commit / rollback？
 #   3. aiosqlite / asyncpg / aiomysql 三者性能与适用场景对比？
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column
-from sqlalchemy import String, DateTime, func, select
-from contextlib import asynccontextmanager
 import datetime
+
+from sqlalchemy import DateTime, String, func
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import Mapped, declarative_base, mapped_column
 
 # 异步数据库引擎
 engine = create_async_engine("sqlite+aiosqlite:///./llm_service.db", echo=False)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
 
+
 class Conversation(Base):
     """对话记录表"""
+
     __tablename__ = "conversations"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -34,6 +36,7 @@ class Conversation(Base):
     assistant_reply: Mapped[str] = mapped_column(String(4000))
     model: Mapped[str] = mapped_column(String(50))
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
+
 
 # 依赖：获取数据库会话
 async def get_db() -> AsyncSession:
@@ -45,11 +48,13 @@ async def get_db() -> AsyncSession:
             await session.rollback()
             raise
 
+
 # 单独演示 get_db 的生成器语义（无需真启动 FastAPI）
 def _demo_dependency_generator():
     """快速观察 get_db 是异步生成器: 调用返回协程."""
     gen = get_db()
     import inspect
+
     assert inspect.isasyncgen(gen), "get_db 必须是 async generator"
     return gen
 

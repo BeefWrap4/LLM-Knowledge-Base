@@ -26,8 +26,9 @@ ACT (Zhao et al. 2023) 核心: 一次预测未来 K 个动作 (chunk),
 
 本 demo: 检查 lerobot 库 + 展示 ACT 训练/推理代码 (实际跑需 Linux + GPU).
 """
-import sys
+
 import shutil
+import sys
 from pathlib import Path
 
 _code_root = Path(__file__).resolve().parent.parent.parent
@@ -38,7 +39,6 @@ import torch
 import torch.nn as nn
 
 from shared.gpu_guard import require_nvidia_gpu
-from shared._error_helper import raise_with_help
 
 
 def check_hardware():
@@ -50,6 +50,7 @@ def check_lerobot_installed():
     if shutil.which("lerobot") is None:
         try:
             import lerobot  # noqa: F401
+
             print("  ✓ lerobot Python 包已装")
         except ImportError:
             print("  ⚠️  lerobot Python 包未装")
@@ -100,14 +101,18 @@ class SimpleACTPolicy(nn.Module):
         # 时序位置编码 (chunk_size 个位置)
         self.pos_emb = nn.Parameter(torch.randn(cfg.chunk_size, d_model) * 0.02)
         enc_layer = nn.TransformerEncoderLayer(
-            d_model=d_model, nhead=cfg.n_heads,
+            d_model=d_model,
+            nhead=cfg.n_heads,
             dim_feedforward=cfg.dim_feedforward // 25,  # 缩小供 demo
-            batch_first=True, dropout=0.0,
+            batch_first=True,
+            dropout=0.0,
         )
         dec_layer = nn.TransformerDecoderLayer(
-            d_model=d_model, nhead=cfg.n_heads,
+            d_model=d_model,
+            nhead=cfg.n_heads,
             dim_feedforward=cfg.dim_feedforward // 25,
-            batch_first=True, dropout=0.0,
+            batch_first=True,
+            dropout=0.0,
         )
         self.encoder = nn.TransformerEncoder(enc_layer, num_layers=2)  # 缩小供 demo
         self.decoder = nn.TransformerDecoder(dec_layer, num_layers=2)
@@ -129,7 +134,7 @@ def main() -> None:
 
     print("=== LeRobot ACT (Action Chunking Transformer) ===\n")
     cfg = ACTConfig()
-    print(f"  ACT 配置:")
+    print("  ACT 配置:")
     print(f"    chunk_size       : {cfg.chunk_size} (≈ 1s @ 100Hz)")
     print(f"    n_encoder_layers : {cfg.n_encoder_layers}")
     print(f"    n_decoder_layers : {cfg.n_decoder_layers}")

@@ -27,17 +27,60 @@ markers = [
 # tests 用 sys.path.insert(0, ...) 加载
 
 [tool.ruff]
-line-length = 100
-target-version = "py310"
-extend-exclude = [".venv", "build", "dist"]
+target-version = "py311"
+line-length = 110
+extend-exclude = [".venv", "build", "dist", "models", ".benchmarks", "tutorial", "__pycache__"]
 
 [tool.ruff.lint]
+# 教程代码优先可读性, 命名风格保留 ML 论文传统 (Q/K/V 等)
 select = ["E", "F", "W", "I", "B", "UP", "N", "C4"]
-ignore = ["E501", "B008", "B904"]
+ignore = [
+    "E501",    # line too long (教程代码允许稍长, 不强制改)
+    "E402",    # module level import not at top (sys.path setup 需要在 import 之前)
+    "E721",    # type comparison
+    "E731",    # lambda assignment
+    "E741",    # ambiguous-variable-name
+    "E722",    # bare-except
+    "F401",    # imported but unused (有些 import 是为 linter 触发, 教学展示)
+    "F841",    # local variable assigned but never used
+    "B006",    # mutable-argument-default (教学用)
+    "B007",    # unused loop variable
+    "B011",    # assert false
+    "B023",    # function-uses-loop-variable
+    "B904",    # raise from
+    "B905",    # zip-without-explicit-strict
+    "UP",      # pyupgrade (Pydantic v1/v2 风格混合)
+    "UP031",   # printf-string-formatting
+    "N801",    # invalid-class-name
+    "N802",    # invalid-function-name
+    "N803",    # argument name should be lowercase (Q/K/V 来自论文)
+    "N805",    # invalid-first-argument-name-for-method
+    "N806",    # variable in function should be lowercase (Q/K/V 来自论文)
+    "N812",    # lowercase-imported-as-non-lowercase
+    "N814",    # camelcase-imported-as-constant
+    "N815",    # mixedCase variable in class scope
+    "N816",    # mixed-case-variable-in-global-scope
+    "N817",    # camelcase-imported-as-acronym
+    "N818",    # exception name ending in Error
+    "C4",      # unnecessary comprehensions / collections (教学代码不强制)
+    "C401",    # unnecessary generator set
+    "C402",    # unnecessary generator dict
+    "C405",    # unnecessary literal set
+    "C406",    # unnecessary literal dict
+    "C408",    # unnecessary collection call
+    "C416",    # unnecessary comprehension
+    "C417",    # unnecessary map use
+]
 
 [tool.ruff.lint.per-file-ignores]
-"*/ch*_*/gpu/*" = ["E402", "F401"]  # gpu examples: imports, unused OK
-"*/tests/*" = ["B011", "E402"]
+# 测试文件允许 magic values 和长行
+"tests/*" = ["E501", "PLR2004"]
+# shared/ 是基类, 允许长行和未使用参数
+"shared/*.py" = ["E501", "ARG001"]
+# 教程 .py 允许 print 和长行 (教学代码)
+"ch*/**/*.py" = ["T201", "E501", "PTH118", "PTH123"]
+# 兼容 Windows 路径表示 (junction)
+"tutorial/*" = ["E501"]
 
 [tool.mypy]
 python_version = "3.10"

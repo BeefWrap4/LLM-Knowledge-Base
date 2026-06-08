@@ -24,11 +24,11 @@ def build_template():
     # 定义带类型约束的模板
     @guidance()
     def user_info(lm, name_desc=""):
-        lm += '{{json\n'
+        lm += "{{json\n"
         lm += f'  "name": "{name_desc}",\n'
         lm += '"age": {{gen "age" pattern="[0-9]+" stop=","}},\n'
         lm += '"skills": [{{gen "skill" pattern="\\w+" stop=",|\\]"}}]\n'
-        lm += '}}\n'
+        lm += "}}\n"
         return lm
 
     # 调用模型（需要先加载）

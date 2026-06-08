@@ -46,6 +46,7 @@ agent = {
     "show_tool_calls": True,
 }
 
+
 # 多模态输入：文本 + 图像
 def mock_run(query: str, images=None) -> str:
     """模拟 agent.run 的输出"""
@@ -53,13 +54,16 @@ def mock_run(query: str, images=None) -> str:
         return f"（多模态）分析图像 {[PathImage.name for PathImage in images]} 并联网搜索：{query}"
     return f"（文本）{query}"
 
+
 class _P:
-    def __init__(self, name): self.name = name
+    def __init__(self, name):
+        self.name = name
+
 
 print("=== Agno Agent 配置 ===")
 for k, v in agent.items():
     print(f"  {k}: {v}")
-print(f"\n启动时间: <5 微秒（benchmark）")
+print("\n启动时间: <5 微秒（benchmark）")
 print(f"模型启动: {agent['model']}")
 print(f"知识库: {agent['knowledge']['type']} -> {agent['knowledge']['path']}")
 

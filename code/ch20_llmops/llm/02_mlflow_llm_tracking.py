@@ -25,6 +25,7 @@ except ImportError:
 
 try:
     from openai import OpenAI
+
     _HAS_OPENAI = bool(os.getenv("OPENAI_API_KEY"))
 except ImportError:
     OpenAI = None  # type: ignore
@@ -33,6 +34,7 @@ except ImportError:
 
 def _mock_client():
     """返回一个 mock client 用于离线运行。"""
+
     class _Choice:
         def __init__(self, content):
             self.message = type("M", (), {"content": content})()
@@ -59,6 +61,7 @@ def _mock_client():
                     else:
                         ans = "neutral"
                     return _Resp(f"Sentiment: {ans}", tokens=60)
+
     return _Mock()
 
 
@@ -84,13 +87,15 @@ def main():
     for prompt_name, prompt_template in prompt_variants.items():
         with mlflow.start_run(run_name=prompt_name):
             # 记录参数
-            mlflow.log_params({
-                "prompt_name": prompt_name,
-                "prompt_template": prompt_template,
-                "model": "gpt-4o-mini",
-                "temperature": 0.1,
-                "max_tokens": 100,
-            })
+            mlflow.log_params(
+                {
+                    "prompt_name": prompt_name,
+                    "prompt_template": prompt_template,
+                    "model": "gpt-4o-mini",
+                    "temperature": 0.1,
+                    "max_tokens": 100,
+                }
+            )
 
             # 记录开始时间
             start_time = time.time()
@@ -130,20 +135,22 @@ def main():
             avg_latency = total_latency / len(test_cases)
             avg_tokens = total_tokens / len(test_cases)
 
-            mlflow.log_metrics({
-                "accuracy": accuracy,
-                "avg_latency_ms": avg_latency * 1000,
-                "avg_tokens_per_call": avg_tokens,
-                "total_tokens": total_tokens,
-                "total_time_sec": time.time() - start_time,
-            })
+            mlflow.log_metrics(
+                {
+                    "accuracy": accuracy,
+                    "avg_latency_ms": avg_latency * 1000,
+                    "avg_tokens_per_call": avg_tokens,
+                    "total_tokens": total_tokens,
+                    "total_time_sec": time.time() - start_time,
+                }
+            )
 
             # 保存 Prompt 模板为 Artifact
             with open("current_prompt.txt", "w") as f:
                 f.write(prompt_template)
             mlflow.log_artifact("current_prompt.txt")
 
-            print(f"[{prompt_name}] Accuracy: {accuracy:.2%}, Latency: {avg_latency*1000:.0f}ms")
+            print(f"[{prompt_name}] Accuracy: {accuracy:.2%}, Latency: {avg_latency * 1000:.0f}ms")
 
     print("\n✅ 所有实验完成！运行 `mlflow ui` 查看结果")
 

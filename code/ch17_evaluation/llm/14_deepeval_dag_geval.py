@@ -20,6 +20,7 @@
 DeepEval 在 2025-2026 完成了重大架构升级：
 引入 DAG-based evaluation（基于有向无环图的多步评估）和 G-Eval 框架。
 """
+
 import os
 
 
@@ -38,19 +39,19 @@ def run_deepeval_dag_geval() -> None:
 
     try:
         from deepeval import assert_test
-        from deepeval.test_case import LLMTestCase, LLMTestCaseParams
         from deepeval.metrics import (
-            DAGMetric,
-            GEval,
-            FaithfulnessMetric,
             AnswerRelevancyMetric,
+            DAGMetric,
+            FaithfulnessMetric,
+            GEval,
         )
         from deepeval.metrics.dag import DeepAcyclicGraph
         from deepeval.metrics.indicators import (
-            TaskCompletionIndicator,
             HallucinationIndicator,
+            TaskCompletionIndicator,
         )
         from deepeval.models import GPTModel
+        from deepeval.test_case import LLMTestCase, LLMTestCaseParams
     except ImportError as exc:
         print(f"[mock] deepeval 未安装 ({exc})，使用模拟输出")
         return
@@ -58,8 +59,7 @@ def run_deepeval_dag_geval() -> None:
     # 1. G-Eval：自然语言定义 metric（领域专家可写）
     correctness_metric = GEval(
         name="Technical Correctness",
-        criteria="判断 actual_output 相对于 expected_output 是否技术正确，"
-        "评估对象是高级 Python 开发者。",
+        criteria="判断 actual_output 相对于 expected_output 是否技术正确，评估对象是高级 Python 开发者。",
         evaluation_params=[
             LLMTestCaseParams.INPUT,
             LLMTestCaseParams.ACTUAL_OUTPUT,
@@ -89,9 +89,7 @@ def run_deepeval_dag_geval() -> None:
         dependencies=["Task Completion"],
     )
 
-    dag_metric = DAGMetric(
-        name="Composite Quality", dag=dag, threshold=0.8
-    )
+    dag_metric = DAGMetric(name="Composite Quality", dag=dag, threshold=0.8)
 
     # 3. Pytest 风格测试
     def test_rag_pipeline_quality():
@@ -99,9 +97,7 @@ def run_deepeval_dag_geval() -> None:
             input="What is the capital of France?",
             actual_output="The capital of France is Paris, population 2.1 million.",
             expected_output="Paris",
-            retrieval_context=[
-                "Paris is the capital and most populous city of France."
-            ],
+            retrieval_context=["Paris is the capital and most populous city of France."],
         )
         assert_test(
             test_case,

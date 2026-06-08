@@ -23,6 +23,7 @@
 
 WebGPU 部分需 GPU + 浏览器交互, 本地不跑 (仅文字对比).
 """
+
 from __future__ import annotations
 
 import os
@@ -40,19 +41,18 @@ if str(_code_root) not in sys.path:
 
 from shared._error_helper import raise_with_help  # noqa: E402
 
-
 # ============================================================
 # 1. WebGPU vs WASM 对比矩阵 (教学)
 # ============================================================
 COMPARISON_MATRIX = [
-    ("性能",         "⭐⭐⭐⭐⭐", "⭐⭐⭐",     "WebGPU 利用 GPU 并行"),
-    ("浏览器兼容",   "Chromium/Safari", "全部浏览器", "WASM 通用性更强"),
-    ("计算单元",     "GPU (并行)",   "CPU (串行)",   "本质区别"),
-    ("API 风格",     "现代 (wgpu)",  "低级 (LLVM IR)", "WebGPU 抽象更友好"),
-    ("内存",         "GPU 显存 4-8GB", "系统 RAM",   "WebGPU 受限于安全沙箱"),
-    ("适用模型大小", "1B-7B 量化",   "<1B",         "WASM 算力天花板"),
-    ("功耗",         "中-高 (GPU)",   "低 (CPU)",     "WASM 适合移动端续航"),
-    ("首推框架",     "WebLLM/MLC-LLM", "WasmEdge/llama.cpp", "生态成熟度"),
+    ("性能", "⭐⭐⭐⭐⭐", "⭐⭐⭐", "WebGPU 利用 GPU 并行"),
+    ("浏览器兼容", "Chromium/Safari", "全部浏览器", "WASM 通用性更强"),
+    ("计算单元", "GPU (并行)", "CPU (串行)", "本质区别"),
+    ("API 风格", "现代 (wgpu)", "低级 (LLVM IR)", "WebGPU 抽象更友好"),
+    ("内存", "GPU 显存 4-8GB", "系统 RAM", "WebGPU 受限于安全沙箱"),
+    ("适用模型大小", "1B-7B 量化", "<1B", "WASM 算力天花板"),
+    ("功耗", "中-高 (GPU)", "低 (CPU)", "WASM 适合移动端续航"),
+    ("首推框架", "WebLLM/MLC-LLM", "WasmEdge/llama.cpp", "生态成熟度"),
 ]
 
 
@@ -110,9 +110,7 @@ def find_wasmtime() -> str:
     if p and Path(p).is_file():
         return p
     # 3) Windows 标准 winget portable 安装位置
-    winget_dir = Path(os.environ.get("LOCALAPPDATA", "")) / (
-        "Microsoft/WinGet/Packages"
-    )
+    winget_dir = Path(os.environ.get("LOCALAPPDATA", "")) / ("Microsoft/WinGet/Packages")
     if winget_dir.is_dir():
         for d in winget_dir.glob("BytecodeAlliance.Wasmtime*"):
             for exe in d.rglob("wasmtime.exe"):
@@ -137,7 +135,7 @@ def run_wasmtime_benchmark(iterations: int = 1000) -> dict:
     wasmtime_path = find_wasmtime()
 
     # 写 .wast 临时文件: 模块定义 + N 次 add(1,2) 断言
-    assertions = "(assert_return (invoke \"add\" (i32.const 1) (i32.const 2)) (i32.const 3))\n"
+    assertions = '(assert_return (invoke "add" (i32.const 1) (i32.const 2)) (i32.const 3))\n'
     wast_content = WASM_ADD_WAT + (assertions * iterations)
 
     tmpdir = Path(tempfile.gettempdir()) / "wasmtime_bench"
@@ -186,10 +184,10 @@ def benchmark_throughput() -> None:
     """Llama-3.2-3B Q4 推理吞吐量对比 (tokens/s, 实测参考)."""
     print("--- 3B Q4 推理吞吐 (tokens/s, 桌面 RTX 3060) ---")
     rows = [
-        ("WebGPU (MLC-LLM)",       45, "⭐⭐⭐⭐⭐"),
-        ("WebGPU (原生 wgpu)",     30, "⭐⭐⭐⭐"),
-        ("WebAssembly (WasmEdge)",  8, "⭐⭐"),
-        ("WebAssembly (单线程)",    3, "⭐"),
+        ("WebGPU (MLC-LLM)", 45, "⭐⭐⭐⭐⭐"),
+        ("WebGPU (原生 wgpu)", 30, "⭐⭐⭐⭐"),
+        ("WebAssembly (WasmEdge)", 8, "⭐⭐"),
+        ("WebAssembly (单线程)", 3, "⭐"),
     ]
     print(f"{'方案':<28} {'tokens/s':<10} {'评级'}")
     print("-" * 55)

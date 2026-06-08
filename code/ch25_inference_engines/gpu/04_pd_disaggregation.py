@@ -31,7 +31,9 @@ decode 混合 batch 执行, 避免 prefill 阻塞 decode.
 完整 PD-Disagg (跨节点) 需 vLLM 0.21+ 的 XPyD (eXternal Prefill-Decode)
 + KV transfer 模块, 这里演示单节点版本作为入门.
 """
+
 from __future__ import annotations
+
 import sys
 import time
 from pathlib import Path
@@ -40,8 +42,7 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import require_nvidia_gpu, gpu_summary
-
+from shared.gpu_guard import gpu_summary, require_nvidia_gpu
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 # 1 个长 prompt (prefill-heavy) + 8 个短 prompt (decode-heavy) 混合
@@ -79,8 +80,8 @@ def main() -> None:
         model=MODEL,
         gpu_memory_utilization=0.5,
         max_num_seqs=16,
-        max_model_len=2048,         # 容纳长 prompt
-        max_num_batched_tokens=512, # 关键: 控制单 step token budget, 触发 chunked prefill
+        max_model_len=2048,  # 容纳长 prompt
+        max_num_batched_tokens=512,  # 关键: 控制单 step token budget, 触发 chunked prefill
         enable_chunked_prefill=True,
         enforce_eager=True,
     )
@@ -90,19 +91,22 @@ def main() -> None:
     print("vLLM SchedulerConfig (Chunked Prefill / PD-Disagg 近似):")
     print(f"  enable_chunked_prefill    = {sched_cfg.enable_chunked_prefill}")
     print(f"  max_num_batched_tokens    = {sched_cfg.max_num_batched_tokens}")
-    print(f"                            (单 step token budget, 把长 prompt 切成 chunk)")
+    print("                            (单 step token budget, 把长 prompt 切成 chunk)")
     print(f"  max_num_seqs              = {sched_cfg.max_num_seqs}")
     print("=" * 60)
     print()
 
     # 长度统计
     from transformers import AutoTokenizer
+
     tok = AutoTokenizer.from_pretrained(MODEL)
     long_ids = tok(LONG_PROMPT, add_special_tokens=False).input_ids
     short_ids_lens = [len(tok(p, add_special_tokens=False).input_ids) for p in SHORT_PROMPTS]
     print(f"Long prompt  : {len(long_ids)} tokens  (prefill-heavy)")
-    print(f"Short prompts: {len(SHORT_PROMPTS)} x ~{sum(short_ids_lens)//len(short_ids_lens)} tokens "
-          f"(decode-heavy)")
+    print(
+        f"Short prompts: {len(SHORT_PROMPTS)} x ~{sum(short_ids_lens) // len(short_ids_lens)} tokens "
+        f"(decode-heavy)"
+    )
     print(f"Total tokens : {len(long_ids) + sum(short_ids_lens)}")
     print()
 
@@ -116,7 +120,7 @@ def main() -> None:
     print(f"\nGenerated {len(outputs)} prompts in {t_total:.2f}s")
     print()
     for i, out in enumerate(outputs):
-        label = "LONG(prefill)" if i == 0 else f"short-{i-1:02d}(decode) "
+        label = "LONG(prefill)" if i == 0 else f"short-{i - 1:02d}(decode) "
         text = out.outputs[0].text[:60].replace("\n", " ")
         ptoks = len(out.prompt_token_ids)
         ctoks = len(out.outputs[0].token_ids)

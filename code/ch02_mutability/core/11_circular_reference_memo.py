@@ -28,6 +28,7 @@ import copy
 # 循环引用演示
 # ─────────────────────────────────────────────────────────────
 
+
 def demo_circular_reference():
     """
     创建循环引用的数据结构:
@@ -43,30 +44,32 @@ def demo_circular_reference():
     """
     a = {"name": "A", "ref": None}
     b = {"name": "B", "ref": a}
-    a["ref"] = b    # 建立循环引用
+    a["ref"] = b  # 建立循环引用
 
     print("=== 循环引用对象 ===")
-    print(f"a['ref'] is b? {a['ref'] is b}")        # True
-    print(f"b['ref'] is a? {b['ref'] is a}")        # True
+    print(f"a['ref'] is b? {a['ref'] is b}")  # True
+    print(f"b['ref'] is a? {b['ref'] is a}")  # True
 
     # 深拷贝处理循环引用
     a_copy = copy.deepcopy(a)
 
-    print(f"\n深拷贝后:")
-    print(f"a_copy['ref'] is b? {a_copy['ref'] is b}")              # False
+    print("\n深拷贝后:")
+    print(f"a_copy['ref'] is b? {a_copy['ref'] is b}")  # False
     print(f"a_copy['ref']['ref'] is a_copy? {a_copy['ref']['ref'] is a_copy}")  # True
-    print(f"a_copy['ref']['name']: {a_copy['ref']['name']}")        # "B"
+    print(f"a_copy['ref']['name']: {a_copy['ref']['name']}")  # "B"
 
     # 验证独立性
     a_copy["name"] = "A_copy"
     a_copy["ref"]["name"] = "B_copy"
-    print(f"\n修改后:")
-    print(f"原始 a['name']: {a['name']}")            # "A" — 不变
-    print(f"原始 b['name']: {b['name']}")            # "B" — 不变
+    print("\n修改后:")
+    print(f"原始 a['name']: {a['name']}")  # "A" — 不变
+    print(f"原始 b['name']: {b['name']}")  # "B" — 不变
+
 
 # ─────────────────────────────────────────────────────────────
 # deepcopy 的 memo 机制源码级理解
 # ─────────────────────────────────────────────────────────────
+
 
 def deepcopy_with_memo(obj, memo=None):
     """
@@ -82,12 +85,12 @@ def deepcopy_with_memo(obj, memo=None):
 
     obj_id = id(obj)
     if obj_id in memo:
-        return memo[obj_id]   # 已拷贝过,直接返回引用
+        return memo[obj_id]  # 已拷贝过,直接返回引用
 
     # 创建新对象(简化版,只处理列表)
     if isinstance(obj, list):
         new_obj = []
-        memo[obj_id] = new_obj   # 先放入 memo,防止循环
+        memo[obj_id] = new_obj  # 先放入 memo,防止循环
         for item in obj:
             new_obj.append(deepcopy_with_memo(item, memo))
         return new_obj
@@ -95,11 +98,12 @@ def deepcopy_with_memo(obj, memo=None):
     # 不可变对象直接返回(无需拷贝)
     return obj
 
+
 # 验证
 a = [1, 2]
-a.append(a)   # 自引用 [1, 2, [...]]
+a.append(a)  # 自引用 [1, 2, [...]]
 copied = deepcopy_with_memo(a)
-print(f"\n自引用深拷贝:")
+print("\n自引用深拷贝:")
 print(f"copied: {copied}")
 print(f"copied[2] is copied? {copied[2] is copied}")  # True — 循环引用保持
 

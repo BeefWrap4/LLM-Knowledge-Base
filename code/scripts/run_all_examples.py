@@ -14,6 +14,7 @@
   - gpu/ 默认 skip (无 CUDA)
   - 单个文件超时 30s 防止 hang
 """
+
 import argparse
 import subprocess
 import sys
@@ -42,7 +43,9 @@ def run_one(script: Path, timeout: int = 30) -> tuple[str, bool, str, float]:
             cmd.append("--mock")
         result = subprocess.run(
             cmd,
-            capture_output=True, text=True, timeout=timeout,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
             cwd=str(CODE),
         )
         elapsed = time.perf_counter() - t0
@@ -61,7 +64,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", default="core", choices=["core", "llm", "gpu"])
     ap.add_argument("--chapter", default=None, help="e.g. ch12")
-    ap.add_argument("--timeout", type=int, default=180, help="per-file timeout in seconds (some HF model loads take 60s+)")
+    ap.add_argument(
+        "--timeout",
+        type=int,
+        default=180,
+        help="per-file timeout in seconds (some HF model loads take 60s+)",
+    )
     ap.add_argument("--parallel", type=int, default=4)
     args = ap.parse_args()
 
@@ -91,14 +99,14 @@ def main() -> int:
     # Summary
     passed = sum(1 for _, ok, _, _ in results if ok)
     failed = len(results) - passed
-    print(f"\n=== Summary ===")
+    print("\n=== Summary ===")
     print(f"Total:   {len(results)}")
     print(f"Passed:  {passed}")
     print(f"Failed:  {failed}")
     print(f"Time:    {total_elapsed:.1f}s")
 
     if failed:
-        print(f"\n--- Failures ---")
+        print("\n--- Failures ---")
         for rel, ok, out, _ in results:
             if not ok:
                 print(f"\n  {rel}")

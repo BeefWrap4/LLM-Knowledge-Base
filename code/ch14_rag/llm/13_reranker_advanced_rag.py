@@ -29,6 +29,7 @@ class Reranker:
         self.model_name = model_name
         try:
             from sentence_transformers import CrossEncoder
+
             self.model = CrossEncoder(model_name)
         except Exception:
             self.model = None
@@ -69,8 +70,8 @@ class AdvancedRAG:
 
     def __init__(self, vectorstore, retriever, reranker, llm_client=None):
         self.vectorstore = vectorstore
-        self.retriever = retriever      # 混合检索器
-        self.reranker = reranker        # Cross-Encoder 重排序
+        self.retriever = retriever  # 混合检索器
+        self.reranker = reranker  # Cross-Encoder 重排序
         self.llm = llm_client
 
     def query(self, question: str, recall_k: int = 20, final_k: int = 5) -> dict:
@@ -79,20 +80,16 @@ class AdvancedRAG:
             query_embedding = self.retriever.embedder.encode(question)
         else:
             import numpy as np
+
             query_embedding = np.random.default_rng(0).normal(size=64).astype("float32")
-        recalled = self.retriever.search(
-            question, query_embedding, top_k=recall_k
-        )
+        recalled = self.retriever.search(question, query_embedding, top_k=recall_k)
         candidate_docs = [self.retriever.documents[i] for i, _ in recalled]
 
         # Step 2: Cross-Encoder 重排序
         reranked = self.reranker.rerank(question, candidate_docs, top_k=final_k)
 
         # Step 3: 取 Top 文档构建上下文
-        context = "\n\n---\n\n".join([
-            f"[相关度 {score:.3f}] {doc[:500]}"
-            for doc, score in reranked
-        ])
+        context = "\n\n---\n\n".join([f"[相关度 {score:.3f}] {doc[:500]}" for doc, score in reranked])
 
         # Step 4: LLM 生成
         prompt = f"""基于以下检索结果回答问题：
@@ -125,10 +122,12 @@ if __name__ == "__main__":
     # 简单 mock 演示
     docs = ["什么是 RAG", "今天天气", "RAG 检索增强生成", "机器学习"]
     import numpy as np
+
     emb = np.random.default_rng(0).normal(size=(len(docs), 64)).astype("float32")
     emb /= np.linalg.norm(emb, axis=1, keepdims=True)
 
     from importlib import import_module
+
     # 复用 11_hybrid_retriever 的 HybridRetriever
     hr_mod = import_module("11_hybrid_retriever")
     retriever = hr_mod.HybridRetriever(docs, emb)

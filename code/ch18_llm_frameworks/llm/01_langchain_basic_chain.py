@@ -24,14 +24,16 @@
 
 # 真实 API 模式
 def main():
-    from langchain_openai import ChatOpenAI
-    from langchain_core.prompts import ChatPromptTemplate
     from langchain_core.output_parsers import StrOutputParser
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_openai import ChatOpenAI
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "你是一个 Python 专家, 回答简洁。"),
-        ("user", "{question}"),
-    ])
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", "你是一个 Python 专家, 回答简洁。"),
+            ("user", "{question}"),
+        ]
+    )
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     chain = prompt | llm | StrOutputParser()  # LCEL pipe 语法
 

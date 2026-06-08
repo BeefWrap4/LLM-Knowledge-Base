@@ -20,9 +20,14 @@ ALLOWED_TOOLS = {"get_weather", "search_web", "send_email"}
 TOOL_SCHEMAS = {
     "get_weather": {"required": ["city"], "properties": {"city": {"type": "string"}}},
     "search_web": {"required": ["query"], "properties": {"query": {"type": "string"}}},
-    "send_email": {"required": ["to", "subject", "body"], "properties": {
-        "to": {"type": "string"}, "subject": {"type": "string"}, "body": {"type": "string"},
-    }},
+    "send_email": {
+        "required": ["to", "subject", "body"],
+        "properties": {
+            "to": {"type": "string"},
+            "subject": {"type": "string"},
+            "body": {"type": "string"},
+        },
+    },
 }
 
 

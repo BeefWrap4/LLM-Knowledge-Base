@@ -25,10 +25,12 @@ Pi0 是 Physical Intelligence 的 VLA 模型, 用 flow matching 替代 diffusion
 本 demo 用合成 (action, cond) 数据 + 小 MLP 演示 flow matching loss.
 生产 Pi0: transformer + 真实机器人数据 (Physical Intelligence 内部).
 """
+
 import sys
+from pathlib import Path
+
 import torch
 import torch.nn as nn
-from pathlib import Path
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:

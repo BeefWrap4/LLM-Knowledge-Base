@@ -21,7 +21,7 @@ import random
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class Variant(Enum):
@@ -32,30 +32,34 @@ class Variant(Enum):
 @dataclass
 class ABTestConfig:
     """A/B 测试配置"""
+
     experiment_id: str
     control_prompt: str
     treatment_prompt: str
     traffic_split: float = 0.5
     min_sample_size: int = 100
     primary_metric: str = "user_satisfaction"
-    guardrail_metrics: List[str] = field(default_factory=lambda: [
-        "response_latency_ms",
-        "token_usage",
-        "error_rate",
-    ])
+    guardrail_metrics: list[str] = field(
+        default_factory=lambda: [
+            "response_latency_ms",
+            "token_usage",
+            "error_rate",
+        ]
+    )
     status: str = "draft"
 
 
 @dataclass
 class ABTestResult:
     """单次 A/B 测试结果"""
+
     user_id: str
     variant: Variant
     query: str
     response: str
-    user_rated_helpful: Optional[bool] = None
-    user_clicked_source: Optional[bool] = None
-    conversation_continued: Optional[bool] = None
+    user_rated_helpful: bool | None = None
+    user_clicked_source: bool | None = None
+    conversation_continued: bool | None = None
     latency_ms: float = 0.0
     prompt_tokens: int = 0
     completion_tokens: int = 0
@@ -70,7 +74,7 @@ class LLMABTestFramework:
 
     def __init__(self, config: ABTestConfig):
         self.config = config
-        self.results: List[ABTestResult] = []
+        self.results: list[ABTestResult] = []
 
     def assign_variant(self, user_id: str, query: str) -> Variant:
         """基于 user_id 哈希的确定性流量分配。"""
@@ -83,16 +87,14 @@ class LLMABTestFramework:
 
     def get_prompt(self, variant: Variant, **kwargs) -> str:
         template = (
-            self.config.treatment_prompt
-            if variant == Variant.TREATMENT
-            else self.config.control_prompt
+            self.config.treatment_prompt if variant == Variant.TREATMENT else self.config.control_prompt
         )
         return template.format(**kwargs)
 
     def record_result(self, result: ABTestResult):
         self.results.append(result)
 
-    def analyze(self) -> Dict[str, Any]:
+    def analyze(self) -> dict[str, Any]:
         control_results = [r for r in self.results if r.variant == Variant.CONTROL]
         treatment_results = [r for r in self.results if r.variant == Variant.TREATMENT]
 
@@ -101,7 +103,7 @@ class LLMABTestFramework:
         if len(treatment_results) < self.config.min_sample_size:
             return {"status": "insufficient_data", "message": "Treatment 组样本不足"}
 
-        analysis: Dict[str, Any] = {
+        analysis: dict[str, Any] = {
             "experiment_id": self.config.experiment_id,
             "status": "analyzed",
             "sample_sizes": {
@@ -134,13 +136,14 @@ class LLMABTestFramework:
             analysis["primary_metric"]["significant"] = abs(z_score) > 1.96
 
         # Guardrail 指标
-        guardrails: Dict[str, Any] = {}
+        guardrails: dict[str, Any] = {}
         for metric in self.config.guardrail_metrics:
             if metric == "response_latency_ms":
                 c_val = sum(r.latency_ms for r in control_results) / n_c
                 t_val = sum(r.latency_ms for r in treatment_results) / n_t
                 guardrails[metric] = {
-                    "control": c_val, "treatment": t_val,
+                    "control": c_val,
+                    "treatment": t_val,
                     "change_pct": (t_val - c_val) / c_val * 100,
                     "degraded": t_val > c_val * 1.2,
                 }
@@ -148,7 +151,8 @@ class LLMABTestFramework:
                 c_val = sum(r.total_tokens for r in control_results) / n_c
                 t_val = sum(r.total_tokens for r in treatment_results) / n_t
                 guardrails[metric] = {
-                    "control": c_val, "treatment": t_val,
+                    "control": c_val,
+                    "treatment": t_val,
                     "change_pct": (t_val - c_val) / c_val * 100,
                     "degraded": t_val > c_val * 1.5,
                 }

@@ -26,10 +26,12 @@ Diffusion Policy (Chi et al., RSS 2023) 用 DDPM 预测动作:
 本 demo: 真实 DDPM 训练 (50 步) + DDIM 推理 (10 步) on 小 1D UNet.
 生产 Diffusion Policy: Conv1D UNet 处理时序 + DDIM sampler 加速推理.
 """
+
 import sys
+from pathlib import Path
+
 import torch
 import torch.nn as nn
-from pathlib import Path
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
@@ -48,13 +50,18 @@ class SimpleUNet1D(nn.Module):
     def __init__(self, in_dim: int = 7, cond_dim: int = 14, time_dim: int = 32, hidden: int = 128):
         super().__init__()
         self.time_emb = nn.Sequential(
-            nn.Linear(1, time_dim), nn.SiLU(), nn.Linear(time_dim, time_dim),
+            nn.Linear(1, time_dim),
+            nn.SiLU(),
+            nn.Linear(time_dim, time_dim),
         )
         self.cond_emb = nn.Linear(cond_dim, time_dim)
         self.net = nn.Sequential(
-            nn.Linear(in_dim + 2 * time_dim, hidden), nn.SiLU(),
-            nn.Linear(hidden, hidden), nn.SiLU(),
-            nn.Linear(hidden, hidden), nn.SiLU(),
+            nn.Linear(in_dim + 2 * time_dim, hidden),
+            nn.SiLU(),
+            nn.Linear(hidden, hidden),
+            nn.SiLU(),
+            nn.Linear(hidden, hidden),
+            nn.SiLU(),
             nn.Linear(hidden, in_dim),
         )
 
@@ -136,8 +143,8 @@ def main() -> None:
     print()
 
     B = 32
-    action = torch.randn(B, 7).cuda()     # 7-DoF 末端动作
-    state = torch.randn(B, 14).cuda()     # 14-DoF 双臂状态
+    action = torch.randn(B, 7).cuda()  # 7-DoF 末端动作
+    state = torch.randn(B, 14).cuda()  # 14-DoF 双臂状态
 
     model = SimpleUNet1D(in_dim=7, cond_dim=14).cuda()
     n_params = sum(p.numel() for p in model.parameters())
@@ -145,7 +152,7 @@ def main() -> None:
     consts = make_ddpm_constants(T=100)
 
     print(f"  模型: 1D UNet (in=7+time+cond) → 128 → 128 → 7, 参数量 {n_params:,}")
-    print(f"  训练: 50 步 DDPM (T=100)\n")
+    print("  训练: 50 步 DDPM (T=100)\n")
 
     losses = []
     for step in range(50):
@@ -165,7 +172,7 @@ def main() -> None:
     sample = ddim_sample(model, cond_single, consts, n_steps=10, in_dim=7)
     print(f"    推理输出: {sample[0, :3].tolist()}")
     print(f"    目标动作: {action[0, :3].tolist()}")
-    print(f"    (50 步训练未充分, 仅演示流程)")
+    print("    (50 步训练未充分, 仅演示流程)")
 
     print()
     print("=" * 60)

@@ -20,6 +20,7 @@
 #   - "代表实现?"                →  Claude Code / Cursor / Devin / LangGraph supervisor
 
 from __future__ import annotations
+
 import concurrent.futures
 from dataclasses import dataclass, field
 from typing import Any
@@ -29,7 +30,7 @@ from typing import Any
 class SubAgent:
     name: str
     system_prompt: str
-    context: dict = field(default_factory=dict)   # 隔离的 context
+    context: dict = field(default_factory=dict)  # 隔离的 context
     result: Any = None
 
     def run(self, task: dict) -> Any:
@@ -37,9 +38,9 @@ class SubAgent:
         self.context["task"] = task
         # mock 输出
         if self.name == "search":
-            self.result = {"hits": 3, "summary": f"已搜索 '{task.get('q','')}'"}
+            self.result = {"hits": 3, "summary": f"已搜索 '{task.get('q', '')}'"}
         elif self.name == "code":
-            self.result = {"snippet": f"def solve_{task.get('q','').replace(' ', '_')}(): pass"}
+            self.result = {"snippet": f"def solve_{task.get('q', '').replace(' ', '_')}(): pass"}
         elif self.name == "data":
             self.result = {"stats": {"mean": 0.42, "std": 0.13}}
         return self.result
@@ -48,6 +49,7 @@ class SubAgent:
 @dataclass
 class MainAgent:
     """Supervisor: 拆解任务 -> 派发给 sub-agent -> 聚合。"""
+
     subs: list[SubAgent]
 
     def dispatch_parallel(self, tasks: dict[str, dict]) -> dict[str, Any]:
@@ -67,20 +69,22 @@ class MainAgent:
 
 
 def run_demo() -> None:
-    main = MainAgent(subs=[
-        SubAgent(
-            name="search",
-            system_prompt="你是一个网络搜索专家, 负责搜集信息。",
-        ),
-        SubAgent(
-            name="code",
-            system_prompt="你是一个 Python 工程师, 负责写代码。",
-        ),
-        SubAgent(
-            name="data",
-            system_prompt="你是一个数据分析师, 负责统计分析。",
-        ),
-    ])
+    main = MainAgent(
+        subs=[
+            SubAgent(
+                name="search",
+                system_prompt="你是一个网络搜索专家, 负责搜集信息。",
+            ),
+            SubAgent(
+                name="code",
+                system_prompt="你是一个 Python 工程师, 负责写代码。",
+            ),
+            SubAgent(
+                name="data",
+                system_prompt="你是一个数据分析师, 负责统计分析。",
+            ),
+        ]
+    )
 
     print("=== Sub-Agent 模式演示: 复杂任务 -> 拆解 -> 并行 ===\n")
     print("主 Agent 视角: 用户问 '分析 Python GIL 性能影响'")
@@ -88,13 +92,15 @@ def run_demo() -> None:
 
     tasks = {
         "search": {"q": "Python GIL 性能影响"},
-        "code":  {"q": "python_gil_bench"},
-        "data":  {"q": "compute mean latency"},
+        "code": {"q": "python_gil_bench"},
+        "data": {"q": "compute mean latency"},
     }
 
     results = main.dispatch_parallel(tasks)
     for name, r in results.items():
-        print(f"[{name}] context_size={len(main.subs[next(i for i, s in enumerate(main.subs) if s.name==name)].context)} fields")
+        print(
+            f"[{name}] context_size={len(main.subs[next(i for i, s in enumerate(main.subs) if s.name == name)].context)} fields"
+        )
         print(f"   result: {r}")
 
     print("\n=== Sub-Agent 关键收益 ===")

@@ -27,7 +27,7 @@ from types import MappingProxyType
 
 data = {"a": 1, "b": [2, 3]}
 read_only = MappingProxyType(data)
-print(read_only["a"])   # 1
+print(read_only["a"])  # 1
 # read_only["a"] = 2    # TypeError: 'mappingproxy' object does not support item assignment
 # 注意:data["b"].append(4) 仍然会影响 read_only,因为只是视图
 

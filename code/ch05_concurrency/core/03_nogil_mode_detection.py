@@ -17,23 +17,25 @@
 """
 🆕 Python 3.13+ nogil 模式使用与检测（2026年更新）
 """
+
 import sys
 import threading
 
 # 运行时检测 nogil 状态
-if hasattr(sys, '_is_gil_enabled'):
+if hasattr(sys, "_is_gil_enabled"):
     gil_enabled = sys._is_gil_enabled()
     print(f"GIL 状态: {'启用' if gil_enabled else '禁用（nogil 模式）'}")
 else:
     print("当前 Python 版本不支持 nogil 检测（需 3.13+）")
 
 # 检测自由线程支持
-if hasattr(sys, 'flags') and hasattr(sys.flags, 'gil'):
+if hasattr(sys, "flags") and hasattr(sys.flags, "gil"):
     print(f"编译标志: {sys.flags}")
 
 # nogil 模式下的线程安全编程示例
 counter = 0
 counter_lock = threading.Lock()  # nogil 下仍需锁保护共享状态
+
 
 def increment_counter(n):
     """nogil 模式下多线程可以真正并行执行此函数"""
@@ -41,6 +43,7 @@ def increment_counter(n):
     for _ in range(n):
         with counter_lock:
             counter += 1
+
 
 # 在 nogil 模式下，以下代码可以利用多核 CPU
 # threads = [threading.Thread(target=increment_counter, args=(100000,))

@@ -6,6 +6,7 @@
 每个例子必须能 `python file.py` 跑通且输出 "OK"。
 跳过策略: 若 module 缺失 (ModuleNotFoundError), 自动 skip, 不算 fail.
 """
+
 import subprocess
 import sys
 from pathlib import Path
@@ -23,22 +24,28 @@ def _run_example(rel_path: str, timeout: int = 30) -> subprocess.CompletedProces
         pytest.skip(f"Example not found: {rel_path}")
     return subprocess.run(
         [PY, str(script)],
-        capture_output=True, text=True, timeout=timeout,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
         cwd=str(CODE_ROOT),
     )
 
 
 def _has_module(module: str) -> bool:
     """检查某个 module 是否已安装 (用于 skip)."""
-    return subprocess.run(
-        [PY, "-c", f"import {module}"],
-        capture_output=True,
-    ).returncode == 0
+    return (
+        subprocess.run(
+            [PY, "-c", f"import {module}"],
+            capture_output=True,
+        ).returncode
+        == 0
+    )
 
 
 # =============================================================================
 # Wave 0 pilots
 # =============================================================================
+
 
 @pytest.mark.core
 def test_ch01_list_dict_basics():
@@ -67,6 +74,7 @@ def test_ch03_singleton():
 # =============================================================================
 # Wave 1 (Ch01-11 核心提取)  代表性 smoke tests
 # =============================================================================
+
 
 @pytest.mark.core
 def test_ch01_python_313_features():
@@ -174,6 +182,7 @@ def test_ch11_tensor_ops():
 # Wave 2 (Ch12-24) — gpu/ 例子默认 skip, core/ 持续覆盖
 # =============================================================================
 
+
 @pytest.mark.core
 @pytest.mark.skipif(not _has_module("torch"), reason="torch not installed")
 def test_ch12_scaled_dot_product_attention():
@@ -206,14 +215,16 @@ def test_ch18_langchain_chain_mock():
 # shared utilities
 # =============================================================================
 
+
 @pytest.mark.core
 def test_shared_module_imports():
     """shared 工具模块可正常导入.
 
     注: MockLLM 已迁移至 tests/_mocks/mock_llm.py (W1-T5).
     """
-    from shared import get_api_key, gpu_summary
+    from shared import gpu_summary
     from tests._mocks import MockLLM
+
     summary = gpu_summary()
     assert isinstance(summary, str)
     mock = MockLLM()
@@ -226,13 +237,16 @@ def test_shared_module_imports():
 # GPU examples — 默认 skip, 仅在 GPU CI 启用
 # =============================================================================
 
+
 @pytest.mark.gpu
 @pytest.mark.skipif(not _has_module("torch"), reason="torch not installed")
 def test_ch12_pytorch_gpu_smoke():
     """Ch12: PyTorch GPU smoke (skip on Mac/laptop)."""
+    import torch
+
     if not torch.cuda.is_available():
         pytest.skip("No CUDA GPU available")
-    import torch
+
     x = torch.randn(2, 3, device="cuda")
     assert x.device.type == "cuda"
     assert x.shape == (2, 3)

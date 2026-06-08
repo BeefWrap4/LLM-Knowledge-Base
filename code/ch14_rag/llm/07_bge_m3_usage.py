@@ -25,6 +25,7 @@
 def bge_m3_mock_encode(sentences: list[str]):
     """Mock 演示 dense/sparse/colbert 三种向量的结构"""
     import numpy as np
+
     rng = np.random.default_rng(0)
     dense = rng.normal(size=(len(sentences), 1024)).astype(np.float32)
     sparse = [{f"tok_{i}": float(rng.random()) for i in range(5)} for _ in sentences]

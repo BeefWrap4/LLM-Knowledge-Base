@@ -30,17 +30,18 @@ class ColQwenMockModel:
 
     def encode_images(self, images):
         import numpy as np
+
         rng = np.random.default_rng(len(images))
         return rng.normal(size=(len(images), self.n_patches, self.patch_dim)).astype("float32")
 
     def encode_queries(self, queries):
         import numpy as np
+
         rng = np.random.default_rng(len(queries) + 7)
         return rng.normal(size=(len(queries), self.token_dim, self.patch_dim)).astype("float32")
 
     def score_multi_vector(self, query_emb, doc_emb):
         # Max-sim: [B_q, Q_tok, D] vs [B_d, P, D] -> [B_q, B_d]
-        import numpy as np
         # 简化: dot 然后 sum (真实是 max-sim)
         return (query_emb @ doc_emb.transpose(0, 2, 1)).sum(axis=1)
 

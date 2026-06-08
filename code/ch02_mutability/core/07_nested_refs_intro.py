@@ -24,8 +24,8 @@
 # ─────────────────────────────────────────────────────────────
 
 nested = [[1, 2], [3, 4]]
-shallow = nested[:]     # 浅拷贝
+shallow = nested[:]  # 浅拷贝
 
 if __name__ == "__main__":
-    print(f"nested is shallow: {nested is shallow}")         # False
+    print(f"nested is shallow: {nested is shallow}")  # False
     print(f"nested[0] is shallow[0]: {nested[0] is shallow[0]}")  # True

@@ -20,12 +20,12 @@ import torch.nn as nn
 
 # 卷积层示例
 conv = nn.Conv2d(
-    in_channels=3,      # 输入通道（RGB 图像）
-    out_channels=64,    # 输出通道（64 个特征图）
-    kernel_size=3,      # 3x3 卷积核
-    stride=1,           # 步长 1
-    padding=1,          # 填充 1，保持尺寸不变
-    bias=False          # 配合 BatchNorm 时通常设 False
+    in_channels=3,  # 输入通道（RGB 图像）
+    out_channels=64,  # 输出通道（64 个特征图）
+    kernel_size=3,  # 3x3 卷积核
+    stride=1,  # 步长 1
+    padding=1,  # 填充 1，保持尺寸不变
+    bias=False,  # 配合 BatchNorm 时通常设 False
 )
 
 

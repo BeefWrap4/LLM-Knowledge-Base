@@ -51,12 +51,12 @@ def demo_slots() -> None:
 
 # ========== 2. 生成器 vs 列表 ==========
 def get_all_data_bad(n: int):
-    return [i ** 2 for i in range(n)]   # 一次性展开
+    return [i**2 for i in range(n)]  # 一次性展开
 
 
 def get_all_data_good(n: int):
     for i in range(n):
-        yield i ** 2                      # 惰性
+        yield i**2  # 惰性
 
 
 def demo_generator() -> None:
@@ -84,8 +84,8 @@ def demo_weakref_cache() -> None:
 def process_large_data() -> int:
     large_data = list(range(10_000_000))
     result = sum(large_data)
-    del large_data       # 主动释放
-    gc.collect()         # 提示 GC (可选)
+    del large_data  # 主动释放
+    gc.collect()  # 提示 GC (可选)
     return result
 
 

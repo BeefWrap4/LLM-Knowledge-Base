@@ -17,6 +17,7 @@
 准备微调数据的标准格式
 支持 Alpaca 格式和 ShareGPT 格式
 """
+
 import json
 import os
 
@@ -27,7 +28,7 @@ alpaca_data = [
         "input": "Python中的GIL是什么？",
         "output": "GIL（Global Interpreter Lock，全局解释器锁）是CPython中的一个互斥锁，它确保同一时刻只有一个线程执行Python字节码。这意味着在多核CPU上，CPU密集型的Python多线程程序无法利用多核优势。但I/O密集型任务仍然可以受益于多线程，因为I/O操作会释放GIL。\n\n解决方案：\n1. 使用多进程（multiprocessing）替代多线程\n2. 使用C扩展释放GIL\n3. 使用其他Python实现（如Jython、IronPython）",
         "system": "",
-        "history": []
+        "history": [],
     },
 ]
 
@@ -36,11 +37,14 @@ sharegpt_data = [
     {
         "conversations": [
             {"from": "human", "value": "你好，请问Python的装饰器是什么？"},
-            {"from": "gpt", "value": "装饰器是Python中一种特殊的语法，允许在不修改原函数代码的情况下增加额外功能..."},
+            {
+                "from": "gpt",
+                "value": "装饰器是Python中一种特殊的语法，允许在不修改原函数代码的情况下增加额外功能...",
+            },
             {"from": "human", "value": "能给我一个实际例子吗？"},
-            {"from": "gpt", "value": "当然！比如@staticmethod、@classmethod就是内置装饰器..."}
+            {"from": "gpt", "value": "当然！比如@staticmethod、@classmethod就是内置装饰器..."},
         ],
-        "system": "你是一个Python教学助手"
+        "system": "你是一个Python教学助手",
     }
 ]
 

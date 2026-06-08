@@ -18,11 +18,11 @@
 Agent Teams 简化实现示例
 展示 Team Lead + Teammates + Shared Task List + Mailbox 的核心交互
 """
+
+import uuid
 from dataclasses import dataclass, field
-from typing import Optional
 from datetime import datetime
 from enum import Enum
-import uuid
 
 
 class TaskStatus(Enum):
@@ -36,25 +36,27 @@ class TaskStatus(Enum):
 @dataclass
 class Task:
     """共享任务列表中的任务单元"""
+
     id: str
     description: str
-    assignee: Optional[str] = None  # Agent 名称
+    assignee: str | None = None  # Agent 名称
     status: TaskStatus = TaskStatus.PENDING
-    result: Optional[str] = None
+    result: str | None = None
     created_at: str = ""
-    completed_at: Optional[str] = None
+    completed_at: str | None = None
     dependencies: list[str] = field(default_factory=list)  # 依赖的其他任务ID
 
 
 @dataclass
 class Message:
     """Mailbox 消息"""
+
     id: str
     from_agent: str
     to_agent: str
     content: str
     timestamp: str
-    task_id: Optional[str] = None
+    task_id: str | None = None
 
 
 class SharedTaskList:
@@ -87,8 +89,7 @@ class SharedTaskList:
     def is_all_completed(self) -> bool:
         if not self._tasks:
             return False
-        return all(t.status in (TaskStatus.COMPLETED, TaskStatus.FAILED)
-                  for t in self._tasks.values())
+        return all(t.status in (TaskStatus.COMPLETED, TaskStatus.FAILED) for t in self._tasks.values())
 
     def summary(self) -> dict:
         statuses = {}
@@ -205,14 +206,16 @@ class AgentTeam:
         self.task_list.update_status(task.id, TaskStatus.COMPLETED, result)
 
         # 发送通知到 Team Lead 的邮箱
-        self.mailbox.send(Message(
-            id=str(uuid.uuid4())[:8],
-            from_agent=teammate,
-            to_agent=self.team_lead,
-            content=f"任务 {task.id} 已完成: {result}",
-            timestamp=datetime.now().isoformat(),
-            task_id=task.id,
-        ))
+        self.mailbox.send(
+            Message(
+                id=str(uuid.uuid4())[:8],
+                from_agent=teammate,
+                to_agent=self.team_lead,
+                content=f"任务 {task.id} 已完成: {result}",
+                timestamp=datetime.now().isoformat(),
+                task_id=task.id,
+            )
+        )
 
         return result
 
@@ -227,6 +230,7 @@ class AgentTeam:
 
 
 # ============ 使用示例 ============
+
 
 def demo_agent_teams():
     """Agent Teams 演示"""

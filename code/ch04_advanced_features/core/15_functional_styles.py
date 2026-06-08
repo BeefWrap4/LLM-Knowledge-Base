@@ -25,29 +25,34 @@
 
 numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
+
 # 命令式风格（显式循环）
 def imperative_sum(numbers):
     total = 0
     for n in numbers:
         if n % 2 == 0:
-            total += n ** 2
+            total += n**2
     return total
+
 
 # 函数式风格（map/filter/reduce）
 def functional_sum(numbers):
     from functools import reduce
     from operator import add
+
     evens = filter(lambda n: n % 2 == 0, numbers)
-    squares = map(lambda n: n ** 2, evens)
+    squares = map(lambda n: n**2, evens)
     return reduce(add, squares, 0)
+
 
 # Pythonic 风格（生成器表达式 —— 推荐）
 def pythonic_sum(numbers):
-    return sum(n ** 2 for n in numbers if n % 2 == 0)
+    return sum(n**2 for n in numbers if n % 2 == 0)
 
-print(imperative_sum(numbers))    # 220
-print(functional_sum(numbers))    # 220
-print(pythonic_sum(numbers))      # 220
+
+print(imperative_sum(numbers))  # 220
+print(functional_sum(numbers))  # 220
+print(pythonic_sum(numbers))  # 220
 
 
 if __name__ == "__main__":

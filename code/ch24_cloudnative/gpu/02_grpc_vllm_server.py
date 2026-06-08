@@ -17,11 +17,12 @@
 
 
 # === Multi-GPU / heavy model guard (auto-added) ===
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print(f"[SKIP] {{__file__}}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
     _sys.exit(0)
 """
 gRPC 大模型推理服务端 —— 使用 vLLM AsyncEngine
@@ -32,29 +33,32 @@ gRPC 大模型推理服务端 —— 使用 vLLM AsyncEngine
 """
 
 import asyncio
-import time
 import logging
+import time
 from concurrent import futures
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("grpc-llm-server")
 
+
 # ====== Mock protobuf 模块（用于无 proto 编译环境的演示） ======
 class _MockMessage:
     """模拟 Protobuf 消息对象。"""
+
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
+
     def __repr__(self):
         return f"_MockMessage({self.__dict__})"
 
 
 class _MockSamplingParams:
     def __init__(self, **kwargs):
-        self.temperature = kwargs.get('temperature', 0.7)
-        self.max_tokens = kwargs.get('max_tokens', 2048)
-        self.top_p = kwargs.get('top_p', 1.0)
-        self.top_k = kwargs.get('top_k', -1)
+        self.temperature = kwargs.get("temperature", 0.7)
+        self.max_tokens = kwargs.get("max_tokens", 2048)
+        self.top_p = kwargs.get("top_p", 1.0)
+        self.top_k = kwargs.get("top_k", -1)
 
 
 # 创建 proto 模块的占位
@@ -68,9 +72,11 @@ class _MockModule:
         self.TokenDelta = _MockMessage
         self.ChatMessage = _MockMessage
         self.SamplingParams = _MockSamplingParams
+
     def LLMInferenceServicer(self):
         class _Base:
             pass
+
         return _Base
 
 
@@ -79,6 +85,7 @@ try:
     import grpc
     import llm_inference_pb2 as pb2
     import llm_inference_pb2_grpc as pb2_grpc
+
     HAS_PROTO = True
 except ImportError:
     HAS_PROTO = False
@@ -88,21 +95,25 @@ except ImportError:
     logger.warning("gRPC/proto not available — running in MOCK mode (no real server)")
 
 try:
-    from vllm.engine.async_llm_engine import AsyncLLMEngine
     from vllm.engine.arg_utils import AsyncEngineArgs
+    from vllm.engine.async_llm_engine import AsyncLLMEngine
     from vllm.sampling_params import SamplingParams
     from vllm.utils import random_uuid
+
     HAS_VLLM = True
 except ImportError:
     HAS_VLLM = False
+
     def random_uuid():
-        return f"mock-{int(time.time()*1000)}"
+        return f"mock-{int(time.time() * 1000)}"
+
     logger.warning("vLLM not available — using mock SamplingParams")
 
 
 # ====== Mock vLLM Engine（无 GPU 环境） ======
 class MockAsyncEngine:
     """无 vLLM 时的 Mock 推理引擎。"""
+
     async def generate(self, prompt, sampling_params, request_id):
         tokens = ["Hello", " from", " gRPC", " streaming", "!"]
         text = ""
@@ -110,7 +121,9 @@ class MockAsyncEngine:
             await asyncio.sleep(0.05)
             text += tok
             out = _MockMessage(text=text, token_ids=text.split())
-            yield _MockMessage(outputs=[out], prompt_token_ids=prompt.split() if isinstance(prompt, str) else [])
+            yield _MockMessage(
+                outputs=[out], prompt_token_ids=prompt.split() if isinstance(prompt, str) else []
+            )
 
 
 # ====== gRPC Servicer ======
@@ -135,18 +148,16 @@ class LLMInferenceServicer:
                 top_k=sp.top_k,
             )
         else:
-            sp = request.sampling_params if hasattr(request, 'sampling_params') else _MockSamplingParams()
+            sp = request.sampling_params if hasattr(request, "sampling_params") else _MockSamplingParams()
             sampling_params = sp
 
         # 构建 Prompt
         prompt = self._build_prompt(request.messages)
 
         # 推理
-        request_id = getattr(request, 'request_id', None) or random_uuid()
+        request_id = getattr(request, "request_id", None) or random_uuid()
         final_output = None
-        async for result in self.engine.generate(
-            prompt, sampling_params, request_id
-        ):
+        async for result in self.engine.generate(prompt, sampling_params, request_id):
             final_output = result
 
         if final_output is None:
@@ -167,10 +178,7 @@ class LLMInferenceServicer:
             usage=pb2.TokenUsage(
                 prompt_tokens=len(final_output.prompt_token_ids),
                 completion_tokens=len(final_output.outputs[0].token_ids),
-                total_tokens=(
-                    len(final_output.prompt_token_ids) +
-                    len(final_output.outputs[0].token_ids)
-                ),
+                total_tokens=(len(final_output.prompt_token_ids) + len(final_output.outputs[0].token_ids)),
             ),
         )
 
@@ -184,15 +192,13 @@ class LLMInferenceServicer:
                 top_p=sp.top_p,
             )
         else:
-            sp = getattr(request, 'sampling_params', _MockSamplingParams())
+            sp = getattr(request, "sampling_params", _MockSamplingParams())
             sampling_params = sp
 
         prompt = self._build_prompt(request.messages)
-        request_id = getattr(request, 'request_id', None) or random_uuid()
+        request_id = getattr(request, "request_id", None) or random_uuid()
 
-        async for result in self.engine.generate(
-            prompt, sampling_params, request_id
-        ):
+        async for result in self.engine.generate(prompt, sampling_params, request_id):
             yield pb2.GenerateStreamResponse(
                 request_id=request_id,
                 token=pb2.TokenDelta(

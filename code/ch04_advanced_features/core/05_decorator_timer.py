@@ -22,6 +22,7 @@
 import time
 from functools import wraps
 
+
 def timer(func):
     """
     计时装饰器 —— 测量函数执行时间
@@ -31,14 +32,17 @@ def timer(func):
         def slow_func():
             ...
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
-        start = time.perf_counter()   # 高精度计时
+        start = time.perf_counter()  # 高精度计时
         result = func(*args, **kwargs)
         elapsed = time.perf_counter() - start
         print(f"⏱ {func.__name__} 执行时间: {elapsed:.4f}s")
         return result
+
     return wrapper
+
 
 @timer
 def slow_sum(n):
@@ -46,8 +50,9 @@ def slow_sum(n):
     total = 0
     for i in range(1, n + 1):
         total += i
-        time.sleep(0.001)   # 模拟耗时操作
+        time.sleep(0.001)  # 模拟耗时操作
     return total
+
 
 result = slow_sum(100)
 print(f"结果: {result}")
@@ -56,10 +61,12 @@ print(f"结果: {result}")
 # 带统计功能的计时装饰器
 # ─────────────────────────────────────────────────────────────
 
+
 def timer_with_stats(func):
     """
     增强版计时装饰器 —— 记录调用次数和累计时间
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         wrapper.call_count += 1
@@ -67,8 +74,7 @@ def timer_with_stats(func):
         result = func(*args, **kwargs)
         elapsed = time.perf_counter() - start
         wrapper.total_time += elapsed
-        print(f"⏱ {func.__name__} #{wrapper.call_count}: {elapsed:.4f}s "
-              f"(累计: {wrapper.total_time:.4f}s)")
+        print(f"⏱ {func.__name__} #{wrapper.call_count}: {elapsed:.4f}s (累计: {wrapper.total_time:.4f}s)")
         return result
 
     # 在 wrapper 上附加统计属性
@@ -82,10 +88,12 @@ def timer_with_stats(func):
 
     return wrapper
 
+
 @timer_with_stats
 def compute(x):
     time.sleep(0.01)
     return x * x
+
 
 compute(1)
 compute(2)

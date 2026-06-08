@@ -37,13 +37,15 @@ tools:
         required: false
 """
 
+
 def query_stock_price(symbol: str, period: str = "1d") -> str:
     """查询股票价格 - Mock 实现，避免对 yfinance 的硬依赖"""
     try:
         import yfinance as yf  # 可选依赖
+
         stock = yf.Ticker(symbol)
         hist = stock.history(period=period)
-        current_price = hist['Close'].iloc[-1]
+        current_price = hist["Close"].iloc[-1]
         return f"{symbol} 最新价格: ${current_price:.2f}"
     except ImportError:
         # 离线 mock：返回模拟价格
@@ -51,6 +53,7 @@ def query_stock_price(symbol: str, period: str = "1d") -> str:
         return f"{symbol} 最新价格 (mock): ${mock_price:.2f}"
     except Exception as e:
         return f"查询失败: {e}"
+
 
 print("=== Dify Plugin Manifest ===")
 print(MANIFEST_YAML)

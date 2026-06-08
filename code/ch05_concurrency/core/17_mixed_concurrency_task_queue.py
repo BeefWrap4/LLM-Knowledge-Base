@@ -15,8 +15,8 @@
 #   - 自建 TaskQueue 和直接 asyncio.gather 的区别？
 #   - asyncio.Queue + Semaphore 实现"有限并发"的常见模式？
 import asyncio
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import time
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
 
@@ -25,7 +25,7 @@ from enum import Enum
 def cpu_intensive(data: dict) -> dict:
     """CPU 密集型：数据处理"""
     # 模拟复杂计算
-    result = {k: v ** 2 for k, v in data.items() if isinstance(v, (int, float))}
+    result = {k: v**2 for k, v in data.items() if isinstance(v, (int, float))}
     time.sleep(0.05)  # 模拟计算时间
     return result
 
@@ -51,10 +51,7 @@ async def process_urls(urls: list) -> list:
     # Step 2: 进程池并行处理数据（CPU 密集型）
     loop = asyncio.get_running_loop()
     with ProcessPoolExecutor(max_workers=2) as pool:
-        process_tasks = [
-            loop.run_in_executor(pool, cpu_intensive, data)
-            for data in raw_data_list
-        ]
+        process_tasks = [loop.run_in_executor(pool, cpu_intensive, data) for data in raw_data_list]
         processed_data = await asyncio.gather(*process_tasks)
 
     return processed_data
@@ -66,6 +63,7 @@ class _DummySession:
         class _Resp:
             async def json(self_inner):
                 return {"id": url, "value": 1}
+
         return _Resp()
 
     async def __aenter__(self):
@@ -77,11 +75,13 @@ class _DummySession:
 
 # (原 @asyncio.coroutine 已删除 — Python 3.11+ 完全移除, 用 async def 替代)
 
+
 def aiohttp_helper():
     """如果安装了 aiohttp 则使用真 session，否则用 stub。"""
     try:
         import aiohttp  # noqa: F401
         import aiohttp as _aio
+
         return _aio.ClientSession()
     except Exception:
         return _DummySession()
@@ -136,10 +136,7 @@ class TaskQueue:
 
     async def start(self):
         """启动工作协程"""
-        workers = [
-            asyncio.create_task(self._worker())
-            for _ in range(self.max_workers)
-        ]
+        workers = [asyncio.create_task(self._worker()) for _ in range(self.max_workers)]
         return workers
 
     async def wait_all(self):
@@ -162,8 +159,7 @@ async def demo_task_queue():
 
     await queue.wait_all()
 
-    completed = sum(1 for t in queue.tasks.values()
-                    if t.status == TaskStatus.COMPLETED)
+    completed = sum(1 for t in queue.tasks.values() if t.status == TaskStatus.COMPLETED)
     print(f"完成 {completed}/{len(queue.tasks)} 个任务")
 
     # 清理工作协程

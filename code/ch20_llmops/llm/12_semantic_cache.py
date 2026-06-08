@@ -18,7 +18,6 @@
 import hashlib
 import json
 import time
-from typing import Optional
 
 
 class SemanticCache:
@@ -29,14 +28,17 @@ class SemanticCache:
         self.threshold = similarity_threshold
 
     def _compute_hash(self, prompt: str, model: str, **params) -> str:
-        key_data = json.dumps({
-            "prompt": prompt,
-            "model": model,
-            "params": {k: v for k, v in sorted(params.items())},
-        }, sort_keys=True)
+        key_data = json.dumps(
+            {
+                "prompt": prompt,
+                "model": model,
+                "params": {k: v for k, v in sorted(params.items())},
+            },
+            sort_keys=True,
+        )
         return hashlib.sha256(key_data.encode()).hexdigest()
 
-    def get(self, prompt: str, model: str, **params) -> Optional[str]:
+    def get(self, prompt: str, model: str, **params) -> str | None:
         """精确匹配缓存"""
         key = self._compute_hash(prompt, model, **params)
         if key in self.cache:

@@ -26,24 +26,28 @@ def call_openai_cua(screenshot_b64: str, user_msg: str):
     # OpenAI CUA 通过 Responses API 使用
     return _client.responses.create(
         model="computer-use-preview",  # 专用 CUA 模型
-        input=[{
-            "role": "user",
-            "content": [
-                {"type": "input_image", "image_url": f"data:image/png;base64,{screenshot_b64}"},
-                {"type": "input_text", "text": user_msg}
-            ]
-        }],
-        tools=[{
-            "type": "computer_use_preview",
-            "display_width": 1440,
-            "display_height": 900,
-            "environment": "browser"  # browser | mac | windows | linux
-        }],
+        input=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "input_image", "image_url": f"data:image/png;base64,{screenshot_b64}"},
+                    {"type": "input_text", "text": user_msg},
+                ],
+            }
+        ],
+        tools=[
+            {
+                "type": "computer_use_preview",
+                "display_width": 1440,
+                "display_height": 900,
+                "environment": "browser",  # browser | mac | windows | linux
+            }
+        ],
         reasoning={
             "summary": "auto",  # 返回思考摘要
-            "effort": "medium"  # low / medium / high
+            "effort": "medium",  # low / medium / high
         },
-        truncation="auto"
+        truncation="auto",
     )
 
 

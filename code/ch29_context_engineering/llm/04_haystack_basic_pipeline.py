@@ -21,16 +21,14 @@
 #   - "Pipeline 如何连接组件?"  →  pipe.connect("node_a.output", "node_b.input")
 
 from __future__ import annotations
-import sys
-from pathlib import Path
 
 # 保证 standalone 运行: 优先尝试真实 haystack, 失败则用 mock
 try:
-    from haystack import Pipeline
-    from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+    from haystack import Document, Pipeline
     from haystack.components.builders import PromptBuilder
+    from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
     from haystack.document_stores.in_memory import InMemoryDocumentStore
-    from haystack import Document
+
     HAS_HAYSTACK = True
 except Exception:
     HAS_HAYSTACK = False
@@ -62,25 +60,37 @@ def run_real() -> None:
     pipe.add_component("prompt_builder", prompt_builder)
     pipe.connect("retriever.documents", "prompt_builder.documents")
 
-    result = pipe.run({
-        "retriever": {"query": "什么是 Context Engineering"},
-        "prompt_builder": {"question": "什么是 Context Engineering"},
-    })
+    result = pipe.run(
+        {
+            "retriever": {"query": "什么是 Context Engineering"},
+            "prompt_builder": {"question": "什么是 Context Engineering"},
+        }
+    )
     print("Pipeline 渲染后的 prompt (截断):")
     print(result["prompt_builder"]["prompt"][:300] + "...")
 
 
 def run_mock() -> None:
     """Mock 模式: 模拟 Haystack Pipeline 的数据流, 不安装 haystack。"""
+
     # 极简 Pipeline 抽象
     class MockComponent:
-        def __init__(self, name, fn): self.name, self.fn = name, fn
-        def run(self, **kwargs): return self.fn(**kwargs)
+        def __init__(self, name, fn):
+            self.name, self.fn = name, fn
+
+        def run(self, **kwargs):
+            return self.fn(**kwargs)
 
     class MockPipeline:
-        def __init__(self): self.comps, self.edges = {}, []
-        def add_component(self, name, comp): self.comps[name] = comp
-        def connect(self, src, dst): self.edges.append((src, dst))
+        def __init__(self):
+            self.comps, self.edges = {}, []
+
+        def add_component(self, name, comp):
+            self.comps[name] = comp
+
+        def connect(self, src, dst):
+            self.edges.append((src, dst))
+
         def run(self, inputs):
             print("  [mock] 模拟管道执行:")
             print(f"  [mock] 边: {self.edges}")
@@ -100,7 +110,9 @@ def run_mock() -> None:
         "Haystack 2.x 是 deepset 推出的 LLM 应用框架",
         "Context Engineering 关注模型每步推理时看到的全部信息",
     ]
-    retriever = MockComponent("retriever", lambda query: {"documents": [type("D", (), {"content": c}) for c in docs]})
+    retriever = MockComponent(
+        "retriever", lambda query: {"documents": [type("D", (), {"content": c}) for c in docs]}
+    )
     pb = MockComponent("prompt_builder", lambda documents, question: {"prompt": "(略)"})
 
     pipe = MockPipeline()
@@ -108,10 +120,12 @@ def run_mock() -> None:
     pipe.add_component("prompt_builder", pb)
     pipe.connect("retriever.documents", "prompt_builder.documents")
 
-    result = pipe.run({
-        "retriever": {"query": "什么是 Context Engineering"},
-        "prompt_builder": {"question": "什么是 Context Engineering"},
-    })
+    result = pipe.run(
+        {
+            "retriever": {"query": "什么是 Context Engineering"},
+            "prompt_builder": {"question": "什么是 Context Engineering"},
+        }
+    )
     print("Mock Pipeline 渲染后的 prompt:")
     print(result["prompt_builder"]["prompt"])
 

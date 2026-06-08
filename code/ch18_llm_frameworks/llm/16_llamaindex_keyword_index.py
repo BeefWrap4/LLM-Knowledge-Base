@@ -17,20 +17,26 @@
 
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
+
 try:
-    from llama_index.core import KeywordTableIndex, Document
+    from llama_index.core import Document, KeywordTableIndex
+
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
     _SKIP_REASON = str(_e).split("\n")[0]
 if _SKIP_REASON:
     print(f"[SKIP] {__file__}: {_SKIP_REASON}")
     _sys.exit(0)
-print("OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)")
+print(
+    "OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)"
+)
 from llama_index.core import Settings
+
+from shared._error_helper import raise_with_help
 
 # W3-T5: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 走 raise_with_help
 from shared.chatmodel_factory import make_chat_model
-from shared._error_helper import raise_with_help
+
 real_llm = make_chat_model(framework="llama_index")
 if real_llm is None:
     raise_with_help(

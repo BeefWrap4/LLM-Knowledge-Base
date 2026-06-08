@@ -16,7 +16,6 @@
 #   - 进程间通信的几种方式及其适用场景？
 import multiprocessing as mp
 import os
-import time
 
 
 def cpu_intensive_task(n):

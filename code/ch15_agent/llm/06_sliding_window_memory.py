@@ -15,6 +15,7 @@
 #   2. 一定要保留 system message 吗？丢掉后模型人设会怎样？
 #   3. 长对话除了滑动窗口还有什么思路？(摘要、关键信息提取)
 
+
 class SlidingWindowMemory:
     """滑动窗口短期记忆管理"""
 

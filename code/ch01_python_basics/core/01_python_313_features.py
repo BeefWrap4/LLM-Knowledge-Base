@@ -26,7 +26,7 @@ Python 3.13 核心新特性速览
 import sys
 import warnings
 
-if hasattr(sys, '_is_gil_enabled'):
+if hasattr(sys, "_is_gil_enabled"):
     print(f"GIL 状态: {sys._is_gil_enabled()}")  # True/False
 else:
     print("当前 Python 版本不支持 _is_gil_enabled() (需要 3.13+)")
@@ -53,6 +53,7 @@ except ImportError:
     # Python < 3.13
     def old_func():
         return "deprecated"
+
     print(f"old_func() 返回: {old_func()} (Python < 3.13)")
 
 # 5. iOS 和 Android 官方支持（移动端 Python）

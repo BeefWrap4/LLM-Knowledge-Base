@@ -35,7 +35,9 @@ vLLM 0.21.0 的真实 BlockManager 在 ``vllm/v1/core/kv_cache_manager.py``
   2. 读取 ``llm.llm_engine.vllm_config.cache_config`` 看真实配置
   3. 解释打印 block_size / num_blocks / kv cache 显存占用
 """
+
 from __future__ import annotations
+
 import sys
 from pathlib import Path
 
@@ -43,8 +45,7 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import require_nvidia_gpu, gpu_summary
-
+from shared.gpu_guard import gpu_summary, require_nvidia_gpu
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"  # 1GB, 已下载到本地 HF cache
 
@@ -78,11 +79,11 @@ def main() -> None:
     # block_size 不指定 → vLLM 自动选 (通常 16); 这里显式传 16 方便观察
     llm = LLM(
         model=MODEL,
-        gpu_memory_utilization=0.5,   # 留余量, 避免 OOM
+        gpu_memory_utilization=0.5,  # 留余量, 避免 OOM
         max_num_seqs=4,
-        max_model_len=512,             # 短上下文, 加速冷启动
-        block_size=16,                 # paged attention 的 block 大小
-        enforce_eager=True,            # 跳过 CUDA graph 编译, 启动更快
+        max_model_len=512,  # 短上下文, 加速冷启动
+        block_size=16,  # paged attention 的 block 大小
+        enforce_eager=True,  # 跳过 CUDA graph 编译, 启动更快
     )
 
     cache_cfg = llm.llm_engine.vllm_config.cache_config

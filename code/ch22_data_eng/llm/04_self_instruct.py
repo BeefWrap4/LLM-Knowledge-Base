@@ -17,11 +17,15 @@
 #   3. Self-Instruct 与 Evol-Instruct 在数据合成策略上有什么本质差异？
 
 import json
-from typing import List, Dict, Callable
+from collections.abc import Callable
 
 # 种子指令模板
 SEED_INSTRUCTIONS = [
-    {"instruction": "将以下句子翻译成英文", "input": "今天天气真好", "output": "The weather is really nice today."},
+    {
+        "instruction": "将以下句子翻译成英文",
+        "input": "今天天气真好",
+        "output": "The weather is really nice today.",
+    },
     {"instruction": "用一句话总结以下段落的核心观点", "input": "...", "output": "..."},
     {"instruction": "生成一个随机密码", "input": "", "output": "K9#mP2xL@qR5"},
 ]
@@ -41,10 +45,8 @@ INSTRUCTION_GEN_PROMPT = """你是一个数据标注专家。请根据以下已�
 
 
 def generate_instructions(
-    seed_instructions: List[Dict],
-    llm_callable: Callable[[str], str],
-    num_to_generate: int = 5
-) -> List[str]:
+    seed_instructions: list[dict], llm_callable: Callable[[str], str], num_to_generate: int = 5
+) -> list[str]:
     """
     使用 Self-Instruct 方法生成新指令
 
@@ -53,20 +55,19 @@ def generate_instructions(
         llm_callable: LLM 调用函数 (prompt -> response)
         num_to_generate: 需要生成的指令数量
     """
-    examples_text = "\n".join([
-        f"{i + 1}. {inst['instruction']}"
-        for i, inst in enumerate(seed_instructions[:8])
-    ])
+    examples_text = "\n".join(
+        [f"{i + 1}. {inst['instruction']}" for i, inst in enumerate(seed_instructions[:8])]
+    )
 
     prompt = INSTRUCTION_GEN_PROMPT.format(examples=examples_text)
     response = llm_callable(prompt)
 
     # 解析生成的指令
     new_instructions = []
-    for line in response.strip().split('\n'):
+    for line in response.strip().split("\n"):
         line = line.strip()
         if line and any(line.startswith(f"指令{i}") for i in range(1, 10)):
-            instruction = line.split('：', 1)[-1].strip().strip('"').strip("'")
+            instruction = line.split("：", 1)[-1].strip().strip('"').strip("'")
             if instruction:
                 new_instructions.append(instruction)
 

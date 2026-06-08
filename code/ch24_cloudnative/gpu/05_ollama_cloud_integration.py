@@ -22,6 +22,7 @@ Ollama Cloud + 本地混合调用示例
 # Mock 模式兼容：当 ollama 包不可用时使用 mock
 try:
     import ollama
+
     HAS_OLLAMA = True
 except ImportError:
     HAS_OLLAMA = False
@@ -39,12 +40,14 @@ except ImportError:
         def __init__(self, host=None, headers=None):
             self.host = host or "http://localhost:11434"
             self.headers = headers or {}
+
         def chat(self, model, messages):
             text = f"[MOCK ollama reply from {self.host}] model={model} prompt={messages[-1]['content']}"
             return _MockResponse(text)
 
     class _MockModule:
         Client = _MockOllamaClient
+
     ollama = _MockModule()
     print("[WARN] ollama not installed, using mock client (no real inference)")
 
@@ -54,29 +57,25 @@ def demo_local_and_cloud():
 
     # 本地模型
     client_local = ollama.Client(host="http://ollama.llm-inference:11434")
-    resp_local = client_local.chat(
-        model="qwen3:8b",
-        messages=[{"role": "user", "content": "Hello"}]
-    )
+    resp_local = client_local.chat(model="qwen3:8b", messages=[{"role": "user", "content": "Hello"}])
     print("=== Local Ollama ===")
-    print(f"Model: qwen3:8b")
+    print("Model: qwen3:8b")
     print(f"Reply: {resp_local.message.content}")
     print()
 
     # Ollama Cloud 模型（私有数据不出本地的代理）
     # 注：生产中应从环境变量读取 token
     import os
+
     ollama_cloud_token = os.environ.get("OLLAMA_CLOUD_TOKEN", "MOCK_TOKEN")
     client_cloud = ollama.Client(
-        host="https://api.ollama.cloud",
-        headers={"Authorization": f"Bearer {ollama_cloud_token}"}
+        host="https://api.ollama.cloud", headers={"Authorization": f"Bearer {ollama_cloud_token}"}
     )
     resp_cloud = client_cloud.chat(
-        model="qwen3-480b-cloud",
-        messages=[{"role": "user", "content": "Complex reasoning task"}]
+        model="qwen3-480b-cloud", messages=[{"role": "user", "content": "Complex reasoning task"}]
     )
     print("=== Ollama Cloud ===")
-    print(f"Model: qwen3-480b-cloud")
+    print("Model: qwen3-480b-cloud")
     print(f"Reply: {resp_cloud.message.content}")
 
 

@@ -17,13 +17,14 @@
 
 import json
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List
 
 
 @dataclass
 class QualityGate:
     """评估门禁配置"""
+
     min_accuracy: float = 0.85
     max_hallucination_rate: float = 0.05
     max_latency_p95_ms: float = 3000
@@ -37,15 +38,15 @@ class LLMEvaluationGate:
     def __init__(
         self,
         gate_config: QualityGate,
-        eval_fn: Callable[..., Dict],
-        test_dataset: List[Dict],
+        eval_fn: Callable[..., dict],
+        test_dataset: list[dict],
     ):
         self.config = gate_config
         self.eval_fn = eval_fn
         self.test_dataset = test_dataset
 
-    def run_evaluation(self, prompt_version: str) -> Dict:
-        results: List[Dict] = []
+    def run_evaluation(self, prompt_version: str) -> dict:
+        results: list[dict] = []
         total_cost = 0.0
         total_latency = 0.0
         for test_case in self.test_dataset:
@@ -99,18 +100,17 @@ class LLMEvaluationGate:
                 "avg_accuracy": round(avg_accuracy, 3),
             },
             "recommendation": (
-                "✅ 所有门禁通过，可以部署"
-                if all_passed
-                else "❌ 门禁未通过！请检查失败项并修复"
+                "✅ 所有门禁通过，可以部署" if all_passed else "❌ 门禁未通过！请检查失败项并修复"
             ),
         }
 
-    def save_report(self, report: Dict, filepath: str):
+    def save_report(self, report: dict, filepath: str):
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(report, f, ensure_ascii=False, indent=2)
 
 
 if __name__ == "__main__":
+
     def mock_eval_fn(prompt_version, query, expected=None, context=None):
         return {
             "correct": random.random() > 0.1,

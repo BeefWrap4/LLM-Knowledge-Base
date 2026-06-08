@@ -24,19 +24,23 @@ Haystack 2.x 实战：context-engineered RAG pipeline - 离线 mock 结构
 # from haystack.document_stores.in_memory import InMemoryDocumentStore
 # from hayhooks import deploy
 
+
 # ===== 1. 自定义 rerank 组件 =====
 class ContextualCompressor:
     """模拟 @component 装饰的类"""
+
     def run(self, documents, query):
         # 简化版：截断过短 / 过长文档
         compressed = [d for d in documents if 50 < len(d.content) < 2000]
         return {"documents": compressed}
+
 
 # ===== 2. 模拟 Document =====
 class Document:
     def __init__(self, content, meta=None):
         self.content = content
         self.meta = meta or {}
+
 
 # ===== 3. 构造 pipeline 拓扑 =====
 pipeline_components = {
@@ -77,10 +81,10 @@ for src, dst in pipeline_connections:
 
 # 模拟 compressor
 compressor = ContextualCompressor()
-docs = [Document("a"*30), Document("a"*100), Document("a"*3000)]
+docs = [Document("a" * 30), Document("a" * 100), Document("a" * 3000)]
 result = compressor.run(docs, query="test")
-print(f"\n=== Compressor 演示 ===")
-print(f"输入: 3 篇文档（30/100/3000 字符）")
+print("\n=== Compressor 演示 ===")
+print("输入: 3 篇文档（30/100/3000 字符）")
 print(f"输出: {len(result['documents'])} 篇文档（保留 50-2000 字符）")
 
 print("\n=== Hayhooks 部署（生产）===")

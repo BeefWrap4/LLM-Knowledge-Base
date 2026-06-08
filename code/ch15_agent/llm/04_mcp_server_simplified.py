@@ -18,9 +18,11 @@
 MCP Server 简化实现示例
 展示 MCP 协议的核心交互模式
 """
+
 import json
 import sys
 from typing import Any
+
 
 class MCPServer:
     """
@@ -56,15 +58,9 @@ class MCPServer:
             "id": request_id,
             "result": {
                 "protocolVersion": "2024-11-05",
-                "capabilities": {
-                    "tools": {},
-                    "resources": {}
-                },
-                "serverInfo": {
-                    "name": "simple-filesystem-server",
-                    "version": "1.0.0"
-                }
-            }
+                "capabilities": {"tools": {}, "resources": {}},
+                "serverInfo": {"name": "simple-filesystem-server", "version": "1.0.0"},
+            },
         }
 
     def handle_tools_list(self, request_id: Any) -> dict:
@@ -79,25 +75,21 @@ class MCPServer:
                         "description": "读取文件内容",
                         "inputSchema": {
                             "type": "object",
-                            "properties": {
-                                "path": {"type": "string"}
-                            },
-                            "required": ["path"]
-                        }
+                            "properties": {"path": {"type": "string"}},
+                            "required": ["path"],
+                        },
                     },
                     {
                         "name": "list_directory",
                         "description": "列出目录内容",
                         "inputSchema": {
                             "type": "object",
-                            "properties": {
-                                "path": {"type": "string"}
-                            },
-                            "required": ["path"]
-                        }
-                    }
+                            "properties": {"path": {"type": "string"}},
+                            "required": ["path"],
+                        },
+                    },
                 ]
-            }
+            },
         }
 
     def handle_tools_call(self, request_id: Any, params: dict) -> dict:
@@ -111,10 +103,7 @@ class MCPServer:
                 return {
                     "jsonrpc": "2.0",
                     "id": request_id,
-                    "result": {
-                        "content": [{"type": "text", "text": result}],
-                        "isError": False
-                    }
+                    "result": {"content": [{"type": "text", "text": result}], "isError": False},
                 }
             except Exception as e:
                 return {
@@ -122,22 +111,23 @@ class MCPServer:
                     "id": request_id,
                     "result": {
                         "content": [{"type": "text", "text": f"错误: {str(e)}"}],
-                        "isError": True
-                    }
+                        "isError": True,
+                    },
                 }
         else:
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
-                "error": {"code": -32601, "message": f"工具 {tool_name} 不存在"}
+                "error": {"code": -32601, "message": f"工具 {tool_name} 不存在"},
             }
 
     def read_file(self, path: str) -> str:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             return f.read()
 
     def list_directory(self, path: str) -> str:
         import os
+
         entries = os.listdir(path)
         return "\n".join(entries)
 
@@ -162,7 +152,7 @@ class MCPServer:
                 response = {
                     "jsonrpc": "2.0",
                     "id": request_id,
-                    "error": {"code": -32601, "message": f"未知方法: {method}"}
+                    "error": {"code": -32601, "message": f"未知方法: {method}"},
                 }
 
             self.send(response)

@@ -24,6 +24,7 @@
 
 节省成本的核心: 不让所有 query 都过最大模型.
 """
+
 import sys
 from pathlib import Path
 
@@ -32,7 +33,6 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared.gpu_guard import require_nvidia_gpu
-from shared._error_helper import raise_with_help
 
 
 def check_hardware():

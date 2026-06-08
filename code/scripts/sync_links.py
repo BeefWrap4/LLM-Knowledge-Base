@@ -16,6 +16,7 @@
 
 支持 --inject 模式: 自动给教程章节末尾添加 "→ [code: ...]" 链接 (如果该章节有 code).
 """
+
 import argparse
 import re
 import sys
@@ -40,7 +41,13 @@ def parse_tutorial_sections() -> dict[tuple, list[tuple[Path, int, str]]]:
     """
     sections: dict[tuple, list[tuple[Path, int, str]]] = defaultdict(list)
     for md in sorted(TUTORIAL_DIR.glob("*.md")):
-        if md.name in ("00_目录索引.md", "99_库健康检查报告.md", "README.md", "CLAUDE.md", "CONTRIBUTING.md"):
+        if md.name in (
+            "00_目录索引.md",
+            "99_库健康检查报告.md",
+            "README.md",
+            "CLAUDE.md",
+            "CONTRIBUTING.md",
+        ):
             continue
         for line_no, line in enumerate(md.read_text(encoding="utf-8").splitlines(), 1):
             m = TUTORIAL_SECTION_RE.match(line)
@@ -83,7 +90,7 @@ def coverage_report(tut_sections: dict, code_refs: list) -> tuple[int, int, list
     """
     # All tutorial section keys (ch, sec, sub) and (ch, sec)
     tut_main_keys = set()  # (ch, sec) — for section-level coverage
-    tut_sub_keys = set()   # (ch, sec, sub) — for sub-level matching
+    tut_sub_keys = set()  # (ch, sec, sub) — for sub-level matching
     for key in tut_sections.keys():
         ch, sec, sub = key
         tut_main_keys.add((ch, sec))
@@ -194,7 +201,7 @@ def main() -> int:
 
     total_sections, sections_with_code, orphans, missing = coverage_report(tut_sections, code_refs)
 
-    print(f"\n[3/3] 双向覆盖率")
+    print("\n[3/3] 双向覆盖率")
     if total_sections > 0:
         cov = sections_with_code * 100 // total_sections
         print(f"  教程章节有 code 覆盖: {sections_with_code}/{total_sections} ({cov}%)")

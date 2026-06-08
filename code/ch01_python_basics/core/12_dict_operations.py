@@ -26,14 +26,15 @@
 # ─────────────────────────────────────────────────────────────
 
 # 多种创建方式
-d1 = {"a": 1, "b": 2}                          # 字面量
-d2 = dict(a=1, b=2)                             # 关键字参数
-d3 = dict([("a", 1), ("b", 2)])                 # 键值对序列
-d4 = {k: v for k, v in [("a", 1), ("b", 2)]}    # 字典推导式
+d1 = {"a": 1, "b": 2}  # 字面量
+d2 = dict(a=1, b=2)  # 关键字参数
+d3 = dict([("a", 1), ("b", 2)])  # 键值对序列
+d4 = {k: v for k, v in [("a", 1), ("b", 2)]}  # 字典推导式
 
 # ─────────────────────────────────────────────────────────────
 # get / setdefault / defaultdict（面试常考对比）
 # ─────────────────────────────────────────────────────────────
+
 
 def count_words(words: list) -> dict:
     """
@@ -60,15 +61,18 @@ def count_words(words: list) -> dict:
 
     # 写法4：collections.Counter（最 Pythonic）
     from collections import Counter
+
     count4 = Counter(words)
 
     # 写法5：defaultdict（面试推荐写法）
     from collections import defaultdict
+
     count5 = defaultdict(int)
     for word in words:
         count5[word] += 1
 
     return dict(count5)
+
 
 print(f"word count: {count_words(['a', 'b', 'a', 'c', 'a', 'b'])}")
 
@@ -76,12 +80,13 @@ print(f"word count: {count_words(['a', 'b', 'a', 'c', 'a', 'b'])}")
 # 字典合并（Python 3.9+ 语法）
 # ─────────────────────────────────────────────────────────────
 
+
 def merge_dicts(d1: dict, d2: dict) -> dict:
     """字典合并的多种方式"""
 
     # Python 3.9+：合并运算符
-    merged = d1 | d2        # 创建新字典，d2 的键覆盖 d1
-    d1 |= d2                # 原地更新 d1
+    merged = d1 | d2  # 创建新字典，d2 的键覆盖 d1
+    d1 |= d2  # 原地更新 d1
 
     # Python 3.5+：解包合并
     merged = {**d1, **d2}
@@ -91,6 +96,7 @@ def merge_dicts(d1: dict, d2: dict) -> dict:
     merged.update(d2)
 
     return merged
+
 
 # ─────────────────────────────────────────────────────────────
 # 字典哈希表原理（面试核心考点）
@@ -128,20 +134,22 @@ Python 3.6+ 紧凑字典结构：
 # 可变类型（list, dict, set）不能作为字典键
 # tuple 只有在元素全部不可变时才能作为键
 
-valid_key = (1, "a", (2, 3))   # ✅ 嵌套 tuple 元素都是不可变的
+valid_key = (1, "a", (2, 3))  # ✅ 嵌套 tuple 元素都是不可变的
 # invalid_key = (1, [2, 3])    # ❌ 包含 list，不可哈希
+
 
 # 自定义类作为键：需要实现 __hash__ 和 __eq__
 class HashablePoint:
     """可作为字典键的二维点"""
-    __slots__ = ["x", "y"]   # 节省内存（面试加分项）
+
+    __slots__ = ["x", "y"]  # 节省内存（面试加分项）
 
     def __init__(self, x, y):
         self.x = x
         self.y = y
 
     def __hash__(self):
-        return hash((self.x, self.y))   # 基于不可变元组
+        return hash((self.x, self.y))  # 基于不可变元组
 
     def __eq__(self, other):
         if not isinstance(other, HashablePoint):
@@ -150,6 +158,7 @@ class HashablePoint:
 
     def __repr__(self):
         return f"HashablePoint({self.x}, {self.y})"
+
 
 points = {
     HashablePoint(0, 0): "原点",

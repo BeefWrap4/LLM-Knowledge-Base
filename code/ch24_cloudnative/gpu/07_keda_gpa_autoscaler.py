@@ -98,12 +98,14 @@ def parse_keda_yaml(yaml_text: str) -> dict:
         metric_name = re.search(r"metricName:\s*(\S+)", meta_block)
         threshold = re.search(r"threshold:\s*\"?(\S+?)\"?\s*(?:\n|$)", meta_block)
         server = re.search(r"serverAddress:\s*(\S+)", meta_block)
-        result["triggers"].append({
-            "type": trig_type,
-            "metricName": metric_name.group(1) if metric_name else None,
-            "threshold": threshold.group(1) if threshold else None,
-            "serverAddress": server.group(1) if server else None,
-        })
+        result["triggers"].append(
+            {
+                "type": trig_type,
+                "metricName": metric_name.group(1) if metric_name else None,
+                "threshold": threshold.group(1) if threshold else None,
+                "serverAddress": server.group(1) if server else None,
+            }
+        )
 
     return result
 

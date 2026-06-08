@@ -22,6 +22,7 @@
 #   - "Context = ?"                                      →  Prompt + History + Tools + RAG + Memory + State
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -29,6 +30,7 @@ from typing import Any
 @dataclass
 class Instructions:
     """维度 1: 指令 — 静态、稳定的部分。"""
+
     system_prompt: str
     few_shot: list[dict] = field(default_factory=list)
     output_schema: str = "free-form"
@@ -41,6 +43,7 @@ class Instructions:
 @dataclass
 class Knowledge:
     """维度 2: 知识 — 检索/外部数据, 动态注入。"""
+
     rag_chunks: list[str] = field(default_factory=list)
     db_results: list[Any] = field(default_factory=list)
     web_results: list[str] = field(default_factory=list)
@@ -52,28 +55,35 @@ class Knowledge:
 @dataclass
 class Tools:
     """维度 3: 工具 — 当前可用的能力与最近一次执行状态。"""
+
     available: list[str] = field(default_factory=list)  # tool names
-    schemas: dict = field(default_factory=dict)         # name -> JSON-schema
-    last_outputs: dict = field(default_factory=dict)    # name -> last result
+    schemas: dict = field(default_factory=dict)  # name -> JSON-schema
+    last_outputs: dict = field(default_factory=dict)  # name -> last result
 
     def token_estimate(self) -> int:
-        return sum(len(s) // 4 for s in self.schemas.values()) + sum(len(str(v)) // 2 for v in self.last_outputs.values())
+        return sum(len(s) // 4 for s in self.schemas.values()) + sum(
+            len(str(v)) // 2 for v in self.last_outputs.values()
+        )
 
 
 @dataclass
 class State:
     """维度 4: 状态 — 对话历史与结构化状态。"""
+
     history: list[dict] = field(default_factory=list)
     long_term: list[str] = field(default_factory=list)
     structured: dict = field(default_factory=dict)
 
     def token_estimate(self) -> int:
-        return sum(len(m.get("content", "")) // 2 for m in self.history) + sum(len(s) // 2 for s in self.long_term)
+        return sum(len(m.get("content", "")) // 2 for m in self.history) + sum(
+            len(s) // 2 for s in self.long_term
+        )
 
 
 @dataclass
 class Context:
     """Context = 4 维组合, 即模型每步推理时看到的全部信息。"""
+
     instructions: Instructions
     knowledge: Knowledge
     tools: Tools
@@ -100,13 +110,15 @@ class Context:
         parts = [
             f"[SYSTEM]\n{self.instructions.system_prompt}",
             f"[FEW-SHOT x{len(self.instructions.few_shot)}]\n"
-            + "\n".join(f"  Q: {ex.get('q','')}  A: {ex.get('a','')}" for ex in self.instructions.few_shot),
+            + "\n".join(f"  Q: {ex.get('q', '')}  A: {ex.get('a', '')}" for ex in self.instructions.few_shot),
             f"[TOOLS: {', '.join(self.tools.available) or 'none'}]\n"
             + "\n".join(f"  schema({n})={s[:80]}" for n, s in self.tools.schemas.items()),
             f"[RAG chunks x{len(self.knowledge.rag_chunks)}]\n"
             + "\n".join(f"  - {c[:80]}" for c in self.knowledge.rag_chunks),
             f"[STATE history x{len(self.state.history)}, LTM x{len(self.state.long_term)}]\n"
-            + "\n".join(f"  {m.get('role','?')}: {m.get('content','')[:60]}" for m in self.state.history[-3:]),
+            + "\n".join(
+                f"  {m.get('role', '?')}: {m.get('content', '')[:60]}" for m in self.state.history[-3:]
+            ),
         ]
         return "\n\n".join(parts)
 

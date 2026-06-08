@@ -20,23 +20,24 @@ Usage:
   - anthropic     Claude Sonnet 4 / Opus 4 (海外, 用 anthropic SDK)
   - mock          离线 mock, 无 API Key
 """
+
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
 class Provider:
     """LLM 厂商配置."""
-    name: str                                # 短代码
-    display_name: str                        # 中文显示名
-    base_url: str                            # OpenAI 兼容端点
-    default_chat: str                        # 默认 chat 模型
-    default_reasoner: Optional[str] = None   # 推理模型 (可选)
-    api_style: str = "openai"                # openai | anthropic | mock
-    env_key: str = ""                        # 环境变量名
-    region: str = "CN"                       # CN | US
-    free_tier: str = ""                      # 免费额度说明
+
+    name: str  # 短代码
+    display_name: str  # 中文显示名
+    base_url: str  # OpenAI 兼容端点
+    default_chat: str  # 默认 chat 模型
+    default_reasoner: str | None = None  # 推理模型 (可选)
+    api_style: str = "openai"  # openai | anthropic | mock
+    env_key: str = ""  # 环境变量名
+    region: str = "CN"  # CN | US
+    free_tier: str = ""  # 免费额度说明
 
     def has_key(self) -> bool:
         """Check if the API key is set in environment."""
@@ -54,8 +55,8 @@ PROVIDERS: dict[str, Provider] = {
         name="deepseek",
         display_name="DeepSeek",
         base_url="https://api.deepseek.com/v1",
-        default_chat="deepseek-chat",                  # V3
-        default_reasoner="deepseek-reasoner",        # R1 推理
+        default_chat="deepseek-chat",  # V3
+        default_reasoner="deepseek-reasoner",  # R1 推理
         api_style="openai",
         env_key="DEEPSEEK_API_KEY",
         region="CN",
@@ -86,7 +87,7 @@ PROVIDERS: dict[str, Provider] = {
     "MiniMax": Provider(
         name="MiniMax",
         display_name="MiniMax (MiniMax, Codin Plan)",
-        base_url="https://api.minimaxi.com/v1",          # 注意域名是 minimaxi (无 s)
+        base_url="https://api.minimaxi.com/v1",  # 注意域名是 minimaxi (无 s)
         default_chat="MiniMax-Text-01",
         default_reasoner="MiniMax-Text-01",  # same model supports thinking via reasoning_effort param
         api_style="openai",

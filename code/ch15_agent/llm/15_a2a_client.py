@@ -18,9 +18,10 @@
 A2A Client 简化实现
 展示 JSON-RPC over HTTP + SSE 流式通信
 """
+
 import json
 import uuid
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 
 class A2AClient:
@@ -46,9 +47,12 @@ class A2AClient:
                 "name": "WeatherAgent",
                 "version": "1.0.0",
                 "skills": [
-                    {"id": "get_weather", "name": "Get Weather",
-                     "description": "获取天气信息",
-                     "examples": ["北京今天天气怎么样？"]},
+                    {
+                        "id": "get_weather",
+                        "name": "Get Weather",
+                        "description": "获取天气信息",
+                        "examples": ["北京今天天气怎么样？"],
+                    },
                 ],
             }
             return self._card
@@ -79,7 +83,7 @@ class A2AClient:
                     "parts": [{"type": "text", "text": message}],
                 },
                 "sessionId": session_id or self._new_session_id(),
-            }
+            },
         }
         if self.mock:
             # 直接返回模拟响应
@@ -126,8 +130,8 @@ class A2AClient:
                 "message": {
                     "role": "user",
                     "parts": [{"type": "text", "text": message}],
-                }
-            }
+                },
+            },
         }
         headers = {"Accept": "text/event-stream"}
         if self.auth_token:
@@ -179,4 +183,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

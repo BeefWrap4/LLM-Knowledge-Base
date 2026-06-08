@@ -28,23 +28,26 @@ from functools import wraps
 # 最简单的装饰器
 # ─────────────────────────────────────────────────────────────
 
+
 def my_decorator(func):
     """装饰器函数 —— 接收一个函数，返回一个新函数"""
 
-    @wraps(func)   # 保留原函数的元信息（__name__, __doc__ 等）
+    @wraps(func)  # 保留原函数的元信息（__name__, __doc__ 等）
     def wrapper(*args, **kwargs):
         """包装函数 —— 在目标函数前后添加逻辑"""
         print(f"=== 调用 {func.__name__} 之前 ===")
-        result = func(*args, **kwargs)   # 调用被装饰的函数
+        result = func(*args, **kwargs)  # 调用被装饰的函数
         print(f"=== 调用 {func.__name__} 之后 ===")
         return result
 
-    return wrapper   # 返回包装函数
+    return wrapper  # 返回包装函数
+
 
 @my_decorator
 def say_hello(name):
     """打招呼"""
     return f"Hello, {name}!"
+
 
 # 等价于：say_hello = my_decorator(say_hello)
 
@@ -57,34 +60,44 @@ print(say_hello("Alice"))
 # 为什么需要 @wraps？
 # ─────────────────────────────────────────────────────────────
 
+
 def bad_decorator(func):
     """❌ 没有 wraps —— 丢失原函数元信息"""
+
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
+
     return wrapper
+
 
 def good_decorator(func):
     """✅ 使用 wraps —— 保留原函数元信息"""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
+
     return wrapper
+
 
 @bad_decorator
 def target():
     """目标函数"""
     pass
 
-print(target.__name__)   # "wrapper" — 原函数名丢失！
-print(target.__doc__)    # None
+
+print(target.__name__)  # "wrapper" — 原函数名丢失！
+print(target.__doc__)  # None
+
 
 @good_decorator
 def target2():
     """目标函数"""
     pass
 
+
 print(target2.__name__)  # "target2" — 正确！
-print(target2.__doc__)   # "目标函数"
+print(target2.__doc__)  # "目标函数"
 
 
 if __name__ == "__main__":

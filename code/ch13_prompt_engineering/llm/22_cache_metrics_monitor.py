@@ -16,13 +16,14 @@
 # - 如何把指标接入 Prometheus / OpenTelemetry？
 
 import time
-from dataclasses import dataclass, field
 from collections import deque
+from dataclasses import dataclass, field
 
 
 @dataclass
 class CacheMetrics:
     """缓存指标监控"""
+
     window_size: int = 100
     cache_read_tokens: int = 0
     input_tokens: int = 0
@@ -53,6 +54,7 @@ def send_alert(message: str):
 # 集成到 Anthropic 调用
 def wrapped_call(messages, client=None, metrics: CacheMetrics = None, **kwargs):
     """演示包装函数：真实使用时 client 应为 anthropic.Anthropic()。"""
+
     # mock 一个响应
     class _MockUsage:
         cache_read_input_tokens = 800
@@ -60,12 +62,10 @@ def wrapped_call(messages, client=None, metrics: CacheMetrics = None, **kwargs):
 
     class _MockResp:
         usage = _MockUsage()
+
     response = _MockResp()
 
-    metrics.record(
-        cache_read=response.usage.cache_read_input_tokens,
-        new_input=response.usage.input_tokens
-    )
+    metrics.record(cache_read=response.usage.cache_read_input_tokens, new_input=response.usage.input_tokens)
     if not metrics.is_healthy():
         send_alert(f"缓存命中率低: {metrics.avg_hit_rate:.2%}")
     return response

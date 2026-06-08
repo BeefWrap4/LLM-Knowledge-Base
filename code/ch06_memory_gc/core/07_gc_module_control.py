@@ -23,12 +23,12 @@ def demo_gc_control() -> None:
     # 1. 禁用 / 启用自动 GC
     gc.disable()
     print(f"GC 是否启用: {gc.isenabled()}")  # False
-    gc.collect()              # 手动触发全量 GC
+    gc.collect()  # 手动触发全量 GC
     gc.enable()
     print(f"GC 是否启用: {gc.isenabled()}")  # True
 
     # 2. 调试标志
-    gc.set_debug(gc.DEBUG_STATS)        # 打印 GC 统计
+    gc.set_debug(gc.DEBUG_STATS)  # 打印 GC 统计
     # gc.set_debug(gc.DEBUG_LEAK)       # 打印循环引用泄漏
     # gc.set_debug(gc.DEBUG_SAVEALL)    # 把不可达对象存到 gc.garbage
     # DEBUG_STATS 会向 stderr 持续输出, 演示结束后恢复默认设置
@@ -59,14 +59,15 @@ def demo_gc_control() -> None:
 
 def demo_weakref_parent_child() -> None:
     """父子节点用 weakref 打破循环引用的标准模式。"""
+
     class Parent:
         def __init__(self, name: str) -> None:
             self.name = name
             self.children: list = []
 
         def add_child(self, child: "Child") -> None:
-            self.children.append(child)         # Parent -> Child (强引用)
-            child.parent = weakref.ref(self)    # Child  -> Parent (弱引用)
+            self.children.append(child)  # Parent -> Child (强引用)
+            child.parent = weakref.ref(self)  # Child  -> Parent (弱引用)
 
     class Child:
         def __init__(self, name: str) -> None:

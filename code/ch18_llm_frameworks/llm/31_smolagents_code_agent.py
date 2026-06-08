@@ -18,10 +18,12 @@ Smolagents 实战：极简 code-agent - 离线 mock 结构
 """
 # 真实环境: from smolagents import CodeAgent, HfApiModel, tool
 
+
 # ===== 工具定义 =====
 def get_weather(city: str) -> str:
     """获取天气"""
     return f"{city}: 晴 25°C"
+
 
 # HuggingFace Inference API 上的 Qwen2.5
 model_config = {
@@ -34,6 +36,7 @@ agent_config = {
     "model": model_config,
     "max_steps": 5,
 }
+
 
 # Agent 内部会写代码：result = get_weather("北京")
 def mock_run(query: str) -> str:
@@ -49,6 +52,7 @@ else:
     result = "需要查看更多天气信息"
 """
     return f"执行结果: {generated_code.strip().split(chr(10))[-1]}\n\n(由 CodeAgent 自动生成)"
+
 
 print("=== Smolagents Code Agent ===")
 print(f"工具: {[t.__name__ for t in agent_config['tools']]}")

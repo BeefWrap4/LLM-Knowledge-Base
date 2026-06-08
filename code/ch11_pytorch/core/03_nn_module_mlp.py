@@ -19,12 +19,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 # ========== 自定义模型 ==========
 class MLPClassifier(nn.Module):
     """多层感知机分类器 — 展示标准写法"""
 
     def __init__(self, input_dim, hidden_dim, num_classes, dropout=0.3):
-        super(MLPClassifier, self).__init__()
+        super().__init__()
         # 网络层定义
         self.fc1 = nn.Linear(input_dim, hidden_dim)
         self.bn1 = nn.BatchNorm1d(hidden_dim)
@@ -43,7 +44,7 @@ class MLPClassifier(nn.Module):
         """He 初始化 — ReLU 激活的标准做法"""
         for m in self.modules():
             if isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_in", nonlinearity="relu")
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
 
@@ -64,6 +65,7 @@ class MLPClassifier(nn.Module):
         x = self.fc3(x)
         return x
 
+
 # 实例化模型
 model = MLPClassifier(input_dim=784, hidden_dim=256, num_classes=10)
 print(f"参数量: {sum(p.numel() for p in model.parameters()):,}")
@@ -77,7 +79,7 @@ simple_model = nn.Sequential(
     nn.Linear(256, 128),
     nn.ReLU(),
     nn.Dropout(0.3),
-    nn.Linear(128, 10)
+    nn.Linear(128, 10),
 )
 
 

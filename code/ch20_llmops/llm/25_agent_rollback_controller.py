@@ -67,9 +67,7 @@ class AgentRollbackController:
             elif level == RollbackLevel.PROMPT_VERSION:
                 action = self._rollback_prompt_version(target_version)
             elif level == RollbackLevel.TOOL_ALLOWLIST:
-                action = self._disable_risky_tools([
-                    "send_email", "execute_code", "delete_file"
-                ])
+                action = self._disable_risky_tools(["send_email", "execute_code", "delete_file"])
             elif level == RollbackLevel.MODEL_VERSION:
                 action = self._rollback_model_version(target_version)
             else:
@@ -105,18 +103,20 @@ if __name__ == "__main__":
     controller = AgentRollbackController()
 
     # 模拟 4 种回滚场景
-    print(controller.execute_rollback(
-        RollbackLevel.TRAFFIC_SHIFT, "error_rate_5pct", target_version="v2.2.0"
-    ))
-    print(controller.execute_rollback(
-        RollbackLevel.PROMPT_VERSION, "hallucination_score_low", target_version="v3.2.0"
-    ))
-    print(controller.execute_rollback(
-        RollbackLevel.TOOL_ALLOWLIST, "tool_error_rate_high"
-    ))
-    print(controller.execute_rollback(
-        RollbackLevel.MODEL_VERSION, "p99_latency_high", target_version="gpt-4o-2024-08"
-    ))
+    print(
+        controller.execute_rollback(RollbackLevel.TRAFFIC_SHIFT, "error_rate_5pct", target_version="v2.2.0")
+    )
+    print(
+        controller.execute_rollback(
+            RollbackLevel.PROMPT_VERSION, "hallucination_score_low", target_version="v3.2.0"
+        )
+    )
+    print(controller.execute_rollback(RollbackLevel.TOOL_ALLOWLIST, "tool_error_rate_high"))
+    print(
+        controller.execute_rollback(
+            RollbackLevel.MODEL_VERSION, "p99_latency_high", target_version="gpt-4o-2024-08"
+        )
+    )
 
     # 成本超限自动回滚
     auto = cost_overrun_auto_rollback(controller, current_cost_per_hour=15.0, budget_per_hour=10.0)

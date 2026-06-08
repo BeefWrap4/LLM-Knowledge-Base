@@ -23,6 +23,7 @@ from collections import deque
 # ========== 通用二叉树节点 ==========
 class TreeNode:
     """二叉树节点 — 本文件所有 BFS/DFS 题共用."""
+
     def __init__(self, val: int, left: "TreeNode | None" = None, right: "TreeNode | None" = None):
         self.val = val
         self.left = left
@@ -93,6 +94,7 @@ def is_balanced(root: TreeNode) -> bool:
     自底向上的递归，避免重复计算
     时间复杂度: O(n)  空间复杂度: O(h)
     """
+
     def check(node):
         if not node:
             return 0  # 空节点高度为0
@@ -119,6 +121,7 @@ def is_valid_bst(root: TreeNode) -> bool:
     利用 BST 中序遍历有序的性质
     时间复杂度: O(n)  空间复杂度: O(h)
     """
+
     def inorder(node):
         if not node:
             return True
@@ -133,7 +136,7 @@ def is_valid_bst(root: TreeNode) -> bool:
 
         return inorder(node.right)
 
-    inorder.prev = float('-inf')
+    inorder.prev = float("-inf")
     return inorder(root)
 
 
@@ -207,10 +210,7 @@ if __name__ == "__main__":
     #     9   20
     #        /  \
     #       15   7
-    root = TreeNode(3,
-        TreeNode(9),
-        TreeNode(20, TreeNode(15), TreeNode(7))
-    )
+    root = TreeNode(3, TreeNode(9), TreeNode(20, TreeNode(15), TreeNode(7)))
 
     # 层序遍历
     assert level_order(root) == [[3], [9, 20], [15, 7]]
@@ -241,4 +241,3 @@ if __name__ == "__main__":
     assert g.bfs(2)[0] == 2
     assert g.has_path(1, 3) is True
     assert g.has_path(3, 1) is False
-

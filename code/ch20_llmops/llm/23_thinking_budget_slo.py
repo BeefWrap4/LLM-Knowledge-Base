@@ -57,11 +57,11 @@ def record_thinking_usage(model: str, budget_tokens: int, used_tokens: int):
 
 if __name__ == "__main__":
     samples = [
-        ("claude-sonnet-4-6", 2048, 512),    # healthy
-        ("claude-sonnet-4-6", 2048, 2100),   # overshoot
-        ("claude-sonnet-4-6", 2048, 200),    # waste
-        ("claude-opus-4-6", 8192, 6000),     # healthy
-        ("claude-haiku-4-5", 1024, 1100),    # overshoot
+        ("claude-sonnet-4-6", 2048, 512),  # healthy
+        ("claude-sonnet-4-6", 2048, 2100),  # overshoot
+        ("claude-sonnet-4-6", 2048, 200),  # waste
+        ("claude-opus-4-6", 8192, 6000),  # healthy
+        ("claude-haiku-4-5", 1024, 1100),  # overshoot
     ]
     for model, budget, used in samples:
         util = record_thinking_usage(model, budget, used)

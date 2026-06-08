@@ -22,6 +22,7 @@
 try:
     import sagemaker
     from sagemaker.huggingface import HuggingFaceModel
+
     HAS_SAGEMAKER = True
 except ImportError:
     HAS_SAGEMAKER = False
@@ -29,6 +30,7 @@ except ImportError:
     class _MockRole:
         def __init__(self, name="MockRole"):
             self.name = name
+
         def __repr__(self):
             return f"<MockRole {self.name}>"
 
@@ -36,6 +38,7 @@ except ImportError:
         def __init__(self, endpoint_name, instance_type):
             self.endpoint_name = endpoint_name
             self.instance_type = instance_type
+
         def predict(self, data):
             return {"generated_text": "[MOCK prediction]", "input": data}
 
@@ -48,9 +51,12 @@ except ImportError:
             self.py_version = py_version
             self.model_data = model_data
             print(f"[MockHFM] initialized: env={env}")
+
         def deploy(self, initial_instance_count, instance_type, container_startup_health_check_timeout):
-            print(f"[MockHFM] deploy: {initial_instance_count}x {instance_type}, "
-                  f"startup_health_check_timeout={container_startup_health_check_timeout}s")
+            print(
+                f"[MockHFM] deploy: {initial_instance_count}x {instance_type}, "
+                f"startup_health_check_timeout={container_startup_health_check_timeout}s"
+            )
             return _MockPredictor(
                 endpoint_name=f"mock-endpoint-{id(self)}",
                 instance_type=instance_type,
@@ -59,6 +65,7 @@ except ImportError:
     class _MockSagemaker:
         def get_execution_role(self):
             return _MockRole("arn:aws:iam::000000000000:role/MockRole")
+
         HuggingFaceModel = _MockHuggingFaceModel
 
     sagemaker = _MockSagemaker()
@@ -87,8 +94,8 @@ huggingface_model = HuggingFaceModel(
 # 2. 部署到 GPU 端点
 if HAS_SAGEMAKER:
     predictor = huggingface_model.deploy(
-        initial_instance_count=2,           # 2 个 GPU 实例
-        instance_type="ml.p4d.24xlarge",    # A100 x8
+        initial_instance_count=2,  # 2 个 GPU 实例
+        instance_type="ml.p4d.24xlarge",  # A100 x8
         container_startup_health_check_timeout=600,  # 模型加载需要时间
     )
 else:
@@ -106,9 +113,9 @@ if __name__ == "__main__":
     print(f"Task: {hub['HF_TASK']}")
     print(f"GPUs per instance: {hub['SM_NUM_GPUS']}")
     print(f"Max input length: {hub['MAX_INPUT_LENGTH']}")
-    print(f"Instance type: ml.p4d.24xlarge (A100 x8)")
-    print(f"Initial instance count: 2")
-    print(f"Startup health check timeout: 600s")
+    print("Instance type: ml.p4d.24xlarge (A100 x8)")
+    print("Initial instance count: 2")
+    print("Startup health check timeout: 600s")
     print()
     print("To call the endpoint:")
     print('  predictor.predict({"inputs": "Hello, how are you?"})')

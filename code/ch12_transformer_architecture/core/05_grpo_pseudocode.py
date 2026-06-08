@@ -41,6 +41,7 @@ def grpo_advantages(rewards):
     避免大批量/小批量更新的梯度方差差异过大。
     """
     import statistics
+
     if len(rewards) < 2:
         return [0.0 for _ in rewards]
     mean_r = statistics.mean(rewards)
@@ -69,9 +70,9 @@ if __name__ == "__main__":
     # 模拟一个 batch: 一个问题, 4 个回答
     question = "求解方程 x^2 - 4 = 0"
     responses = [
-        "x = 2",                              # 短回答
-        "x = 2 或 x = -2",                    # 标准回答
-        "x = ±2, 即 2 和 -2",                 # 详细回答
+        "x = 2",  # 短回答
+        "x = 2 或 x = -2",  # 标准回答
+        "x = ±2, 即 2 和 -2",  # 详细回答
         "x = sqrt(4) = 2, 另一个解是 -sqrt(4) = -2",  # 详细推导
     ]
 
@@ -88,6 +89,7 @@ if __name__ == "__main__":
 
     # 3) 模拟策略给出的对数概率
     import math
+
     log_probs = [math.log(0.5), math.log(0.4), math.log(0.3), math.log(0.2)]
     loss = grpo_loss(advantages, log_probs)
     print(f"\nGRPO 损失: {loss:.4f}")

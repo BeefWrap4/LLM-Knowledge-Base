@@ -42,8 +42,7 @@ def compute_rouge_demo() -> None:
     scores = scorer.score(reference, candidate)
     for metric, score in scores.items():
         print(
-            f"{metric}: Precision={score.precision:.3f}, "
-            f"Recall={score.recall:.3f}, F1={score.fmeasure:.3f}"
+            f"{metric}: Precision={score.precision:.3f}, Recall={score.recall:.3f}, F1={score.fmeasure:.3f}"
         )
     # 典型输出：
     # rouge1: Precision=0.667, Recall=0.500, F1=0.571

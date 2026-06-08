@@ -24,18 +24,18 @@ def main() -> None:
     c = 257
     d = 257
 
-    print("a is b (42):    ", a is b)   # True  命中小整数缓存
-    print("c is d (257):   ", c is d)   # False 大整数不缓存 (CPython 实现细节)
+    print("a is b (42):    ", a is b)  # True  命中小整数缓存
+    print("c is d (257):   ", c is d)  # False 大整数不缓存 (CPython 实现细节)
 
     # 列表底层是 PyObject* 指针数组, 不是值拷贝.
     lst = [1, 2, 3]
     print("list:           ", lst)
 
     inner = [10, 20]
-    lst2 = [inner, inner]   # 两个槽位都指向同一 inner 对象
+    lst2 = [inner, inner]  # 两个槽位都指向同一 inner 对象
     print("lst2 before:    ", lst2)
 
-    lst2[0][0] = 99         # 通过第一个引用修改 inner
+    lst2[0][0] = 99  # 通过第一个引用修改 inner
     print("lst2 after:     ", lst2)  # [[99, 20], [99, 20]] 体现共享
 
 

@@ -33,17 +33,17 @@ import copy
 original = [[1, 2], [3, 4]]
 shallow1 = original[:]
 
-print(original is shallow1)           # False — 不同列表对象
-print(original[0] is shallow1[0])     # True  — 子列表共享!
+print(original is shallow1)  # False — 不同列表对象
+print(original[0] is shallow1[0])  # True  — 子列表共享!
 
 # 修改浅拷贝的外层(互不影响)
 shallow1.append([5, 6])
-print(f"original: {original}")   # [[1, 2], [3, 4]] — 不受影响
-print(f"shallow1: {shallow1}")   # [[1, 2], [3, 4], [5, 6]]
+print(f"original: {original}")  # [[1, 2], [3, 4]] — 不受影响
+print(f"shallow1: {shallow1}")  # [[1, 2], [3, 4], [5, 6]]
 
 # 修改浅拷贝的内层(影响原对象!)
 shallow1[0].append(999)
-print(f"original: {original}")   # [[1, 2, 999], [3, 4]] — 被修改了!
+print(f"original: {original}")  # [[1, 2, 999], [3, 4]] — 被修改了!
 
 # ─────────────────────────────────────────────────────────────
 # 方式2:工厂方法
@@ -58,6 +58,7 @@ shallow3 = copy.copy(original)
 # ─────────────────────────────────────────────────────────────
 # 三种方式对比
 # ─────────────────────────────────────────────────────────────
+
 
 def compare_shallow_methods():
     """三种浅拷贝方式的效果对比"""
@@ -74,6 +75,7 @@ def compare_shallow_methods():
         print(f"  外层对象相同? {original is copied}")
         print(f"  内层列表相同? {original[0] is copied[0]}")
         print(f"  内层字典相同? {original[1] is copied[1]}")
+
 
 if __name__ == "__main__":
     compare_shallow_methods()

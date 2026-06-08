@@ -36,11 +36,11 @@ class MultimodalRAG:
     """多模态 RAG：支持文本 + 图像混合检索（mock 演示版）"""
 
     def __init__(self, text_embedder=None, image_embedder=None, multimodal_llm=None):
-        self.text_embedder = text_embedder   # 文本 Embedding 模型
+        self.text_embedder = text_embedder  # 文本 Embedding 模型
         self.image_embedder = image_embedder  # CLIP/SigLIP 图像编码器
-        self.llm = multimodal_llm            # 多模态大模型（如 Qwen-VL）
-        self.doc_store: list = []   # 文档存储
-        self.image_store: list = [] # 图像存储
+        self.llm = multimodal_llm  # 多模态大模型（如 Qwen-VL）
+        self.doc_store: list = []  # 文档存储
+        self.image_store: list = []  # 图像存储
 
     def _mock_embed(self, items, dim=16):
         rng = np.random.default_rng(abs(hash(tuple(items))) % (2**32) if items else 0)
@@ -110,15 +110,19 @@ class MultimodalRAG:
         messages = [{"role": "user", "content": []}]
         for item_type, idx, _score in retrieved_items:
             if item_type == "text":
-                messages[0]["content"].append({
-                    "type": "text",
-                    "text": f"[相关文档]\n{self.doc_store[idx]['content']}\n",
-                })
+                messages[0]["content"].append(
+                    {
+                        "type": "text",
+                        "text": f"[相关文档]\n{self.doc_store[idx]['content']}\n",
+                    }
+                )
             elif item_type == "image":
-                messages[0]["content"].append({
-                    "type": "image",
-                    "image": self.image_store[idx]["content"],
-                })
+                messages[0]["content"].append(
+                    {
+                        "type": "image",
+                        "image": self.image_store[idx]["content"],
+                    }
+                )
         messages[0]["content"].append({"type": "text", "text": f"\n问题：{query}"})
         if self.llm is not None and hasattr(self.llm, "chat"):
             return self.llm.chat(messages)

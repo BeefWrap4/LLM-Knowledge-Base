@@ -25,8 +25,8 @@ Token走私（Token Smuggling）演示
 2. 掌握防御此类攻击的字符规范化方法
 """
 
-import unicodedata
 import re
+import unicodedata
 
 
 def detect_invisible_chars(text: str) -> dict:
@@ -35,26 +35,24 @@ def detect_invisible_chars(text: str) -> dict:
     for i, ch in enumerate(text):
         # 零宽空格 (U+200B), 零宽非连接符 (U+200C), 零宽连接符 (U+200D)
         # 从左到右标记 (U+200E), 从右到左标记 (U+200F)
-        if ch in ('​', '‌', '‍', '‎', '‏'):
-            invisible.append({
-                "position": i,
-                "char": ch,
-                "name": unicodedata.name(ch, "UNKNOWN"),
-                "codepoint": f"U+{ord(ch):04X}"
-            })
-    return {
-        "has_invisible": len(invisible) > 0,
-        "count": len(invisible),
-        "details": invisible
-    }
+        if ch in ("​", "‌", "‍", "‎", "‏"):
+            invisible.append(
+                {
+                    "position": i,
+                    "char": ch,
+                    "name": unicodedata.name(ch, "UNKNOWN"),
+                    "codepoint": f"U+{ord(ch):04X}",
+                }
+            )
+    return {"has_invisible": len(invisible) > 0, "count": len(invisible), "details": invisible}
 
 
 def normalize_text(text: str) -> str:
     """字符规范化：去除零宽字符与控制字符"""
     # NFKC 规范化（兼容性分解再重组）
-    text = unicodedata.normalize('NFKC', text)
+    text = unicodedata.normalize("NFKC", text)
     # 移除零宽字符
-    text = re.sub(r'[​-‏‪-‮⁠-⁤]', '', text)
+    text = re.sub(r"[​-‏‪-‮⁠-⁤]", "", text)
     return text
 
 

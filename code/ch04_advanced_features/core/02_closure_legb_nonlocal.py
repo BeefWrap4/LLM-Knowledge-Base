@@ -24,16 +24,18 @@ G — Global:       模块级别的全局变量
 B — Built-in:     Python 内置变量
 """
 
-x = "global"        # G
+x = "global"  # G
+
 
 def outer():
     x = "enclosing"  # E
 
     def inner():
         x = "local"  # L
-        print(x)     # "local" — 按 LEGB 找到 Local
+        print(x)  # "local" — 按 LEGB 找到 Local
 
     inner()
+
 
 outer()
 
@@ -41,11 +43,12 @@ outer()
 # nonlocal —— 修改外层变量（闭包关键）
 # ─────────────────────────────────────────────────────────────
 
+
 def counter_factory():
     """
     闭包实现计数器 —— nonlocal 修改外层变量
     """
-    count = 0           # 外层变量
+    count = 0  # 外层变量
 
     def counter():
         nonlocal count  # 声明：我要修改外层变量，不是创建局部变量
@@ -59,50 +62,59 @@ def counter_factory():
     # 返回多个闭包函数
     return counter, reset
 
+
 cnt, reset = counter_factory()
-print(cnt())    # 1
-print(cnt())    # 2
-print(cnt())    # 3
+print(cnt())  # 1
+print(cnt())  # 2
+print(cnt())  # 3
 reset()
-print(cnt())    # 1
+print(cnt())  # 1
 
 # ─────────────────────────────────────────────────────────────
 # 循环中创建闭包陷阱
 # ─────────────────────────────────────────────────────────────
+
 
 # 陷阱：所有闭包共享同一个循环变量
 def create_functions_trap():
     """❌ 错误：所有函数都返回 4"""
     functions = []
     for i in range(4):
-        functions.append(lambda: i)   # i 是自由变量，不是默认值
+        functions.append(lambda: i)  # i 是自由变量，不是默认值
     return functions
 
+
 funcs = create_functions_trap()
-print([f() for f in funcs])   # [3, 3, 3, 3] — 不是 [0, 1, 2, 3]！
+print([f() for f in funcs])  # [3, 3, 3, 3] — 不是 [0, 1, 2, 3]！
+
 
 # 修复：用默认参数在定义时捕获值
 def create_functions_fixed():
     """✅ 正确：每个闭包捕获当前的 i 值"""
     functions = []
     for i in range(4):
-        functions.append(lambda x=i: x)   # x=i 在定义时求值
+        functions.append(lambda x=i: x)  # x=i 在定义时求值
     return functions
 
+
 funcs = create_functions_fixed()
-print([f() for f in funcs])   # [0, 1, 2, 3] ✅
+print([f() for f in funcs])  # [0, 1, 2, 3] ✅
+
 
 # 另一种修复：用工厂函数创建闭包
 def make_closure(x):
     def closure():
         return x
+
     return closure
+
 
 def create_functions_factory():
     return [make_closure(i) for i in range(4)]
 
+
 funcs = create_functions_factory()
-print([f() for f in funcs])   # [0, 1, 2, 3] ✅
+print([f() for f in funcs])  # [0, 1, 2, 3] ✅
 
 
 if __name__ == "__main__":

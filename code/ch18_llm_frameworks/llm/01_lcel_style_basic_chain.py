@@ -14,14 +14,16 @@
 #   1. 什么是 LCEL？它相比传统的 LLMChain 有哪些优势？
 #   2. 请解释 `prompt | model | parser` 管道符的运行机制。
 # LCEL 风格：声明式链式调用
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda
+
 
 # Mock LLM (no real API call) for offline runnability
 # 包装为 RunnableLambda 以兼容 LCEL 管道 (`|`)
 def _mock_llm_invoke(msgs):
     return "为什么程序员总是分不清万圣节和圣诞节？因为 Oct 31 == Dec 25。"
+
 
 model = RunnableLambda(_mock_llm_invoke)
 

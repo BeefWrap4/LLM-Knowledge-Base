@@ -21,11 +21,13 @@ import sys
 # 依赖检测 — core tier 不强制安装 xgboost/lightgbm
 try:
     import xgboost as xgb
+
     HAS_XGB = True
 except ImportError:
     HAS_XGB = False
 try:
     from lightgbm import LGBMClassifier
+
     HAS_LGB = True
 except ImportError:
     HAS_LGB = False
@@ -36,9 +38,9 @@ if not (HAS_XGB and HAS_LGB):
     print(f"[SKIP] xgboost={HAS_XGB}, lightgbm={HAS_LGB} (需 llm+ tier 或 pip install xgboost lightgbm)")
     sys.exit(0)
 
+
 def main():
-    X, y = make_classification(n_samples=5000, n_features=20, n_informative=10,
-                               n_classes=2, random_state=42)
+    X, y = make_classification(n_samples=5000, n_features=20, n_informative=10, n_classes=2, random_state=42)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     # XGBoost
@@ -46,11 +48,11 @@ def main():
         n_estimators=100,
         max_depth=5,
         learning_rate=0.1,
-        subsample=0.8,        # 行采样比例
-        colsample_bytree=0.8, # 列采样比例
-        reg_alpha=0.1,        # L1 正则化
-        reg_lambda=1.0,       # L2 正则化
-        random_state=42
+        subsample=0.8,  # 行采样比例
+        colsample_bytree=0.8,  # 列采样比例
+        reg_alpha=0.1,  # L1 正则化
+        reg_lambda=1.0,  # L2 正则化
+        random_state=42,
     )
     xgb_model.fit(X_train, y_train)
     print(f"XGBoost: {xgb_model.score(X_test, y_test):.4f}")
@@ -60,15 +62,16 @@ def main():
         n_estimators=100,
         max_depth=5,
         learning_rate=0.1,
-        num_leaves=31,        # LightGBM 特有参数
+        num_leaves=31,  # LightGBM 特有参数
         subsample=0.8,
         colsample_bytree=0.8,
-        random_state=42
+        random_state=42,
     )
     lgb_model.fit(X_train, y_train)
     print(f"LightGBM: {lgb_model.score(X_test, y_test):.4f}")
 
     print("OK")
+
 
 if __name__ == "__main__":
     main()

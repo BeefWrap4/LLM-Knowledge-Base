@@ -28,22 +28,27 @@
 # 鸭子类型演示
 # ─────────────────────────────────────────────────────────────
 
+
 class Dog:
     def speak(self):
         return "Woof!"
+
 
 class Cat:
     def speak(self):
         return "Meow!"
 
+
 class Duck:
     def speak(self):
         return "Quack!"
+
 
 # 多态函数 —— 不检查类型，只检查行为
 def animal_sound(animal):
     """任何有 speak() 方法的对象都可以传入"""
     return animal.speak()
+
 
 # 不同类型的对象可以统一处理
 for animal in [Dog(), Cat(), Duck()]:
@@ -57,6 +62,7 @@ for animal in [Dog(), Cat(), Duck()]:
 # ─────────────────────────────────────────────────────────────
 
 from abc import ABC, abstractmethod
+
 
 class Shape(ABC):
     """形状抽象基类 —— 子类必须实现 area() 和 perimeter()"""
@@ -75,6 +81,7 @@ class Shape(ABC):
         """具体方法 —— 子类可直接使用"""
         return f"面积: {self.area():.2f}, 周长: {self.perimeter():.2f}"
 
+
 class Rectangle(Shape):
     def __init__(self, width: float, height: float):
         self.width = width
@@ -86,31 +93,37 @@ class Rectangle(Shape):
     def perimeter(self) -> float:
         return 2 * (self.width + self.height)
 
+
 # shape = Shape()     # TypeError: 不能实例化抽象类
 rect = Rectangle(3, 4)
-print(rect.describe())   # "面积: 12.00, 周长: 14.00"
+print(rect.describe())  # "面积: 12.00, 周长: 14.00"
 
 # ─────────────────────────────────────────────────────────────
 # 注册虚拟子类 —— 不继承但被认为是子类
 # ─────────────────────────────────────────────────────────────
 
+
 class Circle:
     """普通类 —— 没有显式继承 Shape"""
+
     def __init__(self, radius: float):
         self.radius = radius
 
     def area(self) -> float:
         import math
-        return math.pi * self.radius ** 2
+
+        return math.pi * self.radius**2
 
     def perimeter(self) -> float:
         import math
+
         return 2 * math.pi * self.radius
+
 
 # 注册为 Shape 的虚拟子类
 Shape.register(Circle)
-print(issubclass(Circle, Shape))   # True
-print(isinstance(Circle(1), Shape)) # True
+print(issubclass(Circle, Shape))  # True
+print(isinstance(Circle(1), Shape))  # True
 
 if __name__ == "__main__":
     print("OK")

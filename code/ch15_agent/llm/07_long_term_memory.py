@@ -16,11 +16,12 @@
 #   3. 当 sentence-transformers 加载很慢时，工程上如何兜底？(降级到 hash 特征)
 
 
-
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
+
 try:
     from sentence_transformers import SentenceTransformer
+
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
     _SKIP_REASON = str(_e).split("\n")[0]
@@ -78,11 +79,13 @@ class LongTermMemory:
     def add_experience(self, text: str, experience_type: str = "conversation"):
         """添加经验记忆"""
         embedding = self._encode(text)
-        self.experiences.append({
-            "text": text,
-            "embedding": embedding,
-            "metadata": {"type": experience_type, "timestamp": "now"}
-        })
+        self.experiences.append(
+            {
+                "text": text,
+                "embedding": embedding,
+                "metadata": {"type": experience_type, "timestamp": "now"},
+            }
+        )
 
     def retrieve_relevant(self, query: str, top_k: int = 3) -> list[str]:
         """检索相关经验"""
@@ -120,6 +123,7 @@ class AgentMemory:
 
     def __init__(self, stm_max_tokens: int = 4000):
         from collections import deque
+
         self._stm_messages: deque = deque()
         self.ltm = LongTermMemory()
         self.working_memory: dict = {}

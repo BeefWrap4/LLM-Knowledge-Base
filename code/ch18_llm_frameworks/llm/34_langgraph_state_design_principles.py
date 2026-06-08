@@ -13,22 +13,26 @@
 # Interview hooks:
 #   1. LangGraph 的 State 应该遵循哪些设计原则？
 #   2. 为什么 State 必须可序列化？这与 checkpoint 有什么关系？
-from typing import TypedDict, Annotated
+from typing import Annotated, TypedDict
+
 
 # 模拟 add_messages 合并策略
 def add_messages(a, b):
     return (a or []) + (b or [])
 
+
 # ✅ 好的 State 设计
 class AgentState(TypedDict):
     messages: Annotated[list, add_messages]  # 消息历史（追加）
-    task_list: list[str]                     # 待办任务
+    task_list: list[str]  # 待办任务
     completed: Annotated[set, lambda a, b: a | b]  # 完成的集合（并集）
+
 
 # ❌ 避免的设计（仅作对比展示）
 class BadState(TypedDict):
     everything: dict  # 大杂烩
-    temp: object      # 不明确类型
+    temp: object  # 不明确类型
+
 
 # 演示
 state: AgentState = {

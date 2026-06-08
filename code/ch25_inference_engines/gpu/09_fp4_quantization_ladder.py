@@ -23,16 +23,19 @@ VRAM 节省 (Qwen2.5-0.5B 实测):
 
 性能 vs 精度: 4bit 几乎不损精度 (QLoRA 论文已证)
 """
+
 import sys
 import time
 from pathlib import Path
+
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 import torch
-from shared.gpu_guard import require_nvidia_gpu
+
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import require_nvidia_gpu
 
 
 def check_hardware():
@@ -96,6 +99,7 @@ def benchmark(quant_type: str, model_path: str, prompt: str = "Q: What is 2+2?\n
     del model, tokenizer
     torch.cuda.empty_cache()
     import gc
+
     gc.collect()
 
     return {
@@ -125,8 +129,7 @@ def main():
         try:
             r = benchmark(qtype, model_path)
             results.append(r)
-            print(f"   load: {r['load_time_s']}s | vram: {r['vram_gb']}GB | "
-                  f"32 tokens: {r['inference_ms']}ms")
+            print(f"   load: {r['load_time_s']}s | vram: {r['vram_gb']}GB | 32 tokens: {r['inference_ms']}ms")
             print(f"   out: {r['output']}\n")
         except Exception as e:
             print(f"   ❌ {type(e).__name__}: {str(e)[:120]}\n")
@@ -139,8 +142,10 @@ def main():
             if r["quant_type"] != "fp16":
                 vram_saving = (1 - r["vram_gb"] / fp16["vram_gb"]) * 100
                 speed = r["inference_ms"] / fp16["inference_ms"]
-                print(f"  {r['quant_type']}: VRAM 节省 {vram_saving:+.0f}%, "
-                      f"延迟 {speed:.2f}x ({r['vram_gb']}GB, {r['inference_ms']}ms)")
+                print(
+                    f"  {r['quant_type']}: VRAM 节省 {vram_saving:+.0f}%, "
+                    f"延迟 {speed:.2f}x ({r['vram_gb']}GB, {r['inference_ms']}ms)"
+                )
 
 
 if __name__ == "__main__":

@@ -16,18 +16,21 @@
 # 2. K-Means 对初始质心敏感, K-Means++ 如何改进初始化?
 # 3. K-Means 的核心缺陷与对应的改进算法?（DBSCAN / K-Medoids）
 
+import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
-import numpy as np
+
 
 def main():
     # 生成聚类数据
     np.random.seed(42)
-    X_cluster = np.vstack([
-        np.random.randn(100, 2) + [0, 0],
-        np.random.randn(100, 2) + [5, 5],
-        np.random.randn(100, 2) + [0, 5]
-    ])
+    X_cluster = np.vstack(
+        [
+            np.random.randn(100, 2) + [0, 0],
+            np.random.randn(100, 2) + [5, 5],
+            np.random.randn(100, 2) + [0, 5],
+        ]
+    )
 
     # 肘部法则选择 K
     inertias = []

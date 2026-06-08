@@ -25,6 +25,7 @@
 # 嵌套结构浅拷贝演示
 # ─────────────────────────────────────────────────────────────
 
+
 def demo_shallow_copy_behavior():
     """
     ┌─────────────────────────────────────────────────────────┐
@@ -44,36 +45,33 @@ def demo_shallow_copy_behavior():
     │                                                         │
     └─────────────────────────────────────────────────────────┘
     """
-    data = [
-        [1, 2, 3],
-        {"a": [4, 5]},
-        (6, 7)
-    ]
+    data = [[1, 2, 3], {"a": [4, 5]}, (6, 7)]
     shallow = copy.copy(data)
 
     print("=== 浅拷贝后的状态 ===")
-    print(f"外层相同? {data is shallow}")           # False
-    print(f"子列表相同? {data[0] is shallow[0]}")    # True
-    print(f"子字典相同? {data[1] is shallow[1]}")    # True
-    print(f"子元组相同? {data[2] is shallow[2]}")    # True
+    print(f"外层相同? {data is shallow}")  # False
+    print(f"子列表相同? {data[0] is shallow[0]}")  # True
+    print(f"子字典相同? {data[1] is shallow[1]}")  # True
+    print(f"子元组相同? {data[2] is shallow[2]}")  # True
 
     # 修改浅拷贝的外层 — 不影响原对象
     shallow.append("new")
-    print(f"\n添加外层元素后:")
+    print("\n添加外层元素后:")
     print(f"  data: {data}")
     print(f"  shallow: {shallow}")
 
     # 修改浅拷贝的子列表 — 影响原对象!
     shallow[0].append(999)
-    print(f"\n修改子列表后:")
-    print(f"  data: {data}")           # [[1, 2, 3, 999], ...] — 变了!
+    print("\n修改子列表后:")
+    print(f"  data: {data}")  # [[1, 2, 3, 999], ...] — 变了!
     print(f"  shallow: {shallow}")
 
     # 替换浅拷贝的子列表 — 不影响原对象
     shallow[0] = ["new list"]
-    print(f"\n替换子列表后:")
-    print(f"  data: {data}")           # 不变
+    print("\n替换子列表后:")
+    print(f"  data: {data}")  # 不变
     print(f"  shallow: {shallow}")
+
 
 # ─────────────────────────────────────────────────────────────
 # 🎯 面试陷阱:多维列表的复制
@@ -86,12 +84,13 @@ def demo_shallow_copy_behavior():
 # ❌ 错误写法 — 所有行共享同一个内层列表
 wrong = [[0] * 3] * 3
 wrong[0][0] = 1
-print(wrong)   # [[1, 0, 0], [1, 0, 0], [1, 0, 0]] — 三行都变了!
+print(wrong)  # [[1, 0, 0], [1, 0, 0], [1, 0, 0]] — 三行都变了!
 
 # ❌ 另一个错误写法 — 用 copy
 import copy
+
 matrix = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
-wrong2 = copy.copy(matrix)   # 浅拷贝!子列表仍然共享
+wrong2 = copy.copy(matrix)  # 浅拷贝!子列表仍然共享
 
 # ✅ 正确写法1 — 列表推导式(每行是独立创建的)
 right1 = [[0] * 3 for _ in range(3)]

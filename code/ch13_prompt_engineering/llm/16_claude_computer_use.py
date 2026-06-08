@@ -24,19 +24,21 @@ _client = anthropic.Anthropic()
 
 def call_claude_computer_use(screenshot_b64: str, user_msg: str):
     # Computer Use 工具定义
-    tools = [{
-        "name": "computer",
-        "description": "控制计算机：截图、点击、键入、滚动",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "action": {"enum": ["screenshot", "left_click", "type", "key", "scroll", "wait"]},
-                "coordinate": {"type": "array", "items": {"type": "integer"}},
-                "text": {"type": "string"}
+    tools = [
+        {
+            "name": "computer",
+            "description": "控制计算机：截图、点击、键入、滚动",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "action": {"enum": ["screenshot", "left_click", "type", "key", "scroll", "wait"]},
+                    "coordinate": {"type": "array", "items": {"type": "integer"}},
+                    "text": {"type": "string"},
+                },
+                "required": ["action"],
             },
-            "required": ["action"]
         }
-    }]
+    ]
 
     # System Prompt 关键要素
     COMPUTER_USE_SYSTEM = """
@@ -58,22 +60,21 @@ def call_claude_computer_use(screenshot_b64: str, user_msg: str):
         max_tokens=2048,
         system=COMPUTER_USE_SYSTEM,
         tools=tools,
-        messages=[{
-            "role": "user",
-            "content": [
-                {"type": "image", "source": {"type": "base64", "data": screenshot_b64}},
-                {"type": "text", "text": user_msg}
-            ]
-        }]
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "data": screenshot_b64}},
+                    {"type": "text", "text": user_msg},
+                ],
+            }
+        ],
     )
 
 
 if __name__ == "__main__":
     # 使用一个空白 1x1 PNG 作为占位截图
     fake_png = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"\x00" * 50).decode()
-    response = call_claude_computer_use(
-        fake_png,
-        "在搜索框中输入 'Python tutorial' 然后点击搜索按钮"
-    )
+    response = call_claude_computer_use(fake_png, "在搜索框中输入 'Python tutorial' 然后点击搜索按钮")
     for block in response.content:
         print(f"[{block.type}]", getattr(block, "text", None) or getattr(block, "input", None))
