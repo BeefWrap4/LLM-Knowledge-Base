@@ -121,7 +121,15 @@ jobs:
         working-directory: code
         env:
           LLM_MOCK: "1"  # CI mock 模式: 不需真实 API key, 跑 199 个 llm 例子全过
-        run: python scripts/run_all_examples.py --tier llm --parallel 4 --timeout 180
+        run: |
+          python scripts/run_all_examples.py --tier llm --parallel 4 --timeout 180 2>&1 | tee llm-tier.log
+      - name: Upload llm-tier log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: llm-tier-log
+          path: code/llm-tier.log
+          retention-days: 7
 
   # ============================================================
   # 4. 总结: 全部通过才标绿 ✓
