@@ -25,10 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY code/requirements-core.txt code/requirements-llm.txt code/requirements-gpu.txt /build/
 
 # 安装 core + llm (默认), GPU 单独 ARG
-# pypi.org 作主, Tsinghua 作 fallback (Tsinghua 漏包如 google-generativeai, pip 单 index-url 不会自动回退)
-RUN pip config set global.index-url https://pypi.org/simple \
-    && pip config set global.extra-index-url ${PIP_INDEX_URL} \
-    && pip install --no-cache-dir --upgrade pip \
+# 直连 pypi.org (GitHub Actions US runner 访问 Tsinghua 超时/不可达)
+RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /build/requirements-llm.txt
 
 # 安装国内源 helper (ModelScope / huggingface_hub)
