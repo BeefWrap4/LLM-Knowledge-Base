@@ -176,7 +176,13 @@ def download_hf_mirror(repo_id: str, local_dir: Path) -> bool:
     try:
         from huggingface_hub import snapshot_download
 
-        snapshot_download(repo_id=repo_id, local_dir=str(local_dir), env=env)
+        # max_workers=4 并行下载, 比默认 8 更稳 (CDN 限流时不会拖慢)
+        snapshot_download(
+            repo_id=repo_id,
+            local_dir=str(local_dir),
+            env=env,
+            max_workers=4,
+        )
         return True
     except ImportError:
         print("  [WARN] huggingface_hub 未安装, pip install huggingface_hub")

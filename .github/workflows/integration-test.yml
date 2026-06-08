@@ -24,7 +24,7 @@ jobs:
   integration:
     name: 4 项集成测试 (本地栈)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     services:
       # 内置 Redis (Ubuntu 自带, 启动快)
       redis:
