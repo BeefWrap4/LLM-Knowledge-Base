@@ -91,7 +91,17 @@ jobs:
 
       - name: Run all core/ examples
         working-directory: code
-        run: python scripts/run_all_examples.py --tier core --parallel 4 --timeout 60
+        env:
+          LLM_MOCK: "1"  # CI mock 模式
+        run: |
+          python scripts/run_all_examples.py --tier core --parallel 4 --timeout 60 2>&1 | tee coretier.log
+      - name: Upload coretier log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coretier-log
+          path: code/coretier.log
+          retention-days: 7
 
   # ============================================================
   # 3. 跑通所有 llm/ 例子 (~5 min, mock 模式)
