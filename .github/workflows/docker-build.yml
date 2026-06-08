@@ -76,8 +76,9 @@ jobs:
       - name: Test image (smoke)
         run: |
           # branch push 时 steps.meta.outputs.version 为空, 用 :latest (metadata-action 必生成)
+          # 只测 core 导入 (Dockerfile 只装 core, llm deps 用户按需装)
           docker run --rm \
             -e LLM_MOCK=1 \
             -w /app/code \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            python -c "from shared.llm_client import UnifiedClient; c = UnifiedClient(); print('OK', c.provider.name)"
+            python -c "import sys; sys.path.insert(0, '/app/code'); from shared.env import load_env; from shared.gpu_guard import require_nvidia_gpu; print('OK core imports work')"
