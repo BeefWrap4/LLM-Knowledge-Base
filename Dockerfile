@@ -24,10 +24,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 先复制 requirements (利用 Docker layer cache, 依赖不变时不重新安装)
 COPY code/requirements-core.txt code/requirements-llm.txt code/requirements-gpu.txt /build/
 
-# 安装 core + llm (默认), GPU 单独 ARG
-# 直连 pypi.org (GitHub Actions US runner 访问 Tsinghua 超时/不可达)
+# 安装 core only (Dockerfile 只打包代码, llm/gpu 依赖在运行时按需装)
+# 之前 v1.0.0-v1.0.5 都装 llm, 但 llm 依赖树巨大 (~5GB, 包含 transformers, pydantic-ai, haystack 等)
+# 在 CI 上 pip install 经常超时或包冲突, 改为只装 core, 让用户按需 `pip install -r requirements-llm.txt`
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r /build/requirements-llm.txt
+    && pip install --no-cache-dir -r /build/requirements-core.txt
 
 # 安装国内源 helper (ModelScope / huggingface_hub)
 RUN pip install --no-cache-dir modelscope huggingface_hub
