@@ -41,16 +41,26 @@ def run_one(script: Path, timeout: int = 30) -> tuple[str, bool, str, float]:
         cmd = [PY, str(script)]
         if "/gpu/" in rel or "\\gpu\\" in rel:
             cmd.append("--mock")
+        # 显式传 env (确保 LLM_MOCK=1 等 CI 变量传到子进程)
+        # 跨平台编码强制 UTF-8 (避免 Windows cp936 vs Linux utf-8 差异)
+        child_env = os.environ.copy()
+        child_env["PYTHONIOENCODING"] = "utf-8"
+        child_env["PYTHONUTF8"] = "1"
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=timeout,
             cwd=str(CODE),
+            env=child_env,
         )
         elapsed = time.perf_counter() - t0
         passed = result.returncode == 0
-        out = result.stdout[-200:] + result.stderr[-200:]  # last 200 chars
+        # 失败时多留 stderr (CI 调试关键)
+        if passed:
+            out = (result.stdout or "")[-100:] + (result.stderr or "")[-100:]
+        else:
+            out = (result.stderr or "[no stderr]")[-800:] + "\n--- stdout ---\n" + (result.stdout or "")[-200:]
         return rel, passed, out, elapsed
     except subprocess.TimeoutExpired:
         elapsed = time.perf_counter() - t0
