@@ -70,17 +70,23 @@ jobs:
 
       - name: 启动 Redis 健康检查
         run: |
+          # ubuntu-latest 不预装 redis-cli / postgresql-client, 先用 Python 装客户端
+          pip install --quiet redis psycopg2-binary
           sleep 5
-          redis-cli -h localhost -p 16379 ping
+          python -c "import redis; r=redis.Redis(host='localhost', port=16379, db=0, socket_connect_timeout=3); print('  PING:', r.ping())"
           echo "  ✓ Redis 16379 ready"
 
       - name: 启动 pgvector 健康检查
-        env:
-          PGPASSWORD: llmkb_test
         run: |
           sleep 10
-          psql -h localhost -U llmkb -d vectordb -c "CREATE EXTENSION IF NOT EXISTS vector" -p 15432
-          echo "  ✓ pgvector 15432 ready"
+          python -c "
+import psycopg2
+c = psycopg2.connect(host='localhost', port=15432, user='llmkb', password='llmkb_test', dbname='vectordb')
+c.autocommit = True
+c.cursor().execute('CREATE EXTENSION IF NOT EXISTS vector')
+c.close()
+print('  ✓ pgvector 15432 ready')
+"
 
       - name: 下载真实模型 (国内源, 3 个 required 模型, ~1.7GB)
         working-directory: code
