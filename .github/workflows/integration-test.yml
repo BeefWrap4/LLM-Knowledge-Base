@@ -82,12 +82,13 @@ jobs:
           psql -h localhost -U llmkb -d vectordb -c "CREATE EXTENSION IF NOT EXISTS vector" -p 15432
           echo "  ✓ pgvector 15432 ready"
 
-      - name: 下载真实模型 (国内源, ~3GB)
+      - name: 下载真实模型 (国内源, 3 个 required 模型, ~1.7GB)
         working-directory: code
         env:
           HF_ENDPOINT: https://hf-mirror.com
         run: |
-          python scripts/download_models.py --all
+          # 用 --required-only 避免触发 auth-gated 16GB Llama 模型
+          python scripts/download_models.py --required-only
 
       - name: "跑集成测试 (4 项: Embedding + Redis + pgvector + LLM)"
         working-directory: code

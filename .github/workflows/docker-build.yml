@@ -75,7 +75,9 @@ jobs:
 
       - name: Test image (smoke)
         run: |
+          # branch push 时 steps.meta.outputs.version 为空, 用 :latest (metadata-action 必生成)
           docker run --rm \
-            -e DEEPSEEK_API_KEY="" \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }} \
+            -e LLM_MOCK=1 \
+            -w /app/code \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
             python -c "from shared.llm_client import UnifiedClient; c = UnifiedClient(); print('OK', c.provider.name)"

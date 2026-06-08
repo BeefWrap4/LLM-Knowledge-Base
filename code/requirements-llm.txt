@@ -29,3 +29,11 @@ bert-score>=0.3
 sentence-transformers>=3.0
 sacremoses>=0.0.53
 sacrebleu>=2.4
+
+# 模型下载与本地存储 (download_models.py 用)
+huggingface_hub>=0.20
+modelscope>=1.10
+
+# 集成测试 (test_integration.py 用 — Redis / pgvector)
+redis>=5.0
+psycopg2-binary>=2.9
