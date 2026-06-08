@@ -89,7 +89,7 @@ jobs:
         run: |
           python scripts/download_models.py --all
 
-      - name: 跑集成测试 (4 项: Embedding + Redis + pgvector + LLM)
+      - name: "跑集成测试 (4 项: Embedding + Redis + pgvector + LLM)"
         working-directory: code
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}

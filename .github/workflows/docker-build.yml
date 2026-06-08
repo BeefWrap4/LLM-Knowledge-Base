@@ -70,7 +70,8 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Image digest
-        run: echo "✓ 镜像已推送: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}"
+        run: |
+          echo "✓ 镜像已推送: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}"
 
       - name: Test image (smoke)
         run: |
