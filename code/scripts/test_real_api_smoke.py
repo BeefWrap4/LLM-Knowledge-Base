@@ -45,10 +45,15 @@ REPRESENTATIVE_FILES = [
     "ch18_llm_frameworks/llm/01_langchain_basic_chain.py",
     "ch20_llmops/llm/07_langsmith_prompt_debug.py",
     "ch22_data_eng/llm/04_self_instruct.py",
-    "ch27_reasoning_ttc/llm/01_o3_api_basic.py",  # 需 OPENAI_API_KEY, 否则友好抛错
+    "ch27_reasoning_ttc/llm/01_o3_api_basic.py",  # 需 OPENAI_API_KEY, 缺则跳过
     "ch29_context_engineering/llm/12_full_context_pipeline.py",
     "ch13_prompt_engineering/llm/04_zero_shot_cot.py",  # 替补 1 (ch16 无 llm/)
 ]
+
+# 需要额外 vendor key 的文件: 缺对应 key 时跳过 (不算失败)
+REQUIRES_EXTRA_KEY = {
+    "ch27_reasoning_ttc/llm/01_o3_api_basic.py": "OPENAI_API_KEY",
+}
 
 # 备用文件 (若上面有缺失)
 FALLBACK_FILES = [
@@ -151,6 +156,12 @@ def main() -> int:
         path = CODE / f
         if not path.exists():
             print(f"  [SKIP] {rel} (文件不存在)")
+            continue
+
+        # 需额外 vendor key 的文件: 缺则跳过, 不算失败
+        extra_key = REQUIRES_EXTRA_KEY.get(rel)
+        if extra_key and not os.environ.get(extra_key, "").strip():
+            print(f"  [SKIP] {rel} (需 {extra_key}, 未配)")
             continue
 
         print(f"--- {rel} ---")
