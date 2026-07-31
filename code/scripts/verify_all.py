@@ -41,6 +41,56 @@ PYTHON_REFERENCE_RE = re.compile(
     r"((?:code[\\/])?ch\d{2}_[A-Za-z0-9_.-]+[\\/]"
     r"(?:core|llm|gpu)[\\/][A-Za-z0-9_.-]+\.py)"
 )
+MERMAID_START_RE = re.compile(r"^\s*```mermaid\s*$")
+MARKDOWN_FENCE_END_RE = re.compile(r"^\s*```\s*$")
+MERMAID_ALLOWED_DIAGRAMS = {
+    "architecture-beta",
+    "block-beta",
+    "C4Component",
+    "C4Container",
+    "C4Context",
+    "C4Deployment",
+    "C4Dynamic",
+    "classDiagram",
+    "classDiagram-v2",
+    "erDiagram",
+    "flowchart",
+    "gantt",
+    "gitGraph",
+    "graph",
+    "journey",
+    "kanban",
+    "mindmap",
+    "packet-beta",
+    "pie",
+    "quadrantChart",
+    "requirementDiagram",
+    "sankey-beta",
+    "sequenceDiagram",
+    "stateDiagram",
+    "stateDiagram-v2",
+    "timeline",
+    "xychart-beta",
+    "zenuml",
+}
+MERMAID_RISK_PATTERNS = (
+    (
+        "unquoted nested '[' in a square node label",
+        re.compile(r'\b[A-Za-z_][A-Za-z0-9_-]*\[(?!["(])[^\]\r\n]*\['),
+    ),
+    (
+        "unquoted '{' or '}' in a square node label",
+        re.compile(r'\b[A-Za-z_][A-Za-z0-9_-]*\[(?!["(])[^\]\r\n]*[{}]'),
+    ),
+    (
+        "unquoted '(' or ')' in a square node label",
+        re.compile(r'\b[A-Za-z_][A-Za-z0-9_-]*\[(?!["(])[^\]\r\n]*[()]'),
+    ),
+    (
+        "mismatched quoted square node label",
+        re.compile(r'\b[A-Za-z_][A-Za-z0-9_-]*\["[^"\r\n]*"\)'),
+    ),
+)
 
 
 def canonical_chapters() -> list[Path]:
@@ -82,6 +132,7 @@ def check_repo_consistency() -> bool:
     missing_locks = [path.name for path in required_locks if not path.is_file()]
     gpu_contract_failures = find_gpu_mock_contract_failures()
     dynamic_execution_failures = find_dynamic_execution_failures(examples)
+    mermaid_blocks, mermaid_format_failures = inspect_mermaid_blocks()
 
     duplicate_headings: list[str] = []
     for chapter in chapters:
@@ -116,6 +167,7 @@ def check_repo_consistency() -> bool:
     print(f"  Missing CI locks: {len(missing_locks)}")
     print(f"  GPU mock contract failures: {len(gpu_contract_failures)}")
     print(f"  Builtin eval/exec calls: {len(dynamic_execution_failures)}")
+    print(f"  Mermaid blocks/format failures: {mermaid_blocks}/{len(mermaid_format_failures)}")
     for issue in (
         duplicate_headings
         + missing_metadata
@@ -123,6 +175,7 @@ def check_repo_consistency() -> bool:
         + missing_locks
         + gpu_contract_failures
         + dynamic_execution_failures
+        + mermaid_format_failures
     )[:20]:
         print(f"  [FAIL] {issue}")
 
@@ -137,8 +190,61 @@ def check_repo_consistency() -> bool:
             not missing_locks,
             not gpu_contract_failures,
             not dynamic_execution_failures,
+            not mermaid_format_failures,
         ]
     )
+
+
+def inspect_mermaid_blocks() -> tuple[int, list[str]]:
+    """Fail closed on Mermaid constructs known to break Obsidian's parser.
+
+    This lightweight CI gate covers fence integrity, diagram declarations, malformed quoted
+    square nodes, and parser-sensitive characters in unquoted square labels. Exact release
+    acceptance still uses the Mermaid version bundled with the target Obsidian installation.
+    """
+    total = 0
+    failures: list[str] = []
+    for markdown in sorted(REPO.glob("*.md")):
+        lines = markdown.read_text(encoding="utf-8").splitlines()
+        inside = False
+        start_line = 0
+        body: list[tuple[int, str]] = []
+        for line_no, line in enumerate(lines, 1):
+            if not inside and MERMAID_START_RE.match(line):
+                inside = True
+                start_line = line_no
+                body = []
+                continue
+            if not inside:
+                continue
+            if MARKDOWN_FENCE_END_RE.match(line):
+                total += 1
+                meaningful = [
+                    value.strip()
+                    for _, value in body
+                    if value.strip() and not value.lstrip().startswith("%%")
+                ]
+                if not meaningful:
+                    failures.append(f"{markdown.name}:{start_line} empty Mermaid block")
+                else:
+                    diagram = meaningful[0].split(maxsplit=1)[0]
+                    if diagram not in MERMAID_ALLOWED_DIAGRAMS:
+                        failures.append(
+                            f"{markdown.name}:{start_line + 1} unsupported Mermaid diagram: {diagram}"
+                        )
+                for body_line_no, body_line in body:
+                    for description, pattern in MERMAID_RISK_PATTERNS:
+                        if pattern.search(body_line):
+                            failures.append(
+                                f"{markdown.name}:{body_line_no} {description}; quote the label"
+                            )
+                inside = False
+                body = []
+                continue
+            body.append((line_no, line))
+        if inside:
+            failures.append(f"{markdown.name}:{start_line} unclosed Mermaid fence")
+    return total, failures
 
 
 def _dotted_call_name(node: ast.expr) -> str:

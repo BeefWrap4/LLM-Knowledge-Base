@@ -2,6 +2,15 @@
 
 > **LLM-Knowledge-Base** 项目演进与发布记录。
 
+## Unreleased
+
+### Obsidian 与 Markdown 兼容性
+
+- 修复 7 个在 Obsidian 1.12.7 / Mermaid 11.4.1 中无法解析的图表，包括非法 `tree`
+  声明、节点闭合符错误，以及未加引号的 `[MASK]`、数学花括号和函数圆括号标签。
+- 为 261 个 Mermaid 代码块增加 fail-closed 结构门禁，阻止未知图表类型、未闭合代码围栏和
+  常见的节点标签解析冲突再次进入主分支。
+
 ## v1.1.0 (2026-07-31) — 40 章审校与 fail-closed 验收
 
 ### 教程与来源

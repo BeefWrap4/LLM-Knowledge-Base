@@ -143,6 +143,77 @@ def test_current_repository_snapshot() -> None:
         assert (verify_all.CODE / f"requirements-{tier}.ci.lock").is_file()
 
 
+def test_current_mermaid_blocks_are_obsidian_safe() -> None:
+    total, failures = verify_all.inspect_mermaid_blocks()
+
+    assert total == 261
+    assert failures == []
+
+
+def test_mermaid_gate_rejects_unclosed_fence(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "bad.md").write_text("```mermaid\ntree\nroot --> leaf\n", encoding="utf-8")
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_mermaid_blocks()
+
+    assert total == 0
+    assert failures == ["bad.md:1 unclosed Mermaid fence"]
+
+
+def test_mermaid_gate_rejects_unknown_diagram(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "bad.md").write_text(
+        "```mermaid\ntree\nroot --> leaf\n```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_mermaid_blocks()
+
+    assert total == 1
+    assert failures == ["bad.md:2 unsupported Mermaid diagram: tree"]
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "NODE[全[MASK]序列]",
+        "NODE[Z ∈ R^{N×d}]",
+        "NODE[epsilon(z_t, t)]",
+        'NODE["块1 [16]")',
+    ],
+)
+def test_mermaid_gate_rejects_parser_sensitive_unquoted_labels(
+    monkeypatch, tmp_path: Path, label: str
+) -> None:
+    (tmp_path / "bad.md").write_text(
+        f"```mermaid\nflowchart TD\n{label}\n```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_mermaid_blocks()
+
+    assert total == 1
+    assert len(failures) == 1
+    assert "quote the label" in failures[0]
+
+
+def test_mermaid_gate_accepts_quoted_labels_and_cylinder_shape(
+    monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "good.md").write_text(
+        "```mermaid\n"
+        "flowchart TD\n"
+        'MASK["全 [MASK] 序列"] --> MATH["epsilon(z_t, t) ∈ R^{N×d}"]\n'
+        "MATH --> CACHE[(Redis Cache)]\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    assert verify_all.inspect_mermaid_blocks() == (1, [])
+
+
 def test_python_reference_gate_detects_missing_file(monkeypatch, tmp_path: Path) -> None:
     code = tmp_path / "code"
     code.mkdir()
