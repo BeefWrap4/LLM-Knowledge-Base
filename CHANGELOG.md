@@ -27,7 +27,7 @@
 - Compose 支持隔离项目名，补齐 pgvector `15432` 映射及可配置 Redis/Postgres 连接。
 - 修复 Flash Attention naive/SDPA causal 语义不一致及多个示例缺失 `OK` 契约。
 
-> 发布标签只应在远端 CI 通过后创建；本节是候选发布说明。
+> `v1.1.0` 标签已在远端 Verify 与 Docker/GHCR 工作流全部通过后发布。
 
 ## Legacy Wave 14.0 snapshot (2026-06-07)
 
