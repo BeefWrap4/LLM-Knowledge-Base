@@ -12,6 +12,12 @@
   Mermaid 的 Markdown 词法器误判为不受支持的列表或引用块。
 - 为 261 个 Mermaid 代码块增加 fail-closed 结构门禁，阻止未知图表类型、未闭合代码围栏和
   常见的节点标签解析冲突及不受支持 Markdown 标签再次进入主分支。
+- 全量审计 99 份 Obsidian 可见维护文档，修复 4 个错列表格、2 个会被内部三反引号提前
+  终止的 Markdown 示例、1 处标题层级跳跃和 1 处未转义的价格单位写法。
+- 将 29 个代码章节 README 的教程入口统一为仓库内直接相对路径，移除对本机
+  `code/tutorial` 符号链接的渲染依赖。
+- 新增 Markdown 渲染门禁，覆盖代码围栏、数学定界符、标题层级与重复标题、表格列数、
+  WikiLinks、本地链接、Callout、YAML Frontmatter、HTML 注释/容器和符号链接路径。
 
 ## v1.1.0 (2026-07-31) — 40 章审校与 fail-closed 验收
 

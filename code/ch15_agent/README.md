@@ -1,6 +1,6 @@
 # Ch15 — Agent 智能体开发
 
-> 教程: [`../tutorial/15_Agent智能体开发.md`](../tutorial/15_Agent智能体开发.md)
+> 教程: [`../../15_Agent智能体开发.md`](../../15_Agent智能体开发.md)
 
 ## 例子
 

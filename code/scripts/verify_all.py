@@ -29,6 +29,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import unquote
 
 CODE = Path(__file__).resolve().parent.parent
 REPO = CODE.parent
@@ -43,6 +44,16 @@ PYTHON_REFERENCE_RE = re.compile(
 )
 MERMAID_START_RE = re.compile(r"^\s*```mermaid\s*$")
 MARKDOWN_FENCE_END_RE = re.compile(r"^\s*```\s*$")
+MARKDOWN_FENCE_START_RE = re.compile(r"^\s{0,3}(`{3,}|~{3,})(?:\s*.*)?$")
+MARKDOWN_CALLOUT_PREFIX_RE = re.compile(r"^\s*>\s*\[!")
+MARKDOWN_CALLOUT_RE = re.compile(r"^\s*>\s*\[![A-Za-z0-9_-]+\][+-]?(?:\s+.*)?$")
+MARKDOWN_TABLE_SEPARATOR_CELL_RE = re.compile(r"^:?-{3,}:?$")
+MARKDOWN_BLOCK_HTML_TAG_RE = re.compile(
+    r"<\s*(/?)\s*(details|summary|div|table|thead|tbody|tfoot|tr|td|th)\b[^>]*>",
+    re.IGNORECASE,
+)
+MARKDOWN_LINK_TARGET_RE = re.compile(r"!?\[[^\]\r\n]*\]\(\s*(<[^>\r\n]+>|[^\s)]+)")
+OBSIDIAN_WIKILINK_RE = re.compile(r"!?\[\[([^\]\r\n]+)\]\]")
 MERMAID_ALLOWED_DIAGRAMS = {
     "architecture-beta",
     "block-beta",
@@ -121,6 +132,23 @@ def canonical_chapters() -> list[Path]:
     ]
 
 
+def markdown_documents() -> list[Path]:
+    """Return reader-facing Markdown documents rendered by the Obsidian vault.
+
+    Generated model cards and hidden tool/cache directories are deliberately excluded: they
+    are dependency artifacts rather than maintained tutorial pages.
+    """
+    documents: list[Path] = []
+    for path in REPO.rglob("*.md"):
+        relative = path.relative_to(REPO)
+        if any(part.startswith(".") for part in relative.parts):
+            continue
+        if relative.parts[:2] == ("code", "models"):
+            continue
+        documents.append(path)
+    return sorted(documents)
+
+
 def check_wiki_links() -> bool:
     print("\n--- [1/10] Wiki link integrity ---")
     r = subprocess.run(
@@ -152,6 +180,7 @@ def check_repo_consistency() -> bool:
     gpu_contract_failures = find_gpu_mock_contract_failures()
     dynamic_execution_failures = find_dynamic_execution_failures(examples)
     mermaid_blocks, mermaid_format_failures = inspect_mermaid_blocks()
+    markdown_count, markdown_format_failures = inspect_markdown_rendering()
 
     duplicate_headings: list[str] = []
     for chapter in chapters:
@@ -187,6 +216,7 @@ def check_repo_consistency() -> bool:
     print(f"  GPU mock contract failures: {len(gpu_contract_failures)}")
     print(f"  Builtin eval/exec calls: {len(dynamic_execution_failures)}")
     print(f"  Mermaid blocks/format failures: {mermaid_blocks}/{len(mermaid_format_failures)}")
+    print(f"  Markdown documents/format failures: {markdown_count}/{len(markdown_format_failures)}")
     for issue in (
         duplicate_headings
         + missing_metadata
@@ -195,6 +225,7 @@ def check_repo_consistency() -> bool:
         + gpu_contract_failures
         + dynamic_execution_failures
         + mermaid_format_failures
+        + markdown_format_failures
     )[:20]:
         print(f"  [FAIL] {issue}")
 
@@ -210,6 +241,7 @@ def check_repo_consistency() -> bool:
             not gpu_contract_failures,
             not dynamic_execution_failures,
             not mermaid_format_failures,
+            not markdown_format_failures,
         ]
     )
 
@@ -266,6 +298,380 @@ def inspect_mermaid_blocks() -> tuple[int, list[str]]:
         if inside:
             failures.append(f"{markdown.name}:{start_line} unclosed Mermaid fence")
     return total, failures
+
+
+def _split_markdown_table_row(line: str) -> list[str]:
+    """Split one Markdown table row without treating escaped/code-span pipes as separators."""
+    value = line.strip()
+    if value.startswith("|"):
+        value = value[1:]
+    if value.endswith("|") and not value.endswith(r"\|"):
+        value = value[:-1]
+
+    cells: list[str] = []
+    current: list[str] = []
+    backtick_run = 0
+    escaped = False
+    index = 0
+    while index < len(value):
+        char = value[index]
+        if escaped:
+            current.append(char)
+            escaped = False
+            index += 1
+            continue
+        if char == "\\":
+            current.append(char)
+            escaped = True
+            index += 1
+            continue
+        if char == "`":
+            run_end = index
+            while run_end < len(value) and value[run_end] == "`":
+                run_end += 1
+            run_length = run_end - index
+            if backtick_run == 0:
+                backtick_run = run_length
+            elif backtick_run == run_length:
+                backtick_run = 0
+            current.append(value[index:run_end])
+            index = run_end
+            continue
+        if char == "|" and backtick_run == 0:
+            cells.append("".join(current).strip())
+            current = []
+        else:
+            current.append(char)
+        index += 1
+    cells.append("".join(current).strip())
+    return cells
+
+
+def _mask_inline_code(line: str) -> str:
+    """Mask inline code spans before checking reader-facing Markdown delimiters."""
+    result: list[str] = []
+    index = 0
+    while index < len(line):
+        if line[index] != "`":
+            result.append(line[index])
+            index += 1
+            continue
+        run_end = index
+        while run_end < len(line) and line[run_end] == "`":
+            run_end += 1
+        marker = line[index:run_end]
+        close = line.find(marker, run_end)
+        if close == -1:
+            result.append(line[index:])
+            break
+        result.append(" " * (close + len(marker) - index))
+        index = close + len(marker)
+    return "".join(result)
+
+
+def _count_unescaped_marker(text: str, marker: str) -> int:
+    count = 0
+    start = 0
+    while True:
+        index = text.find(marker, start)
+        if index == -1:
+            return count
+        backslashes = 0
+        cursor = index - 1
+        while cursor >= 0 and text[cursor] == "\\":
+            backslashes += 1
+            cursor -= 1
+        if backslashes % 2 == 0:
+            count += 1
+        start = index + len(marker)
+
+
+def _count_inline_math_markers(text: str) -> int:
+    count = 0
+    for index, char in enumerate(text):
+        if char != "$":
+            continue
+        if (index > 0 and text[index - 1] == "$") or (index + 1 < len(text) and text[index + 1] == "$"):
+            continue
+        backslashes = 0
+        cursor = index - 1
+        while cursor >= 0 and text[cursor] == "\\":
+            backslashes += 1
+            cursor -= 1
+        if backslashes % 2 == 0:
+            count += 1
+    return count
+
+
+def _is_external_markdown_target(target: str) -> bool:
+    return bool(
+        not target or target.startswith(("#", "//", "/")) or re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", target)
+    )
+
+
+def _first_symlink_component(path: Path) -> Path | None:
+    current = Path(path.anchor)
+    for part in path.parts[1:]:
+        current /= part
+        if current.is_symlink():
+            return current
+    return None
+
+
+def _resolve_wikilink(
+    markdown: Path,
+    target: str,
+    *,
+    vault_relative_files: set[str],
+    vault_basenames: set[str],
+    vault_markdown_stems: set[str],
+) -> bool:
+    """Approximate Obsidian's shortest-path WikiLink resolution on a Windows vault."""
+    value = unquote(target).strip().replace("\\", "/")
+    if not value:
+        return True
+    relative_candidate = (markdown.parent / value).resolve()
+    try:
+        relative_key = relative_candidate.relative_to(REPO.resolve()).as_posix().casefold()
+    except ValueError:
+        relative_key = ""
+    if relative_key in vault_relative_files:
+        return True
+    if Path(value).suffix:
+        return Path(value).name.casefold() in vault_basenames
+    return f"{value}.md".casefold() in vault_relative_files or Path(value).name.casefold() in (
+        vault_markdown_stems
+    )
+
+
+def inspect_markdown_rendering() -> tuple[int, list[str]]:
+    """Detect hard Markdown structures that render incorrectly or hide content in Obsidian.
+
+    The gate intentionally avoids subjective style checks. It validates all maintained Markdown
+    pages for balanced fences, display-math/frontmatter/comment delimiters, well-formed WikiLinks
+    and callouts, consistent table columns, and balanced block HTML containers.
+    """
+    documents = markdown_documents()
+    failures: list[str] = []
+    vault_files = [
+        path for path in REPO.rglob("*") if path.is_file() and ".git" not in path.relative_to(REPO).parts
+    ]
+    vault_relative_files = {path.relative_to(REPO).as_posix().casefold() for path in vault_files}
+    vault_basenames = {path.name.casefold() for path in vault_files}
+    vault_markdown_stems = {path.stem.casefold() for path in vault_files if path.suffix.casefold() == ".md"}
+
+    for markdown in documents:
+        relative = markdown.relative_to(REPO).as_posix()
+        lines = markdown.read_text(encoding="utf-8").splitlines()
+        fence_char: str | None = None
+        fence_length = 0
+        fence_line = 0
+        fence_info = ""
+        math_line: int | None = None
+        frontmatter_line: int | None = None
+        html_comment_line: int | None = None
+        html_stack: list[tuple[str, int]] = []
+        previous_heading_level: int | None = None
+        heading_lines: dict[tuple[int, str], int] = {}
+
+        first_content = next((index for index, line in enumerate(lines) if line.strip()), None)
+        if first_content is not None and lines[first_content].strip() == "---":
+            frontmatter_line = first_content + 1
+
+        line_index = 0
+        while line_index < len(lines):
+            line_no = line_index + 1
+            line = lines[line_index]
+
+            if fence_char is not None:
+                close_re = re.compile(rf"^\s{{0,3}}{re.escape(fence_char)}{{{fence_length},}}\s*$")
+                if close_re.match(line):
+                    fence_char = None
+                    fence_length = 0
+                    fence_line = 0
+                    fence_info = ""
+                elif fence_info in {"markdown", "md"}:
+                    nested_fence = MARKDOWN_FENCE_START_RE.match(line)
+                    if (
+                        nested_fence
+                        and nested_fence.group(1)[0] == fence_char
+                        and len(nested_fence.group(1)) >= fence_length
+                    ):
+                        failures.append(
+                            f"{relative}:{line_no} nested fence can terminate Markdown example "
+                            f"opened at line {fence_line}; use a longer outer fence"
+                        )
+                line_index += 1
+                continue
+
+            fence_match = MARKDOWN_FENCE_START_RE.match(line)
+            if fence_match:
+                marker = fence_match.group(1)
+                fence_char = marker[0]
+                fence_length = len(marker)
+                fence_line = line_no
+                info = line[fence_match.end(1) :].strip()
+                fence_info = info.split(maxsplit=1)[0].casefold() if info else ""
+                line_index += 1
+                continue
+
+            masked = _mask_inline_code(line)
+
+            if frontmatter_line is not None:
+                if line_no != frontmatter_line and line.strip() in {"---", "..."}:
+                    frontmatter_line = None
+                line_index += 1
+                continue
+
+            if html_comment_line is not None:
+                if "-->" in masked:
+                    masked = masked.split("-->", 1)[1]
+                    html_comment_line = None
+                else:
+                    line_index += 1
+                    continue
+            if "<!--" in masked:
+                before, after = masked.split("<!--", 1)
+                masked = before
+                if "-->" not in after:
+                    html_comment_line = line_no
+
+            display_math_markers = _count_unescaped_marker(masked, "$$")
+            if display_math_markers:
+                for _ in range(display_math_markers):
+                    math_line = line_no if math_line is None else None
+                line_index += 1
+                continue
+
+            if math_line is not None:
+                line_index += 1
+                continue
+
+            if _count_inline_math_markers(masked) % 2:
+                failures.append(f"{relative}:{line_no} unbalanced inline-math '$' delimiter")
+
+            if re.match(r"^\s{0,3}#{1,6}(?!#)\S", line):
+                failures.append(f"{relative}:{line_no} heading marker is missing a following space")
+
+            heading_match = re.match(r"^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$", line)
+            if heading_match:
+                heading_level = len(heading_match.group(1))
+                heading_title = heading_match.group(2).strip()
+                if previous_heading_level is not None and heading_level > previous_heading_level + 1:
+                    failures.append(
+                        f"{relative}:{line_no} heading level jumps from H{previous_heading_level} "
+                        f"to H{heading_level}"
+                    )
+                heading_key = (heading_level, heading_title.casefold())
+                if heading_key in heading_lines:
+                    failures.append(
+                        f"{relative}:{line_no} duplicate H{heading_level} heading '{heading_title}' "
+                        f"(first at line {heading_lines[heading_key]})"
+                    )
+                else:
+                    heading_lines[heading_key] = line_no
+                previous_heading_level = heading_level
+
+            if masked.count("[[") != masked.count("]]"):
+                failures.append(f"{relative}:{line_no} unbalanced Obsidian WikiLink delimiters")
+
+            for wiki_match in OBSIDIAN_WIKILINK_RE.finditer(masked):
+                wiki_target = wiki_match.group(1).split("|", 1)[0].split("#", 1)[0]
+                if not _resolve_wikilink(
+                    markdown,
+                    wiki_target,
+                    vault_relative_files=vault_relative_files,
+                    vault_basenames=vault_basenames,
+                    vault_markdown_stems=vault_markdown_stems,
+                ):
+                    failures.append(
+                        f"{relative}:{line_no} unresolved Obsidian WikiLink target: {wiki_target}"
+                    )
+
+            for link_match in MARKDOWN_LINK_TARGET_RE.finditer(masked):
+                markdown_target = link_match.group(1).strip("<>")
+                if _is_external_markdown_target(markdown_target):
+                    continue
+                path_target = unquote(markdown_target.split("#", 1)[0].split("?", 1)[0])
+                lexical_candidate = markdown.parent / path_target.replace("/", os.sep)
+                symlink_component = _first_symlink_component(lexical_candidate.absolute())
+                if symlink_component is not None:
+                    failures.append(
+                        f"{relative}:{line_no} local Markdown target traverses symlink "
+                        f"{symlink_component}; use a portable direct path"
+                    )
+                    continue
+                candidate = lexical_candidate.resolve()
+                if not candidate.exists():
+                    failures.append(
+                        f"{relative}:{line_no} unresolved local Markdown target: {markdown_target}"
+                    )
+
+            if MARKDOWN_CALLOUT_PREFIX_RE.match(masked) and not MARKDOWN_CALLOUT_RE.match(masked):
+                failures.append(f"{relative}:{line_no} malformed Obsidian callout header")
+
+            if line_index + 1 < len(lines):
+                header_cells = _split_markdown_table_row(masked)
+                separator_cells = _split_markdown_table_row(_mask_inline_code(lines[line_index + 1]))
+                is_separator = bool(separator_cells) and all(
+                    MARKDOWN_TABLE_SEPARATOR_CELL_RE.fullmatch(cell) for cell in separator_cells
+                )
+                if "|" in masked and is_separator:
+                    expected = len(separator_cells)
+                    if len(header_cells) != expected:
+                        failures.append(
+                            f"{relative}:{line_no} table header has {len(header_cells)} cells; "
+                            f"separator has {expected}"
+                        )
+                    row_index = line_index + 2
+                    while row_index < len(lines):
+                        row = _mask_inline_code(lines[row_index])
+                        if not row.strip() or "|" not in row:
+                            break
+                        cells = _split_markdown_table_row(row)
+                        if len(cells) != expected:
+                            failures.append(
+                                f"{relative}:{row_index + 1} table row has {len(cells)} cells; "
+                                f"expected {expected}"
+                            )
+                        row_index += 1
+                    line_index = row_index
+                    continue
+
+            for html_match in MARKDOWN_BLOCK_HTML_TAG_RE.finditer(masked):
+                closing, tag = html_match.groups()
+                tag = tag.lower()
+                token = html_match.group(0)
+                if token.rstrip().endswith("/>"):
+                    continue
+                if closing:
+                    if not html_stack:
+                        failures.append(f"{relative}:{line_no} closing </{tag}> has no opener")
+                    elif html_stack[-1][0] != tag:
+                        open_tag, open_line = html_stack[-1]
+                        failures.append(
+                            f"{relative}:{line_no} closing </{tag}> mismatches "
+                            f"<{open_tag}> from line {open_line}"
+                        )
+                    else:
+                        html_stack.pop()
+                else:
+                    html_stack.append((tag, line_no))
+
+            line_index += 1
+
+        if fence_char is not None:
+            failures.append(f"{relative}:{fence_line} unclosed Markdown fence")
+        if math_line is not None:
+            failures.append(f"{relative}:{math_line} unclosed display-math block")
+        if frontmatter_line is not None:
+            failures.append(f"{relative}:{frontmatter_line} unclosed YAML frontmatter")
+        if html_comment_line is not None:
+            failures.append(f"{relative}:{html_comment_line} unclosed HTML comment")
+        for tag, open_line in reversed(html_stack):
+            failures.append(f"{relative}:{open_line} unclosed <{tag}> block")
+
+    return len(documents), failures
 
 
 def _dotted_call_name(node: ast.expr) -> str:

@@ -1,6 +1,6 @@
 # Ch13 — Prompt Engineering
 
-> 教程: [`../tutorial/13_Prompt_Engineering.md`](../tutorial/13_Prompt_Engineering.md)
+> 教程: [`../../13_Prompt_Engineering.md`](../../13_Prompt_Engineering.md)
 
 ## 例子
 

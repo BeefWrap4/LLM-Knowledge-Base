@@ -1,6 +1,6 @@
 # Ch06 — Python 内存管理与 GC
 
-> 教程: [`../tutorial/06_Python内存管理与垃圾回收.md`](../tutorial/06_Python内存管理与垃圾回收.md)
+> 教程: [`../../06_Python内存管理与垃圾回收.md`](../../06_Python内存管理与垃圾回收.md)
 
 ## 例子
 

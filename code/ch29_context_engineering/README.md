@@ -1,6 +1,6 @@
 # Ch29 — Context Engineering
 
-> 教程: [`../tutorial/29_Context_Engineering.md`](../tutorial/29_Context_Engineering.md)
+> 教程: [`../../29_Context_Engineering.md`](../../29_Context_Engineering.md)
 
 ## 例子
 

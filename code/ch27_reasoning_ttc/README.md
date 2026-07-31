@@ -1,6 +1,6 @@
 # Ch27 — 推理模型与 Test-Time Compute
 
-> 教程: [`../tutorial/27_推理模型与Test-Time_Compute.md`](../tutorial/27_推理模型与Test-Time_Compute.md)
+> 教程: [`../../27_推理模型与Test-Time_Compute.md`](../../27_推理模型与Test-Time_Compute.md)
 
 ## 例子
 

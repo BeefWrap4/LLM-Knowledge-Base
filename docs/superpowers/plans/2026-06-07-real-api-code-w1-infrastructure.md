@@ -1006,7 +1006,7 @@ git commit -m "Makefile: LLM_MOCK=1 default for test-llm/ci-llm, add download-* 
 
 - [ ] **步骤 2：在 `code/README.md` 末尾追加"硬件 × 章节矩阵"段**
 
-```markdown
+````markdown
 ## 🖥️ 硬件 × 章节矩阵
 
 按你的硬件选章节（其他章节也能跑，但需要 API Key）：
@@ -1068,7 +1068,7 @@ make download-models-default  # 1.7GB, 必须
 LLM_MOCK=1 make test-llm     # mock 测试
 DEEPSEEK_API_KEY=sk-xxx python ch15_agent/llm/01_react_basic.py  # 真实跑
 ```
-```
+````
 
 - [ ] **步骤 3：Commit**
 

@@ -67,10 +67,11 @@ code/
 # topic: Scaled Dot-Product Attention
 # section: 12.2.5
 # ---
-# See: ../tutorial/Ch12_Transformer与大模型原理.md §12.2.5
+# See: ../12_Transformer与大模型原理.md §12.2.5
 ```
 
-用相对路径 `../tutorial/` 引用教程章节。**教程文件不被修改**——所有引用是单向的。
+各章节 README 用直接相对路径 `../../NN_章节名.md` 引用仓库根目录教程，不依赖本机符号链接。
+**教程文件不被代码示例修改**——所有引用是单向的。
 
 ## 验证
 

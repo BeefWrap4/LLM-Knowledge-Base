@@ -1,6 +1,6 @@
 # Ch12 — Transformer 与大模型原理
 
-> 教程: [`../tutorial/Ch12_Transformer与大模型原理.md`](../tutorial/Ch12_Transformer与大模型原理.md)
+> 教程: [`../../12_Transformer与大模型原理.md`](../../12_Transformer与大模型原理.md)
 
 | Tier | Files | 主题 |
 |------|-------|------|

@@ -150,6 +150,124 @@ def test_current_mermaid_blocks_are_obsidian_safe() -> None:
     assert failures == []
 
 
+def test_current_markdown_documents_are_obsidian_safe() -> None:
+    total, failures = verify_all.inspect_markdown_rendering()
+
+    assert total == 99
+    assert failures == []
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        ("# Title\n```python\nprint('x')\n", "unclosed Markdown fence"),
+        ("# Title\n$$\nx + y\n", "unclosed display-math block"),
+        ("---\ntitle: Test\n", "unclosed YAML frontmatter"),
+        ("# Title\n<!-- hidden\n", "unclosed HTML comment"),
+        ("# Title\n<div>\n", "unclosed <div> block"),
+        ("# Title\n[[missing\n", "unbalanced Obsidian WikiLink delimiters"),
+        ("# Title\n> [!NOTE\n", "malformed Obsidian callout header"),
+        ("# Title\nAn unclosed $x expression\n", "unbalanced inline-math '$' delimiter"),
+        ("# Title\n### Skipped level\n", "heading level jumps from H1 to H3"),
+    ],
+)
+def test_markdown_render_gate_rejects_unclosed_structures(
+    monkeypatch, tmp_path: Path, body: str, message: str
+) -> None:
+    (tmp_path / "bad.md").write_text(body, encoding="utf-8")
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_markdown_rendering()
+
+    assert total == 1
+    assert any(message in failure for failure in failures)
+
+
+def test_markdown_render_gate_rejects_table_column_mismatch(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "bad.md").write_text(
+        "| A | B |\n|---|---|\n| one | two | three |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    assert verify_all.inspect_markdown_rendering() == (
+        1,
+        ["bad.md:3 table row has 3 cells; expected 2"],
+    )
+
+
+def test_markdown_render_gate_rejects_nested_triple_fence_in_markdown_example(
+    monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "bad.md").write_text(
+        "```markdown\n# Example\n```python\nprint('x')\n```\n```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    _, failures = verify_all.inspect_markdown_rendering()
+
+    assert any("nested fence can terminate Markdown example" in failure for failure in failures)
+
+
+@pytest.mark.parametrize(
+    ("link", "message"),
+    [
+        ("[missing](missing.md)", "unresolved local Markdown target: missing.md"),
+        ("[[missing]]", "unresolved Obsidian WikiLink target: missing"),
+    ],
+)
+def test_markdown_render_gate_rejects_broken_local_links(
+    monkeypatch, tmp_path: Path, link: str, message: str
+) -> None:
+    (tmp_path / "bad.md").write_text(f"# Title\n{link}\n", encoding="utf-8")
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_markdown_rendering()
+
+    assert total == 1
+    assert failures == [f"bad.md:2 {message}"]
+
+
+def test_markdown_render_gate_rejects_symlink_dependent_link(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "bad.md").write_text("[chapter](alias/chapter.md)\n", encoding="utf-8")
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+    original_is_symlink = Path.is_symlink
+    monkeypatch.setattr(
+        Path,
+        "is_symlink",
+        lambda path: path.name == "alias" or original_is_symlink(path),
+    )
+
+    _, failures = verify_all.inspect_markdown_rendering()
+
+    assert len(failures) == 1
+    assert "local Markdown target traverses symlink" in failures[0]
+
+
+def test_markdown_render_gate_accepts_supported_obsidian_syntax(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "target.md").write_text("# Target\n", encoding="utf-8")
+    (tmp_path / "good.md").write_text(
+        "---\n"
+        "title: Good\n"
+        "---\n"
+        "# Good\n"
+        "> [!NOTE]+ Expanded\n"
+        "> Body\n\n"
+        "| Syntax | Meaning |\n"
+        "|---|---|\n"
+        r"| `a | b` | logical or \| pipe |"
+        "\n\n"
+        "[[target#Target|alias]] and [target](target.md#target)\n"
+        "<details><summary>More</summary>Text</details>\n"
+        "$$\nx + y\n$$\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    assert verify_all.inspect_markdown_rendering() == (2, [])
+
+
 def test_mermaid_gate_rejects_unclosed_fence(monkeypatch, tmp_path: Path) -> None:
     (tmp_path / "bad.md").write_text("```mermaid\ntree\nroot --> leaf\n", encoding="utf-8")
     monkeypatch.setattr(verify_all, "REPO", tmp_path)

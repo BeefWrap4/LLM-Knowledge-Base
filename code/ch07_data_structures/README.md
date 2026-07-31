@@ -1,6 +1,6 @@
 # Ch07 — Python 数据结构与算法
 
-> 教程: [`../tutorial/07_Python数据结构与算法.md`](../tutorial/07_Python数据结构与算法.md)
+> 教程: [`../../07_Python数据结构与算法.md`](../../07_Python数据结构与算法.md)
 
 ## 例子
 

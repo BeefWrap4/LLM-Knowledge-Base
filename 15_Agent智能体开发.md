@@ -1727,7 +1727,7 @@ graph LR
 
 ---
 
-## 15.6.4 Agent Teams 架构 🆕（2026年更新）
+### 15.6.4 Agent Teams 架构 🆕（2026年更新）
 
 > Anthropic 在 2026 年 2 月发布 Claude Opus 4.6 时，为 **Claude Code** 引入了
 > Agent Teams 研究预览。它是产品编排能力，不是某个模型天然具备的通用 API
@@ -3197,7 +3197,7 @@ graph LR
 
 Anthropic 提出的开放标准 `SKILL.md`，使用 YAML Frontmatter 描述元信息，正文是 Markdown 文档：
 
-```markdown
+````markdown
 ---
 name: code-review
 description: 对 Git diff 进行多维度代码审查，包括安全、性能、可读性
@@ -3268,7 +3268,7 @@ outputs:
 - diff 格式无法解析 → 报告错误并跳过审查
 - 语言不支持 → 仅做通用检查
 - 工具调用失败 → 重试 1 次 → 仍失败则返回降级报告
-```
+````
 
 #### 2. Skills 加载器实现
 
@@ -4288,7 +4288,7 @@ def hybrid_search(query_vec: np.ndarray,
 | A2A 协议 | Google 2025 推出；Agent ↔ Agent 通信；Agent Card 能力描述；Push Notification 异步状态更新；与 MCP 互补 |
 | Agent Teams | Claude Code 研究预览；Team Lead + Teammates 并行协作；Shared Task List + Mailbox 异步通信；适合可独立拆分的任务 |
 | Agent 安全防线 | 死循环防范（max_steps + 动作去重）+ 工具幻觉（Schema 校验 + 白名单）+ 上下文污染（截断重置）+ Token 爆炸（输出分页）+ Prompt Injection（输入过滤 + 权限隔离） |
-| 配套代码 | `code/ch15_agent/llm/*.py`；默认离线 mock，可由章节 runner 批量验收 | 真实 API/框架示例需显式 `LLM_MOCK=0`、对应依赖与 Provider Key |
+| 配套代码 | `code/ch15_agent/llm/*.py`；默认离线 mock，可由章节 runner 批量验收；真实 API/框架示例需显式 `LLM_MOCK=0`、对应依赖与 Provider Key |
 
 ## 15.x 配套代码运行与验收
 
