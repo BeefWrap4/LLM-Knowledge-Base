@@ -108,9 +108,9 @@ thinking。`thinking.display="summarized"` 返回的是可读**摘要**，`"omit
 
 ```mermaid
 graph TB
-    TTC["Test-Time Compute Scaling"] --> A["1. 思维链扩展<br/>(Chain-of-Thought)"]
-    TTC --> B["2. 采样+投票<br/>(Sample + Vote)"]
-    TTC --> C["3. 树状搜索<br/>(Tree Search)"]
+    TTC["Test-Time Compute Scaling"] --> A["路径 1：思维链扩展<br/>(Chain-of-Thought)"]
+    TTC --> B["路径 2：采样+投票<br/>(Sample + Vote)"]
+    TTC --> C["路径 3：树状搜索<br/>(Tree Search)"]
     A --> A1["s1 / s1.1<br/>budget forcing"]
     B --> B1["Self-Consistency<br/>Best-of-N<br/>多数投票"]
     C --> C1["MCTS / Beam Search<br/>Verifier 引导"]
@@ -349,12 +349,12 @@ Snell et al. 2024 的结论是方法效果依赖题目难度；应比较固定 F
 
 ```mermaid
 graph LR
-    L0["L0<br/>Zero-shot<br/>无 CoT"] -->|+| L1["L1<br/>CoT 触发<br/>Let's think step by step"]
-    L1 -->|+| L2["L2<br/>Self-Consistency<br/>K=5 采样 + 投票"]
-    L2 -->|+| L3["L3<br/>Best-of-N<br/>PRM/ORM 选最优"]
-    L3 -->|+| L4["L4<br/>MCTS + PRM<br/>树搜索 + 验证器"]
-    L4 -->|+| L5["L5<br/>Budget Forcing<br/>s1 Wait/截断"]
-    L5 -->|+| L6["L6<br/>Reasoning Effort<br/>GPT-5.6/R1 high"]
+    L0["L0<br/>Zero-shot<br/>无 CoT"] -->|增强| L1["L1<br/>CoT 触发<br/>Let's think step by step"]
+    L1 -->|增强| L2["L2<br/>Self-Consistency<br/>K=5 采样 + 投票"]
+    L2 -->|增强| L3["L3<br/>Best-of-N<br/>PRM/ORM 选最优"]
+    L3 -->|增强| L4["L4<br/>MCTS + PRM<br/>树搜索 + 验证器"]
+    L4 -->|增强| L5["L5<br/>Budget Forcing<br/>s1 Wait/截断"]
+    L5 -->|增强| L6["L6<br/>Reasoning Effort<br/>GPT-5.6/R1 high"]
     L0 -.->|"测量"| A1["目标集准确率"]
     L3 -.->|"测量"| A1
     L6 -.->|"测量"| A1

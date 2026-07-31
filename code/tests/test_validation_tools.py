@@ -198,6 +198,32 @@ def test_mermaid_gate_rejects_parser_sensitive_unquoted_labels(
     assert "quote the label" in failures[0]
 
 
+@pytest.mark.parametrize(
+    "label",
+    [
+        'NODE["1. first step"]',
+        'A -->|"2. call"| B',
+        'NODE["+"]',
+        "A -->|+| B",
+        "A -->|> 0| B",
+    ],
+)
+def test_mermaid_gate_rejects_unsupported_markdown_at_label_start(
+    monkeypatch, tmp_path: Path, label: str
+) -> None:
+    (tmp_path / "bad.md").write_text(
+        f"```mermaid\nflowchart TD\n{label}\n```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_mermaid_blocks()
+
+    assert total == 1
+    assert len(failures) == 1
+    assert "unsupported Mermaid Markdown" in failures[0]
+
+
 def test_mermaid_gate_accepts_quoted_labels_and_cylinder_shape(
     monkeypatch, tmp_path: Path
 ) -> None:
@@ -206,6 +232,23 @@ def test_mermaid_gate_accepts_quoted_labels_and_cylinder_shape(
         "flowchart TD\n"
         'MASK["全 [MASK] 序列"] --> MATH["epsilon(z_t, t) ∈ R^{N×d}"]\n'
         "MATH --> CACHE[(Redis Cache)]\n"
+        'CACHE --> STEP["步骤 1：读取"]\n'
+        'STEP --> ADD["相加（+）"]\n'
+        "ADD -->|大于 0| DONE\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    assert verify_all.inspect_mermaid_blocks() == (1, [])
+
+
+def test_mermaid_gate_accepts_state_diagram_terminal_nodes(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "state.md").write_text(
+        "```mermaid\n"
+        "stateDiagram-v2\n"
+        "[*] --> Plan\n"
+        "Plan --> [*]\n"
         "```\n",
         encoding="utf-8",
     )

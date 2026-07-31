@@ -75,19 +75,38 @@ MERMAID_ALLOWED_DIAGRAMS = {
 }
 MERMAID_RISK_PATTERNS = (
     (
+        "unsupported Mermaid Markdown ordered-list marker at label start",
+        "start the label with plain text such as '步骤 1：'",
+        re.compile(r'(?:\[|\||\()\s*"?\s*\d+\.\s+'),
+    ),
+    (
+        "unsupported Mermaid Markdown bullet marker at label start",
+        "replace the leading bullet marker with descriptive text",
+        re.compile(r'(?:\[|\||\()\s*"?\s*[-*+](?:\s+|(?=["|\]\)]))'),
+    ),
+    (
+        "unsupported Mermaid Markdown blockquote marker at label start",
+        "replace the leading '>' with wording such as '大于'",
+        re.compile(r'(?:\[|\||\()\s*"?\s*>\s+'),
+    ),
+    (
         "unquoted nested '[' in a square node label",
+        "quote the label",
         re.compile(r'\b[A-Za-z_][A-Za-z0-9_-]*\[(?!["(])[^\]\r\n]*\['),
     ),
     (
         "unquoted '{' or '}' in a square node label",
+        "quote the label",
         re.compile(r'\b[A-Za-z_][A-Za-z0-9_-]*\[(?!["(])[^\]\r\n]*[{}]'),
     ),
     (
         "unquoted '(' or ')' in a square node label",
+        "quote the label",
         re.compile(r'\b[A-Za-z_][A-Za-z0-9_-]*\[(?!["(])[^\]\r\n]*[()]'),
     ),
     (
         "mismatched quoted square node label",
+        "quote the label and close it with ']'",
         re.compile(r'\b[A-Za-z_][A-Za-z0-9_-]*\["[^"\r\n]*"\)'),
     ),
 )
@@ -219,6 +238,7 @@ def inspect_mermaid_blocks() -> tuple[int, list[str]]:
                 continue
             if MARKDOWN_FENCE_END_RE.match(line):
                 total += 1
+                diagram: str | None = None
                 meaningful = [
                     value.strip()
                     for _, value in body
@@ -232,12 +252,13 @@ def inspect_mermaid_blocks() -> tuple[int, list[str]]:
                         failures.append(
                             f"{markdown.name}:{start_line + 1} unsupported Mermaid diagram: {diagram}"
                         )
-                for body_line_no, body_line in body:
-                    for description, pattern in MERMAID_RISK_PATTERNS:
-                        if pattern.search(body_line):
-                            failures.append(
-                                f"{markdown.name}:{body_line_no} {description}; quote the label"
-                            )
+                if diagram in {"flowchart", "graph"}:
+                    for body_line_no, body_line in body:
+                        for description, recommendation, pattern in MERMAID_RISK_PATTERNS:
+                            if pattern.search(body_line):
+                                failures.append(
+                                    f"{markdown.name}:{body_line_no} {description}; {recommendation}"
+                                )
                 inside = False
                 body = []
                 continue

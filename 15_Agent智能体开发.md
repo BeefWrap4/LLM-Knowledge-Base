@@ -1210,13 +1210,13 @@ RBAC"]
         Audit["审计日志
 全链路追踪"]
 
-        Client -->|"1. 查询可用 Server"| Registry
-        Client -->|"2. JSON-RPC 调用"| Auth
+        Client -->|"步骤 1：查询可用 Server"| Registry
+        Client -->|"步骤 2：JSON-RPC 调用"| Auth
         Auth -->|"鉴权通过"| S1
         Auth -->|"鉴权通过"| S2
         Auth -->|"鉴权通过"| S3
-        S1 -->|"3. 返回结果"| Audit
-        Audit -->|"4. 记录日志"| Client
+        S1 -->|"步骤 3：返回结果"| Audit
+        Audit -->|"步骤 4：记录日志"| Client
         HC -->|"心跳检测"| S1
         HC -->|"心跳检测"| S2
         HC -->|"心跳检测"| S3
@@ -1697,10 +1697,10 @@ A2A（Agent-to-Agent）是 Google 于 2025 年推出的**开放 Agent 间通信�
 ```mermaid
 graph LR
     subgraph "A2A 协议架构"
-        A1[Agent A<br/>客户Agent] -->|"1. 发现"| D[Agent Card<br/>能力描述]
-        A1 -->|"2. 任务下发"| A2[Agent B<br/>远程Agent]
-        A2 -->|"3. 状态更新"| A1
-        A2 -->|"4. 结果返回"| A1
+        A1[Agent A<br/>客户Agent] -->|"步骤 1：发现"| D[Agent Card<br/>能力描述]
+        A1 -->|"步骤 2：任务下发"| A2[Agent B<br/>远程Agent]
+        A2 -->|"步骤 3：状态更新"| A1
+        A2 -->|"步骤 4：结果返回"| A1
     end
     
     style D fill:#ffe6cc,stroke:#d79b00
@@ -1768,19 +1768,19 @@ graph TB
         STL["📝 Shared Task List
 共享任务状态板"]
 
-        TL -->|"1. 分解任务"| STL
-        TL -->|"2. 分配"| M1
-        TL -->|"2. 分配"| M2
-        TL -->|"2. 分配"| M3
-        M1 -->|"3. 读取"| T1
-        M2 -->|"3. 读取"| T2
-        M3 -->|"3. 读取"| T3
-        T1 -->|"4. 更新状态"| STL
-        T2 -->|"4. 更新状态"| STL
-        T3 -->|"4. 更新状态"| STL
-        T1 -->|"5. 异步消息"| M2
-        T2 -->|"5. 异步消息"| M3
-        STL -->|"6. 监控进度"| TL
+        TL -->|"步骤 1：分解任务"| STL
+        TL -->|"步骤 2：分配"| M1
+        TL -->|"步骤 2：分配"| M2
+        TL -->|"步骤 2：分配"| M3
+        M1 -->|"步骤 3：读取"| T1
+        M2 -->|"步骤 3：读取"| T2
+        M3 -->|"步骤 3：读取"| T3
+        T1 -->|"步骤 4：更新状态"| STL
+        T2 -->|"步骤 4：更新状态"| STL
+        T3 -->|"步骤 4：更新状态"| STL
+        T1 -->|"步骤 5：异步消息"| M2
+        T2 -->|"步骤 5：异步消息"| M3
+        STL -->|"步骤 6：监控进度"| TL
     end
 
     style TL fill:#fff3e0,stroke:#ff9800

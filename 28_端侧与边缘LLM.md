@@ -185,11 +185,11 @@ Stanford Hazy Research 于 **2025-05-12**公开了 Minions Secure Chat Protocol 
 
 ```mermaid
 graph LR
-    A["本地客户端"] -->|"1. 请求远程证明"| B["Confidential VM<br/>CPU TEE + Confidential GPU"]
-    B -->|"2. 返回可验证的证明/公钥"| A
-    A -->|"3. 端到端加密 Prompt"| B
-    B -->|"4. TEE 内解密并执行 LLM"| C["明文仅存在于<br/>可信硬件边界内"]
-    B -->|"5. 加密响应"| A
+    A["本地客户端"] -->|"步骤 1：请求远程证明"| B["Confidential VM<br/>CPU TEE + Confidential GPU"]
+    B -->|"步骤 2：返回可验证的证明/公钥"| A
+    A -->|"步骤 3：端到端加密 Prompt"| B
+    B -->|"步骤 4：TEE 内解密并执行 LLM"| C["明文仅存在于<br/>可信硬件边界内"]
+    B -->|"步骤 5：加密响应"| A
 ```
 
 **核心边界**：
