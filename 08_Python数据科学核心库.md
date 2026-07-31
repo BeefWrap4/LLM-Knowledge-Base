@@ -419,8 +419,8 @@ df.dropna(thresh=3)            # 保留至少 3 个非 NaN 值的行
 # ========== 填充缺失值 ==========
 df['A'].fillna(0)              # 用 0 填充
 df['A'].fillna(df['A'].mean()) # 用均值填充
-df['A'].fillna(method='ffill') # 前向填充（用前一个有效值）
-df['A'].fillna(method='bfill') # 后向填充（用后一个有效值）
+df['A'].ffill()                 # 前向填充（用前一个有效值）
+df['A'].bfill()                 # 后向填充（用后一个有效值）
 df['A'].interpolate()          # 线性插值
 
 # ========== 不同列用不同策略 ==========
@@ -434,80 +434,49 @@ df.fillna({
 🎯 **面试高频题：数据清洗完整流程** ⭐⭐⭐⭐⭐
 
 ```python
-import pandas as pd
 import numpy as np
+import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
-def data_cleaning_pipeline(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    完整的数据清洗流程（面试常考）
-    
-    步骤：
-    1. 处理缺失值
-    2. 处理异常值
-    3. 处理重复值
-    4. 类型转换
-    5. 特征编码
-    6. 特征标准化
-    """
-    df = df.copy()
-    
-    # Step 1: 处理缺失值
-    print(f"缺失值统计:\n{df.isnull().sum()}")
-    
-    # 数值列：用中位数填充（对异常值更鲁棒）
-    num_cols = df.select_dtypes(include=[np.number]).columns
-    for col in num_cols:
-        df[col].fillna(df[col].median(), inplace=True)
-    
-    # 类别列：用众数填充
-    cat_cols = df.select_dtypes(include=['object']).columns
-    for col in cat_cols:
-        df[col].fillna(df[col].mode()[0], inplace=True)
-    
-    # Step 2: 处理异常值（IQR 方法）
-    for col in num_cols:
-        Q1 = df[col].quantile(0.25)
-        Q3 = df[col].quantile(0.75)
-        IQR = Q3 - Q1
-        lower = Q1 - 1.5 * IQR
-        upper = Q3 + 1.5 * IQR
-        
-        # 可选：删除异常值或用边界值替换
-        # df = df[(df[col] >= lower) & (df[col] <= upper)]
-        df[col] = df[col].clip(lower, upper)  # 用边界值替换
-    
-    # Step 3: 处理重复值
-    before = len(df)
-    df.drop_duplicates(inplace=True)
-    print(f"删除重复值: {before} -> {len(df)}")
-    
-    # Step 4: 类型转换
-    # 将可以转为数值的列转换
-    for col in df.columns:
-        try:
-            df[col] = pd.to_numeric(df[col])
-        except (ValueError, TypeError):
-            pass
-    
-    # Step 5: 类别特征编码
-    from sklearn.preprocessing import LabelEncoder
-    le = LabelEncoder()
-    for col in cat_cols:
-        if df[col].nunique() < 10:  # 低基数类别
-            # One-Hot 编码
-            dummies = pd.get_dummies(df[col], prefix=col, drop_first=True)
-            df = pd.concat([df.drop(col, axis=1), dummies], axis=1)
-        else:
-            # Label 编码
-            df[col] = le.fit_transform(df[col].astype(str))
-    
-    # Step 6: 数值特征标准化
-    from sklearn.preprocessing import StandardScaler
-    scaler = StandardScaler()
-    df[num_cols] = scaler.fit_transform(df[num_cols])
-    
-    return df
+def build_preprocessor(
+    numeric_features: list[str],
+    categorical_features: list[str],
+) -> ColumnTransformer:
+    """所有会学习统计量的步骤都封装进 Pipeline。"""
+    numeric = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("scaler", StandardScaler()),
+    ])
+    categorical = Pipeline([
+        ("imputer", SimpleImputer(strategy="most_frequent")),
+        ("onehot", OneHotEncoder(handle_unknown="ignore")),
+    ])
+    return ColumnTransformer([
+        ("numeric", numeric, numeric_features),
+        ("categorical", categorical, categorical_features),
+    ])
+
+
+# 示例：先划分，再只在训练集 fit
+X = pd.DataFrame({
+    "age": [25, np.nan, 35, 40, 29, 31],
+    "salary": [5000, 6000, 7000, 8000, np.nan, 6500],
+    "department": ["Tech", "HR", "Tech", None, "Sales", "HR"],
+})
+X = X.drop_duplicates().copy()
+X_train, X_test = train_test_split(X, test_size=0.33, random_state=42)
+
+preprocessor = build_preprocessor(
+    numeric_features=["age", "salary"],
+    categorical_features=["department"],
+)
+X_train_ready = preprocessor.fit_transform(X_train)
+X_test_ready = preprocessor.transform(X_test)  # 禁止再次 fit
 
 
 # ========== 面试常考点：数据清洗中的决策 ==========
@@ -521,14 +490,24 @@ A: 先检查是否为数据录入错误。如果不是：
    - 截断（clip 到边界值）
    - 对数变换（减小极端值影响）
    - 使用对异常值鲁棒的模型（如树模型）
+   - 若 IQR/分位数边界由数据学习，必须只在训练集拟合，并排除 ID、布尔标志等不适合截断的列
 
 Q: 类别特征怎么做编码？
 A: 
-   - One-Hot：低基数（<10），无序类别
-   - Label：高基数，有序类别
-   - Target：高基数，与目标变量相关
+   - One-Hot：名义类别；`handle_unknown="ignore"` 处理测试集新类别
+   - OrdinalEncoder：仅用于有明确业务顺序的类别，并显式提供顺序
+   - Target/统计编码：须在交叉验证折内拟合，防止目标泄漏
+   - LabelEncoder 通常用于目标标签 y，不应用来给名义输入特征制造伪顺序
 """
 ```
+
+> **为什么不能先清洗全量数据再切分？** 中位数、众数、IQR 边界、类别词表和标准化参数都属于从数据学到的状态。先在全量数据上计算会把验证/测试信息泄漏给训练过程。pandas 3.0 的 Copy-on-Write 还意味着 `df[col].fillna(..., inplace=True)` 不会更新原 DataFrame；需要赋值回列，或使用上面的 sklearn Pipeline。
+
+**参考资料（核对日期：2026-07-31）**：
+
+- [pandas Copy-on-Write](https://pandas.pydata.org/docs/user_guide/copy_on_write.html)
+- [scikit-learn：Common pitfalls and recommended practices](https://scikit-learn.org/stable/common_pitfalls.html)
+- [scikit-learn：Pipeline](https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html)
 
 ### 8.2.5 大数据集内存优化 ⭐⭐⭐⭐
 
@@ -797,7 +776,7 @@ print(df.isnull().sum())
 
 # ========== 步骤 3: 数据清洗 ==========
 # 处理缺失值
-df['age'].fillna(df['age'].median(), inplace=True)
+df['age'] = df['age'].fillna(df['age'].median())
 
 # 处理异常值（截断到 99% 分位数）
 amount_99 = df['purchase_amount'].quantile(0.99)
@@ -943,7 +922,7 @@ print(f"最热门品类: {df['category'].mode()[0]}")
 | **apply vs map vs applymap** | `map` 用于 Series 逐元素映射（dict/函数）；`apply` 灵活支持 Series/DataFrame 按行/列；`applymap`（已弃用→`DataFrame.map`）逐元素；优先向量化避免 apply |
 | **缺失值处理** | 检测 `isnull().sum()`；删除 `dropna(subset=, thresh=)`；填充 `fillna(value/mean/ffill/bfill)`；插值 `interpolate()` |
 | **大数据集内存优化** | 下转 `int64→int32/int16`；`float64→float32`；低基数 `object→category`；分块 `read_csv(chunksize=)`；备选 Dask/Polars |
-| **数据清洗流程** | 缺失值 → 异常值（IQR / clip）→ 重复值（`drop_duplicates`）→ 类型转换 → 类别编码（One-Hot/Label）→ 标准化（StandardScaler） |
+| **数据清洗流程** | 先按任务划分训练/验证/测试；所有会学习统计量的缺失值、异常值边界、编码和标准化步骤放进 Pipeline，仅在训练数据 `fit` |
 | **Matplotlib 绘图骨架** | `fig, axes = plt.subplots(nrows, ncols)`；常用 `plot/scatter/bar/hist`；`tight_layout` 调整；`savefig(dpi, bbox_inches='tight')` |
 | **Seaborn 统计图** | `boxplot` 展示 5 数概括（Min/Q1/Median/Q3/Max + 1.5×IQR 异常值）；`heatmap` 看相关系数矩阵；`histplot(kde=True)` 分布+密度 |
 

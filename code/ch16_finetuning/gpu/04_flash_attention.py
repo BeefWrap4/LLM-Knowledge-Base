@@ -36,7 +36,7 @@ if str(_code_root) not in sys.path:
 import torch
 import torch.nn.functional as F
 
-from shared.gpu_guard import require_nvidia_gpu
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock
 
 
 def check_hardware():
@@ -44,9 +44,16 @@ def check_hardware():
 
 
 def naive_attention(q, k, v):
-    """标准 O(N^2) attention — 显式 softmax, 完整 attn 矩阵."""
+    """标准 causal O(N^2) attention — 显式 softmax, 完整 attn 矩阵."""
     scale = q.size(-1) ** -0.5
     attn = (q @ k.transpose(-2, -1)) * scale
+    causal_mask = torch.ones(
+        q.size(-2),
+        k.size(-2),
+        dtype=torch.bool,
+        device=q.device,
+    ).triu(diagonal=1)
+    attn = attn.masked_fill(causal_mask, float("-inf"))
     attn = F.softmax(attn, dim=-1)
     return attn @ v
 
@@ -70,6 +77,8 @@ def benchmark(fn, q, k, v, n_warmup=3, n_runs=10):
 
 
 def main():
+    if skip_if_mock("an NVIDIA GPU with a supported PyTorch SDPA backend"):
+        return
     check_hardware()
 
     # 测试配置: batch=2, heads=8, seq=2048, head_dim=64
@@ -98,7 +107,13 @@ def main():
 
     # 3) 数值正确性 (loss 容忍)
     max_diff = (out_naive - out_sdpa).abs().max().item()
-    rel_diff = max_diff / (out_naive.abs().mean().item() + 1e-6)
+    rms_diff = (out_naive.float() - out_sdpa.float()).square().mean().sqrt().item()
+    torch.testing.assert_close(
+        out_naive.float(),
+        out_sdpa.float(),
+        atol=5e-2,
+        rtol=5e-2,
+    )
 
     print("naive attention:")
     print(f"  latency:  {naive_ms:.2f}ms")
@@ -108,7 +123,7 @@ def main():
     print(f"  latency:  {sdpa_ms:.2f}ms")
     print(f"  VRAM:     {sdpa_vram * 1024:.1f}MB")
     print()
-    print(f"数值差异: max abs = {max_diff:.4e}, rel = {rel_diff:.4e}")
+    print(f"数值差异: max abs = {max_diff:.4e}, RMS = {rms_diff:.4e}")
     print()
 
     speedup = naive_ms / sdpa_ms
@@ -116,6 +131,7 @@ def main():
     print()
     print("✅ SDPA 自动选择最优后端 (Flash Attention 2 / MemEfficient / Math)")
     print("   在长序列 (S≥4096) 时 Flash 优势更显著 (O(N²) → O(N) 显存)")
+    print("OK")
 
 
 if __name__ == "__main__":

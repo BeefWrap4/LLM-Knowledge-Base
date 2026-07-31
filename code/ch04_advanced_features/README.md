@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch04_advanced_features/core/01_decorator_basics.py
+python ch04_advanced_features/core/04_decorator_basics.py
 ```
 
 ## 关联章节

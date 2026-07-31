@@ -142,3 +142,4 @@ if __name__ == "__main__":
 
     # 测试单调栈
     assert next_greater_elements([2, 1, 2, 4, 3]) == [4, 2, 4, -1, -1]
+    print("OK")

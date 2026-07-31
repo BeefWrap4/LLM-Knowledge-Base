@@ -45,7 +45,12 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import gpu_summary, require_nvidia_gpu
+from shared.gpu_guard import (
+    gpu_summary,
+    require_nvidia_gpu,
+    skip_if_mock,
+    skip_unless_enabled,
+)
 
 # 真实 MoE 模型 (按需取消注释, 默认占位)
 # MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1"  # 90GB fp16
@@ -53,6 +58,12 @@ MODEL = "Qwen/Qwen2.5-0.5B-Instruct"  # 占位 (非 MoE), 用于演示 config
 
 
 def main() -> None:
+    if skip_if_mock("one or more NVIDIA GPUs, CUDA, vLLM, and model weights"):
+        return
+    if skip_unless_enabled(
+        "VLLM_EXAMPLE_RUN", "the Linux/WSL2 vLLM runtime and reviewed model weights"
+    ):
+        return
     require_nvidia_gpu(min_vram_gb=16, min_count=1)  # 单卡也跑得起 (config demo)
     print(gpu_summary())
     print()

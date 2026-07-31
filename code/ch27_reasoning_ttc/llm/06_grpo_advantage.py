@@ -24,7 +24,12 @@ advantage_i = (r_i - mean(r_group)) / std(r_group)
 import sys
 from pathlib import Path
 
-import torch
+try:
+    import torch
+except ImportError:
+    print("[SKIP] 需要 torch>=2.0；请安装 GPU tier 依赖")
+    print("OK")
+    raise SystemExit(0)
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
@@ -97,6 +102,7 @@ def main():
 
     print("\n  注意: prompt 3 (所有 reward 相同) → advantage 全部 0 (无 baseline)")
     print("  优势: 组内相对排序, 无需学 critic model")
+    print("OK")
 
 
 if __name__ == "__main__":

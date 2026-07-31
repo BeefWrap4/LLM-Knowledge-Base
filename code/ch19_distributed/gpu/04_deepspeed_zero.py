@@ -17,19 +17,20 @@
 # 3. 为什么 ZeRO Stage 3 需要 save_checkpoint 而不是普通的 torch.save?
 
 
-# === Multi-GPU / heavy model guard (auto-added) ===
-import os as _os
 import sys as _sys
 
-_NGPU = _os.environ.get("WORLD_SIZE", "1")
-if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
-    _sys.exit(0)
 """
 DeepSpeed ZeRO Stage 2/3 完整训练示例
 启动方式: deepspeed --num_gpus=8 04_deepspeed_zero.py --deepspeed ds_config.json
 """
 import argparse
+from pathlib import Path
+
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys.path:
+    _sys.path.insert(0, str(_code_root))
+
+from shared.gpu_guard import skip_if_mock
 
 
 def train_with_deepspeed_api():
@@ -181,6 +182,9 @@ def train_with_hf_trainer():
 
 
 if __name__ == "__main__":
-    train_with_deepspeed_api()
-    train_with_hf_trainer()
-    print("OK")
+    if not skip_if_mock(
+        "NVIDIA GPUs, Hugging Face access, a DeepSpeed process group, and checkpoint storage"
+    ):
+        train_with_deepspeed_api()
+        train_with_hf_trainer()
+        print("OK")

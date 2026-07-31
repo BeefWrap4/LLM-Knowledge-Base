@@ -4,35 +4,36 @@
 -r requirements-core.txt
 
 # LLM 提供方 SDK
-openai>=1.40
-anthropic>=0.34
-google-generativeai>=0.7
-ollama>=0.2
+openai>=2.0,<3
+anthropic>=0.84,<1
+# Legacy google-generativeai ended support on 2025-11-30.
+google-genai>=1.0,<3
+ollama>=0.6,<1
 
 # 主流框架
-langchain>=0.3
-langchain-openai>=0.1
-langchain-anthropic>=0.2
-langchain-community>=0.3
-langgraph>=0.2
-langchain-text-splitters>=0.2
-llama-index>=0.11
-pydantic-ai>=0.1
-haystack-ai>=2.4
+langchain>=1.0,<2
+langchain-openai>=1.0,<2
+langchain-anthropic>=1.0,<2
+langchain-community>=0.4,<1
+langgraph>=1.0,<2
+langchain-text-splitters>=1.0,<2
+llama-index>=0.14,<0.15
+pydantic-ai>=1.0,<3
+haystack-ai>=2.4,<3
+opentelemetry-api>=1.37,<2
+opentelemetry-sdk>=1.37,<2
 
 # 数据 + 工具
 datasketch>=1.6
 fasttext>=0.9
 nltk>=3.9
 rouge-score>=0.1
-bert-score>=0.3
-sentence-transformers>=3.0
 sacremoses>=0.0.53
 sacrebleu>=2.4
 
 # 模型下载与本地存储 (download_models.py 用)
-huggingface_hub>=0.20
-modelscope>=1.10
+huggingface_hub>=0.34,<1
+modelscope>=1.30,<2
 
 # 集成测试 (test_integration.py 用 — Redis / pgvector)
 redis>=5.0

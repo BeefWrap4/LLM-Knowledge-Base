@@ -65,6 +65,7 @@ def main():
     augmented = back_translation_augment(texts, mock_translate)
     print("原始:", texts)
     print("增强:", augmented)
+    print("OK")
 
 
 if __name__ == "__main__":

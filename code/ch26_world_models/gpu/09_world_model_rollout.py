@@ -4,10 +4,11 @@
 # section: 26.4.3 世界模型驱动的 MPC / Planning
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: torch, numpy
 # run: python 09_world_model_rollout.py
-# expected_runtime: 5-15s (dynamics model 训练 + 100 步 rollout)
-# expected_output: dynamics loss 下降 + imagined rollout 轨迹
+# expected_runtime: 5-15s (synthetic dynamics model + 100-step rollout)
+# expected_output: train/validation loss + predicted/oracle rollout error
 # ---
 # See: ../tutorial/26_世界模型与具身AI.md §26.4.3
 #
@@ -15,16 +16,16 @@
 #   1. DreamerV3 与 Genie 3 在"潜空间动力学"上的核心差异？
 #   2. CEM (Cross-Entropy Method) 为什么适合 action sequence 规划？
 #   3. 世界模型 rollout 的 horizon 越深越好吗？compounding error 如何缓解？
-"""世界模型 rollout 演示 (在想象中训练策略).
+"""合成动力学模型 rollout 教学；不是 Genie、Cosmos 或 Dreamer 的复现。
 
 核心: 用世界模型预测未来状态, 在想象中训练策略 (model-based RL)
   1. 真实环境收集数据 D = {(s, a, s', r)}
   2. 训练世界模型 f(s, a) → Δs
   3. 用 f 做想象 rollout: ŝ_0, â_0, ŝ_1, â_1, ... (无真实交互)
-  4. 在想象轨迹上训练策略 π(a|s)
+  4. 可在通过验证的想象轨迹上辅助规划或策略学习
 
-本 demo: 真训练 dynamics model (50 步) + 100 步 imagined rollout.
-生产: DreamerV3 / IRIS / Cosmos-1 在 latent space 做想象.
+本例在已知合成动力学上训练一个小 MLP，再用相同动作序列比较预测轨迹与 oracle 轨迹。
+它只能说明接口、验证集误差与 horizon 误差的计算方式，不能证明真实环境数据效率或任务收益。
 """
 
 import sys
@@ -42,7 +43,8 @@ from shared.gpu_guard import require_nvidia_gpu
 
 
 def check_hardware():
-    require_nvidia_gpu(min_vram_gb=8, min_count=1)
+    """这里只检查小型 CUDA 教学循环，不代表任何官方世界模型门槛。"""
+    require_nvidia_gpu(min_vram_gb=2, min_count=1)
 
 
 class DynamicsModel(nn.Module):
@@ -77,18 +79,26 @@ def dynamics_loss(
     return ((pred - target) ** 2).mean()
 
 
+def oracle_transition(
+    state: torch.Tensor,
+    action: torch.Tensor,
+    action_matrix: torch.Tensor,
+) -> torch.Tensor:
+    """可复现的合成真实动力学，用于生成训练集和 oracle rollout。"""
+    action_effect = 0.15 * torch.tanh(action @ action_matrix)
+    return 0.98 * state + action_effect + 0.01 * torch.sin(state)
+
+
 @torch.no_grad()
 def imagine_rollout(
     model: DynamicsModel,
     s0: torch.Tensor,
-    policy: nn.Module,
-    horizon: int = 100,
+    action_sequence: torch.Tensor,
 ) -> torch.Tensor:
-    """在想象中 rollout horizon 步, 收集轨迹."""
+    """对固定动作序列执行模型 rollout，避免混入不同策略动作。"""
     s = s0
     traj = [s.cpu().numpy()]
-    for _ in range(horizon):
-        a = policy(s)
+    for a in action_sequence:
         ds = model(s, a)
         s = s + ds
         traj.append(s.cpu().numpy())
@@ -96,7 +106,7 @@ def imagine_rollout(
 
 
 class SimplePolicy(nn.Module):
-    """随机策略 (生产用 SAC/PPO + imagination gradient)."""
+    """仅用于生成确定性测试动作的未训练小网络。"""
 
     def __init__(self, state_dim: int = 14, action_dim: int = 7):
         super().__init__()
@@ -113,67 +123,73 @@ class SimplePolicy(nn.Module):
 
 def main() -> None:
     check_hardware()
-    print("=== 世界模型 Rollout 演示 (Dreamer-style imagination) ===\n")
-    print("核心: 训练 dynamics model + 在想象中 rollout (无真实交互)")
+    torch.manual_seed(42)
+    print("=== 合成动力学模型 Rollout 教学 ===\n")
+    print("边界: 小型 MLP + 已知 oracle；不是官方世界模型、真实机器人或 RL 训练")
     print()
 
-    # 1. 训练动力学模型
-    print("步骤 1: 训练 dynamics model (50 步 MSE)")
-    B = 64
+    # 1. 用已知合成动力学构造训练/验证数据。
+    print("步骤 1: 在合成 transition 上训练 dynamics model")
+    B = 512
+    action_matrix = torch.randn(7, 14, device="cuda") / (7**0.5)
     state = torch.randn(B, 14).cuda()
-    action = torch.randn(B, 7).cuda() * 0.1
-    next_state = state + torch.randn(B, 14).cuda() * 0.05  # 简化: 小随机扰动
+    action = torch.randn(B, 7).cuda() * 0.2
+    next_state = oracle_transition(state, action, action_matrix)
+    val_state = torch.randn(128, 14).cuda()
+    val_action = torch.randn(128, 7).cuda() * 0.2
+    val_next_state = oracle_transition(val_state, val_action, action_matrix)
 
     model = DynamicsModel().cuda()
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
     n_params = sum(p.numel() for p in model.parameters())
 
     losses = []
-    for step in range(50):
+    for step in range(100):
         loss = dynamics_loss(model, state, action, next_state)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         losses.append(loss.item())
-        if step % 10 == 0:
+        if step % 20 == 0:
             print(f"  step {step:3d} | dynamics loss = {loss.item():.6f}")
-    print(f"  ✅ 参数量 {n_params:,}, loss 下降: {losses[0]:.6f} → {losses[-1]:.6f}\n")
+    with torch.no_grad():
+        val_loss = dynamics_loss(model, val_state, val_action, val_next_state).item()
+    print(f"  参数量 {n_params:,}, train loss: {losses[0]:.6f} → {losses[-1]:.6f}")
+    print(f"  held-out validation loss: {val_loss:.6f}\n")
 
-    # 2. 想象 rollout 100 步
-    print("步骤 2: 想象 rollout 100 步 (无真实交互)")
+    # 2. 为预测和 oracle 固定同一动作序列。
+    print("步骤 2: 对同一动作序列比较 100 步 predicted/oracle rollout")
     policy = SimplePolicy().cuda()
+    policy.eval()
     s0 = torch.randn(1, 14).cuda()
-    traj = imagine_rollout(model, s0, policy, horizon=100)
-    print(f"  ✅ rollout 完成, 轨迹 shape: {traj.shape} (T+1, state_dim)")
-    print(f"  起点 |s|={np.linalg.norm(traj[0]):.3f}")
-    print(f"  终点 |s|={np.linalg.norm(traj[-1]):.3f}")
-    print(f"  累积位移 = {np.linalg.norm(traj[-1] - traj[0]):.3f}")
+    oracle_states = [s0.cpu().numpy()]
+    actions = []
+    oracle_state = s0
+    with torch.no_grad():
+        for _ in range(100):
+            next_action = policy(oracle_state)
+            actions.append(next_action)
+            oracle_state = oracle_transition(oracle_state, next_action, action_matrix)
+            oracle_states.append(oracle_state.cpu().numpy())
 
-    # 3. Compounding error 分析
-    print("\n步骤 3: Compounding error 分析 (horizon 越深误差越大)")
-    real_states = [s0.cpu().numpy()]
-    s = s0
-    for t in range(100):
-        a = policy(s)
-        # "真实" 转移: 与训练数据同分布
-        ds_real = torch.randn(1, 14).cuda() * 0.05
-        s = s + ds_real
-        real_states.append(s.cpu().numpy())
-    real_traj = np.array(real_states).squeeze(1)
-    # 对比 imagined vs "真实"
-    err_per_step = np.linalg.norm(traj - real_traj, axis=1)
+    action_sequence = torch.stack(actions)
+    predicted_traj = imagine_rollout(model, s0, action_sequence)
+    oracle_traj = np.array(oracle_states).squeeze(1)
+    err_per_step = np.linalg.norm(predicted_traj - oracle_traj, axis=1)
+    print(f"  predicted shape: {predicted_traj.shape}; oracle shape: {oracle_traj.shape}")
     print(
-        "  误差 (L2) 每 20 步: " + ", ".join(f"t={t}→{err_per_step[t]:.3f}" for t in [0, 20, 40, 60, 80, 100])
+        "  horizon L2 error: "
+        + ", ".join(f"t={t}→{err_per_step[t]:.3f}" for t in [0, 20, 40, 60, 80, 100])
     )
 
     print()
     print("=" * 60)
-    print("生产世界模型 (Cosmos / Genie / DreamerV3):")
-    print("  - Transformer-based 动力学预测 (latent space)")
-    print("  - 联合训练 latent dynamics + reward model")
-    print("  - 在想象中训练 SAC/PPO 策略 (节省真实交互 100x+)")
-    print("  - 应用: 机器人 sim-to-real, 自动驾驶, 游戏 AI")
+    print("解释边界:")
+    print("  - 单步 validation loss 与长 horizon error 必须同时报告")
+    print("  - 真实项目还需校准、不确定性、分布外/闭环评估和安全约束")
+    print("  - 是否降低真实交互成本只能由目标任务对照实验回答")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

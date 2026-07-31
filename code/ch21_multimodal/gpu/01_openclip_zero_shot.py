@@ -5,80 +5,72 @@
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
 # deps: torch, open_clip, pillow
-# run: python 01_openclip_zero_shot.py
-# expected_runtime: 30-60s (cold load) / <1s (mock)
-# expected_output: 每条文本与图像的相似度概率分布
+# run: CH21_OPENCLIP_RUN=1 CH21_IMAGE=/path/to/image.jpg python 01_openclip_zero_shot.py
+# expected_runtime: depends on model cache, hardware, and input
+# expected_output: 当前输入图像对三个候选文本的相似度概率
 # ---
 # See: ../tutorial/21_多模态大模型.md#21-2-3-代码示例：使用-openclip
 # Interview hooks:
 #   1. CLIP 的双塔结构如何实现零样本图像分类？
-#   2. 余弦相似度 + temperature 在对比学习中起什么作用？
-#   3. 为什么 OpenCLIP 相比原始 CLIP 更适合开源研究？
+#   2. 余弦相似度与可学习 logit scale 在对比学习中起什么作用？
+#   3. 零样本标签模板为何需要在目标数据上验证？
 
-
-# === Multi-GPU / heavy model guard (auto-added) ===
-import os as _os
-import sys as _sys
-
-_NGPU = _os.environ.get("WORLD_SIZE", "1")
-if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
-    _sys.exit(0)
 import os
+import sys
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
 
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-def main():
-    """零样本图像分类：使用 CLIP 计算图文相似度。"""
-    # 允许在没有 GPU / 真实权重时退化到 mock 模式
-    use_mock = os.environ.get("CH21_MOCK", "1") == "1"
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock
 
-    if use_mock:
-        # ----- Mock 模式：不依赖 open_clip 与大权重 -----
-        # 模拟 ViT-B/32 输出维度
-        embed_dim = 512
-        torch.manual_seed(42)
-        # 模拟一张 224x224 RGB 图像
-        image = torch.randn(1, 3, 224, 224)
-        # 模拟 3 个文本 prompt（CLIP 词表最大长度 77）
-        text_tokens = torch.randint(0, 49408, (3, 77))
-        # 模拟编码器输出
-        image_features = F.normalize(torch.randn(1, embed_dim), dim=-1)
-        text_features = F.normalize(torch.randn(3, embed_dim), dim=-1)
-        logit_scale = torch.tensor(2.659).exp()
-    else:
-        # ----- 真实模式 -----
+
+def main() -> None:
+    """在显式确认后，用真实 OpenCLIP 权重和本地图像做零样本分类。"""
+    if skip_if_mock("OpenCLIP weights, an NVIDIA GPU, and a local input image"):
+        return
+    if os.environ.get("CH21_OPENCLIP_RUN") != "1":
+        print("[SKIP] Set CH21_OPENCLIP_RUN=1 after reviewing model download and input path.")
+        return
+
+    require_nvidia_gpu(min_vram_gb=4)
+    image_path = Path(os.environ.get("CH21_IMAGE", "")).expanduser()
+    if not image_path.is_file():
+        raise FileNotFoundError("CH21_IMAGE must point to an existing local image")
+
+    try:
         import open_clip
         from PIL import Image
+    except ImportError as exc:
+        raise RuntimeError("Install open_clip_torch and Pillow for this real example") from exc
 
-        model_name = "ViT-B-32"
-        pretrained = "laion2b_s34b_b79k"
-        model, _, preprocess = open_clip.create_model_and_transforms(model_name, pretrained=pretrained)
-        tokenizer = open_clip.get_tokenizer(model_name)
-        model = model.eval()
-
-        image_path = os.environ.get("CH21_IMAGE", "cat.jpg")
-        image = preprocess(Image.open(image_path)).unsqueeze(0)
-        texts = ["a photo of a cat", "a photo of a dog", "a photo of a car"]
-        text_tokens = tokenizer(texts)
-
-        with torch.no_grad():
-            image_features = model.encode_image(image)
-            text_features = model.encode_text(text_tokens)
-        image_features = F.normalize(image_features, dim=-1)
-        text_features = F.normalize(text_features, dim=-1)
-        logit_scale = model.logit_scale.exp()
-
-    # 计算相似度
-    similarity = (image_features @ text_features.T) * logit_scale
-    probs = similarity.softmax(dim=-1)
-
+    model_name = os.environ.get("CH21_OPENCLIP_MODEL", "ViT-B-32")
+    pretrained = os.environ.get("CH21_OPENCLIP_PRETRAINED", "laion2b_s34b_b79k")
     labels = ["a photo of a cat", "a photo of a dog", "a photo of a car"]
-    print("分类概率:")
-    for text, prob in zip(labels, probs[0]):
-        print(f"  {text}: {prob.item():.4f}")
+
+    model, _, preprocess = open_clip.create_model_and_transforms(
+        model_name,
+        pretrained=pretrained,
+    )
+    tokenizer = open_clip.get_tokenizer(model_name)
+    model = model.eval().to("cuda")
+    image = preprocess(Image.open(image_path).convert("RGB")).unsqueeze(0).to("cuda")
+    text_tokens = tokenizer(labels).to("cuda")
+
+    with torch.no_grad():
+        image_features = F.normalize(model.encode_image(image), dim=-1)
+        text_features = F.normalize(model.encode_text(text_tokens), dim=-1)
+        probabilities = ((image_features @ text_features.T) * model.logit_scale.exp()).softmax(
+            dim=-1
+        )
+
+    print(f"model={model_name}, pretrained={pretrained}, image={image_path.name}")
+    for label, probability in zip(labels, probabilities[0], strict=True):
+        print(f"  {label}: {probability.item():.4f}")
 
 
 if __name__ == "__main__":

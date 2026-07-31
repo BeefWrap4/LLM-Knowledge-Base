@@ -86,10 +86,15 @@ graph TB
 FastAPI 的依赖注入（Dependency Injection）是其最优雅的设计之一：
 
 ```python
-from fastapi import FastAPI, Depends
+import os
+import secrets
 from typing import Annotated
 
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 app = FastAPI()
+bearer = HTTPBearer(auto_error=False)
 
 # 定义依赖函数
 def get_db_connection():
@@ -100,9 +105,29 @@ def get_db_connection():
     finally:
         conn["status"] = "closed"
 
-def get_current_user(token: str = ""):
-    """模拟认证依赖"""
-    return {"user_id": 1, "name": "admin"}
+def get_current_user(
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None,
+        Depends(bearer),
+    ],
+):
+    """教学用 Bearer 校验；生产环境应验证 JWT 签名、过期时间与 scope。"""
+    expected = os.getenv("DEMO_API_TOKEN")
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="服务端尚未配置 DEMO_API_TOKEN",
+        )
+    if credentials is None or not secrets.compare_digest(
+        credentials.credentials,
+        expected,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效或缺失的 Bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return {"user_id": 1, "name": "demo-user"}
 
 # 路由中注入依赖 - 自动解析并按需调用
 @app.get("/users/me")
@@ -119,6 +144,8 @@ async def read_me(
     """
     return {"user": user, "db_status": db["status"]}
 ```
+
+> 不要把访问令牌放在查询参数中：URL 可能进入浏览器历史、反向代理访问日志和监控系统。上述代码只是可运行的依赖注入演示；生产认证还需验证签名、`exp`、`iss`、`aud`、权限范围和密钥轮换。
 
 ### 9.2.3 自动 API 文档
 
@@ -193,14 +220,14 @@ async def chat(request: ChatRequest):
     """
     # 模拟 LLM 推理
     reply = f"收到消息：{request.message[:50]}..."
-    return ChatResponse(reply=reply, tokens_used=42, model="gpt-4o")
+    return ChatResponse(reply=reply, tokens_used=42, model="demo-chat-v1")
 
 @app.get("/models/{model_id}", summary="获取模型信息")
 async def get_model(
     model_id: str = Path(description="模型ID", pattern=r"^[a-zA-Z0-9-_]+$")
 ):
     """路径参数 + 正则校验"""
-    models_db = {"gpt-4o": "OpenAI", "qwen-72b": "阿里", "llama-3": "Meta"}
+    models_db = {"demo-chat-v1": "Demo", "local-chat": "Self-hosted"}
     if model_id not in models_db:
         raise HTTPException(status_code=404, detail=f"模型 {model_id} 不存在")
     return {"model_id": model_id, "provider": models_db[model_id]}
@@ -302,7 +329,7 @@ async def chat_persistent(
     conv = Conversation(
         user_message=request.message,
         assistant_reply=reply,
-        model="gpt-4o"
+        model="demo-chat-v1"
     )
     db.add(conv)
     await db.flush()  # 获取自增 ID
@@ -364,16 +391,30 @@ async def log_requests(request: Request, call_next):
 大模型生成是逐 token 进行的，流式响应（Server-Sent Events）是必备能力：
 
 ```python
-from fastapi.responses import StreamingResponse
 import asyncio
 import json
+from collections.abc import Awaitable, Callable
 
-async def generate_tokens_stream(prompt: str):
+from fastapi import Request
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=8_000)
+
+
+async def generate_tokens_stream(
+    prompt: str,
+    is_disconnected: Callable[[], Awaitable[bool]] | None = None,
+):
     """模拟 LLM 流式生成"""
     tokens = ["Fast", "API", "是", "一个", "现代", "、", "高性能", "的",
               "Python", "Web", "框架", "，", "特别适合", "构建", "LLM", "服务", "。"]
     full_response = ""
     for token in tokens:
+        if is_disconnected is not None and await is_disconnected():
+            return
         await asyncio.sleep(0.1)  # 模拟推理延迟
         full_response += token
         chunk = {
@@ -384,18 +425,29 @@ async def generate_tokens_stream(prompt: str):
     # 发送结束标记
     yield f"data: {json.dumps({'done': True, 'full_text': full_response})}\n\n"
 
-@app.get("/chat/stream", summary="流式对话（SSE）")
-async def chat_stream(message: str = Query(min_length=1)):
+@app.post("/chat/stream", summary="流式对话（SSE over fetch）")
+async def chat_stream(payload: ChatRequest, request: Request):
     """
-    SSE 流式响应 - 大模型 API 的标准输出方式
-    与 WebSocket 的区别：SSE 是单向（服务端→客户端），基于 HTTP
+    prompt 放在 POST body，避免出现在 URL 和常规访问日志中。
+    浏览器用 fetch 读取响应流；原生 EventSource 仅支持 GET。
     """
     return StreamingResponse(
-        generate_tokens_stream(message),
+        generate_tokens_stream(payload.message, request.is_disconnected),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )
 ```
+
+生产流式接口还应设置上游模型超时、并发/速率限制和最大请求体，客户端断开时取消上游生成，并避免在 token 日志中记录敏感 prompt。若必须使用原生 `EventSource`，可先通过认证 POST 创建短期、单次 stream ID，再用不含原始 prompt 的 GET 建立流。
+
+**参考资料（核对日期：2026-07-31）**：
+
+- [FastAPI Security：HTTP Bearer/OAuth2](https://fastapi.tiangolo.com/tutorial/security/first-steps/)
+- [FastAPI Server-Sent Events](https://fastapi.tiangolo.com/tutorial/server-sent-events/)
+- [ASGI HTTP and WebSocket specification](https://asgi.readthedocs.io/en/latest/specs/www.html)
 
 ### 9.3.6 完整项目结构
 

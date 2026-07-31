@@ -1,29 +1,29 @@
 # ---
 # chapter: 26
 # topic: 世界模型与具身AI
-# section: 26.4.1 Genie 3 — Google 可交互世界模型
+# section: 26.1 世界模型 — Genie 3 证据边界
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
 # deps: transformers, torch
 # run: python 01_genie3_world_model.py
-# expected_runtime: 30-90s (Qwen2.5-0.5B 真实加载 + 3 步 rollout)
-# expected_output: 文本世界模型 3 步预测演示
+# expected_runtime: depends on local model, GPU, and generation settings
+# expected_output: Qwen 文本状态转移教学；不代表 Genie 3
 # ---
 # See: ../tutorial/26_世界模型与具身AI.md §26.4.1
 #
 # Interview hooks:
-#   1. Genie 3 与 Cosmos 在训练目标上有什么不同？（可交互性 vs 物理一致性）
-#   2. 世界模型核心公式 s_{t+1}, r_t = f(s_t, a_t) 如何用 LLM 模拟？
-#   3. 用 LLM 做世界模型的优缺点：泛化强但物理一致性弱？
-"""世界模型 (Genie 3 / Cosmos 类) 演示.
+#   1. Genie 3 研究系统与 Cosmos 3 开放工具链的证据边界有何不同？
+#   2. s_{t+1}, r_t = f(s_t, a_t) 只是抽象时，评估还需要哪些具体协议？
+#   3. 为什么文本状态转移不能替代视觉世界模型或物理仿真器？
+"""文本状态转移教学示例；不是 Genie 3 或 Cosmos 的实现.
 
-Genie 3 是 Google DeepMind 的可交互世界模型, 无开源权重.
-此处用 Qwen2.5-0.5B 作为文本世界模型 (想象式环境预测) 替代演示.
+Genie 3 是 Google DeepMind 公开介绍的可交互世界模型研究系统。本仓库没有可本地加载的
+Genie 3 权重或 SDK；此处仅用 Qwen2.5-0.5B 演示文本状态转移接口，不能作为替代实现。
 
 世界模型核心:
   s_{t+1}, r_t = f(s_t, a_t)   # 状态 + 动作 → 下一状态 + 奖励
 
-Genie 3 真实场景: 视频帧 + 动作输入 → 下一帧视频.
+Genie 3 的产品能力与接口以 Google DeepMind 官方材料为准。
 本 demo 简化: 文本描述 + 文本动作 → 下一状态描述.
 """
 
@@ -37,7 +37,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help
-from shared.gpu_guard import require_nvidia_gpu
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock
 
 
 def check_hardware():
@@ -91,6 +91,8 @@ class TextWorldModel:
 
 
 def main() -> None:
+    if skip_if_mock("an NVIDIA GPU, transformers, and local model weights"):
+        return
     check_hardware()
     model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")
     if not Path(model_path).exists():
@@ -99,7 +101,7 @@ def main() -> None:
             "运行 `make download-models-default` 或手动从 HuggingFace 下载 Qwen2.5-0.5B-Instruct.",
         )
 
-    print("=== 文本世界模型 (Qwen2.5-0.5B 替代 Genie 3) ===\n")
+    print("=== 文本状态转移教学（不是 Genie 3 替代实现）===\n")
     print("核心: s_{t+1}, r_t = f(s_t, a_t)  — 文本版近似")
     print(f"模型: {model_path}\n")
 
@@ -121,14 +123,15 @@ def main() -> None:
         state = next_state
 
     print("=" * 60)
-    print("Genie 3 真实部署:")
-    print("  - 输入: 视频帧 + 用户动作 (按键/摇杆)")
-    print("  - 输出: 下一帧视频 (3D 一致性 + 可交互)")
-    print("  - 训练: 大规模未标注视频 + 自动编码 latent action")
-    print("  - 模型规模: 数十亿参数, 需数十 GB VRAM")
+    print("Genie 3 官方公开边界（不是部署说明）:")
+    print("  - Google DeepMind 将其描述为 720p、20–24 FPS 的实时交互世界模型")
+    print("  - 官方页面同时列出交互范围、文本渲染和真实地点等局限")
+    print("  - 本仓库没有可本地加载的官方权重或 SDK")
+    print("  - 未公开细节不能由演示反推，显存、架构和训练 loss 也不能臆测")
     print()
     print("本 demo 局限: 文本世界模型物理一致性弱, 需 video world model 替代.")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

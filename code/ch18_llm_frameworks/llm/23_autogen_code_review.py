@@ -18,17 +18,17 @@ AutoGen 实战：多 Agent 代码审查系统 - 离线 mock 模式
 """
 # 在真实环境使用：from autogen import AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager
 
+
 # ===== 配置 LLM =====
 config_list = [
     {
-        "model": "gpt-4o",
-        "api_key": "your-api-key",
+        "model": "<inject-current-model-in-real-integration>",
+        "api_key": "<inject-from-secret-store-in-real-integration>",
     }
 ]
 
 llm_config = {
     "config_list": config_list,
-    "temperature": 0,
     "timeout": 120,
 }
 

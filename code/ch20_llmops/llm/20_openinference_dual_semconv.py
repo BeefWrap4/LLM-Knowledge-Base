@@ -28,8 +28,12 @@ exporter = InMemorySpanExporter()
 provider.add_span_processor(SimpleSpanProcessor(exporter))
 trace.set_tracer_provider(provider)
 
-# 2. 自动 instrument（依赖缺失时为 noop）
+# 2. 自动 instrument 只在显式 live 模式启用；离线验收不改写 SDK 客户端。
+import os
+
 try:
+    if os.environ.get("LLM_REAL_API") != "1" or os.environ.get("LLM_MOCK") != "0":
+        raise ImportError
     from openinference.instrumentation.langchain import LangChainInstrumentor
     from openinference.instrumentation.openai import OpenAIInstrumentor
 
@@ -54,12 +58,13 @@ SPAN_KIND_VALUES = {
 }
 
 
-def instrument_retrieval(query: str, top_k: int = 5):
+def instrument_retrieval(query: str, top_k: int = 5, capture_content: bool = False):
     """手动记录 RAG 检索 Span（OpenInference RETRIEVER Kind）"""
     tracer = trace.get_tracer("rag.retriever")
     with tracer.start_as_current_span("vector_search") as span:
         span.set_attribute(OPENINFERENCE_SPAN_KIND, "RETRIEVER")
-        span.set_attribute("retrieval.query.text", query)
+        if capture_content:
+            span.set_attribute("retrieval.query.text", query)
         span.set_attribute("retrieval.top_k", top_k)
 
         # 业务执行（离线 mock）
@@ -79,25 +84,32 @@ def instrument_retrieval(query: str, top_k: int = 5):
         for i, d in enumerate(docs[:3]):
             span.set_attribute(f"retrieval.documents.{i}.document.id", d.metadata["id"])
             span.set_attribute(f"retrieval.documents.{i}.document.score", d.metadata["score"])
-            span.set_attribute(f"retrieval.documents.{i}.document.content", d.page_content[:256])
+            if capture_content:
+                span.set_attribute(f"retrieval.documents.{i}.document.content", d.page_content[:256])
 
-        span.set_attribute("gen_ai.retrieval.hit", len(docs) > 0)
+        span.set_attribute("app.rag.hit", len(docs) > 0)
         if docs:
             span.set_attribute(
-                "gen_ai.retrieval.score_max",
+                "app.rag.score_max",
                 max(d.metadata["score"] for d in docs),
             )
         return docs
 
 
-def instrument_agent_step(step_name: str, decision: str, observation: str):
+def instrument_agent_step(
+    step_name: str,
+    decision: str,
+    observation: str,
+    capture_content: bool = False,
+):
     """手动记录 Agent 决策 Span（OpenInference AGENT Kind）"""
     tracer = trace.get_tracer("agent.react")
     with tracer.start_as_current_span(f"agent.{step_name}") as span:
         span.set_attribute(OPENINFERENCE_SPAN_KIND, "AGENT")
         span.set_attribute("agent.step.name", step_name)
-        span.set_attribute("agent.decision", decision)
-        span.set_attribute("agent.observation", observation[:512])
+        if capture_content:
+            span.set_attribute("agent.decision", decision)
+            span.set_attribute("agent.observation", observation[:512])
         return decision
 
 
@@ -108,3 +120,4 @@ if __name__ == "__main__":
     spans = exporter.get_finished_spans()
     for s in spans:
         print(f"  span={s.name}, kind={s.attributes.get(OPENINFERENCE_SPAN_KIND)}")
+    print("OK")

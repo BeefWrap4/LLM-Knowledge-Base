@@ -4,6 +4,7 @@
 # section: 16.7.3
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: (stdlib only)
 # run: python 10_feature_router.py
 # expected_runtime: <1s
@@ -82,6 +83,7 @@ def main():
         print(f"Q: {q}")
         print(f"  features: {f}")
         print(f"  → 路由: {r}\n")
+    print("OK")
 
 
 if __name__ == "__main__":

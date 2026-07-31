@@ -42,3 +42,4 @@ few_shot_prompt = """
 if __name__ == "__main__":
     print(few_shot_prompt)
     print("\n[预期输出] 中性（或 混合，取决于模型理解）")
+    print("OK")

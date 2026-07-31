@@ -6,21 +6,25 @@
 # tier: llm
 # deps: openai>=1.40.0, DEEPSEEK_API_KEY
 # run: python 07_s1_budget_forcing.py
-# expected_runtime: <120s (real DeepSeek R1 with forced wait loops)
-# expected_output: prints budget-forced reasoning length + final answer
+# expected_runtime: <120s (real DeepSeek V4 Pro with bounded follow-up loops)
+# expected_output: prints API approximation rounds/reasoning chars + final answer
 # ---
 # See: ../tutorial/27_推理模型与Test-Time_Compute.md §27.3.3
 # Interview hooks:
 #   1. Budget forcing 与 RL 训练的 cost model 区别？
 #   2. "Wait" token 触发的训练时分布偏移如何缓解？
-#   3. S1 在 AIME 24 上相对 base R1 提升多少？计算量/准确率曲线斜率？
-"""S1: Simple Test-Time Scaling (Budget Forcing).
+#   3. 为什么 Chat Completions 多轮提示不能等同于 s1 的 token 级 budget forcing？
+"""S1: Simple Test-Time Scaling 与托管 API 近似演示.
 
 S1 核心: 控制推理时"思考 token 数", 强制模型用尽/截断思考:
   - 强制等长: 追加 "Wait" 触发继续思考
   - 强制截断: 追加最终答案 marker (如 "Final Answer:")
 
-参考: "Simple Test-Time Scaling" (arXiv 2501.19308) 2025
+DeepSeek 托管 Chat Completions API 不开放 token 级解码控制。本例只能用
+后续 user turn 请求复核，并统计返回的 reasoning_content 字符数；它不是
+s1 论文方法的严格复现，也不能把字符数当作 token budget。
+
+参考: "s1: Simple test-time scaling" (arXiv 2501.19393) 2025
 """
 
 import os
@@ -41,72 +45,89 @@ def get_deepseek_key() -> str:
     return key
 
 
-def budget_forced_generation(client, model: str, prompt: str, max_budget: int = 2000) -> dict:
-    """S1 budget forcing: 强制模型用足 / 截断 reasoning tokens.
+def budget_forcing_api_approximation(
+    client,
+    model: str,
+    prompt: str,
+    target_reasoning_chars: int = 2000,
+) -> dict:
+    """用有限多轮复核近似展示预算思想，不宣称控制真实 reasoning tokens.
 
     流程:
-      1. 第一次调 API, 拿到 partial response (含 reasoning)
-      2. 如 reasoning < max_budget, 追加 "Wait" 强制继续
-      3. 重复, 直至 reasoning >= max_budget 或达到 N 次迭代
+      1. 调用 V4 thinking mode，读取 reasoning_content 与最终回答
+      2. 若累计 reasoning 字符数仍低于演示阈值，追加 user 复核请求
+      3. 达到字符阈值或最大轮数后停止
+
+    真实 s1 budget forcing 需要能控制模型解码流/停止位置的本地推理接口。
     """
 
     messages = [{"role": "user", "content": prompt}]
-    total_reasoning = ""
+    reasoning_chunks: list[str] = []
     final_content = ""
     iterations = 0
-    max_iterations = 5
+    max_iterations = 3
 
     while iterations < max_iterations:
         resp = client.chat.completions.create(
             model=model,
             messages=messages,
             max_tokens=4096,
+            reasoning_effort="high",
+            extra_body={"thinking": {"type": "enabled"}},
         )
         msg = resp.choices[0].message
         reasoning = getattr(msg, "reasoning_content", "") or ""
         final_content = msg.content or ""
-        total_reasoning += reasoning
+        reasoning_chunks.append(reasoning)
         iterations += 1
 
-        if len(total_reasoning) >= max_budget:
-            break
-        if not final_content:  # 模型还没给最终答案, 强制继续
-            messages.append({"role": "assistant", "content": total_reasoning})
-            messages.append({"role": "user", "content": "Wait, continue thinking."})
-        else:
+        if sum(map(len, reasoning_chunks)) >= target_reasoning_chars:
             break
 
+        # 非工具多轮不需要回传隐藏思考；只保留可见答案，再用新 user turn 请求复核。
+        messages.append({"role": "assistant", "content": final_content or "(尚未给出最终答案)"})
+        messages.append(
+            {
+                "role": "user",
+                "content": "Wait. Re-check the assumptions and solution, then give a corrected final answer.",
+            }
+        )
+
     return {
-        "reasoning_len": len(total_reasoning),
+        "reasoning_chars": sum(map(len, reasoning_chunks)),
         "iterations": iterations,
         "final": final_content,
     }
 
 
 def main():
+    if os.environ.get("LLM_MOCK", "1") != "0":
+        print("=== s1 budget forcing（DeepSeek V4 API 离线演示）===")
+        print("model=deepseek-v4-pro, thinking=enabled, reasoning_effort=high")
+        print("托管 API 只能做多轮复核近似；严格复现需本地 token 级解码控制。")
+        return
+
     api_key = get_deepseek_key()
 
     from openai import OpenAI
 
-    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
+    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
-    print("=== S1 Budget Forcing (DeepSeek-R1) ===\n")
+    print("=== s1 Budget Forcing（DeepSeek V4 API 近似）===\n")
 
-    result = budget_forced_generation(
+    result = budget_forcing_api_approximation(
         client,
-        "deepseek-reasoner",
+        "deepseek-v4-pro",
         "9.11 和 9.9 哪个更大? 详细推理",
-        max_budget=2000,
+        target_reasoning_chars=2000,
     )
 
-    print(f"  reasoning length: {result['reasoning_len']} chars")
+    print(f"  returned reasoning_content: {result['reasoning_chars']} chars")
     print(f"  iterations: {result['iterations']}")
     print(f"\n  final: {result['final'][:300]}")
-    print("\n  S1 关键:")
-    print("    - max_budget: 强制模型推理 token 数")
-    print("    - Wait token: 触发继续思考")
-    print("    - Final Answer: 触发截断")
+    print("\n  边界: 字符数不是 token 数，多轮复核也不是严格的 s1 budget forcing。")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

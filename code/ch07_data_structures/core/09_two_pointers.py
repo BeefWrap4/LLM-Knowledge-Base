@@ -96,3 +96,4 @@ if __name__ == "__main__":
     assert three_sum([0, 1, 1]) == []
     assert three_sum([0, 0, 0]) == [[0, 0, 0]]
     assert three_sum([]) == []
+    print("OK")

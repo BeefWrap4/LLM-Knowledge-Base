@@ -1,34 +1,23 @@
-#!/bin/bash
-# ---
-# code/scripts/run_real_demos.sh (Wave 22 + Wave 28)
-# 一键跑 13 个真实 LLM 调用例子 (支持并行)
-# Usage:
-#   bash scripts/run_real_demos.sh                # 串行 (~90s, 默认)
-#   bash scripts/run_real_demos.sh --parallel 4    # 并行 4 任务 (~45s)
-#   bash scripts/run_real_demos.sh quick           # 仅 3 个核心 (~30s)
-#   bash scripts/run_real_demos.sh MiniMax         # 指定厂商
-#   bash scripts/run_real_demos.sh --parallel 4 MiniMax  # 组合
-# ---
-# 自动检查 API Key, 缺则降级 mock (但会提示)
+#!/usr/bin/env bash
+# Explicit, billable real-API smoke runner.
+#
+# Examples:
+#   bash scripts/run_real_demos.sh --confirm-real quick deepseek
+#   bash scripts/run_real_demos.sh --confirm-real all MiniMax --parallel 2
+#
+# This script never falls back to mock. A zero exit code means every selected
+# example either made a non-mock call successfully or was reported separately
+# as [SKIP] because an optional framework dependency was unavailable.
 
-set -e
+set -euo pipefail
 
 cd "$(dirname "$0")/.."
 ROOT=$(pwd)
 
-# 探测 make 路径 (Git Bash on Windows 不在 PATH)
-if ! command -v make >/dev/null 2>&1; then
-    if [ -x "/c/Program Files/Git/usr/bin/make.exe" ]; then
-        export PATH="/c/Program Files/Git/usr/bin:$PATH"
-    fi
-fi
-
-# ─────────────────────────────────────────────────────────
-# 解析参数
-# ─────────────────────────────────────────────────────────
 PARALLEL=1
-PROVIDER=""
-MODE=""
+PROVIDER="${LLM_PROVIDER:-}"
+MODE="all"
+CONFIRM_REAL=0
 NEXT_IS_PARALLEL=0
 
 for arg in "$@"; do
@@ -38,215 +27,219 @@ for arg in "$@"; do
         continue
     fi
     case "$arg" in
+        --confirm-real)
+            CONFIRM_REAL=1
+            ;;
         --parallel)
             NEXT_IS_PARALLEL=1
             ;;
         --parallel=*)
             PARALLEL="${arg#--parallel=}"
             ;;
-        --parallel[0-9]*)
-            PARALLEL="${arg#--parallel}"
-            ;;
         quick|all)
             MODE="$arg"
             ;;
-        deepseek|kimi|siliconflow|MiniMax|openai|anthropic|mock)
+        deepseek|kimi|siliconflow|minimax|MiniMax|openai|anthropic)
             PROVIDER="$arg"
             ;;
         *)
             echo "未知参数: $arg"
-            echo "用法: $0 [all|quick|<vendor>] [--parallel N]"
-            exit 1
+            echo "用法: $0 --confirm-real [quick|all] [provider] [--parallel N]"
+            exit 2
             ;;
     esac
 done
 
-MODE="${MODE:-all}"
-
-# ─────────────────────────────────────────────────────────
-# API Key 检查
-# ─────────────────────────────────────────────────────────
-HAS_KEY=0
-[ -n "$DEEPSEEK_API_KEY" ] && HAS_KEY=1
-[ -n "$KIMI_API_KEY" ] && HAS_KEY=1
-[ -n "$SILICONFLOW_API_KEY" ] && HAS_KEY=1
-[ -n "$MINIMAX_API_KEY" ] && HAS_KEY=1
-[ -n "$OPENAI_API_KEY" ] && HAS_KEY=1
-
-if [ $HAS_KEY -eq 0 ]; then
-    echo "⚠️  未检测到任何 LLM API Key"
-    echo "   设置至少 1 个后重试, e.g.:"
-    echo "   export DEEPSEEK_API_KEY=sk-xxx"
-    echo ""
-    echo "   将以 mock 模式跑 (所有例子都 OK, 但内容是确定性响应)"
+if [ "$NEXT_IS_PARALLEL" = "1" ]; then
+    echo "--parallel 缺少正整数参数"
+    exit 2
 fi
-
-# 默认厂商
-if [ -z "$PROVIDER" ]; then
-    PROVIDER="${LLM_PROVIDER:-deepseek}"
-fi
-export LLM_PROVIDER=$PROVIDER
-export USE_REAL_API=1
-
-echo ""
-echo "═══════════════════════════════════════════════════════════════"
-echo "  Real Demos — 13 个真实 LLM 调用例子"
-echo "  provider=$PROVIDER, mode=$MODE, parallel=$PARALLEL"
-echo "═══════════════════════════════════════════════════════════════"
-echo ""
-
-# ─────────────────────────────────────────────────────────
-# 选择例子集
-# ─────────────────────────────────────────────────────────
-case "$MODE" in
-    quick)
-        EXAMPLES=(
-            "ch13_prompt_engineering/llm/06_self_consistency_cot.py"
-            "ch13_prompt_engineering/llm/09_compare_temperatures.py"
-            "ch17_evaluation/llm/05_llm_as_judge.py"
-        )
-        echo "模式: quick (3 个核心例子)"
-        ;;
-    all|"")
-        EXAMPLES=(
-            "ch13_prompt_engineering/llm/06_self_consistency_cot.py"
-            "ch13_prompt_engineering/llm/09_compare_temperatures.py"
-            "ch13_prompt_engineering/llm/14_openai_auto_caching.py"
-            "ch13_prompt_engineering/llm/20_openai_json_schema_strict.py"
-            "ch15_agent/llm/02_react_agent_from_scratch.py"
-            "ch17_evaluation/llm/05_llm_as_judge.py"
-            "ch17_evaluation/llm/12_langfuse_v3.py"
-            "ch18_llm_frameworks/llm/02_llmchain_basic.py"
-            "ch18_llm_frameworks/llm/05_conversation_buffer_memory.py"
-            "ch18_llm_frameworks/llm/13_llamaindex_vectorstore_index.py"
-            "ch18_llm_frameworks/llm/03_sequential_chain.py"
-            "ch18_llm_frameworks/llm/09_chatbot_with_memory.py"
-            "ch18_llm_frameworks/llm/14_llamaindex_summary_index.py"
-        )
-        echo "模式: all (全部 13 个)"
-        ;;
-    *)
-        echo "未知 mode: $MODE"
-        exit 1
+case "$PARALLEL" in
+    ''|*[!0-9]*|0)
+        echo "--parallel 必须是正整数"
+        exit 2
         ;;
 esac
-echo ""
 
-# ─────────────────────────────────────────────────────────
-# 跑例子 (串行 or 并行)
-# ─────────────────────────────────────────────────────────
+if [ "$CONFIRM_REAL" != "1" ]; then
+    echo "拒绝运行：真实 API 会发送数据并产生费用。"
+    echo "确认后添加 --confirm-real；默认离线验收请使用："
+    echo "  python scripts/run_all_examples.py --tier llm"
+    exit 2
+fi
+
+if [ -z "$PROVIDER" ]; then
+    if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
+        PROVIDER="deepseek"
+    elif [ -n "${KIMI_API_KEY:-}" ]; then
+        PROVIDER="kimi"
+    elif [ -n "${SILICONFLOW_API_KEY:-}" ]; then
+        PROVIDER="siliconflow"
+    elif [ -n "${MINIMAX_API_KEY:-}" ]; then
+        PROVIDER="MiniMax"
+    elif [ -n "${OPENAI_API_KEY:-}" ]; then
+        PROVIDER="openai"
+    elif [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+        PROVIDER="anthropic"
+    else
+        echo "未检测到任何支持厂商的 API Key；不会降级到 mock。"
+        exit 2
+    fi
+fi
+
+case "${PROVIDER,,}" in
+    deepseek)
+        REQUIRED_KEY="DEEPSEEK_API_KEY"
+        PROVIDER="deepseek"
+        ;;
+    kimi)
+        REQUIRED_KEY="KIMI_API_KEY"
+        PROVIDER="kimi"
+        ;;
+    siliconflow)
+        REQUIRED_KEY="SILICONFLOW_API_KEY"
+        PROVIDER="siliconflow"
+        ;;
+    minimax)
+        REQUIRED_KEY="MINIMAX_API_KEY"
+        PROVIDER="MiniMax"
+        ;;
+    openai)
+        REQUIRED_KEY="OPENAI_API_KEY"
+        PROVIDER="openai"
+        ;;
+    anthropic)
+        REQUIRED_KEY="ANTHROPIC_API_KEY"
+        PROVIDER="anthropic"
+        ;;
+    *)
+        echo "不支持的 provider: $PROVIDER"
+        exit 2
+        ;;
+esac
+
+if [ -z "${!REQUIRED_KEY:-}" ]; then
+    echo "LLM_PROVIDER=$PROVIDER 需要环境变量 $REQUIRED_KEY；不会改用其他 Key 或 mock。"
+    exit 2
+fi
+
+export LLM_PROVIDER="$PROVIDER"
+export LLM_MOCK=0
+unset USE_REAL_API || true
+
+QUICK_EXAMPLES=(
+    "ch13_prompt_engineering/llm/06_self_consistency_cot.py"
+    "ch13_prompt_engineering/llm/09_compare_temperatures.py"
+    "ch15_agent/llm/02_react_agent_from_scratch.py"
+)
+
+ALL_EXAMPLES=(
+    "${QUICK_EXAMPLES[@]}"
+    "ch17_evaluation/llm/05_llm_as_judge.py"
+    "ch18_llm_frameworks/llm/02_llmchain_basic.py"
+    "ch18_llm_frameworks/llm/03_sequential_chain.py"
+    "ch18_llm_frameworks/llm/05_conversation_buffer_memory.py"
+    "ch18_llm_frameworks/llm/09_chatbot_with_memory.py"
+    "ch18_llm_frameworks/llm/13_llamaindex_vectorstore_index.py"
+    "ch18_llm_frameworks/llm/14_llamaindex_summary_index.py"
+)
+
+if [ "$MODE" = "quick" ]; then
+    EXAMPLES=("${QUICK_EXAMPLES[@]}")
+else
+    EXAMPLES=("${ALL_EXAMPLES[@]}")
+fi
+
+# These examples exercise OpenAI-specific APIs and are not provider-neutral.
+if [ "$MODE" = "all" ] && [ "$PROVIDER" = "openai" ]; then
+    EXAMPLES+=(
+        "ch13_prompt_engineering/llm/14_openai_auto_caching.py"
+        "ch13_prompt_engineering/llm/20_openai_json_schema_strict.py"
+    )
+fi
+
 TOTAL=${#EXAMPLES[@]}
-START_TIME=$(date +%s)
 TMPDIR_RUN=$(mktemp -d)
-trap "rm -rf $TMPDIR_RUN" EXIT
+cleanup() {
+    if [ -n "${TMPDIR_RUN:-}" ] && [ -d "$TMPDIR_RUN" ]; then
+        rm -rf -- "$TMPDIR_RUN"
+    fi
+}
+trap cleanup EXIT
 
 run_one() {
     local rel="$1"
     local idx="$2"
     local script="$ROOT/$rel"
-    local logfile="$TMPDIR_RUN/${idx}.log"
-    local t0=$(date +%s)
+    local outfile="$TMPDIR_RUN/$idx.out"
+    local statusfile="$TMPDIR_RUN/$idx.status"
+    local started
+    local finished
+    local elapsed
+    started=$(date +%s)
+
     if [ ! -f "$script" ]; then
-        echo "SKIP|$rel" > "$logfile"
+        printf 'FAIL|0|%s|文件不存在\n' "$rel" > "$statusfile"
         return
     fi
-    if python "$script" > "$logfile" 2>&1; then
-        local t1=$(date +%s)
-        local elapsed=$((t1 - t0))
-        local summary=$(grep -E "多数投票|答案|content|response|OK \(" "$logfile" 2>/dev/null | head -1 | head -c 60)
-        echo "OK|$elapsed|$rel|$summary" > "$logfile"
+
+    if python "$script" >"$outfile" 2>&1; then
+        finished=$(date +%s)
+        elapsed=$((finished - started))
+        if grep -Eq '\[SKIP\]' "$outfile"; then
+            printf 'SKIP|%s|%s|可选条件未满足\n' "$elapsed" "$rel" > "$statusfile"
+        elif grep -Eiq '\[mock\]|mock[=:][[:space:]]*true|离线(演示|模式)' "$outfile"; then
+            printf 'FAIL|%s|%s|检测到 mock/离线输出，不能计为真实验收\n' \
+                "$elapsed" "$rel" > "$statusfile"
+        else
+            printf 'PASS|%s|%s|non-mock process exit 0\n' "$elapsed" "$rel" > "$statusfile"
+        fi
     else
-        local t1=$(date +%s)
-        local elapsed=$((t1 - t0))
-        local err=$(grep -E "Error|ERROR|Traceback" "$logfile" 2>/dev/null | head -1 | head -c 60)
-        echo "FAIL|$elapsed|$rel|$err" > "$logfile"
+        finished=$(date +%s)
+        elapsed=$((finished - started))
+        local err
+        err=$(grep -E 'Error|ERROR|Traceback|Exception' "$outfile" 2>/dev/null | head -1 | head -c 120 || true)
+        printf 'FAIL|%s|%s|%s\n' "$elapsed" "$rel" "${err:-process exit non-zero}" > "$statusfile"
     fi
 }
 
-if [ "$PARALLEL" -le 1 ]; then
-    # 串行
-    i=0
-    for rel in "${EXAMPLES[@]}"; do
-        i=$((i+1))
-        printf "[%d/%d] %-65s ... " "$i" "$TOTAL" "$(basename "$rel")"
-        logfile="$TMPDIR_RUN/${i}.log"
-        t0=$(date +%s)
-        if [ ! -f "$ROOT/$rel" ]; then
-            echo "SKIP (文件不存在)"
-            continue
-        fi
-        if python "$ROOT/$rel" > "$logfile" 2>&1; then
-            t1=$(date +%s); elapsed=$((t1 - t0))
-            summary=$(grep -E "多数投票|答案|content|response|OK \(" "$logfile" 2>/dev/null | head -1 | head -c 60)
-            echo "OK (${elapsed}s) ${summary}"
-            PASS=$((PASS+1))
-        else
-            t1=$(date +%s); elapsed=$((t1 - t0))
-            echo "FAIL (${elapsed}s)"
-            grep -E "Error|ERROR|Traceback" "$logfile" | head -2
-            FAIL=$((FAIL+1))
-        fi
-    done
-    END_TIME=$(date +%s)
-    TOTAL_ELAPSED=$((END_TIME - START_TIME))
-    PASS=$(grep -l "^OK|" $TMPDIR_RUN/*.log 2>/dev/null | wc -l)
-    FAIL=$(grep -l "^FAIL|" $TMPDIR_RUN/*.log 2>/dev/null | wc -l)
-    SKIP=$(grep -l "^SKIP|" $TMPDIR_RUN/*.log 2>/dev/null | wc -l)
-else
-    # 并行 (用 xargs -P 或 background jobs)
-    echo "并行度: $PARALLEL"
-    i=0
-    pids=()
-    for rel in "${EXAMPLES[@]}"; do
-        i=$((i+1))
-        # 后台启动
-        ( run_one "$rel" "$i" ) &
-        pids+=($!)
-        # 控制并发度
-        if [ ${#pids[@]} -ge $PARALLEL ]; then
-            wait "${pids[0]}"
-            pids=("${pids[@]:1}")
-        fi
-    done
-    # 等待所有后台任务
-    wait
-    END_TIME=$(date +%s)
-    TOTAL_ELAPSED=$((END_TIME - START_TIME))
-    # 收集结果
-    PASS=0; FAIL=0; SKIP=0
-    for logfile in $TMPDIR_RUN/*.log; do
-        result=$(cat "$logfile" 2>/dev/null | head -1)
-        idx=$(basename "$logfile" .log)
-        rel=$(echo "$result" | cut -d'|' -f3)
-        elapsed=$(echo "$result" | cut -d'|' -f2)
-        summary=$(echo "$result" | cut -d'|' -f4-)
-        if [[ "$result" == OK\|* ]]; then
-            printf "  [%s/%d] OK   %-55s %3ds %s\n" "$idx" "$TOTAL" "$(basename "$rel")" "$elapsed" "${summary:0:40}"
-            PASS=$((PASS+1))
-        elif [[ "$result" == FAIL\|* ]]; then
-            printf "  [%s/%d] FAIL %-55s %3ds %s\n" "$idx" "$TOTAL" "$(basename "$rel")" "$elapsed" "${summary:0:40}"
-            FAIL=$((FAIL+1))
-        else
-            printf "  [%s/%d] SKIP %s\n" "$idx" "$TOTAL" "$rel"
-            SKIP=$((SKIP+1))
-        fi
-    done
-fi
+echo "真实 API 条件性验收：provider=$PROVIDER, mode=$MODE, parallel=$PARALLEL"
+echo "选中 $TOTAL 个示例；实际费用与请求数据以厂商控制台为准。"
 
-echo ""
-echo "═══════════════════════════════════════════════════════════════"
-echo "  完成: $PASS passed, $FAIL failed${SKIP:+ ($SKIP skipped)} (总计 $TOTAL, 耗时 ${TOTAL_ELAPSED}s)"
-if [ "$PARALLEL" -gt 1 ]; then
-    echo "  并行度: $PARALLEL (vs 串行 ~88s)"
-fi
-echo "═══════════════════════════════════════════════════════════════"
-echo ""
-echo "  估算成本 (按 DeepSeek 价格):"
-echo "    DeepSeek:    ¥1/百万 input tokens, ¥2/百万 output"
-echo "    Kimi:        ¥12/百万 tokens"
-echo "    SiliconFlow: 部分模型免费 (Qwen 7B), 其他 ¥1-4/百万"
-echo "    MiniMax:  按订阅计划"
-echo ""
-echo "  本次运行约 10-50 个 chat 调用, 估计 ¥0.01 - ¥0.10"
+active=0
+idx=0
+for rel in "${EXAMPLES[@]}"; do
+    idx=$((idx + 1))
+    run_one "$rel" "$idx" &
+    active=$((active + 1))
+    if [ "$active" -ge "$PARALLEL" ]; then
+        wait
+        active=0
+    fi
+done
+wait
 
-exit $FAIL
+PASS=0
+FAIL=0
+SKIP=0
+for idx in $(seq 1 "$TOTAL"); do
+    statusfile="$TMPDIR_RUN/$idx.status"
+    if [ ! -f "$statusfile" ]; then
+        echo "FAIL|0|unknown|缺少状态文件" > "$statusfile"
+    fi
+    IFS='|' read -r status elapsed rel detail < "$statusfile"
+    printf '[%2d/%d] %-4s %-58s %4ss  %s\n' \
+        "$idx" "$TOTAL" "$status" "$(basename "$rel")" "$elapsed" "$detail"
+    case "$status" in
+        PASS) PASS=$((PASS + 1)) ;;
+        SKIP) SKIP=$((SKIP + 1)) ;;
+        *) FAIL=$((FAIL + 1)) ;;
+    esac
+done
+
+echo "完成：$PASS passed / $SKIP skipped / $FAIL failed / $TOTAL total"
+echo "PASS 仅表示该进程未检测到 mock 且正常退出；仍需核对 provider usage、响应模型和账单。"
+
+if [ "$FAIL" -gt 0 ]; then
+    exit 1
+fi

@@ -2,14 +2,14 @@
 
 > **面向 2026 年大模型算法/工程岗位的 Python 全栈面试准备库**
 >
-> 29 章节 · 280+ 面试题 · 439 个可运行代码示例 · 2026 主题全覆盖 · 健康评分 95/100
+> 40 章节 · 300+ 面试题 · 433 个可运行代码示例 · 最近核验：2026-07-31
 
 [![Verify](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/verify.yml/badge.svg)](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/verify.yml)
 [![Integration](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/integration-test.yml/badge.svg)](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/integration-test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-green.svg)](https://www.python.org/)
-[![code passing](https://img.shields.io/badge/code-357%2F357-brightgreen.svg)]()
-[![chapters](https://img.shields.io/badge/chapters-29%2F29-blue.svg)]()
+[![examples](https://img.shields.io/badge/examples-433-blue.svg)](code/)
+[![chapters](https://img.shields.io/badge/chapters-40-blue.svg)](00_目录索引.md)
 [![vendors](https://img.shields.io/badge/LLM%20vendors-7-orange.svg)]()
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](Dockerfile)
 [![CN mirror](https://img.shields.io/badge/CN%20mirror-清华%2BModelScope-red.svg)]()
@@ -18,13 +18,14 @@
 
 ## ✨ 核心特色
 
-- 🆕 **2026 主题全覆盖** — Reasoning Models, Test-Time Compute, MCP/A2A, Inference Engines, World Models, Context Engineering
-- 📊 **300+ 真实面试题** — 每章含 5-16 道详细题解，含参考答\n- 🔗 **完整交叉引用网络** — Wiki 链接形式，与 Obsidian 原生集成
-- 📋 **100% 风格统一** — 每章含 YAML frontmatter / Mermaid 图 / 速查表 / 面试题 / 交叉引用
-- 🛠️ **可执行代码示例** — Python/Shell/YAML/Dockerfile 完整可运行
-- 🤖 **13 个真实 LLM 例子** — DeepSeek / Kimi / SiliconFlow / MiniMax 等 7 厂商, 一键 `bash scripts/run_real_demos.sh`
-- 🐳 **Docker 化部署** — `make docker-build` 构建, 3 profile (core/llm/gpu), 国内源加速
-- 🎉 **[实测样例输出](code/docs/REAL_DEMOS.md)** — 13 个真实 LLM 调用的实际响应 (MiniMax 跑出)
+- 🆕 **2026 核心主题** — Reasoning Models、Test-Time Compute、MCP/A2A、推理引擎、世界模型、Context Engineering
+- 📊 **300+ 面试题** — 以原理、工程权衡和可验证项目证据为主
+- 🔗 **交叉引用网络** — Wiki 链接形式，与 Obsidian 原生集成
+- 📋 **统一章节模板** — YAML frontmatter、图示、速查表、面试题和交叉引用
+- 🛠️ **分层代码伴侣** — core、LLM mock、GPU 三类；通过验收脚本报告实际状态
+- 🤖 **真实 API 条件性验收** — 默认离线；真实调用需选定厂商、有效 Key、`LLM_MOCK=0` 与费用确认
+- 🐳 **Docker 化部署** — `make docker-build` 构建, 3 profile (core/llm/gpu), 软件源可显式覆盖
+- 🧾 **[真实调用记录说明](code/docs/REAL_DEMOS.md)** — 历史快照与复测边界；不能替代当前账号/模型验收
 
 ## 📚 知识体系
 
@@ -68,7 +69,9 @@
 ├── 🆕 第26章 世界模型与具身 AI
 ├── 🆕 第27章 推理模型与 Test-Time Compute
 ├── 🆕 第28章 端侧与边缘 LLM
-└── 🆕 第29章 Context Engineering
+├── 🆕 第29章 Context Engineering
+├── 🚀 第30-39章 2026 前沿补齐
+└── 🎯 第40章 国内大模型岗位面试实战
 ```
 
 ## 🎯 按岗位选择学习路径
@@ -104,13 +107,18 @@
 ```bash
 git clone https://github.com/BeefWrap4/LLM-Knowledge-Base.git
 cd LLM-Knowledge-Base/code
-python -m venv .venv && source .venv/Scripts/activate
+python -m venv .venv
+# PowerShell: .\.venv\Scripts\Activate.ps1
+# Bash: source .venv/bin/activate
 make install-core                    # 30 秒, CPU 即可
 python ch12_transformer_architecture/core/01_scaled_dot_product_attention.py
 # 输出: OK
 ```
 
-跑通后, 任意 `ch*/llm/*.py` 或 `ch*/gpu/*.py` 都可执行, 三层依赖自动决定.
+`llm/` 默认使用 `LLM_MOCK=1` 离线验收。`gpu/` runner 默认执行 mock/skip 契约；
+真实运行须显式使用 `--real-gpu` 并按章节选择与当前 NVIDIA、Apple Silicon、
+Ollama 或浏览器环境兼容的子集。`--real-gpu` 不授权模型下载、端口监听、引擎编译、
+浏览器或云部署；这些路径仍需脚本声明的独立环境开关。真实 API 还需显式密钥。
 
 ### 三层依赖策略 (按需升级)
 
@@ -135,7 +143,7 @@ python ch12_transformer_architecture/core/01_scaled_dot_product_attention.py
 
 所有 Wiki 链接使用 `[[NN_TopicName]]` 格式，搜索 `[[16_` 即可找到所有指向第 16 章的反向链接。
 
-### 一键验证 5 项检查
+### 一键验证 10 项检查
 
 ```bash
 cd code/
@@ -165,22 +173,22 @@ make ci                    # ~10min, push 前跑 (镜像 GitHub Actions)
 - **格式**: Obsidian Flavored Markdown
 - **图表**: Mermaid 10+ 类型 (flowchart, sequenceDiagram, timeline 等)
 - **数学**: LaTeX `$` / `$$` 块
-- **代码**: Python 3.13+ 标准库 + 流行框架示例
-- **引用**: `[[Wiki Links]]` 形式，无 markdown 链接
+- **代码**: Python 3.10+ 标准库 + 流行框架示例
+- **引用**: `[[Wiki Links]]` 导航 + [`docs/AUTHORITATIVE_SOURCES.md`](docs/AUTHORITATIVE_SOURCES.md) 权威来源索引
 
 ## 📈 库统计
 
 | 指标 | 数值 |
 |------|------|
-| 教程总文件数 | 33 (29 章正文 + TOC + 健康报告 + README + CLAUDE.md) |
+| 教程章节数 | 40（其中 29 章配有独立代码伴侣） |
 | 教程总大小 | ~2,200 KB |
 | 总面试题 | 300+ 道 |
 | 总 Mermaid 图 | 200+ 个 |
 | 总代码示例 | 500+ 段 |
-| **code/ 伴侣 .py 文件** | **439 (158 core/ + 199 llm/ + 76 gpu/)** |
+| **code/ 伴侣 .py 文件** | **433（158 core + 199 llm + 76 gpu）** |
 | **code/ 章节 README** | **29/29 (100%)** |
-| 健康评分 | 95/100 |
-| 风格一致性 | 100% |
+| 当前验收状态 | 见 `99_库健康检查报告.md`，以命令输出为准 |
+| 权威来源索引 | 40/40 章 |
 
 ## 🔧 仓库结构
 
@@ -189,6 +197,8 @@ make ci                    # ~10min, push 前跑 (镜像 GitHub Actions)
 ├── 00_目录索引.md                    # 导航中枢，按板块/岗位多维组织
 ├── 01-24_*.md                        # 24 个核心章节
 ├── 25-29_*.md                        # 5 个 2026 新增章节
+├── 30-39_*.md                        # 10 个 2026 前沿补齐章节
+├── 40_国内大模型岗位面试实战_2026.md # JD 对齐、项目深挖与系统设计
 ├── 99_库健康检查报告.md              # 维护记录与质量报告
 ├── CLAUDE.md                         # Claude Code 工作指南
 └── README.md                         # 本文件
@@ -196,7 +206,7 @@ make ci                    # ~10min, push 前跑 (镜像 GitHub Actions)
 
 ## 🛠️ 可运行代码伴侣
 
-教程中所有 Python 代码已整理为 **439 个端到端可运行的 .py 文件**, 位于 [`code/`](code/) 目录:
+教程配有 **433 个独立 `.py` 示例**，位于 [`code/`](code/) 目录：
 
 ```bash
 cd code/
@@ -205,7 +215,7 @@ make install-core                                          # 30 秒
 python ch12_transformer_architecture/core/01_scaled_dot_product_attention.py
 ```
 
-**三层依赖策略** (覆盖 100% 用户场景):
+**三层依赖策略**：
 - **core (158 文件)** — 任何电脑, 30 秒安装
 - **llm (199 文件)** — API 调用 + mock 模式, 5 分钟安装
 - **gpu (76 文件)** — 需 NVIDIA GPU/Apple MLX, 30 分钟安装
@@ -219,43 +229,48 @@ bash scripts/setup_local.sh --skip-models   # 快速版 (跳过模型下载, ~30
 make setup-local                    # 同样, Makefile wrapper
 ```
 
-部署完整栈: Redis 16379 + pgvector 15432 + 3 个真实模型 (bge-small/reranker/Qwen 0.5B) + 4 厂商 LLM.
-详见 [`code/docs/DEPLOY_LOCAL.md`](code/docs/DEPLOY_LOCAL.md) 和 [`make integration-test`](code/Makefile).
+条件性集成验收只覆盖 bge-small-zh-v1.5、Redis、pgvector 和本次明确选择的一个 LLM provider；
+不代表其他模型或厂商已通过。详见 [`code/docs/DEPLOY_LOCAL.md`](code/docs/DEPLOY_LOCAL.md)。
 
 ### 接入真实 LLM (Wave 14-A)
 
 ```bash
 cd code/
 cp .env.example .env        # 编辑填入 DEEPSEEK_API_KEY 或 KIMI_API_KEY
-python scripts/llm_doctor.py  # 验证 Key
+python scripts/llm_doctor.py  # 只读查看配置与用法，不联网
+LLM_MOCK=0 LLM_PROVIDER=deepseek \
+  python scripts/llm_doctor.py --provider deepseek --confirm-real  # 可能计费
 ```
 
-支持 **DeepSeek / Kimi / SiliconFlow / OpenAI / Anthropic** 多厂商 (统一 OpenAI 兼容协议).
+支持 **DeepSeek / Kimi / SiliconFlow / MiniMax / OpenAI / Anthropic** 等 provider adapter。
+其中 OpenAI-compatible 端点和 Anthropic Messages 并非完整等价协议，能力需按厂商逐项核对。
 详见 [`code/docs/API_KEYS.md`](code/docs/API_KEYS.md).
 
-### 一键跑 13 个真实 LLM 例子 (Wave 22)
+### 条件性真实 API 冒烟
 
 ```bash
 cd code/
 
-# 全部 13 个 (deepseek 默认, ~2 min)
-bash scripts/run_real_demos.sh
+# 默认离线，不会读取 Key 或发请求
+LLM_MOCK=1 python scripts/run_all_examples.py --tier llm
 
-# 3 个核心 (快速演示, ~30s)
-bash scripts/run_real_demos.sh quick
+# 明确接受数据出域与计费后，选定一个厂商逐项验收
+export DEEPSEEK_API_KEY=your-key
+LLM_MOCK=0 bash scripts/run_real_demos.sh --confirm-real quick deepseek
 
-# 指定厂商
-bash scripts/run_real_demos.sh MiniMax
-bash scripts/run_real_demos.sh kimi
+# 完整候选集；可选框架缺失会单列 SKIP
+LLM_MOCK=0 bash scripts/run_real_demos.sh --confirm-real all deepseek --parallel 2
 ```
 
-自动检查 API Key, 缺则降级 mock. 跑通后输出 `3 passed, 0 failed` + 估算成本.
+脚本不会在缺 Key 时降级 mock，也不会给出脱离实际 usage 的费用估算。PASS 后仍要核对响应模型、
+厂商 usage 与账单；本仓库整库默认验收不执行这些真实请求。
 
 ### 下载教程所需模型 (Wave 14-B)
 
 ```bash
 cd code/
-make download-models       # 国内源 (ModelScope), 默认下 bge-small + bge-reranker
+make download-models-list     # 只读查看当前模型、门禁与规划体积
+make download-models-default  # 按注册表下载 required 集合
 ```
 
 详见 [`code/models/README.md`](code/models/README.md) 和 [`code/docs/MODELS.md`](code/docs/MODELS.md).
@@ -263,7 +278,7 @@ make download-models       # 国内源 (ModelScope), 默认下 bge-small + bge-r
 ### Docker 化部署 (Wave 14-C)
 
 ```bash
-make -C code docker-build    # 构建镜像 (国内源加速)
+make -C code docker-build    # 构建镜像（默认 PyPI 官方索引）
 make -C code docker-llm      # 启动 app + Redis
 make -C code docker-bash     # 进容器
 ```
@@ -285,7 +300,7 @@ docker run --rm -it \
   ghcr.io/beefwrap4/llm-knowledge-base:latest bash
 
 # 容器内:
-cd /app/code && make ci-quick   # 验证 5 项检查 + 真实 LLM 调用
+cd /app/code && make ci-quick   # 10 项离线检查，不调用真实 LLM
 ```
 
 ### CI 配置真实 LLM API Key (Wave 18)
@@ -309,6 +324,7 @@ cd /app/code && make ci-quick   # 验证 5 项检查 + 真实 LLM 调用
 - 每新增 5 章做一次内容质量评估
 - 章节命名严格遵循 `NN_TopicName.md` 两位数字前缀
 - 新章节必须包含：YAML frontmatter / Mermaid 图 / 面试题 / 速查表 / 交叉引用
+- 模型、API、法规和 benchmark 结论必须登记到权威来源索引并注明核验日期
 
 ## 📜 许可
 
@@ -316,7 +332,8 @@ cd /app/code && make ci-quick   # 验证 5 项检查 + 真实 LLM 调用
 
 ## 🆕 更新日志
 
-- **2026-06-07** — code/ 伴侣 Phase 0-3 完成: 439 个 .py 文件 + 29 个章节 README + 3 层 tier 依赖 + tutorial/ junction
+- **2026-07-31** — 全库事实、API、安全与可运行性审校；统计统一为 40 章、433 个示例，并启用 10 项 fail-closed 验收
+- **2026-06-07** — code/ 伴侣 Phase 0-3 完成：29 个章节 README + 3 层 tier 依赖 + tutorial/ junction
 - **2026-06-06** — 新增 Ch25-29 五个 2026 年新主题章节；库扩展至 29 章，健康评分 95/100
 - **2026-06-02** — Mindmap 统一改为文本树；Wiki 链接修复；交叉引用网络完善
 - **2026-06-01** — 初始版本：24 章核心内容
@@ -325,7 +342,7 @@ cd /app/code && make ci-quick   # 验证 5 项检查 + 真实 LLM 调用
 
 ## 配套代码使用指南
 
-本教程配套 450 个 .py 真实可运行代码 (`code/` 目录), 8-wave 真实化重构已完成 (35 commits).
+本教程配套 433 个 `.py` 示例（`code/` 目录）；是否通过以当前 `make ci` 结果为准。
 
 ### 快速开始
 
@@ -333,7 +350,7 @@ cd /app/code && make ci-quick   # 验证 5 项检查 + 真实 LLM 调用
 cd code
 make install-llm         # 5 分钟
 export DEEPSEEK_API_KEY=sk-xxx  # 推荐 DeepSeek
-make download-models-default   # 1.7GB
+make download-models-default   # 实际体积以当前 revision/dry-run 为准
 LLM_MOCK=1 make test-llm      # mock 冒烟
 ```
 
@@ -342,25 +359,26 @@ LLM_MOCK=1 make test-llm      # mock 冒烟
 ```bash
 cd code
 export DEEPSEEK_API_KEY=sk-xxx
-python ch15_agent/llm/01_react_basic.py     # 真实 ReAct agent
+LLM_MOCK=0 python ch15_agent/llm/02_react_agent_from_scratch.py  # 显式真实 API
 python ch16_finetuning/gpu/01_lora_finetuning.py  # 真实 LoRA 训练
-python ch25_inference_engines/gpu/10_vllm_async_engine.py  # 真实 vLLM
+$env:VLLM_EXAMPLE_RUN = "1"  # PowerShell；确认 Linux/WSL2、模型与资源后
+python ch25_inference_engines/gpu/10_vllm_async_engine.py
 ```
 
 ### 硬件 × 章节需求
 
 详见 `code/README.md` "硬件 × 章节矩阵" 段.
 
-### 真实化状态
+### 验收层级
 
-| 章节 | 真实跑 | 缺什么 |
-|------|--------|--------|
-| Ch13-18 (LLM 基础) | ✅ 真跑 DeepSeek / OpenAI | DEEPSEEK_API_KEY |
-| Ch19 (DDP/FSDP) | ✅ 真跑 Qwen2.5-0.5B | 32GB GPU |
-| Ch25 (推理引擎) | ✅ 真跑 vLLM + 量化 | 24GB+ GPU, Qwen2.5-7B |
-| Ch26 (世界模型) | ✅ 真跑 Cosmos config + flow matching | 24GB+ GPU |
-| Ch27 (推理模型) | ✅ 真跑 DeepSeek R1 | DEEPSEEK_API_KEY |
-| Ch28 (端侧) | ✅ 真跑 Ollama (本机已运行) | Apple Silicon / Ollama |
+| 章节 | 默认仓库验收 | 条件验收 |
+|------|--------------|----------|
+| Ch13-18（LLM 应用） | `LLM_MOCK=1` 离线契约 | `LLM_MOCK=0` + 对应供应商 Key；费用与配额由操作者承担 |
+| Ch19（DDP/FSDP） | 本地算法/配置运行，分布式重路径跳过 | 兼容 GPU 拓扑、PyTorch/NCCL 与 `torchrun` |
+| Ch25（推理引擎） | 纯计算运行，vLLM/量化等条件项 `[SKIP]` | 按模型、上下文、并发与引擎兼容矩阵做容量和性能验收 |
+| Ch26（世界模型） | 小型本地算法/配置；外部权重项跳过 | 具体世界模型/VLA 权重、许可证与硬件环境 |
+| Ch27（推理模型） | 当前 API 结构的离线 mock | `LLM_MOCK=0` + OpenAI/Anthropic/DeepSeek 等对应 Key |
+| Ch28（端侧） | 纯逻辑/协议项运行，设备服务项跳过 | Apple Silicon、Ollama/WebGPU/目标 NPU 等对应子集 |
 
 ---
 

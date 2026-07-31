@@ -149,3 +149,5 @@ if __name__ == "__main__":
         risk = membership_inference_risk(train_conf, test_conf)
         print(f"  训练集置信度={train_conf}, 测试集置信度={test_conf}")
         print(f"  → {risk} ({desc})")
+
+    print("OK")

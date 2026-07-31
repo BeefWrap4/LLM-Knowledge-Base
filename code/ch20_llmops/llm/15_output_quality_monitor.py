@@ -120,3 +120,4 @@ if __name__ == "__main__":
 
     fmt = monitor.check_format_compliance('```json\n{"a": 1}\n```')
     print(f"格式合规: {fmt}")
+    print("OK")

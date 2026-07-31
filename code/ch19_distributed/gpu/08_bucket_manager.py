@@ -4,6 +4,7 @@
 # section: 19.8.3
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: 无 (纯 stdlib + 概念演示)
 # run: python 08_bucket_manager.py
 # expected_runtime: <2s
@@ -35,6 +36,8 @@ class _MiniBucket:
     def start_async_allreduce(self):
         # 真实实现: 通过 NCCL 异步启动 all_reduce, 不阻塞后续层
         print(f"  [Async AllReduce] bucket 已满 (size={self.size}), 启动异步 AllReduce")
+        self.buffer.clear()
+        self.size = 0
 
 
 class BucketManager:
@@ -60,7 +63,6 @@ class BucketManager:
         bucket.add(grad_size)
         if bucket.is_full():
             bucket.start_async_allreduce()
-            # 真实实现: 异步启动后清空 bucket 以便复用
 
     def _find_bucket(self, param_name):
         # 真实实现: 按参数名 hash 决定 bucket 归属
@@ -80,7 +82,8 @@ def main():
     for layer in range(32, 0, -1):
         bm.add_gradient(f"layer_{layer}.weight", grad_size=5 * 1024 * 1024)
     print("=" * 60)
-    print("结论: 当一个 bucket 填满后, 异步 AllReduce 不阻塞后续层, 实现通信-计算重叠。")
+    print("结论: bucket 就绪后可尽早提交异步 AllReduce；能否充分重叠需用 profiler 验证。")
+    print("OK")
 
 
 if __name__ == "__main__":

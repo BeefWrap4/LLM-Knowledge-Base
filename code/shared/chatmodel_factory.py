@@ -30,8 +30,13 @@ Usage:
     # 纯 OpenAI 兼容
     from shared.chatmodel_factory import make_openai_client
     client = make_openai_client(provider="siliconflow")
-    resp = client.chat.completions.create(model="Qwen/Qwen2.5-72B", messages=[...])
+    resp = client.chat.completions.create(
+        model=PROVIDERS["siliconflow"].default_chat,
+        messages=[...],
+    )
 """
+
+import os
 
 from shared.provider_registry import (
     PROVIDERS,
@@ -75,12 +80,20 @@ def make_openai_client(provider: str | None = None, **overrides):
         client = make_openai_client()                  # 默认厂商
         client = make_openai_client(provider="kimi")   # 指定厂商
     """
+    if os.environ.get("LLM_MOCK") != "0":
+        raise RuntimeError("只有显式 LLM_MOCK=0 才允许创建真实 OpenAI-compatible 客户端")
+
     try:
         from openai import OpenAI
     except ImportError:
         raise ImportError("pip install openai (or `make install-llm`)")
 
     p = get_provider(provider) if provider else get_default_provider()
+    if p.api_style != "openai":
+        raise ValueError(
+            f"厂商 {p.name} 不是 OpenAI-compatible API；请使用 UnifiedClient、"
+            "make_chat_model 或该厂商官方 SDK"
+        )
     api_key = overrides.pop("api_key", None) or _get_key(p)
     if not api_key:
         raise ValueError(f"厂商 {p.name} 缺 API Key (env {p.env_key}), 或显式传 api_key=")
@@ -92,8 +105,11 @@ def make_openai_client(provider: str | None = None, **overrides):
 
 
 def _get_key(p: Provider) -> str | None:
-    import os
+    if os.environ.get("LLM_MOCK") != "0":
+        return None
+    from shared.env import load_dotenv_if_real
 
+    load_dotenv_if_real()
     return os.environ.get(p.env_key, "").strip() or None
 
 
@@ -115,7 +131,7 @@ def make_chat_model(
         provider: 厂商名 (deepseek / kimi / siliconflow / MiniMax / openai / anthropic)
         model: 模型名 (None = 用厂商默认)
         framework: "langchain" 或 "llama_index"
-        temperature: 0-2
+        temperature: 具体范围与兼容性由所选 provider/model 决定
         **kwargs: 传给底层 ChatModel 的额外参数
 
     Returns:
@@ -124,8 +140,15 @@ def make_chat_model(
 
     Examples:
         llm = make_chat_model(provider="deepseek")
-        llm = make_chat_model(provider="kimi", model="moonshot-v1-128k", framework="llama_index")
+        llm = make_chat_model(provider="kimi", framework="llama_index")
     """
+    if framework not in {"langchain", "llama_index"}:
+        raise ValueError(f"未知 framework: {framework} (仅支持 langchain / llama_index)")
+
+    # 即使调用方显式指定 provider 且机器上已有 Key，离线 runner 也不得创建真实客户端。
+    if os.environ.get("LLM_MOCK") != "0":
+        return None
+
     p = get_provider(provider) if provider else get_default_provider()
     api_key = _get_key(p)
     if not api_key:
@@ -138,8 +161,7 @@ def make_chat_model(
         return _make_langchain(p, used_model, api_key, temperature, **kwargs)
     elif framework == "llama_index":
         return _make_llama_index(p, used_model, api_key, temperature, **kwargs)
-    else:
-        raise ValueError(f"未知 framework: {framework} (仅支持 langchain / llama_index)")
+    raise AssertionError("unreachable framework")
 
 
 def _make_langchain(p: Provider, model: str, key: str, temperature: float, **kwargs):

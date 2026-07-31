@@ -1,6 +1,6 @@
 # ---
 # chapter: 29
-# topic: Prompt Caching — 缓存前缀策略, 节省 90% token 成本
+# topic: Prompt Caching — 官方规则快照与输入侧成本算式
 # section: 29.7
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
@@ -10,105 +10,146 @@
 # ---
 #
 # See: ../tutorial/29_Context_Engineering.md §29.7
-# Cross-refs:
-#   - Ch20 LLMOps (成本监控)
-#   - Ch25 推理引擎 (Prefix Cache / KV Cache)
-#   - Ch02 Token 经济学
+# Official sources (checked 2026-07-31):
+#   - Anthropic: https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+#   - OpenAI: https://developers.openai.com/api/docs/guides/prompt-caching
+#   - Gemini: https://ai.google.dev/gemini-api/docs/caching
+#             https://ai.google.dev/gemini-api/docs/generate-content/caching
 #
-# Interview hooks:
-#   - "Prompt Caching 缓存什么?"      →  稳定的 system prompt + few-shot + 工具 schema
-#   - "Anthropic 缓存折扣?"            →  写入 ×1.25, 读取 ×0.1 (省 90%)
-#   - "多轮对话缓存如何累积?"          →  prefix 随对话单调增长, 命中可叠加
+# Important:
+#   本文件是纯离线算式，不调用 API，也不冻结某个模型的美元标价。
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-# Anthropic 公开定价 (USD per 1M tokens, mock)
-ANTHROPIC = {
-    "base_in": 3.0,
-    "base_out": 15.0,
-    "cache_write_factor": 1.25,  # 写时多收 25%
-    "cache_read_factor": 0.10,  # 读时只收 10%
-    "min_cacheable": 1024,  # 最小可缓存 token (官方约束)
-    "cache_ttl_s": 300,  # 5 分钟
-}
+
+@dataclass(frozen=True)
+class CachePolicySnapshot:
+    provider_scope: str
+    checked_on: str
+    lifetime: str
+    billing_boundary: str
+    source_url: str
 
 
-@dataclass
-class CacheStats:
-    total_in: int
-    cached_in: int
-    fresh_in: int
+POLICY_SNAPSHOTS = (
+    CachePolicySnapshot(
+        provider_scope="Anthropic active Claude models",
+        checked_on="2026-07-31",
+        lifetime="默认 5m；可选 1h",
+        billing_boundary="相对基础输入价：5m 写 1.25×、1h 写 2×、读 0.1×",
+        source_url="https://platform.claude.com/docs/en/build-with-claude/prompt-caching",
+    ),
+    CachePolicySnapshot(
+        provider_scope="OpenAI GPT-5.6+",
+        checked_on="2026-07-31",
+        lifetime="ttl 表示最短生命周期；当前唯一值/默认值为 30m，服务可能保留更久",
+        billing_boundary="写入 1.25× 未缓存输入价；读取按目标模型 cached-input 价",
+        source_url="https://developers.openai.com/api/docs/guides/prompt-caching",
+    ),
+    CachePolicySnapshot(
+        provider_scope="Gemini 2.5+",
+        checked_on="2026-07-31",
+        lifetime="implicit 默认；显式缓存默认 TTL 1h",
+        billing_boundary="implicit 不保证命中；显式缓存另计 token 存储时长，不是免费命中",
+        source_url="https://ai.google.dev/gemini-api/docs/generate-content/caching",
+    ),
+)
+
+
+@dataclass(frozen=True)
+class NormalizedInputCost:
+    turns: int
     cache_hits: int
-    cost_with_cache: float
-    cost_no_cache: float
-    saving_pct: float
+    baseline_units: float
+    cached_units: float
+
+    @property
+    def change_vs_no_cache(self) -> float:
+        """负数表示下降，正数表示上升；只覆盖输入侧归一化成本。"""
+
+        return self.cached_units / self.baseline_units - 1.0
 
 
-def calc_cost(prefix_tokens: int, dynamic_tokens: int, output_tokens: int, n_turns: int = 1) -> CacheStats:
-    """模拟多轮对话的 prefix 缓存累积。
-    - 第 1 轮: prefix 全部新鲜, 走 cache_write × 1.25
-    - 第 N 轮 (N>1): 相同 prefix 走 cache_read × 0.1
-    - dynamic 部分每轮都新鲜
+def anthropic_normalized_input_cost(
+    *,
+    prefix_tokens: int,
+    dynamic_tokens_per_turn: int,
+    turns: int,
+    cache_hits: int,
+    ttl: str = "5m",
+) -> NormalizedInputCost:
+    """按 Anthropic 当前公开倍率演示输入侧成本。
+
+    ``1 unit`` 等于一个基础输入 token 的相对成本。函数不包含输出、Batch、
+    data residency、工具、网络或基础设施费用，因此不能当成总账单预测。
     """
-    a = ANTHROPIC
-    cost_with = 0.0
-    cost_without = 0.0
-    hits = 0
-    fresh_total = 0
-    cached_total = 0
-    for t in range(1, n_turns + 1):
-        # 无缓存基线
-        cost_without += (prefix_tokens + dynamic_tokens) / 1e6 * a["base_in"]
-        # 有缓存
-        if t == 1:
-            cost_with += prefix_tokens / 1e6 * a["base_in"] * a["cache_write_factor"]
-            cost_with += dynamic_tokens / 1e6 * a["base_in"]
-        else:
-            # prefix 全部命中
-            cost_with += prefix_tokens / 1e6 * a["base_in"] * a["cache_read_factor"]
-            cost_with += dynamic_tokens / 1e6 * a["base_in"]
-            hits += 1
-        cost_with += output_tokens / 1e6 * a["base_out"]
-        cost_without += output_tokens / 1e6 * a["base_out"]
-        fresh_total += dynamic_tokens
-        cached_total += prefix_tokens if t > 1 else 0
-    return CacheStats(
-        total_in=(prefix_tokens + dynamic_tokens) * n_turns,
-        cached_in=cached_total,
-        fresh_in=fresh_total + prefix_tokens,  # 首次的 prefix 也算 fresh
-        cache_hits=hits,
-        cost_with_cache=cost_with,
-        cost_no_cache=cost_without,
-        saving_pct=1 - cost_with / cost_without if cost_without else 0,
+
+    if prefix_tokens < 0 or dynamic_tokens_per_turn < 0:
+        raise ValueError("token 数不能为负数")
+    if prefix_tokens + dynamic_tokens_per_turn == 0:
+        raise ValueError("每轮至少需要一个输入 token")
+    if turns <= 0:
+        raise ValueError("turns 必须大于 0")
+    if not 0 <= cache_hits <= turns:
+        raise ValueError("cache_hits 必须在 [0, turns] 内")
+    if ttl not in {"5m", "1h"}:
+        raise ValueError("ttl 仅支持 5m 或 1h 教学快照")
+
+    write_factor = 1.25 if ttl == "5m" else 2.0
+    read_factor = 0.10
+    misses = turns - cache_hits
+    baseline = turns * (prefix_tokens + dynamic_tokens_per_turn)
+    cached = (
+        misses * prefix_tokens * write_factor
+        + cache_hits * prefix_tokens * read_factor
+        + turns * dynamic_tokens_per_turn
+    )
+    return NormalizedInputCost(
+        turns=turns,
+        cache_hits=cache_hits,
+        baseline_units=float(baseline),
+        cached_units=float(cached),
     )
 
 
-def best_practices() -> list[str]:
-    return [
-        "1. 把稳定的 system prompt + few-shot examples 放在 prefix (缓存命中区)",
-        "2. 动态内容 (RAG 检索/用户 query) 放在 prefix 之后 (每轮新鲜)",
-        "3. 利用多轮对话 prefix 单调增长, 累积缓存命中",
-        "4. Anthropic: prefix ≥ 1024 tokens 才值得缓存",
-        "5. OpenAI: 自动缓存, 同样 prefix 命中",
-        "6. Gemini: 显式 cacheContents, TTL 1 小时, 命中免费",
-        "7. 长 system prompt 场景, 缓存收益最大 (e.g. 20k tokens 的 code base 文档)",
-    ]
+def best_practices() -> tuple[str, ...]:
+    return (
+        "把完全稳定的 system、few-shot 与工具 schema 放在前缀，动态内容放在后缀",
+        "按提供方要求使用 exact prefix、cache key、breakpoint 与 TTL",
+        "记录 cache write/read/miss token；用观测命中率而不是假设命中",
+        "把首次写入、未缓存输入、输出、显式存储、工具和基础设施纳入总成本",
+        "上线或切换模型前重新核对官方文档与价格页",
+    )
 
 
 def run_demo() -> None:
-    print("=== Prompt Caching 成本对比 (Anthropic Claude Sonnet 4) ===\n")
-    print(f"场景: prefix={8000} tokens (system+docs), dynamic={500} tokens/turn, output={300} tokens/turn\n")
-    for n_turns in [1, 3, 10, 50]:
-        s = calc_cost(prefix_tokens=8000, dynamic_tokens=500, output_tokens=300, n_turns=n_turns)
-        print(f"--- {n_turns} 轮对话 ---")
-        print(f"  无缓存: ${s.cost_no_cache:.4f}")
-        print(f"  有缓存: ${s.cost_with_cache:.4f}  (节省 {s.saving_pct:.0%}, 命中 {s.cache_hits} 次)")
+    print("=== Prompt Caching 官方规则快照（核验日 2026-07-31） ===")
+    for policy in POLICY_SNAPSHOTS:
+        print(f"- {policy.provider_scope}: {policy.lifetime}; {policy.billing_boundary}")
+        print(f"  {policy.source_url}")
+
+    print("\n=== Anthropic 5m 倍率：归一化输入侧示例（不是美元报价/总账单） ===")
+    for turns in (1, 3, 10):
+        result = anthropic_normalized_input_cost(
+            prefix_tokens=8_000,
+            dynamic_tokens_per_turn=500,
+            turns=turns,
+            cache_hits=max(0, turns - 1),
+        )
+        print(
+            f"{turns:>2} 轮, hit={result.cache_hits:>2}: "
+            f"baseline={result.baseline_units:.0f}, cached={result.cached_units:.0f}, "
+            f"输入侧变化={result.change_vs_no_cache:+.1%}"
+        )
+
+    print("\n注意：Anthropic 读取 0.1× 只意味着命中的输入 token 相对基础输入价低 90%。")
+    print("它不等于整次请求或系统总成本下降 90%，Gemini cache hit 也不是免费。")
 
     print("\n=== 最佳实践 ===")
-    for p in best_practices():
-        print("  " + p)
+    for index, practice in enumerate(best_practices(), start=1):
+        print(f"{index}. {practice}")
 
 
 if __name__ == "__main__":

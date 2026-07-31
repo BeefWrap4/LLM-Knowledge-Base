@@ -1,7 +1,7 @@
 # ---
 # chapter: 22
 # topic: 大模型数据工程
-# section: 22.6.2 Datatrove 数据处理 Pipeline
+# section: 22.7.2 Datatrove 数据处理 Pipeline
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: stdlib only
@@ -83,6 +83,7 @@ def main():
     print("#   --writer.jsonl_writer.path /data/cleaned_corpus/ \\")
     print("#   --processing_blocks gopher_quality_filter.minhash_dedup \\")
     print("#   --num_proc 64 --main_tasks_per_node 8")
+    print("OK")
 
 
 if __name__ == "__main__":

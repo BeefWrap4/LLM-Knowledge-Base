@@ -14,6 +14,12 @@
 #   1. SummaryIndex 适合什么场景？tree_summarize 模式如何工作？
 #   2. SummaryIndex 与 VectorStoreIndex 在性能与效果上如何权衡？
 
+import os
+
+if os.environ.get("LLM_MOCK") != "0":
+    print("[offline] SummaryIndex tree_summarize: LangChain、LangGraph 与 LlamaIndex 各司其职。")
+    print("OK")
+    raise SystemExit(0)
 
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
@@ -30,7 +36,6 @@ if _SKIP_REASON:
 print(
     "OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)"
 )
-import os
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
 
@@ -39,10 +44,6 @@ from llama_index.core import Settings
 _code_root = _Path_setup(__file__).resolve().parent.parent.parent
 if str(_code_root) not in _sys_path_setup.path:
     _sys_path_setup.path.insert(0, str(_code_root))
-
-# Wave 26 修复: llama_index Settings 在 import 时检查 OPENAI_API_KEY, 提前设 dummy 避免报错
-if "OPENAI_API_KEY" not in os.environ:
-    os.environ["OPENAI_API_KEY"] = "sk-dummy-for-import-only"
 
 # W3-T5: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 走 raise_with_help
 from shared._error_helper import raise_with_help

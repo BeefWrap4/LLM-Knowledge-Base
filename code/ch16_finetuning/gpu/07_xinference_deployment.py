@@ -26,6 +26,7 @@ REST API 端点:
   GET  {host}:9997/v1/models
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -36,6 +37,7 @@ if str(_code_root) not in sys.path:
 import httpx
 
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import skip_if_mock
 
 XINFERENCE_HOST = "http://localhost:9997"
 
@@ -55,6 +57,15 @@ def check_xinference_running() -> None:
 
 
 def main():
+    if skip_if_mock("运行中的 Xinference 服务和已部署模型"):
+        return
+    if os.environ.get("XINFERENCE_RUN") != "1":
+        print(
+            "[SKIP] Set XINFERENCE_RUN=1 only after starting and reviewing "
+            "the local Xinference service and deployed model."
+        )
+        print("OK")
+        return
     check_xinference_running()
 
     print("=== Xinference 部署演示 (真实 REST API) ===\n")
@@ -71,6 +82,7 @@ def main():
         print('  c = Client("http://localhost:9997")')
         print('  uid = c.launch_model(model_name="qwen2.5-instruct",')
         print("                       model_size_in_billions=7, n_gpu=1)")
+        print("OK")
         return
 
     # 2) 调一个 chat completion
@@ -96,6 +108,7 @@ def main():
             f"completion={u.get('completion_tokens')} "
             f"total={u.get('total_tokens')}"
         )
+    print("OK")
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch29_context_engineering/llm/01_haystack_basic_pipeline.py
+python ch29_context_engineering/llm/04_haystack_basic_pipeline.py
 ```
 
 ## 关联章节

@@ -18,7 +18,7 @@
 """AWQ / GPTQ 量化加载演示.
 
 量化方案对比:
-  - AWQ (Activation-aware Weight Quantization): 保护 1% 显著权重
+  - AWQ (Activation-aware Weight Quantization): 利用激活统计保护显著权重通道
   - GPTQ (Gradient-based Post-training Quantization): 逐层最小化重建误差
   - bitsandbytes NF4: 4-bit NormalFloat, 通用 4-bit 方案
 
@@ -35,7 +35,7 @@ if str(_code_root) not in sys.path:
 import torch
 
 from shared._error_helper import raise_with_help
-from shared.gpu_guard import require_nvidia_gpu
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock
 
 
 def check_hardware():
@@ -43,6 +43,8 @@ def check_hardware():
 
 
 def main():
+    if skip_if_mock("an NVIDIA GPU, bitsandbytes, transformers, and local model weights"):
+        return
     check_hardware()
 
     model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")
@@ -79,7 +81,7 @@ def main():
     )
     vram = torch.cuda.memory_allocated() / (1024**3)
     print(f"  VRAM (4-bit): {vram:.2f}GB")
-    print(f"  0.5B fp16 baseline: ~1.0GB → 4-bit 节省约 {(1 - vram / 1.0) * 100:.0f}%")
+    print("  请与同一环境下的 FP16 基线对照；不要把单次显存值外推到其他模型或硬件。")
 
     # 推理测试
     prompt = "Q: What is AI?\nA:"
@@ -90,7 +92,7 @@ def main():
     print(f"\n推理输出:\n  {response}")
 
     print("\n=== 量化方案对比 ===")
-    print("  AWQ:    保护 1% 显著权重, 4-bit, 适合 LLM 推理")
+    print("  AWQ:    利用激活统计保护显著权重通道；精度和性能需按任务实测")
     print("  GPTQ:   逐层重建误差最小化, 4-bit, 经典 PTQ")
     print("  NF4:    NormalFloat 4-bit, 通用 (本 demo 演示)")
     print("  HQQ:    Half-Quadratic Quantization, 无需校准集")
@@ -111,6 +113,7 @@ def main():
         print(f"  本环境: awq {awq.__version__} 已装, 可加载 AWQ 模型")
     except ImportError:
         print("  本环境: awq 未装 (NF4 已足够演示 4-bit 推理)")
+    print("OK")
 
 
 if __name__ == "__main__":

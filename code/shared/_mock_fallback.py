@@ -1,13 +1,12 @@
 # ---
 # shared/_mock_fallback.py
-# 确定性 mock 响应函数 (供主流程 llm_client.py 在 mock/出错场景下生成回退响应)
+# 确定性 mock 响应函数（只供显式 mock/离线场景使用）
 # ---
 """
 共享的纯函数 mock 响应生成器.
 
-主流程 (`shared.llm_client.UnifiedClient`) 在以下场景需要确定性响应:
-  - LLM_MOCK=1 环境变量触发强制 mock 模式
-  - API 调用失败时的降级路径
+主流程 (`shared.llm_client.UnifiedClient`) 在 ``LLM_MOCK`` 未设置或非 ``0`` 的离线模式下使用它。
+真实 API 缺 Key、超时、限流或服务错误必须向调用方抛出，不能降级成貌似成功的 mock。
 
 仅暴露无副作用的纯函数, 避免主流程反向依赖 tests/ 目录.
 更复杂的 MockLLM 客户端类位于 tests/_mocks/mock_llm.py (仅 CI/测试可见).

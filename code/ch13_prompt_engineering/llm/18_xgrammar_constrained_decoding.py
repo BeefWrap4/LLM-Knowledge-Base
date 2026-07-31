@@ -11,21 +11,30 @@
 # ---
 # See: ../tutorial/13_Prompt_Engineering.md#13.7.4
 # Interview hooks:
-# - 词表级约束如何保证 100% 输出合法 JSON？
+# - 词表级约束能保证什么，不能保证什么？
 # - xgrammar 与 outlines/lm-format-enforcer 的实现差异？
-# - 约束解码对推理速度的开销 (5-15%) 主要来自哪里？
+# - 为什么约束解码的性能开销必须按后端实测？
 
 import json
 
-import torch
-
-# xgrammar：2025 年发布的开源结构化生成引擎
-# 安装：pip install xgrammar
-import xgrammar as xg
-from transformers import AutoModelForCausalLM, AutoTokenizer
+try:
+    import torch
+    import xgrammar as xgr
+    from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+except ImportError:
+    torch = None
+    xgr = None
+    AutoConfig = None
+    AutoModelForCausalLM = None
+    AutoTokenizer = None
 
 
 def run_xgrammar_demo():
+    if any(value is None for value in (torch, xgr, AutoConfig, AutoModelForCausalLM, AutoTokenizer)):
+        raise RuntimeError("缺少 xgrammar/transformers/torch 可选依赖")
+    if not torch.cuda.is_available():
+        raise RuntimeError("该 8B 示例需要可用 CUDA GPU")
+
     # 1. 定义 JSON Schema
     json_schema = {
         "type": "object",
@@ -35,34 +44,52 @@ def run_xgrammar_demo():
             "skills": {"type": "array", "items": {"type": "string"}},
         },
         "required": ["name", "age"],
+        "additionalProperties": False,
     }
 
-    # 2. 编译为 Grammar
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
-    grammar = xg.Grammar.from_json_schema(json_schema)
-    compiler = xg.GrammarCompiler(tokenizer)
-    compiled_grammar = compiler.compile_grammar(grammar)
+    model_name = "Qwen/Qwen3-8B"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    config = AutoConfig.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name, torch_dtype=torch.bfloat16, device_map="cuda"
+    )
+    tokenizer_info = xgr.TokenizerInfo.from_huggingface(
+        tokenizer, vocab_size=config.vocab_size
+    )
+    compiler = xgr.GrammarCompiler(tokenizer_info)
+    compiled = compiler.compile_json_schema(json.dumps(json_schema))
 
-    # 3. 在推理时强制约束
-    model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen3-8B", torch_dtype=torch.bfloat16).cuda()
-
-    input_ids = tokenizer.encode("请生成一个用户信息：")
-    output = model.generate(
-        input_ids,
+    prompt = "只输出 JSON：生成一个包含 name、age、skills 的用户信息。"
+    model_inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    processor = xgr.contrib.hf.LogitsProcessor(compiled)
+    generated_ids = model.generate(
+        **model_inputs,
         max_new_tokens=200,
         do_sample=False,
-        compiled_grammar=compiled_grammar,  # 关键：传入编译后的 grammar
+        logits_processor=[processor],
     )
 
-    # 输出保证是合法 JSON
-    return tokenizer.decode(output[0], skip_special_tokens=True)
+    new_ids = generated_ids[0][len(model_inputs.input_ids[0]) :]
+    return tokenizer.decode(new_ids, skip_special_tokens=True)
 
 
 if __name__ == "__main__":
+    if any(value is None for value in (torch, xgr, AutoConfig, AutoModelForCausalLM, AutoTokenizer)):
+        print("[SKIP] 需要 xgrammar、transformers 和 torch")
+        print("OK")
+        raise SystemExit(0)
+    if not torch.cuda.is_available():
+        print("[SKIP] 该 8B 示例需要可用 CUDA GPU")
+        print("OK")
+        raise SystemExit(0)
+
     result = run_xgrammar_demo()
     print("[Constrained Output]")
     print(result)
     # 验证是合法 JSON
     parsed = json.loads(result)
-    assert "name" in parsed and "age" in parsed
-    print("[Schema 验证] 通过")
+    assert isinstance(parsed.get("name"), str)
+    assert type(parsed.get("age")) is int and 0 <= parsed["age"] <= 150
+    assert set(parsed) <= {"name", "age", "skills"}
+    print("[结构与业务校验] 通过")
+    print("OK")

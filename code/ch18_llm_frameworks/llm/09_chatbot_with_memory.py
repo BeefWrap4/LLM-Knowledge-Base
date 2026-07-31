@@ -4,7 +4,7 @@
 # section: 18.1.5 完整实战 - 带记忆的多工具对话 Agent
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: langchain, langchain-openai
+# deps: langchain-classic, langchain-openai
 # run: python 09_chatbot_with_memory.py
 # expected_runtime: <1s (mock mode, no chat)
 # expected_output: tool listing
@@ -15,13 +15,18 @@
 #   2. 为什么 ChatPromptTemplate 需要 MessagesPlaceholder("agent_scratchpad")？
 
 
+import os
+
+if os.environ.get("LLM_MOCK") != "0":
+    print("[SKIP] LangChain Classic 迁移示例仅在显式 LLM_MOCK=0 时运行")
+    print("OK")
+    raise SystemExit(0)
+
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
 
 try:
-    from langchain.agents import AgentExecutor, create_openai_functions_agent
-    from langchain.memory import ConversationSummaryBufferMemory
-    from langchain_openai import ChatOpenAI
+    from langchain_classic.memory import ConversationSummaryBufferMemory
 
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
@@ -53,6 +58,8 @@ import json
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import tool
 
+from shared.safe_math import UnsafeExpression, evaluate_arithmetic
+
 
 # ===== Step 1: 定义工具 =====
 @tool
@@ -63,8 +70,11 @@ def weather_tool(city: str) -> str:
 
 @tool
 def calculator(expr: str) -> str:
-    """执行数学计算。输入表达式如 '2+3*4'。"""
-    return str(eval(expr, {"__builtins__": {}}, {"abs": abs, "pow": pow}))
+    """解析受限数学表达式，如 '2+3*4'；不执行 Python 代码。"""
+    try:
+        return str(evaluate_arithmetic(expr))
+    except (UnsafeExpression, ArithmeticError) as exc:
+        return f"计算错误：{exc}"
 
 
 @tool

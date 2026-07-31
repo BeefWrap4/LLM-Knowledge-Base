@@ -31,6 +31,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import skip_if_mock, skip_unless_enabled
 
 try:
     from prometheus_client import Counter, Histogram, start_http_server
@@ -81,6 +82,12 @@ def simulate_request(req_id: int, ttft_hist, tpot_hist, req_counter) -> dict:
 
 
 def main():
+    if skip_if_mock("a free localhost metrics port and the optional prometheus-client dependency"):
+        return
+    if skip_unless_enabled(
+        "SLO_MONITOR_RUN", "the localhost metrics port and Prometheus scrape lifecycle"
+    ):
+        return
     if not HAS_PROMETHEUS:
         raise_with_help(
             "prometheus_client 未装",
@@ -116,6 +123,7 @@ def main():
         print("生产部署: 把 simulate_request() 替换为:")
         print("  - vllm.AsyncLLMEngine.generate() + timing")
         print("  - 或 tgi/trtllm-serve 的 OpenAI 协议 + 客户端计时")
+    print("OK")
 
 
 if __name__ == "__main__":

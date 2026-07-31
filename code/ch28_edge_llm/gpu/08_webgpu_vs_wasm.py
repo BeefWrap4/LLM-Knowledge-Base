@@ -40,6 +40,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help  # noqa: E402
+from shared.gpu_guard import skip_if_mock  # noqa: E402
 
 # ============================================================
 # 1. WebGPU vs WASM 对比矩阵 (教学)
@@ -199,6 +200,8 @@ def benchmark_throughput() -> None:
 # 4. 主流程
 # ============================================================
 def main() -> None:
+    if skip_if_mock("the wasmtime CLI and permission to create a temporary benchmark file"):
+        return
     print("=== WebGPU vs WebAssembly 浏览器推理对比 ===\n")
     print_comparison()
     decision_tree()
@@ -213,6 +216,7 @@ def main() -> None:
     print(f"  平均: {result['avg_us_per_call']}μs/次")
     print()
     print("WebGPU (浏览器内) 对比需在带 GPU 的浏览器交互运行, 本环境无法跑.")
+    print("OK")
 
 
 if __name__ == "__main__":

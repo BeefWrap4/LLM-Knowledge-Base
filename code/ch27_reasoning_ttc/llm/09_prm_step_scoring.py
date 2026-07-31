@@ -25,8 +25,13 @@ PRM 对每一步推理打分, 而非只对最终答案:
 import sys
 from pathlib import Path
 
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+except ImportError:
+    print("[SKIP] 需要 torch>=2.0；请安装 GPU tier 依赖")
+    print("OK")
+    raise SystemExit(0)
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
@@ -65,6 +70,7 @@ def main():
     print("    - Best-of-N: 生成 N 个轨迹, 用 PRM 选最高分")
     print("    - MCTS: 用 PRM 作 leaf evaluation, 引导 search")
     print("    - 训练数据: 自动标注 step reward (vs 人工)")
+    print("OK")
 
 
 if __name__ == "__main__":

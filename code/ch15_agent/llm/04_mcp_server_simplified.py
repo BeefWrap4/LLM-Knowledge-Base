@@ -177,3 +177,4 @@ if __name__ == "__main__":
     # 默认演示 JSON-RPC 响应结构；如需 stdio 模式请取消下一行注释
     # server = MCPServer(); server.run()
     demo_json_rpc_responses()
+    print("OK")

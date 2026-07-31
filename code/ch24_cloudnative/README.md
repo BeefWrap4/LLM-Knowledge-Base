@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch24_cloudnative/gpu/01_k8s_vllm_helm.py
+python ch24_cloudnative/gpu/01_fastapi_vllm_server.py
 ```
 
 ## 关联章节

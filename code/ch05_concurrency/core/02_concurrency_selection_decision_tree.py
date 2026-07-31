@@ -50,3 +50,4 @@ nogil 模式对并发选型的影响（2026年现状）：
 
 if __name__ == "__main__":
     print("Decision tree documentation printed above.")
+    print("OK")

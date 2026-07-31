@@ -33,7 +33,6 @@ services:
         PYTHON_VERSION: "3.12"
         # 国内源 (删除此行 = 用 docker.io)
         REGISTRY: ${DOCKER_REGISTRY:-docker.io}
-    container_name: llm-kb-app
     restart: unless-stopped
     env_file:
       - path: .env           # 用户的 .env (可选, 优先级低于显式 env)
@@ -53,7 +52,6 @@ services:
   # ─────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: llm-kb-redis
     restart: unless-stopped
     command: redis-server --save 60 1 --appendonly yes
     ports:
@@ -74,12 +72,14 @@ services:
   # ─────────────────────────────────────────────────────────
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: llm-kb-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: llmkb
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      # 仅供本地教程集成测试；非本地环境必须通过 .env 覆盖。
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-llmkb_test}
       POSTGRES_DB: vectordb
+    ports:
+      - "${PG_PORT:-15432}:5432"  # 与 code/scripts/test_integration.py 默认值一致
     volumes:
       - pg-data:/var/lib/postgresql/data
     networks:

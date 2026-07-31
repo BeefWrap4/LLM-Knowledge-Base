@@ -78,3 +78,5 @@ if __name__ == "__main__":
         interp = interpret_awareness_score(s)
         print(f"  deploy={d:.2f}, eval={e:.2f}, awareness={a:.2f}")
         print(f"  → 综合分={s:.3f} | {interp} | {desc}")
+
+    print("OK")

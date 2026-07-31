@@ -79,3 +79,4 @@ def compare_shallow_methods():
 
 if __name__ == "__main__":
     compare_shallow_methods()
+    print("OK")

@@ -59,12 +59,12 @@ def test_all_providers_have_required_fields():
         assert p.api_style in ("openai", "anthropic", "mock"), f"{name} api_style 异常"
 
 
-def test_get_provider_unknown_returns_mock():
-    """未知厂商名返回 mock."""
+def test_get_provider_unknown_raises():
+    """未知厂商名必须 fail closed，不能静默切到 mock。"""
     from shared.provider_registry import get_provider
 
-    p = get_provider("nonexistent_vendor_xyz")
-    assert p.name == "mock"
+    with pytest.raises(ValueError, match="未知 LLM provider"):
+        get_provider("nonexistent_vendor_xyz")
 
 
 def test_get_provider_known():
@@ -73,17 +73,17 @@ def test_get_provider_known():
 
     assert get_provider("deepseek").name == "deepseek"
     assert get_provider("MiniMax").name == "MiniMax"
+    assert get_provider("minimax").name == "MiniMax"
+    assert get_provider("MINIMAX").name == "MiniMax"
     assert get_provider("kimi").display_name == "Kimi (月之暗面)"
 
 
 def test_get_default_provider_no_key_returns_mock():
-    """无 API Key + 无 LLM_MOCK → 抛 RuntimeError (不再静默降级 mock)."""
+    """LLM_MOCK 未设时默认离线，即使无 Key 也返回 mock。"""
     from shared.provider_registry import get_default_provider
 
-    # 清空所有可能存在的 Key
     with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(RuntimeError, match="缺 API Key"):
-            get_default_provider()
+        assert get_default_provider().name == "mock"
 
 
 def test_get_default_provider_no_key_with_llm_mock_returns_mock():
@@ -103,7 +103,7 @@ def test_get_default_provider_with_deepseek_key():
         {
             "DEEPSEEK_API_KEY": "sk-test-xxx",
             "LLM_PROVIDER": "deepseek",
-            "LLM_MOCK": "",  # W1.5 修复: 显式清掉全局 LLM_MOCK
+            "LLM_MOCK": "0",
         },
         clear=False,
     ):
@@ -120,11 +120,44 @@ def test_get_default_provider_respects_env_override():
             "DEEPSEEK_API_KEY": "sk-1",
             "KIMI_API_KEY": "sk-2",
             "LLM_PROVIDER": "kimi",
-            "LLM_MOCK": "",  # W1.5 修复
+            "LLM_MOCK": "0",
         },
         clear=False,
     ):
         assert get_default_provider().name == "kimi"
+
+
+def test_get_default_provider_minimax_is_case_insensitive():
+    """LLM_PROVIDER=minimax/MiniMax 均应命中规范的 MiniMax provider。"""
+    from shared.provider_registry import get_default_provider
+
+    with patch.dict(
+        os.environ,
+        {
+            "MINIMAX_API_KEY": "sk-test",
+            "LLM_PROVIDER": "minimax",
+            "LLM_MOCK": "0",
+        },
+        clear=True,
+    ):
+        assert get_default_provider().name == "MiniMax"
+
+
+def test_get_default_provider_unknown_env_override_raises():
+    """LLM_PROVIDER 拼写错误不能被忽略后切到其他有 Key 的厂商。"""
+    from shared.provider_registry import get_default_provider
+
+    with patch.dict(
+        os.environ,
+        {
+            "DEEPSEEK_API_KEY": "sk-test",
+            "LLM_PROVIDER": "deepseak",
+            "LLM_MOCK": "0",
+        },
+        clear=True,
+    ):
+        with pytest.raises(ValueError, match="未注册"):
+            get_default_provider()
 
 
 # ═══════════════════════════════════════════════════════════
@@ -132,13 +165,12 @@ def test_get_default_provider_respects_env_override():
 # ═══════════════════════════════════════════════════════════
 
 
-def test_unified_client_no_key_raises():
-    """无 API Key + LLM_MOCK 未设 → 必须抛 RuntimeError (不再静默降级 mock)."""
+def test_unified_client_unset_mode_defaults_to_mock():
+    """未设置 LLM_MOCK 时必须离线，不能因进程 Key 状态而联网。"""
     from shared.llm_client import UnifiedClient
 
     with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(RuntimeError, match="缺 API Key"):
-            UnifiedClient(provider="deepseek")
+        assert UnifiedClient(provider="deepseek").is_mock is True
 
 
 def test_unified_client_no_key_with_mock_env_works():
@@ -161,7 +193,7 @@ def test_unified_client_with_key_not_mock():
         os.environ,
         {
             "DEEPSEEK_API_KEY": "sk-test-xxx",
-            "LLM_MOCK": "",  # W1.5 修复
+            "LLM_MOCK": "0",
         },
         clear=False,
     ):
@@ -231,6 +263,41 @@ def test_make_chat_model_no_key_returns_none():
         assert result is None
 
 
+def test_make_chat_model_mock_blocks_explicit_provider_and_key():
+    """LLM_MOCK=1 必须压过显式 provider 和已有 Key，避免离线验收误联网。"""
+    from shared.chatmodel_factory import make_chat_model
+
+    with patch.dict(
+        os.environ,
+        {"LLM_MOCK": "1", "DEEPSEEK_API_KEY": "sk-test-should-not-be-used"},
+        clear=False,
+    ):
+        assert make_chat_model(provider="deepseek") is None
+
+
+def test_make_openai_client_mock_blocks_explicit_provider_and_key():
+    """纯 SDK 工厂也必须尊重 LLM_MOCK=1。"""
+    from shared.chatmodel_factory import make_openai_client
+
+    with patch.dict(
+        os.environ,
+        {"LLM_MOCK": "1", "DEEPSEEK_API_KEY": "sk-test-should-not-be-used"},
+        clear=False,
+    ):
+        with pytest.raises(RuntimeError, match="只有显式 LLM_MOCK=0"):
+            make_openai_client(provider="deepseek")
+
+
+def test_make_openai_client_rejects_anthropic(monkeypatch):
+    """Anthropic Messages API 不能误走 OpenAI SDK。"""
+    from shared.chatmodel_factory import make_openai_client
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("LLM_MOCK", "0")
+    with pytest.raises(ValueError, match="不是 OpenAI-compatible"):
+        make_openai_client(provider="anthropic")
+
+
 def test_make_chat_model_unknown_framework_raises():
     """未知 framework 抛 ValueError."""
     from shared.chatmodel_factory import make_chat_model
@@ -249,7 +316,7 @@ def test_make_chat_model_default_provider():
         {
             "DEEPSEEK_API_KEY": "sk-test",
             "LLM_PROVIDER": "deepseek",
-            "LLM_MOCK": "",  # W1.5 修复
+            "LLM_MOCK": "0",
         },
         clear=False,
     ):
@@ -267,11 +334,15 @@ def test_make_chat_model_minimax():
 
     from shared.chatmodel_factory import make_chat_model
 
-    with patch.dict(os.environ, {"MINIMAX_API_KEY": "sk-cp-test"}, clear=False):
+    with patch.dict(
+        os.environ,
+        {"MINIMAX_API_KEY": "sk-cp-test", "LLM_MOCK": "0"},
+        clear=False,
+    ):
         llm = make_chat_model(provider="MiniMax")
         assert isinstance(llm, ChatOpenAI)
         assert "minimaxi.com" in llm.openai_api_base
-        assert llm.model_name == "MiniMax-Text-01"
+        assert llm.model_name == "MiniMax-M2.7"
 
 
 def test_doctor_summary_structure():
@@ -308,6 +379,7 @@ def test_get_api_key_known_providers():
             "KIMI_API_KEY": "sk-k",
             "SILICONFLOW_API_KEY": "sk-s",
             "MINIMAX_API_KEY": "sk-cp-x",
+            "LLM_MOCK": "0",
         },
         clear=False,
     ):
@@ -324,8 +396,44 @@ def test_get_api_key_unknown_provider_fallback():
     """未知厂商: 转大写 + _API_KEY 拼接."""
     from shared.env import get_api_key
 
-    with patch.dict(os.environ, {"FOO_BAR_API_KEY": "sk-fb"}, clear=False):
+    with patch.dict(
+        os.environ,
+        {"FOO_BAR_API_KEY": "sk-fb", "LLM_MOCK": "0"},
+        clear=False,
+    ):
         assert get_api_key("foo_bar") == "sk-fb"
+
+
+def test_mock_mode_does_not_expose_api_key_or_load_dotenv():
+    """LLM_MOCK=1 不应读取 .env，也不应向调用方返回进程中的 Key。"""
+    from shared import env as shared_env
+
+    with (
+        patch.dict(
+            os.environ,
+            {"LLM_MOCK": "1", "DEEPSEEK_API_KEY": "sk-test-must-stay-unused"},
+            clear=False,
+        ),
+        patch.object(shared_env, "_find_dotenv") as find_dotenv,
+    ):
+        assert shared_env.get_api_key("deepseek") is None
+        find_dotenv.assert_not_called()
+
+
+def test_unset_mode_does_not_expose_process_key_or_load_dotenv():
+    """未设置 LLM_MOCK 也是默认离线，不能使用进程中已有的 Key。"""
+    from shared import env as shared_env
+
+    with (
+        patch.dict(
+            os.environ,
+            {"DEEPSEEK_API_KEY": "sk-test-must-stay-unused"},
+            clear=True,
+        ),
+        patch.object(shared_env, "_find_dotenv") as find_dotenv,
+    ):
+        assert shared_env.get_api_key("deepseek") is None
+        find_dotenv.assert_not_called()
 
 
 def test_get_env():

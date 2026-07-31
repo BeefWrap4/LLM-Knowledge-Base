@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch14_rag/llm/01_embedding_basics.py
+python ch14_rag/llm/06_embedding_similarity.py
 ```
 
 ## 关联章节

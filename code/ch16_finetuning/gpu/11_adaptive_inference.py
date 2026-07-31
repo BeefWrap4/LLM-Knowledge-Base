@@ -4,6 +4,7 @@
 # section: 16.8.3
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: (stdlib only)
 # run: python 11_adaptive_inference.py
 # expected_runtime: <1s
@@ -12,31 +13,14 @@
 # See: ../tutorial/16_模型微调与推理优化.md §16.8.3
 #
 # Interview hooks:
-#   1. Test-Time Compute 的核心范式：训练计算 + 推理计算 = 最终能力？
+#   1. 为什么更高推理预算不保证更高任务收益？如何做增量评测？
 #   2. Self-Consistency 的投票机制如何实现？多数投票 vs 加权投票？
-#   3. 成本-质量权衡：Fast 模式 vs Deep 模式的 token 消耗比？典型 5-10x？
-"""自适应推理: 根据 query 复杂度选不同模型/推理档位 (Test-Time Compute).
+#   3. 如何用任务集实测 Fast 与 Thinking 路径的质量、延迟和 token 成本？
+"""自适应推理路由的纯逻辑示例。
 
-2026 范式:
-  - 简单 query  →  0.5B 模型 + 短 context (fast, 省钱)
-  - 中等 query  →  7B 模型 + CoT (balanced)
-  - 复杂 query  →  72B 模型 + Self-Consistency × 5 (premium)
-
-节省成本的核心: 不让所有 query 都过最大模型.
+这里输出的是待评测的策略档位，不绑定某个易漂移的产品名，也不声称关键词启发式能直接
+用于生产。上线前必须用代表性任务集校准，并设置质量、安全、延迟和成本回退门槛。
 """
-
-import sys
-from pathlib import Path
-
-_code_root = Path(__file__).resolve().parent.parent.parent
-if str(_code_root) not in sys.path:
-    sys.path.insert(0, str(_code_root))
-
-from shared.gpu_guard import require_nvidia_gpu
-
-
-def check_hardware():
-    require_nvidia_gpu(min_vram_gb=0, min_count=1)
 
 
 COMPLEX_KEYWORDS = {
@@ -63,34 +47,32 @@ def complexity_score(query: str) -> tuple[int, dict]:
     return score, breakdown
 
 
-def pick_model(complexity: int) -> dict:
-    """根据复杂度选模型档位 + 推理策略."""
+def pick_route(complexity: int) -> dict:
+    """返回候选策略；阈值与预算必须用业务评测校准."""
     if complexity <= 1:
         return {
-            "tier": "fast",
-            "model": "Qwen2.5-0.5B-Instruct",
-            "strategy": "no-CoT, 1 sample",
-            "est_tokens": "≤ 256",
+            "tier": "baseline",
+            "model_role": "low-latency model or low reasoning effort",
+            "strategy": "single sample",
+            "budget_policy": "latency-first baseline",
         }
     if complexity <= 4:
         return {
             "tier": "balanced",
-            "model": "Qwen2.5-7B-Instruct",
-            "strategy": "CoT, 1 sample",
-            "est_tokens": "≤ 1024",
+            "model_role": "balanced model/effort",
+            "strategy": "single sample + tool verification when available",
+            "budget_policy": "quality/latency trade-off",
         }
     return {
-        "tier": "premium",
-        "model": "Qwen2.5-72B / deepseek-reasoner",
-        "strategy": "CoT + Self-Consistency × 5",
-        "est_tokens": "≤ 4096",
+        "tier": "quality-first",
+        "model_role": "high-capability model/effort",
+        "strategy": "optional multi-sample or independent verifier",
+        "budget_policy": "enable only after measured net gain",
     }
 
 
 def main():
-    check_hardware()
-
-    print("=== 自适应推理 (Test-Time Compute 路由) ===\n")
+    print("=== 自适应推理路由（纯策略演示）===\n")
     queries = [
         "hi",
         "What's 2+2?",
@@ -99,13 +81,14 @@ def main():
     ]
     for q in queries:
         score, breakdown = complexity_score(q)
-        m = pick_model(score)
+        route = pick_route(score)
         print(f"Q: {q}")
         print(f"  complexity: {score} (breakdown: {breakdown})")
-        print(f"  → tier: {m['tier']}")
-        print(f"    model:   {m['model']}")
-        print(f"    strategy:{m['strategy']}")
-        print(f"    tokens:  {m['est_tokens']}\n")
+        print(f"  → tier: {route['tier']}")
+        print(f"    model role: {route['model_role']}")
+        print(f"    strategy:   {route['strategy']}")
+        print(f"    budget:     {route['budget_policy']}\n")
+    print("OK")
 
 
 if __name__ == "__main__":

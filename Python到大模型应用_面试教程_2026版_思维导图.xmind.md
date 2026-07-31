@@ -2,27 +2,28 @@
 
 > **导入 XMind**: 文件 → 导入 → Markdown → 选择本文件
 > **结构约定**: `#` 中心主题, `##` 一级分支, `###` 二级, `####` 三级, 列表项为叶子
-> **覆盖范围**: 29 章教程 + 450+ 配套代码 + 5 CI workflow + Docker 部署
+> **覆盖范围**: 40 章教程 + 433 个配套代码示例 + CI workflow + Docker 部署
 
 ## 0. 库总览
 
 ### 0.1 元信息
 - 库名: Python 到大模型应用 —— 面试教程 2026 版
-- 章节数: 29 章正文 + 1 目录 + 1 审计报告
-- 配套代码: 450+ .py (158 core + 199 llm + 76 gpu)
+- 章节数: 40 章正文 + 1 目录 + 1 健康报告
+- 配套代码: 433 .py (158 core + 199 llm + 76 gpu)
 - 面试题: 300+ 道
 - 教程大小: ~2,200 KB
 - 难度跨度: 入门 → 专家
-- 更新年份: 2026 (含 GPT-5 / Claude 4.6 / DeepSeek-R1)
-- 健康评分: 100/100
+- 时效基线: 2026-07-31
+- 验收状态: 以 `code/scripts/verify_all.py` 和分层 runner 的当前输出为准
 
-### 0.2 6 大板块
+### 0.2 7 大板块
 - Python 编程基础 (Ch01-06)
 - 数据科学与算法 (Ch07-08)
 - Web 开发与工程 (Ch09)
 - 机器学习与深度学习 (Ch10-11)
 - 大模型核心技术 (Ch12-16)
-- 大模型工程实践 (Ch17-24, 含 Ch25-29 2026 新)
+- 大模型工程实践 (Ch17-29)
+- 前沿专题与岗位实战 (Ch30-40)
 
 ### 0.3 岗位学习路径
 - 大模型算法工程师: Ch01-07 + Ch10-12 + Ch16 + Ch19 + Ch22
@@ -40,13 +41,13 @@
 
 #### 1.1 Python 概览与新特性
 - Python 之禅: 显式优于隐式
-- Python 3.13 nogil 模式 (PEP 703): biased RC + 线程本地分配器 + `--disable-gil`
-- Python 3.14 REPL 改进: 原生语法高亮 + Alt+Enter 多行 + Ctrl+R 历史
+- Python 3.13 引入可选自由线程构建和新交互式 REPL
+- Python 3.14: 自由线程进入正式支持阶段，仍非默认构建
 - 虚拟环境: venv (纯 Python) / conda (数据科学) / poetry (生产)
 
 #### 1.2 基础语法
 - 数据类型: 不可变 (int/float/str/bool/tuple/frozenset/bytes) vs 可变 (list/dict/set/bytearray)
-- 小整数缓存: CPython 缓存 -5~256
+- 小整数复用: CPython 实现细节；不要依赖具体区间，也不要用 `is` 比较数值
 - is vs ==: `is` 比地址 (id), `==` 比值 (`__eq__`); None 必须 `is None`
 - 链式比较: `1 < x < 10` 等价于 `1 < x and x < 10`
 - for-else: 循环未 break 才执行 else
@@ -185,7 +186,7 @@
 - 存在原因: 简化引用计数内存管理
 - 释放时机: 时间片到期 (默认 5ms), IO 操作, `time.sleep`
 - 影响: CPU 密集型多线程无效, IO 密集型有效
-- 3.13 nogil 模式: biased RC + 线程本地分配器
+- 3.13+ 自由线程构建: biased RC 等机制；3.14 进入正式支持阶段
 
 #### 5.2 进程/线程/协程对比
 - 进程: 独立内存, 绕过 GIL 真并行, CPU 密集型
@@ -215,7 +216,7 @@
 - 三层架构: pymalloc (≤512B 小对象) → C malloc (>512B) → OS 虚拟内存
 - pymalloc 结构: arena (256KB) → pool (4KB) → block (8/16/.../512B)
 - PyObject 头部: ob_refcnt (8B) + ob_type (8B)
-- 小整数缓存: -5~256
+- 小整数复用: CPython 实现细节；具体区间不属于 Python 语言保证
 - 列表存储: 指针数组
 
 #### 6.2 引用计数
@@ -227,13 +228,13 @@
 #### 6.3 标记-清除
 - 作用: 解决容器对象循环引用
 - 流程: 标记根可达 → 清除未标记
-- `__del__` 阻止回收: 有 `__del__` 的循环引用 CPython 不确定回收顺序
+- `__del__`: Python 3.4+ 的纯 Python 循环通常可回收；调用时机/顺序、对象复活和 C 扩展边界仍需谨慎
 
 #### 6.4 分代回收
 - 弱代假说: 多数对象生命周期短
-- 三代模型: 第 0 代 (700) → 第 1 代 (10) → 第 2 代 (10)
-- `gc.get_threshold()`: 默认 (700, 10, 10)
-- `gc.collect(0/1/2)`: 按代回收
+- 分代数量、阈值和 `collect(generation)` 语义随 CPython 小版本实现演进
+- `gc.get_threshold()` / `gc.get_stats()`: 在目标解释器实测，不背固定默认值
+- `gc.collect(generation)`: 按目标 CPython 版本文档选择 generation
 
 #### 6.5 weakref 弱引用
 - 不增加引用计数: `weakref.ref(obj)` 不阻止回收
@@ -241,11 +242,11 @@
 - 打破循环引用: 父子节点中子对父用弱引用
 
 #### 6.6 内存优化
-- `__slots__`: 显式声明属性可省 `__dict__`; 节省 50%+ 内存
+- `__slots__`: 可避免每实例自动创建 `__dict__`/`__weakref__`；收益受属性、继承和版本影响，需实测
 - 生成器: 惰性求值
 - `lru_cache(maxsize=)`: 限制缓存大小
 - `tracemalloc`: 内存分配快照对比定位泄漏
-- 常见泄漏: 循环引用+`__del__`, 全局缓存无上限, 监听器未注销, ORM 会话未关
+- 常见泄漏/滞留: 长寿命根或全局容器持有、无界缓存、finalizer 对象复活、监听器/外部资源未释放
 
 ---
 
@@ -473,19 +474,19 @@
 - 专家并行: 多专家网络, Top-K 路由
 - 优点: 模型容量大, 激活参数少
 - 挑战: 专家不均衡, 通信开销
-- 代表: Mixtral 8x7B, DeepSeek-V3 (236B 总参, 21B 激活)
+- 代表: Mixtral 8x7B；DeepSeek-V3 的规模与激活参数以官方技术报告为准
 
 #### 12.6 涌现能力与 Scaling Law
-- 涌现: 规模突破阈值后能力陡升
-- Chinchilla Scaling: L(N, D) ∝ N^0.34 D^0.34
-- 2026 趋势: 神经符号系统 + Test-Time Compute Scaling
+- 涌现: 某些离散指标会呈现突变外观；不等于所有能力存在统一物理阈值
+- Chinchilla 类拟合: `L(N,D)=E+A/N^α+B/D^β`，指数是特定实验拟合值而非常数
+- 2026 趋势: Test-Time Compute、工具调用与可验证 Agent 工作流
 
 #### 12.7 2026 LLM 主流模型
-- OpenAI: GPT-5 (1M context), o3, o4-mini
+- OpenAI: GPT-5.6 family；模型 ID、窗口与工具能力查官方模型目录
 - Anthropic: Claude 4 Opus/Sonnet/Haiku 4.6 (200K-1M)
 - Google: Gemini 2.5 Pro/Deep Think (1M-2M)
 - DeepSeek: V3, R1 (开源)
-- 阿里: Qwen2.5/QwQ-32B
+- 阿里: Qwen3.6 / Qwen3-VL（以当前开放平台与权重页为准）
 - Meta: Llama 3.3/4
 - Mistral: Large 2
 
@@ -493,7 +494,7 @@
 
 #### 13.1 Few-shot
 - 模板: `examples = [{"input": ..., "output": ...}]`
-- 数量: 3-5 个示例效果最佳
+- 数量: 由上下文预算、任务覆盖与验证集结果决定，不存在通用最佳个数
 - 多样性: 覆盖不同场景
 
 #### 13.2 Chain-of-Thought (CoT)
@@ -508,19 +509,17 @@
 - 与 Function Calling 结合
 
 #### 13.4 采样参数
-- Temperature: 0 确定性, 1 默认, 2 创意
-- Top-p (nucleus): 0.1 严格, 0.9 创意
-- Top-k: 前 k 采样
-- Frequency/Presence Penalty: 减少重复
+- Temperature / Top-p / Top-k: 支持范围、默认值和交互因提供方/模型而异
+- Temperature 设为 0 也不等于跨硬件、版本和服务请求绝对可复现
+- Frequency/Presence Penalty: 先确认模型支持，再用目标任务评估重复率与质量
 
-#### 13.5 Extended Thinking (Claude 4.6)
-- `thinking={"type": "enabled", "budget_tokens": 5000}`
-- 思考链 + 工具调用交错
+#### 13.5 Extended Thinking（按 Claude 当前模型能力）
+- thinking 配置、预算约束与工具交错能力按所选 Claude 模型当前文档核验
+- 不假设内部推理轨迹会完整返回；记录可见响应、工具事件、usage 与停止原因
 
 #### 13.6 Prompt Caching
-- Anthropic: 5min/1hr 缓存; 写入 ×1.25, 读取 ×0.1 (节省 90%)
-- OpenAI: 自动 (5-10min)
-- Gemini: 显式 (1hr), 免费 cache hit
+- Anthropic / OpenAI / Gemini: 自动或显式机制、TTL、支持模型和计价规则均以当前官方文档为准
+- 验证: 同一稳定前缀重复请求，检查 usage 缓存字段与实际账单，不预设固定节省比例
 - 最佳实践: 稳定 system prompt + few-shot 放前缀
 
 #### 13.7 Prompt 注入防御
@@ -538,7 +537,7 @@
 - Semantic: 嵌入相似度切分
 - 滑动窗口: 重叠避免边界丢失
 - 结构化: 按 Markdown/HTML 标签
-- 推荐: 256-512 tokens, 重叠 10-20%
+- Chunk 大小/重叠: 由 tokenizer、语料结构、retriever、上下文预算和 Golden Dataset sweep 决定
 
 #### 14.2 Embedding 模型
 - 中文: BAAI/bge-small-zh (0.1GB), bge-large-zh-v1.5
@@ -638,9 +637,9 @@
 
 #### 16.1 LoRA / QLoRA
 - LoRA: 低秩分解 ΔW = BA, B∈R^(d×r), A∈R^(r×k), r≪d
-- 优点: 训练参数少 (1%), 推理可合并
+- 优点: 可显著减少可训练参数，适配器可按实现选择合并；比例取决于目标层与 rank
 - QLoRA: 4-bit 量化 + LoRA + NF4 + Double Quant
-- 显存: QLoRA 7B 只需 ~6GB (vs 全量 60GB+)
+- 显存: 受基座、序列长度、batch、优化器、激活与 offload 影响，先用目标配置实测
 
 #### 16.2 推理优化关键技术
 - KV Cache: 缓存历史 K/V, 避免重算
@@ -652,17 +651,17 @@
 - KV Cache 量化: FP8/INT4
 
 #### 16.3 端云协同部署
-- 云端主力: 7B-70B 模型, GPU 集群
-- 端侧: 1B-3B 量化 (GGUF Q4_K_M), 手机/PC
+- 云端主力: 按质量、吞吐、延迟、数据边界和可用算力选模型/集群
+- 端侧: 按可用内存、上下文、功耗与后端实测选择量化模型
 - 路由: 简单任务端侧, 复杂任务云端
-- Secure Minions: 加密嵌入, 隐私保护
+- Secure Minions: 远程证明 + 加密传输 + 受信执行环境（研究原型）
 
 #### 16.4 Test-Time Compute (与 Ch27 配合)
 - CoT 扩展: 让模型多思考
 - 采样 + 投票: K 次采样, 多数投票
 - 树搜索: MCTS + PRM
 - Budget Forcing: 强制思考预算
-- Reasoning Effort: o3 low/medium/high
+- Reasoning Effort: 先在当前模型目录核对是否支持、参数名与允许档位
 
 #### 16.5 强化学习训练
 - PPO: 经典, 需 Critic 网络
@@ -671,10 +670,10 @@
 - RLVR: 可验证奖励 (数学答案/代码测试)
 
 #### 16.6 RLHF 核心算法对比
-- PPO: 4 模型 (Policy + Value + Ref + RM)
-- DPO: 2 模型, 直接偏好对
+- PPO: 常见组件含 Policy / Value / Ref / RM；可共享、冻结或卸载
+- DPO: 直接偏好目标；reference log-prob 可在线计算或预计算
 - GRPO: 去 Critic, 组内归一化
-- 训练成本: PPO > GRPO > DPO
+- 训练成本: 取决于在线采样、模型副本、序列长度与基础设施，不能只按算法名固定排序
 
 ---
 
@@ -991,14 +990,14 @@
 - 2026 核心: 系统级调度 + 量化 + 异构
 
 #### 25.2 五大推理引擎对比
-- vLLM (PagedAttention): 借鉴 OS 虚拟内存分页, 块表管理, 显存 60%→95%
+- vLLM (PagedAttention): 借鉴 OS 虚拟内存分页、块表管理；显存利用率按模型与负载实测
 - SGLang (RadixAttention): Radix Tree 自动识别共享前缀, 适用 system prompt 共享
 - TensorRT-LLM: 提前编译, 硬件优化, In-flight batching, EAGLE-3/Medusa
 - MLC-LLM: 跨平台编译 (Apache TVM)
 - llama.cpp (GGUF): Q4_K_M 4-bit, 端侧事实标准
 
 #### 25.3 关键优化技术
-- Continuous Batching: 吞吐 10-20×
+- Continuous Batching: 动态合批提高设备利用率；吞吐/尾延迟收益依工作负载而变
 - PD-Disaggregation: Prefill/Decode 分离, NVLink/IB 传输
 - Speculative Decoding: 小模型 draft + 大模型 verify, 数学证明保分布
 - 量化阶梯: FP32→FP16/BF16→FP8→INT8→MXFP4/NVFP4→INT4
@@ -1014,9 +1013,9 @@
 - Ascend NPU 910B: vLLM-Ascend (CANN)
 
 #### 25.5 选型决策树
-- CLOUD + VRAM≥80GB + SLO<50ms → TensorRT-LLM
-- CLOUD + SLO<200ms 高并发 → SGLang
-- CLOUD + 通用 → vLLM
+- CLOUD + NVIDIA 专用优化候选 → TensorRT-LLM（以目标模型/硬件 benchmark 决定）
+- CLOUD + 前缀共享/结构化生成候选 → SGLang（按相同 SLO 与流量压测）
+- CLOUD + 通用 OpenAI-compatible serving 候选 → vLLM
 - EDGE_MAC → MLX/llama.cpp
 - EDGE_NVIDIA → TRT-LLM RTX
 - EDGE_CPU → llama.cpp Q4
@@ -1028,15 +1027,15 @@
 - 五层分级: L0 感知 (DINO/SAM) → L1 行动 (RT-1/RT-2) → L2 VLA (Pi0/GR00T) → L3 世界模型 (Genie 3/Cosmos) → L4 通用具身
 
 #### 26.2 VLA 模型
-- 核心思想: 机器人动作离散化为 LLM 特殊 token
-- Pi0/Pi0.5 (Physical Intelligence): SigLIP + Projector + LLM, Flow Matching 输出
-- GR00T N1.5 (NVIDIA): Eagle-2.5 VLM + 百万级轨迹 + Isaac Sim
-- SmolVLA (HuggingFace): 17亿参数, RTX 4090 可跑
+- 核心思想: 视觉、语言与机器人状态共同条件化动作；动作可为 token、连续 head、diffusion 或 flow matching
+- π0/π0.5 (Physical Intelligence): flow-matching action expert 路线
+- GR00T N1.7 (NVIDIA): 当前公开主线；Cosmos-Reason2-2B backbone + 3B base checkpoint
+- SmolVLA (Hugging Face): 官方 450M base；资源需求按当前模型卡/任务实测
 
 #### 26.3 LeRobot 框架
-- HuggingFace 2026 事实标准
-- 硬件: SO100 ($100), LeKiwi ($300), Koch v1.1 ($200), Aloha ($20K), Unitree G1 ($16K)
-- 训练: LeRobotDataset + ACTPolicy/DiffusionPolicy
+- Hugging Face 开源机器人学习生态之一，不宣称“事实标准”
+- 硬件、完整 BOM 与价格以当前官方文档/地区报价为准
+- 训练: LeRobotDataset v3 + ACT/Diffusion/SmolVLA/π0 等当前策略目录
 
 #### 26.4 模仿学习算法
 - BC (基础监督)
@@ -1048,7 +1047,7 @@
 #### 26.5 RL 在机器人
 - HIL-SERL: 人类示范 + RL 微调 (Stanford)
 - TDMPC: 时间差分 MPC
-- QC-FQL: Q-加权 FQL (2026 SOTA)
+- QC-FQL: Q-加权 FQL 研究路线（结论受论文设置约束）
 
 #### 26.6 Sim-to-Real
 - Domain Randomization
@@ -1064,18 +1063,18 @@
 
 #### 27.1 推理模型范式
 - Scaling Law 演进: 2017-2023 训练时扩展 → 2024-2026 推理时扩展 → 2026+ 自适应推理
-- 核心洞察 (o1 论文 2024.09): 输出答案前生成大量内部 CoT
-- Reasoning vs Standard LLM: 长 CoT + 答案 vs 直接答案; 延迟 30s-5min vs 1-5s; 成本 ×3-10
-- 2026 主流: o3/o4-mini, DeepSeek-R1, Claude Opus 4.6, Gemini 2.5 Deep Think, QwQ-32B, Kimi K2
+- 核心洞察: 在最终答复前分配额外推理计算；内部轨迹是否暴露以及实现机制因模型而异
+- Reasoning vs Standard: 可能消耗更多输出 token、延迟与费用；须在同模型、同任务和同 SLA 下实测
+- 2026 当前候选: GPT-5.6 Sol、DeepSeek-V4-Pro、Claude Fable 5、Gemini 3.6、Qwen3.6、Kimi K2.5（调用前核对官方目录）
 
 #### 27.2 Reasoning Effort API
-- OpenAI o3: `reasoning_effort="low/medium/high"`
-- Claude 4.6: `thinking={"type": "enabled", "budget_tokens": 5000}`
-- 三档对比: low (100-500 tokens, <2s, 1×) / medium (1K-5K, 5-15s, 3×) / high (10K-50K, 30s-2min, 10×)
+- OpenAI: 按当前模型目录与 API 指南核对推理控制字段及允许档位
+- 不跨模型复制 `budget_tokens`；按所选 Claude 模型的当前 thinking 配置核验
+- 对比方法: 固定数据集与并发，记录质量、输出 token、TTFT/总时延、错误率和实际费用
 
 #### 27.3 Test-Time Compute Scaling
 - 三大方法: CoT 扩展, 采样+投票, 树状搜索
-- 扩展定律: Snell et al. 2024 math 1×→256× 准确率 50%→90%+
+- 研究边界: Snell 等人的结果来自特定模型与数学任务，不是通用准确率曲线
 - s1/s1.1 (Stanford 2025): 1000 高质量长 CoT SFT 32B, budget forcing, Wait token
 - 阶梯: Zero-shot → CoT → Self-Consistency → Best-of-N → MCTS+PRM → Budget Forcing → Reasoning Effort
 
@@ -1093,9 +1092,9 @@
 - R1-Zero vs R1: 纯 RL 涌现 vs SFT 冷启动 + RL
 
 #### 27.6 部署挑战
-- 高 token 输出 (10-50K) → 流式压缩
-- 高延迟 (30s-5min) → 异步缓存
-- 高成本 (×10) → 按难度分级
+- 输出长度波动 → 设置预算、流式返回并监控截断率
+- 延迟波动 → 异步执行、超时与按难度路由
+- 成本波动 → 结合质量收益、usage 和当前计费做分级
 - 可解释性差 → PRM 验证
 
 ### Ch28 端侧与边缘 LLM (⭐⭐⭐, 面试 ⭐⭐⭐)
@@ -1106,8 +1105,8 @@
 
 #### 28.2 GGUF 量化
 - 格式: llama.cpp 标准, 单文件部署
-- 量化等级: Q2_K (2.7GB) / Q4_K_M (4.1GB, 最常用) / Q5_K_M / Q6_K / Q8_0
-- 端侧目标: iPhone 15 Pro (3B Q4) / MacBook Air M2 (7B Q4) / RTX 4090 (70B Q4)
+- 量化等级: Q2_K / Q4_K_M / Q5_K_M / Q6_K / Q8_0；文件大小取决于模型参数与量化元数据
+- 端侧选型: 预留 KV cache 和运行时开销后，再按设备内存、上下文、并发、温控实测
 
 #### 28.3 Apple MLX
 - vs CoreML/PyTorch MPS: 统一内存 (✅) / 动态图 (✅) / Apple 优化 (⭐⭐⭐⭐⭐)
@@ -1120,13 +1119,14 @@
 
 #### 28.5 WebGPU / WASM 浏览器推理
 - WebLLM / MLC-LLM: OpenAI 兼容 chat.completions API
-- WebGPU: 性能⭐⭐⭐⭐⭐, Chromium 113+/Safari 17+, 1B-7B 量化
-- WASM: 性能⭐⭐⭐, 全部浏览器, CPU, <1B
+- WebGPU: 浏览器/驱动支持与可运行模型规模持续变化，需在目标设备做兼容和内存测试
+- WASM/CPU: 作为兼容路径；速度、线程与内存限制按浏览器安全策略实测
 
 #### 28.6 Secure Minions
-- Stanford Hazy Research 2025.06
-- 本地 7B 提取加密嵌入 → 云端 70B 推理 → 本地解码
-- 云端只看到嵌入, 无法重建原始数据
+- Stanford Hazy Research 的研究原型
+- 远程证明 + 加密传输 + confidential CPU/GPU TEE
+- 明文在受证明的 enclave 内解密推理；不等同于“云端永远看不到明文”
+- 尚未经完整第三方安全审计，不应描述为成熟生产协议
 
 #### 28.7 端云协同模式
 - 纯端侧 / 云端主力 / 路由分流 / Secure Minions / 端侧缓存
@@ -1146,9 +1146,9 @@
 
 #### 29.3 上下文窗口经济学
 - 公式: 总成本 = 输入tokens × 输入价 + 输出tokens × 输出价
-- 大小: Claude 4 (200K-1M), Gemini 2.5 (1M-2M), GPT-5 (1M)
-- Context Rot: 前 10% 100% → 中段 80% → 后段 50-60%
-- 经验: 64K 内效果良好, 64K-200K 中段下降, 超 200K 后段遗忘
+- 上下文上限、价格与缓存规则按具体模型版本和官方页面核验
+- Context Rot 是任务、位置、噪声和模型共同作用的现象，不使用固定百分比泛化
+- 用长上下文基准和本业务 Golden Dataset 测量有效上下文，而非只看标称窗口
 
 #### 29.4 压缩与裁剪
 - Summarization: LLM 摘要
@@ -1167,9 +1167,8 @@
 - 代表: Claude Code, Cursor Agent, Devin
 
 #### 29.7 Prompt Caching
-- Anthropic: 写入 ×1.25, 读取 ×0.1, 节省 90%
-- OpenAI: 自动折扣
-- Gemini: 显式免费 cache hit
+- 自动/显式缓存、TTL 与价格均随厂商和模型变化
+- 只缓存稳定前缀；以官方计费页和实际 usage 字段验证命中
 
 #### 29.8 Haystack 2.x Context-Engineered Pipelines
 - vs LangChain/LlamaIndex: 组件化, production-ready
@@ -1177,7 +1176,65 @@
 
 ---
 
-## 8. 配套代码 (code/) — 450+ .py
+### Ch30 高效序列架构 SSM 与 Mamba
+- S4/Selective SSM/Mamba/Mamba-2 的状态空间视角
+- SSD 以半可分矩阵与标量恒等 SSM 连接注意力和 SSM
+- Jamba: Attention、Mamba 与 MoE FFN 的混合，而非“MoE Attention”
+
+### Ch31 知识编辑与模型记忆
+- ROME: 中层 FFN、subject 最后 token、协方差加权秩一更新
+- MEMIT: 批量编辑；论文实验边界不外推到闭源 GPT-4 级模型
+- TOFU 是机器遗忘 benchmark，不是已经解决遗忘问题的算法
+
+### Ch32 DeepSeek 风格 MoE 与 MLA
+- V3: 512 维 KV latent + 64 维 decoupled RoPE cache
+- 1 shared + 256 routed experts，top-8 routed experts
+- 路由 bias 由负载反馈更新；MTP 模块按顺序预测未来 token
+
+### Ch33 训练稳定性与诊断
+- AMP 溢出: GradScaler backoff，而非增大 loss scale
+- AGC: 按参数单元比较梯度范数与参数范数
+- 完整恢复: 模型/优化器/scaler/RNG/sampler/dataloader/step
+- Muon: momentum orthogonalization + Newton-Schulz
+
+### Ch34 Tokenizer 设计与词表工程
+- SentencePiece 同时支持 BPE 与 Unigram，空格标记为 `▁`
+- Llama 3/Qwen tokenizer 以各自官方 tokenizer 配置为准
+- 迁移门禁: special tokens、chat template、归一化与压缩率回归
+
+### Ch35 生产级 Agent 记忆框架
+- 用户作用域与 metadata 分离
+- 检索分数先归一化，再融合相关性、重要性和时间
+- 写入冲突、删除、审计与隐私是生产门禁
+
+### Ch36 JAX 与 TPU 大规模预训练
+- jit/grad/vmap/sharding 的显式组合
+- Pallas 支持 TPU 与 GPU 后端，具体能力以官方文档为准
+- Pathways 不会自动把任意单设备程序无条件扩展到千卡
+
+### Ch37 PD 分离推理架构与 KV 池化
+- Prefill/Decode 独立扩缩容与 SLO
+- 首个 decode 必须等待完整 prompt KV；可重叠的是 KV 传输与后续 prefill
+- SGLang 使用官方 disaggregation server/router 接口
+
+### Ch38 模型合并 MergeKit
+- Linear/SLERP/Task Arithmetic/TIES/DARE
+- TIES = Trim, Elect Sign, Merge
+- 合并前验证 base、架构、tokenizer、chat template 与 license
+
+### Ch39 Computer Use 与 GUI Agent 训练
+- OSWorld/WebArena 环境与成功率评估
+- ComputerRL/AutoGLM-OS-9B 的论文归属与公开结果
+- 沙箱、权限、确认、审计和可恢复执行
+
+### Ch40 国内大模型岗位面试实战
+- 六张证据卡 + 90 秒项目陈述
+- RAG 漏斗、Agent 故障语义、推理性能与系统设计
+- 幂等键必须配合工具侧去重、唯一意图记录和状态查询
+
+---
+
+## 8. 配套代码 (code/) — 433 .py
 
 ### 8.1 目录结构
 - code/README.md + Makefile + pyproject.toml
@@ -1225,12 +1282,12 @@
 - `pytest -m "not gpu"` 跑 core+llm
 
 ### 8.7 7 厂商 LLM 接入
-- DeepSeek (主推): api.deepseek.com/v1, deepseek-chat / deepseek-reasoner, 注册送 ¥10
-- Kimi: api.moonshot.cn/v1, moonshot-v1-8k, ¥15 体验金, 128K context
-- SiliconFlow: api.siliconflow.cn/v1, Qwen2.5-7B-Instruct / QwQ-32B-Preview, 2000 万 tokens
-- MiniMax (Codin): api.minimaxi.com (无 s), MiniMax-Text-01
-- OpenAI: api.openai.com/v1, gpt-4o-mini
-- Anthropic: api.anthropic.com, claude-sonnet-4-5
+- DeepSeek: 端点与模型 ID 查官方 API 文档
+- Kimi/Moonshot: 端点、模型 ID 和上下文窗口查官方 API 文档
+- SiliconFlow: api.siliconflow.cn/v1；模型动态上下线，调用前查询 /v1/models
+- MiniMax: api.minimaxi.com (无 s), MiniMax-M2.7
+- OpenAI: api.openai.com/v1, gpt-5.6
+- Anthropic: api.anthropic.com, claude-fable-5
 - Mock: 离线, 无 API Key
 
 ---
@@ -1270,7 +1327,7 @@
 - parallel=1 避免 GPU 争用
 
 ### 9.6 CI 演进历程 (v1.0.0 → v1.0.13)
-- v1.0.0: 8-Wave 真实化重构里程碑
+- v1.0.0: 历史 “8-Wave” 重构标签（不能作为当前真实集成验收证据）
 - v1.0.1: verify.yml mock-first 修复
 - v1.0.2-v1.0.4: integration-test + docker-build 包修复
 - v1.0.5: 删 Tsinghua + 60min timeout
@@ -1313,15 +1370,12 @@
 
 ## 11. 关键架构决策
 
-### 11.1 8 Wave 真实化重构 (W1-W8, 38 commits)
-- W1 基建: UnifiedClient 缺 Key 抛错; LLM_MOCK 短路; download_models 12 模型
-- W2 审计: 158 core/*.py 0 mock
-- W3 LLM: 199 llm/*.py 0 mock
-- W4 端侧: ch28 真跑 (Ollama qwen3:32b + wasmtime 23μs + mTLS)
-- W5 推理: ch25 (bitsandbytes 4-bit -53% VRAM + vLLM Windows 友好)
-- W6 训练: ch19+16+26+27 (R1 真跑 + LoRA/QLoRA/Flash 13.33x + GRPO/Flow Matching/DDPM)
-- W7 教程: 16 markdown 同步, 反向链接全通
-- W8 CI: LLM_MOCK safety + 真实 API 冒烟
+### 11.1 历史 Wave 重构与当前验收边界
+- Wave 是维护阶段标签，不代表当时或当前已完成真实 API/GPU/外部服务验收
+- core: 本地确定性示例，由 runner 与 pytest 验收
+- llm: 默认 `LLM_MOCK=1`；真实 API 只有显式 `LLM_MOCK=0`、指定 provider/Key 后逐项验收
+- gpu: 默认 `--mock`；模型下载、训练、服务、浏览器和硬件路径必须在兼容主机上单独验收
+- 当前文件数、PASS/SKIP/FAIL 与链接状态只引用 `99_库健康检查报告.md` 的本次精确结果
 
 ### 11.2 关键设计原则
 - 三层依赖: 30s/core → +5min/llm → +30min/gpu
@@ -1337,8 +1391,9 @@
 - `is_mock / USE_REAL_API / MockLLM() / fake_llm / FakeListChatModel`
 - 在 `ch*/{core,llm,gpu}/*.py` 全 0 匹配
 
-### 11.4 健康评分演进
-- 72 → 80 → 85 → 88 → 90 → 95 → 98 → 100/100 🏆
+### 11.4 验收原则
+- 历史评分只作记录，不代表当前工作区
+- 以 Ruff、pytest、core/LLM mock runner、引用与统计门禁的当前输出为准
 
 ---
 
@@ -1394,7 +1449,7 @@
 - Multi-Head Attention (Ch12) ⭐⭐⭐⭐⭐
 
 ### 12.4 N-S
-- nogil Python 3.13 (Ch05) ⭐⭐⭐⭐
+- free-threaded Python 3.13/3.14 (Ch05) ⭐⭐⭐⭐
 - NumPy 广播 (Ch08) ⭐⭐⭐⭐⭐
 - Paged Attention (Ch16) ⭐⭐⭐⭐⭐
 - Pandas loc vs iloc (Ch08) ⭐⭐⭐⭐⭐
@@ -1479,8 +1534,8 @@
 - 5 级具身智能
 
 ### 13.3 推理模型 (Ch27) — Test-Time Compute
-- o3/R1 范式
-- Reasoning Effort 三档
+- 推理时计算 / R1 等公开研究范式
+- Reasoning Effort 支持范围与档位以模型目录为准
 - PRM/MCTS
 - GRPO/RLVR
 - s1 budget forcing
@@ -1497,7 +1552,7 @@
 - Context Rot 现象
 - 4 层记忆系统
 - Sub-Agent 模式
-- Prompt Caching 节省 90%
+- Prompt Caching 收益需按 TTL、命中率、usage 与当前计费验证
 
 ---
 
@@ -1511,10 +1566,9 @@
 
 ### 14.2 硬件 × 章节矩阵
 - 任意笔记本: Ch1-11 + Ch13/14/15/17/18/20/22/29 (用 API Key)
-- Apple M-series (≥8GB): + Ch28 端侧 (MLX/Ollama)
-- NVIDIA GPU 8GB+: + Ch19 DDP 0.5B + Ch16 LoRA 0.5B
-- NVIDIA GPU 24GB+ (RTX 5090 D): + Ch25 vLLM 7B + Ch27 R1-Distill + Ch16/26 真训
-- NVIDIA GPU 80GB+ (A100/H100): + Ch26 Cosmos-7B / Pi0 VLA
+- Apple Silicon: Ch28 MLX/Ollama 以统一内存余量和示例 guard 为准
+- NVIDIA GPU: 小型教学 demo、推理服务和 VLA/世界模型的需求差异很大
+- 执行前读取示例 metadata/guard，并按模型权重、KV cache、激活、batch 与并发核算显存
 
 ### 14.3 学习节奏
 - 第 1 周: Ch1-4 Python 基础
@@ -1524,15 +1578,16 @@
 - 第 5-6 周: Ch10-11 ML + DL
 - 第 7-8 周: Ch12 Transformer 原理
 - 第 9-10 周: Ch13-16 大模型技术栈
-- 第 11-12 周: Ch17-24 工程实践
-- 第 13+ 周: Ch25-29 2026 前沿
+- 第 11-12 周: Ch17-29 工程实践
+- 第 13+ 周: Ch30-40 前沿专题与岗位实战
 
-### 14.4 推荐 API Key
-- 主推: DeepSeek (https://platform.deepseek.com, 注册送 ¥10, 国内访问快, OpenAI 协议)
-- 备选: Kimi (¥15 体验金, 128K), SiliconFlow (2000 万 tokens), MiniMax
+### 14.4 API 与本地模型
+- 按网络可达性、合规、质量、延迟和成本实测选择提供方
+- 促销额度和模型窗口属于动态信息，不写入长期教程结论
+- 密钥只放环境变量或未提交的本地 `.env`
 
 ---
 
-*思维导图版本: 2026-06-08 | 覆盖 29 章 + 450+ 代码 + 5 CI workflow + Docker 部署 + 100/100 健康*
+*思维导图版本: 2026-07-31 | 覆盖 40 章 + 433 个代码示例 + CI workflow + Docker 部署*
 *导入 XMind: 文件 → 导入 → Markdown → 选本文件*
 *维护: 与教程章节同步更新*

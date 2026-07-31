@@ -4,7 +4,7 @@
 # section: 18.1.4 Tool 定义与使用
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: langchain, langchain-openai
+# deps: langchain-core
 # run: python 08_tool_definition_agent.py
 # expected_runtime: <1s (mock mode)
 # expected_output: tool use result
@@ -13,25 +13,16 @@
 # Interview hooks:
 #   1. @tool 装饰器是如何将函数注册为 LLM 可用工具的？
 #   2. create_openai_functions_agent 与 create_react_agent 的区别是什么？
+import sys
+from pathlib import Path
 
-
-# === Optional dependency guard (auto-added) ===
-import sys as _sys
-
-try:
-    from langchain.agents import AgentExecutor, create_openai_functions_agent
-
-    _SKIP_REASON = None
-except (ImportError, ModuleNotFoundError) as _e:
-    _SKIP_REASON = str(_e).split("\n")[0]
-if _SKIP_REASON:
-    print(f"[SKIP] {__file__}: {_SKIP_REASON}")
-    _sys.exit(0)
-print(
-    "OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)"
-)
+_CODE_ROOT = Path(__file__).resolve().parents[2]
+if str(_CODE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_CODE_ROOT))
 
 from langchain_core.tools import tool
+
+from shared.safe_math import UnsafeExpression, evaluate_arithmetic
 
 
 # ===== 方式1: 使用 @tool 装饰器 =====
@@ -49,12 +40,12 @@ def get_weather(city: str) -> str:
 
 @tool
 def calculate(expression: str) -> str:
-    """执行数学计算。参数 expression 为数学表达式字符串，如 '2+3*4'。"""
+    """解析受限数学表达式，如 '2+3*4'；不执行 Python 代码。"""
     try:
-        result = eval(expression, {"__builtins__": {}}, {})
+        result = evaluate_arithmetic(expression)
         return f"计算结果：{expression} = {result}"
-    except Exception as e:
-        return f"计算错误：{str(e)}"
+    except (UnsafeExpression, ArithmeticError) as exc:
+        return f"计算错误：{exc}"
 
 
 @tool
@@ -64,7 +55,7 @@ def search_database(query: str, limit: int = 5) -> str:
     mock_db = {
         "langchain": "LangChain 是一个用于构建 LLM 应用的框架...",
         "python": "Python 3.14 预计于 2025 年发布...",
-        "gpt": "GPT-4o 是 OpenAI 的多模态模型...",
+        "gpt": "GPT-5.6 是 OpenAI 当前的通用模型系列...",
     }
     results = []
     for k, v in mock_db.items():

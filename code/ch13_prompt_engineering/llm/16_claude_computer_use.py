@@ -7,7 +7,7 @@
 # deps: anthropic
 # run: python 16_claude_computer_use.py
 # expected_runtime: 10-20s (real api)
-# expected_output: 打印 Claude Computer Use 工具规范与返回
+# expected_output: 无 Key 时 [SKIP]；有 Key 时只打印待验证动作，不执行
 # ---
 # See: ../tutorial/13_Prompt_Engineering.md#13.7.3
 # Interview hooks:
@@ -15,66 +15,58 @@
 # - 为何需要"观察-思考-动作"闭环？失败恢复如何实现？
 # - 高风险操作（支付、删除）的拦截策略？
 
-import base64
+import os
 
-import anthropic
+try:
+    import anthropic
+except ImportError:
+    anthropic = None
 
-_client = anthropic.Anthropic()
+
+def _real_api_ready() -> bool:
+    if os.environ.get("LLM_MOCK") != "0":
+        print("[SKIP] 离线安全模式：只有显式设置 LLM_MOCK=0 才会调用 Anthropic API")
+        print("OK")
+        return False
+    if anthropic is None or not os.environ.get("ANTHROPIC_API_KEY"):
+        print("[SKIP] 真实调用需要 anthropic 和 ANTHROPIC_API_KEY")
+        print("OK")
+        return False
+    return True
 
 
-def call_claude_computer_use(screenshot_b64: str, user_msg: str):
-    # Computer Use 工具定义
+def call_claude_computer_use(user_msg: str):
+    if not _real_api_ready():
+        return None
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     tools = [
         {
+            "type": "computer_20251124",
             "name": "computer",
-            "description": "控制计算机：截图、点击、键入、滚动",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "action": {"enum": ["screenshot", "left_click", "type", "key", "scroll", "wait"]},
-                    "coordinate": {"type": "array", "items": {"type": "integer"}},
-                    "text": {"type": "string"},
-                },
-                "required": ["action"],
-            },
+            "display_width_px": 1024,
+            "display_height_px": 768,
+            "display_number": 1,
         }
     ]
-
-    # System Prompt 关键要素
-    COMPUTER_USE_SYSTEM = """
-你是一个计算机使用助手，可控制浏览器完成用户任务。
-
-【行为准则】
-1. 每次执行动作前先观察当前截图
-2. 动作之间保持简短思考：<thinking>目标→动作→预期</thinking>
-3. 失败时截图诊断，重新规划
-4. 完成任务的最后一步必须调用 computer(action="done")
-5. 高风险操作（支付、删除等）必须先和用户确认
-
-【截图标注】
-返回坐标时使用 0-1000 归一化坐标，0=左上，1000=右下。
-"""
-
-    return _client.messages.create(
-        model="claude-sonnet-4-5",
+    return client.beta.messages.create(
+        model=os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-8"),
         max_tokens=2048,
-        system=COMPUTER_USE_SYSTEM,
         tools=tools,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image", "source": {"type": "base64", "data": screenshot_b64}},
-                    {"type": "text", "text": user_msg},
-                ],
-            }
-        ],
+        betas=["computer-use-2025-11-24"],
+        messages=[{"role": "user", "content": user_msg}],
     )
 
 
 if __name__ == "__main__":
-    # 使用一个空白 1x1 PNG 作为占位截图
-    fake_png = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"\x00" * 50).decode()
-    response = call_claude_computer_use(fake_png, "在搜索框中输入 'Python tutorial' 然后点击搜索按钮")
+    response = call_claude_computer_use(
+        "在隔离浏览器中搜索 Python 官方 tutorial；不要登录、下载或提交表单。"
+    )
+    if response is None:
+        raise SystemExit(0)
     for block in response.content:
-        print(f"[{block.type}]", getattr(block, "text", None) or getattr(block, "input", None))
+        if block.type == "tool_use" and block.name == "computer":
+            print("[待验证动作]", block.input)
+        elif block.type == "text":
+            print("[文本]", block.text)
+    print("[安全默认] 本示例不执行任何宿主 GUI 动作")
+    print("OK")

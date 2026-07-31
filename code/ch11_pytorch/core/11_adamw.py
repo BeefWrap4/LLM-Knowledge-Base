@@ -35,3 +35,4 @@ if __name__ == "__main__":
         print(
             f"group {i}: lr={g['lr']}, betas={g['betas']}, eps={g['eps']}, weight_decay={g['weight_decay']}"
         )
+    print("OK")

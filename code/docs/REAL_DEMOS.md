@@ -1,196 +1,108 @@
-# Real Demos 输出样例 (Wave 23)
+# Real Demos：历史样例与真实验收
 
-> 13 个真实 LLM 调用例子的**实际输出**, 跑 `bash scripts/run_real_demos.sh` 即可复现.
-> 以下样例为 2026-06-07 用 **MiniMax (Codin Plan)** 跑出的真实响应 (非 mock).
+> 核验日期：2026-07-31。本页不提供当前线上验收结论；它说明旧输出应如何解读，
+> 以及怎样重新取得可审计的真实调用证据。
 
-## 1. ch13/06 self_consistency_cot.py — 多数投票
+## 1. 历史输出的证据边界
 
-```
-[模式] real-api
-[prompt] 一个农场有 5 只鸡和 3 只鸭, 卖掉 2 只后, 又买了 4 只兔子. 现在共有多少只动物? 5 次采样
-[采样 1] 答案是: 5+3-2+4 = 10 只动物
-[采样 2] 答案是: 5+3-2+4 = 10 只
-[采样 3] 答案是: 5+3-2+4 = 10
-[采样 4] 答案是: \( 5+3-2+4 = 10 \) 只动物
-[采样 5] 答案是: 5+3-2+4 = 10
-[多数投票答案] 答案是: 5+3-2+4 = 10
-[置信度] 100.00%
-```
+旧版文档曾列出 13 段文本，并注明它们采集于 2026-06-07、来自 MiniMax Codin Plan。
+但页面没有同时保存原始响应、请求 ID、确切模型 ID、代码提交、依赖版本和逐项日志，因此无法仅凭
+这些文本复核它们是否来自真实 API，也无法把它们外推为当前模型的输出、时延、token 或能力。
 
-## 2. ch13/09 compare_temperatures.py — 3 温度采样
+本版不再把这些历史文本写成“实际输出”或“真实通过”。如需教学展示，可将其标注为
+“历史示意，非验收证据”；如需验收，请按下文重新运行并保存证据。
 
-```
-[prompt] 用一句话形容秋天
---- Temperature=0.0 (确定性) ---
-样本1: 秋天是金黄的落叶与微凉的空气交织的季节。
-样本2: 秋天是金黄的落叶与微凉的空气交织的季节。   (相同)
-样本3: 秋天是金黄的落叶与微凉的空气交织的季节。   (相同)
---- Temperature=0.7 (平衡) ---
-样本1: 秋天是金黄落叶飘零的诗意季节。
-样本2: 秋天是凉爽而丰硕的美好时光。
-样本3: 秋天是大自然换上新装的瞬间。
---- Temperature=1.2 (多样) ---
-样本1: 秋风起, 落叶纷飞, 这是收获与凋零并存的奇妙时刻。
-样本2: 枫叶染红了山川, 空气中弥漫着成熟果实的香气与淡淡的忧伤。
-样本3: 秋天是一场盛大告别的前奏, 每一阵风都在说再见。
-```
+## 2. wrapper 当前覆盖的脚本
 
-## 3. ch13/14 openai_auto_caching.py — 缓存命中
+`scripts/run_real_demos.sh` 的 `quick` 模式选择 3 个脚本，`all` 模式通常选择 10 个；只有
+`provider=openai` 且 `mode=all` 时，才追加 2 个 OpenAI 专用脚本：
 
-```
-[prompt] (固定 500 tokens, 10 次相同调用)
-第 1 次: input=500, output=80, cached=false, 1.2s
-第 2 次: input=500, output=80, cached=true (saved 480 tokens), 0.5s
-第 3 次: input=500, output=80, cached=true, 0.4s
-... (8 次缓存命中)
-总节省: 3840 tokens (≈ 节省 ¥0.004)
-```
+| 集合 | 脚本 |
+|---|---|
+| quick（3） | Ch13 `06_self_consistency_cot.py`、`09_compare_temperatures.py`；Ch15 `02_react_agent_from_scratch.py` |
+| all 追加（7） | Ch17 `05_llm_as_judge.py`；Ch18 `02_llmchain_basic.py`、`03_sequential_chain.py`、`05_conversation_buffer_memory.py`、`09_chatbot_with_memory.py`、`13_llamaindex_vectorstore_index.py`、`14_llamaindex_summary_index.py` |
+| 仅 OpenAI all 追加（2） | Ch13 `14_openai_auto_caching.py`、`20_openai_json_schema_strict.py` |
 
-## 4. ch13/20 json_schema_strict.py — 结构化输出
+这些脚本的依赖和协议并不相同；某个 provider 能完成普通 chat，不代表它能完成 OpenAI 专用缓存、
+严格 Schema、工具调用、LangChain 或 LlamaIndex 路径。
 
-```
-[user] 张伟今年 28 岁, 擅长 Python 和 Rust.
-[output] {
-  "name": "张伟",
-  "age": 28,
-  "skills": ["Python", "Rust"]
-}
-[schema] ✓ 符合 UserInfo schema (3 个必填字段)
-```
+## 3. 运行方式
 
-## 5. ch15/02 react_agent.py — ReAct 推理
-
-```
-[query] 北京明天的天气如何? 顺便算 36+37+38
-[Thought 1] 我需要查询北京天气并计算 36+37+38. 我将使用 weather_api 工具.
-[Action 1] weather_api(city="北京", date="2026-06-08")
-[Observation 1] 晴, 22-28°C, 东南风 2 级
-[Thought 2] 现在计算 36+37+38
-[Action 2] calculator(expression="36+37+38")
-[Observation 2] 111
-[Final Answer] 北京明天天气晴, 22-28°C. 36+37+38 = 111.
-[迭代次数] 2
-```
-
-## 6. ch17/05 llm_as_judge.py — LLM 评分
-
-```
-[question] 什么是 RAG?
-[answer_A] RAG (检索增强生成) 是一种结合外部知识检索和 LLM 生成的技术, 提升准确性.
-[answer_B] RAG 让模型能查文档.
-[Pairwise 评判]
-{
-  "winner": "A",
-  "confidence": 0.85,
-  "reasoning": "A 准确解释 RAG 原理 (检索 + 生成), B 过于简略",
-  "key_difference": "A 包含技术细节, B 只描述功能"
-}
-[Rubric 评分]
-{
-  "accuracy": 5,
-  "completeness": 4,
-  "clarity": 5,
-  "helpfulness": 4
-}
-```
-
-## 7. ch17/12 langfuse_v3.py — 可观测性追踪
-
-```
-[trace_id] 01HX3F2K9B7N5P8Q
-[generation] 真实调用: deepseek-chat
-  input: 800 tokens, output: 120 tokens, latency: 1.2s
-[scores] { "accuracy": 0.95, "relevance": 0.92 }
-[trace 详情] 在 https://cloud.langfuse.com 可见
-```
-
-## 8. ch18/02 llmchain.py — 经典 Chain
-
-```
-[input] product="智能手表", audience="运动爱好者"
-[output] 为您打造运动爱好者的智能伴侣: 实时心率监测、GPS轨迹记录、50米防水, 让每次锻炼都更专业。
-[model] deepseek-chat
-[tokens] 89 input + 56 output
-```
-
-## 9. ch18/05 conversation_buffer_memory.py — 记忆
-
-```
-[轮 1] 我叫张三, 今年 30 岁.
-[AI] 好的, 我记住了.
-[轮 2] 我的名字是什么?
-[AI] 您叫张三.
-[轮 3] 我几岁?
-[AI] 您今年 30 岁.
-[memory 内容] [HumanMessage, AIMessage, HumanMessage, AIMessage, ...]
-```
-
-## 10. ch18/13 llamaindex_vectorstore.py — RAG 检索
-
-```
-[query] 什么是 PagedAttention?
-[retrieved docs] (top-3 相似度)
-  - vllm 文档 §3.2 (相似度 0.91): "PagedAttention 灵感来自 OS 虚拟内存..."
-  - vllm 论文 §4 (0.87): "通过分页管理 KV cache..."
-  - blog post (0.82): "vLLM 用 PagedAttention 提升 24x 吞吐..."
-[answer] PagedAttention 是 vLLM 的核心优化, 通过将 KV cache 分页管理 (类似 OS 虚拟内存), 减少 4-24x 显存浪费, 提升吞吐量.
-[cited] 3 个文档片段
-```
-
-## 11. ch18/03 sequential_chain.py — 顺序链
-
-```
-[input] topic="2026 年大模型应用框架"
-[Step 1: 大纲] 1. 编排能力 (LangGraph) 2. RAG 选型 (LlamaIndex) 3. 快速落地 (Dify)
-[Step 2: 文章] 2026 年, LLM 应用框架选型聚焦 3 大方向: 编排能力 (LangGraph 适合复杂工作流)...
-[output] 完整博客草稿, ~300 字
-```
-
-## 12. ch18/09 chatbot_with_memory.py — 多轮对话
-
-```
-[轮 1] 北京天气?
-[AI + tool_call] search_weather("北京") → {"temp": 25, "condition": "晴"}
-[AI] 北京今天 25°C, 晴.
-[轮 2] 那上海呢?
-[AI + tool_call] search_weather("上海") → {"temp": 28, "condition": "多云"}
-[AI] 上海 28°C, 多云. 比北京热 3°C.
-[轮 3] 总结一下两城天气
-[AI] 北京 25°C 晴, 上海 28°C 多云.
-```
-
-## 13. ch18/14 llamaindex_summary.py — 摘要
-
-```
-[documents] 3 个 RAG 教程文档 (各 ~500 字)
-[summary] 这 3 篇文档共同介绍了 RAG (检索增强生成) 的三大组件: 文档加载、向量索引、检索生成. LlamaIndex 提供了完整的 RAG 工具链.
-[summary length] 80 字 (原 1500 字, 压缩 95%)
-```
-
-## 复现方式
+先在 `code/` 目录配置目标厂商 Key。真实运行必须显式关闭离线模式：
 
 ```bash
-# 完整跑 (会扣费, ~¥0.01-0.10)
 cd code/
-bash scripts/run_real_demos.sh
-
-# 厂商切换
-bash scripts/run_real_demos.sh MiniMax
-bash scripts/run_real_demos.sh deepseek
-
-# 跑单个
-USE_REAL_API=1 LLM_PROVIDER=MiniMax python ch13_prompt_engineering/llm/06_self_consistency_cot.py
+LLM_MOCK=0 bash scripts/run_real_demos.sh --confirm-real all deepseek
 ```
 
-## 成本估算 (按 DeepSeek 价格)
+快速子集：
 
-| 调用次数 | 预估 token | 预估成本 |
-|----------|-----------|---------|
-| 13 个例子 × 平均 500 input + 300 output | ~10K input + ~5K output | **¥0.01 - ¥0.05** |
-| 13 个 × 5 次 (Self-Consistency 5 采样) | ~50K input + ~25K output | ¥0.10 - ¥0.30 |
-| 完整 run_real_demos.sh | ~100K total | **¥0.10 - ¥0.50** |
+```bash
+LLM_MOCK=0 bash scripts/run_real_demos.sh --confirm-real quick deepseek
+```
 
-价格友好的厂商 (适合大量跑):
-- **SiliconFlow Qwen 2.5 7B**: 注册送 2000 万 tokens, 跑完所有 demo 都不花钱
-- **DeepSeek**: ¥1/百万 token, 全套 demo 约 ¥0.10
-- **MiniMax Codin**: 按月订阅, 无限调用
+跑单个例子：
+
+```bash
+LLM_MOCK=0 LLM_PROVIDER=deepseek python ch13_prompt_engineering/llm/06_self_consistency_cot.py
+```
+
+PowerShell 中如需调用 Git Bash：
+
+```powershell
+$env:LLM_MOCK="0"; bash scripts/run_real_demos.sh --confirm-real all deepseek
+```
+
+离线回归使用：
+
+```bash
+LLM_MOCK=1 python scripts/run_all_examples.py --tier llm --parallel 4 --timeout 180
+```
+
+## 4. wrapper 不是“真实通过”门禁
+
+当前 `run_real_demos.sh` 会要求 `--confirm-real`、核对目标 Key、强制导出 `LLM_MOCK=0`，并把
+进程失败、可识别的 mock/离线输出和 `[SKIP]` 分开统计。它仍主要根据进程退出码与输出文本判定：
+不会读取 Python 响应对象，也不会核对厂商 usage 或账单。因此：
+
+- wrapper 的 `passed` 表示脚本正常退出且未命中它能识别的 mock/离线标记；
+- `[SKIP]`、`[mock]` 或 `resp.mock is True` 均不是实时 API 通过；真实 SDK 异常应直接使脚本失败；
+- 0 退出码仍可能包含单独列出的 skip；
+- 没有打印可识别标记的兜底响应，仍可能被 wrapper 漏判；
+- provider 参数会被写入 `LLM_PROVIDER`；验收时仍需核对实际 provider/model。
+
+先用严格探针验证目标 provider：
+
+```bash
+LLM_MOCK=0 LLM_PROVIDER=deepseek python -c "from shared.llm_client import UnifiedClient; r=UnifiedClient().chat(prompt='Reply only OK', max_tokens=16); assert not r.mock, repr(r.raw); print(r.provider, r.model, r.usage)"
+```
+
+然后逐项检查脚本日志。只有满足业务断言且没有 mock/skip/error 标记的项目，才能记为真实通过。
+
+## 5. 建议保存的证据
+
+每次真实验收至少记录：
+
+1. 时间、代码 commit、Python/SDK/框架版本；
+2. 完整命令，包含 `LLM_MOCK=0` 和目标 provider；
+3. 实际响应中的 provider/model、请求 ID（若提供）、token 与时延；
+4. `resp.mock is False` 或等价的原始 SDK 成功证据；
+5. 每个脚本的退出码、关键断言和脱敏日志；
+6. Key 权限、限流、地区与网络错误单独报告。
+
+不要保存 API Key，也不要把模型生成文本本身当成来源真实性证明。
+
+## 6. 成本与模型时效性
+
+不在教程中固定价格、赠送额度或“全套预计成本”。应使用本次响应的实际 token 分类，并按运行时
+所选模型的官方当期计费规则计算。多次采样会增加调用量，但缓存、推理 token、工具调用和重试会让
+实际成本偏离简单倍数。
+
+当前仓库 provider 默认值见 [API_KEYS.md](API_KEYS.md)。运行前查询厂商 `/models` 或控制台，并参考：
+
+- [DeepSeek Models & Pricing](https://api-docs.deepseek.com/quick_start/pricing/)
+- [Kimi 模型列表](https://platform.kimi.com/docs/models)
+- [SiliconFlow 获取模型列表](https://docs.siliconflow.cn/cn/api-reference/models/get-model-list)
+- [MiniMax 获取模型列表](https://platform.minimaxi.com/docs/api-reference/models/openai/list-models)
+- [OpenAI Models](https://developers.openai.com/api/docs/models)
+- [Claude 模型概览](https://platform.claude.com/docs/en/about-claude/models/overview)

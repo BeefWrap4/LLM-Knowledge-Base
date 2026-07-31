@@ -1,29 +1,28 @@
 # ---
 # chapter: 26
 # topic: 世界模型与具身AI
-# section: 26.4.2 NVIDIA Cosmos — 物理世界基础模型
+# section: 26.1 世界模型 — NVIDIA Cosmos 3 元数据边界
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
-# deps: transformers, torch (lazy), numpy
+# deps: huggingface_hub (real metadata check), numpy
 # run: python 02_cosmos_physics.py
-# expected_runtime: 30-60s (config load + 真物理仿真)
-# expected_output: Cosmos 架构加载 + 物理仿真轨迹
+# expected_runtime: depends on network/authentication; toy simulator is local
+# expected_output: Cosmos 3 repository metadata check + unrelated Newtonian toy trajectory
 # ---
 # See: ../tutorial/26_世界模型与具身AI.md §26.4.2
 #
 # Interview hooks:
-#   1. NVIDIA Cosmos 与 Genie 3 在训练目标上有什么不同？（物理一致性 vs 视觉逼真度）
-#   2. Cosmos 如何把合成数据与 Isaac Sim 仿真结合？Video Tokenizer 的作用？
+#   1. NVIDIA Cosmos 3 与 Genie 3 的公开形态和可用性有什么不同？
+#   2. 为什么仓库可访问、成功生成视频和物理正确性是三种不同证据？
 #   3. 在机器人 sim-to-real 中，世界模型扮演什么角色？
-"""Cosmos 物理建模演示 (NVIDIA Cosmos-1.0).
+"""Cosmos 3 仓库元数据检查 + 独立 Newtonian 教学模拟器。
 
-Cosmos 是 NVIDIA 的世界基础模型系列:
-  - Cosmos-1.0-7B / 13B (物理)
-  - Cosmos-1.0-7B-Video / 13B-Video
-  - 用于物理感知视频生成 + 自动驾驶仿真
+截至 2026-07-31，NVIDIA 当前主线是统一的 Cosmos 3 omni-model；早期分立的
+Predict/Reason/Transfer 接口不能直接当作当前 SDK 示例。官方仓库列出 Cosmos3-Nano
+与 Cosmos3-Super 等 checkpoint。
 
-Cosmos-7B fp16 ~14GB, 在 34GB 单卡可跑 (4-bit 量化更舒适).
-本 demo: 尝试 config load 验证架构 + 真物理仿真 rollout (gravity, friction, collision).
+本例不加载权重、不生成图像/视频，也不验证 Cosmos 的物理一致性或性能。它只尝试读取
+Hub 仓库元数据，然后运行一个与 Cosmos 3 完全无关的 NumPy 状态转移示例。
 """
 
 import sys
@@ -37,43 +36,36 @@ import math
 
 import numpy as np
 
-from shared.gpu_guard import require_nvidia_gpu
+from shared.gpu_guard import skip_if_mock
 
 
-def check_hardware():
-    """Cosmos-7B 14GB, 单卡 24GB+ 即可跑 fp16."""
-    require_nvidia_gpu(min_vram_gb=24, min_count=1)
+def try_read_cosmos3_metadata() -> bool:
+    """读取 Cosmos3-Nano Hub 元数据，不下载权重或推断模型架构。"""
+    from huggingface_hub import model_info
 
-
-def try_load_cosmos_config():
-    """尝试从 HF 加载 Cosmos-1.0-7B config (无权重), 验证架构可访问."""
-    from transformers import AutoConfig
-
-    model_id = "nvidia/Cosmos-1.0-7B"
-    print(f"目标模型: {model_id} (~14GB fp16)\n")
-    print("步骤 1: 从 HuggingFace 加载 config (无权重, 仅几十 KB)...")
+    model_id = "nvidia/Cosmos3-Nano"
+    print(f"目标仓库: {model_id}\n")
+    print("步骤 1: 从 Hugging Face 读取仓库元数据（不下载/加载权重）...")
 
     try:
-        config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
-        print("  ✅ config 加载成功")
-        print(f"     架构: {config.architectures}")
-        print(f"     hidden_size: {config.hidden_size}")
-        print(f"     num_layers : {config.num_hidden_layers}")
-        print(f"     num_heads  : {config.num_attention_heads}")
-        print(f"     vocab_size : {config.vocab_size}")
+        info = model_info(model_id, files_metadata=False)
+        print("  ✅ 元数据读取成功")
+        print(f"     model_id: {info.id}")
+        print(f"     revision: {info.sha or 'not reported'}")
+        print(f"     gated: {getattr(info, 'gated', 'not reported')}")
+        print(f"     files: {len(info.siblings or [])}")
         return True
     except Exception as e:
-        print(f"  ⚠️  config 加载失败: {type(e).__name__}: {str(e)[:120]}")
-        print("     注: Cosmos 是 gated repo, 需 NVIDIA NGC 账号 + HF 认证")
-        print("     解决: 访问 https://huggingface.co/nvidia/Cosmos-1.0-7B 申请 access")
+        print(f"  ⚠️  元数据读取失败: {type(e).__name__}: {str(e)[:120]}")
+        print("     这只说明当前网络/认证/仓库访问未完成，不说明模型不可用。")
+        print("     当前模型页: https://huggingface.co/nvidia/Cosmos3-Nano")
         return False
 
 
-class CosmosSimulator:
+class TeachingPhysicsSimulator:
     """Newtonian 物理仿真器: 状态 = (x, y, vx, vy), 支持重力 + 弹性碰撞 + 摩擦.
 
-    物理一致性 ground truth: Cosmos 训练数据源于 Isaac Sim 仿真, 我们用简化的
-    Newtonian 力学近似演示"物理世界基础模型"的核心: 状态转移满足物理守恒.
+    该教学模拟器与 Cosmos 3 的训练数据、架构和评估无关，只用于说明可检查的状态转移。
     """
 
     GRAVITY = 9.8
@@ -118,14 +110,15 @@ class CosmosSimulator:
 
 
 def main() -> None:
-    check_hardware()
-    print("=== NVIDIA Cosmos — 物理世界基础模型 ===\n")
-    has_config = try_load_cosmos_config()
+    if skip_if_mock("network access to read current Cosmos 3 repository metadata"):
+        return
+    print("=== Cosmos 3 元数据检查 + 独立 Newtonian 教学模拟 ===\n")
+    has_metadata = try_read_cosmos3_metadata()
     print()
 
-    # 物理仿真 (无需 GPU tensor, CPU numpy 即可)
-    print("步骤 2: 真物理仿真 (Newtonian: 重力 + 弹性碰撞 + 摩擦)")
-    sim = CosmosSimulator(n_objects=4, seed=42)
+    # 与 Cosmos 无关的 CPU NumPy 教学模拟。
+    print("步骤 2: 独立 Newtonian toy simulator（非 Cosmos 推理）")
+    sim = TeachingPhysicsSimulator(n_objects=4, seed=42)
     print(f"  初始: 4 物体起始于空中 (高度 {sim.pos[:, 1].round(2).tolist()})")
     print(f"  参数: g=9.8 m/s², restitution={sim.RESTITUTION}, friction={sim.FRICTION}\n")
 
@@ -136,8 +129,6 @@ def main() -> None:
     for t in [10, 30, 59]:
         pos_t = traj[t]
         # 重置 sim 状态到 t 步后的状态
-        sim_t = CosmosSimulator(n_objects=4, seed=42)
-        sim_t.pos = traj[min(t, len(traj) - 1)].copy() if t == 0 else traj[t].copy()
         # 近似 KE 估算
         vel_approx = (traj[min(t + 1, len(traj) - 1)] - traj[max(t - 1, 0)]) / (2 * sim.DT)
         ke = float(0.5 * np.sum(vel_approx**2))
@@ -147,16 +138,13 @@ def main() -> None:
 
     print()
     print("=" * 60)
-    print("Cosmos 训练数据 (与本 demo 物理仿真对比):")
-    print("  - Isaac Sim 渲染 1 亿+ 物理一致视频帧")
-    print("  - Video Tokenizer: 压缩为 latent tokens (类似 VAE)")
-    print("  - DiT backbone: 预测下一帧 latent")
-    print("  - 物理一致性: PhysicalAI-Score 损失 (Newton + collision + permanence)")
-    print()
-    if not has_config:
-        print("⚠️  本次跳过 Cosmos 权重下载 (gated + ~14GB).")
-        print("   真跑需要: huggingface-cli login + 申请 NGC access + 14GB+ 存储.")
+    print("边界:")
+    print(f"  - metadata_accessible={has_metadata}")
+    print("  - 本脚本从未下载或运行 Cosmos 3 权重")
+    print("  - 上述轨迹来自独立 NumPy 规则，不是模型生成")
+    print("  - 架构、数据与访问步骤以 NVIDIA Cosmos 官方模型卡/仓库为准")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

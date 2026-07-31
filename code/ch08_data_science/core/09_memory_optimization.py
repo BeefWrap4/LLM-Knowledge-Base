@@ -33,18 +33,18 @@ def optimize_memory(df: pd.DataFrame) -> pd.DataFrame:
         col_min, col_max = df[col].min(), df[col].max()
 
         if col_min >= 0:  # 无符号整数
-            if col_max < 255:
+            if col_max <= np.iinfo(np.uint8).max:
                 df[col] = df[col].astype(np.uint8)
-            elif col_max < 65535:
+            elif col_max <= np.iinfo(np.uint16).max:
                 df[col] = df[col].astype(np.uint16)
-            elif col_max < 4294967295:
+            elif col_max <= np.iinfo(np.uint32).max:
                 df[col] = df[col].astype(np.uint32)
         else:  # 有符号整数
-            if col_min > np.iinfo(np.int8).min and col_max < np.iinfo(np.int8).max:
+            if col_min >= np.iinfo(np.int8).min and col_max <= np.iinfo(np.int8).max:
                 df[col] = df[col].astype(np.int8)
-            elif col_min > np.iinfo(np.int16).min and col_max < np.iinfo(np.int16).max:
+            elif col_min >= np.iinfo(np.int16).min and col_max <= np.iinfo(np.int16).max:
                 df[col] = df[col].astype(np.int16)
-            elif col_min > np.iinfo(np.int32).min and col_max < np.iinfo(np.int32).max:
+            elif col_min >= np.iinfo(np.int32).min and col_max <= np.iinfo(np.int32).max:
                 df[col] = df[col].astype(np.int32)
 
     # 2. 浮点类型下转换
@@ -103,13 +103,15 @@ print(f"稀疏矩阵: shape={sparse_data.shape}, nnz={sparse_data.nnz}")
 
 if __name__ == "__main__":
     # 构造一个可以用作优化演示的 DataFrame
+    rng = np.random.default_rng(42)
     demo = pd.DataFrame(
         {
-            "small_int": np.random.randint(0, 200, size=1000),  # 可用 uint8
-            "big_int": np.random.randint(-(10**6), 10**6, size=1000),  # 保持 int64
-            "price": np.random.rand(1000) * 100,  # 可用 float32
-            "category": np.random.choice(["A", "B", "C", "D"], size=1000),  # 可用 category
+            "small_int": rng.integers(0, 200, size=1000),  # 可用 uint8
+            "big_int": rng.integers(-(10**6), 10**6, size=1000),  # 可下转换为 int32
+            "price": rng.random(1000) * 100,  # 可用 float32
+            "category": rng.choice(["A", "B", "C", "D"], size=1000),  # 可用 category
         }
     )
     optimized = optimize_memory(demo)
     print(optimized.dtypes)
+    print("OK")

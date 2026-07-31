@@ -1,10 +1,10 @@
 # ---
 # chapter: 29
-# topic: Pydantic AI 记忆系统 — STM/LTM/Episodic/Procedural 四层
+# topic: 框架无关的本地分层记忆 — STM/LTM/Episodic/Procedural
 # section: 29.5
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: 无 (mock)
+# deps: 无
 # run: python 08_pydantic_ai_memory.py
 # expected_runtime: <1s
 # ---
@@ -15,10 +15,10 @@
 #   - Ch14 RAG (向量检索作为 LTM)
 #   - Ch03 OOP (分层抽象)
 #
-# Interview hooks:
-#   - "记忆系统为什么分层?"     →  短/长/情景/程序 各自生命周期/可检索性/更新频率不同
-#   - "Pydantic AI 的 MemoryTool?" →  load_recent_messages / vector_search / structured
-#   - "记忆系统设计原则?"       →  分层/选择性/可检索/可更新/隐私
+# Important:
+#   这是纯本地、框架无关的架构示例，不是 Pydantic AI API，也没有调用模型。
+#   Pydantic AI 的当前消息历史 API 请见:
+#   https://ai.pydantic.dev/message-history/
 
 from __future__ import annotations
 
@@ -28,56 +28,61 @@ from dataclasses import dataclass, field
 
 @dataclass
 class ShortTermMemory:
-    """STM: 当前会话的对话历史 (in-context, 速度优先)。"""
+    """STM：当前会话的有限消息窗口。"""
 
     capacity: int = 20
-    messages: deque = field(default_factory=lambda: deque(maxlen=20))
+    messages: deque[dict[str, str]] = field(init=False)
+
+    def __post_init__(self) -> None:
+        if self.capacity <= 0:
+            raise ValueError("capacity 必须大于 0")
+        self.messages = deque(maxlen=self.capacity)
 
     def add(self, role: str, content: str) -> None:
         self.messages.append({"role": role, "content": content})
 
-    def to_messages(self) -> list[dict]:
+    def to_messages(self) -> list[dict[str, str]]:
         return list(self.messages)
 
 
 @dataclass
-class LongTermMemory:
-    """LTM: 用户偏好/事实, 向量检索 (mock 为关键词命中)。"""
+class LocalLongTermMemory:
+    """LTM：本地关键词检索示意；生产环境可替换为数据库或向量检索。"""
 
-    facts: list[dict] = field(default_factory=list)  # [{"text","tags"}]
+    facts: list[dict[str, object]] = field(default_factory=list)
 
-    def add(self, text: str, tags: list[str]) -> None:
-        self.facts.append({"text": text, "tags": tags})
+    def add(self, text: str, keywords: list[str]) -> None:
+        self.facts.append({"text": text, "keywords": [keyword.lower() for keyword in keywords]})
 
-    def search(self, query: str, top_k: int = 5) -> list[dict]:
-        q = set(query.lower().split())
-        scored = []
-        for f in self.facts:
-            s = len(q & set(" ".join(f["tags"]).lower().split())) + (
-                0.5 if any(w in f["text"].lower() for w in q) else 0
-            )
-            if s > 0:
-                scored.append((s, f))
-        scored.sort(key=lambda x: -x[0])
-        return [f for _, f in scored[:top_k]]
+    def search(self, query: str, top_k: int = 5) -> list[dict[str, object]]:
+        normalized_query = query.lower()
+        scored: list[tuple[int, dict[str, object]]] = []
+        for fact in self.facts:
+            keywords = fact["keywords"]
+            assert isinstance(keywords, list)
+            score = sum(keyword in normalized_query for keyword in keywords)
+            if score:
+                scored.append((score, fact))
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [fact for _, fact in scored[:top_k]]
 
 
 @dataclass
 class EpisodicMemory:
-    """Episodic: 过去事件的摘要, 按时间索引。"""
+    """Episodic：过去事件摘要；真实系统还需时间、来源和删除策略。"""
 
-    episodes: list[dict] = field(default_factory=list)  # [{"ts","summary"}]
+    episodes: list[dict[str, object]] = field(default_factory=list)
 
     def add(self, summary: str) -> None:
-        self.episodes.append({"ts": len(self.episodes) + 1, "summary": summary})
+        self.episodes.append({"sequence": len(self.episodes) + 1, "summary": summary})
 
-    def recent(self, k: int = 3) -> list[dict]:
-        return self.episodes[-k:]
+    def recent(self, limit: int = 3) -> list[dict[str, object]]:
+        return self.episodes[-limit:]
 
 
 @dataclass
 class ProceduralMemory:
-    """Procedural: 技能/工具使用流程 (instructable, 可被 prompt 注入)。"""
+    """Procedural：可注入上下文的技能说明，不等于真实工具权限。"""
 
     skills: list[str] = field(default_factory=list)
 
@@ -86,65 +91,58 @@ class ProceduralMemory:
             self.skills.append(skill)
 
     def as_instructions(self) -> str:
-        if not self.skills:
-            return ""
-        return "可用技能: " + ", ".join(self.skills)
+        return "可用技能: " + ", ".join(self.skills) if self.skills else ""
 
 
-class PydanticAIStyleAgent:
-    """模拟 pydantic_ai.Agent + memory=[] 用法。"""
+class LocalLayeredMemory:
+    """组合四层本地存储并产出待注入模型的候选 context。"""
 
-    def __init__(self):
-        self.stm = ShortTermMemory(capacity=12)
-        self.ltm = LongTermMemory()
+    def __init__(self, short_term_capacity: int = 12):
+        self.short_term = ShortTermMemory(capacity=short_term_capacity)
+        self.long_term = LocalLongTermMemory()
         self.episodic = EpisodicMemory()
         self.procedural = ProceduralMemory()
 
-    def seed(self) -> None:
-        self.ltm.add("用户 Alice 喜欢科幻片", ["preference", "movie"])
-        self.ltm.add("用户住在北京, 工程师", ["profile", "location", "job"])
-        self.ltm.add("偏好风险等级: 中", ["preference", "risk"])
+    def seed_demo_data(self) -> None:
+        self.long_term.add("用户 Alice 喜欢科幻片", ["科幻", "电影"])
+        self.long_term.add("用户住在北京，是工程师", ["北京", "城市", "天气"])
+        self.long_term.add("用户偏好中等风险", ["风险", "基金"])
         self.procedural.add("search_web")
         self.procedural.add("query_db")
-        self.procedural.add("calc_dcf")
 
-    def ask(self, query: str) -> dict:
-        # 1) STM: 加入当前 query
-        self.stm.add("user", query)
-        # 2) LTM 检索: 把命中事实注入 context
-        ltm_hits = self.ltm.search(query, top_k=3)
-        # 3) Episodic: 拉最近 2 个事件
-        eps = self.episodic.recent(k=2)
-        # 4) 组装 context
-        context = {
-            "stm": self.stm.to_messages(),
-            "ltm_hits": ltm_hits,
-            "episodic": eps,
-            "skills": self.procedural.as_instructions(),
+    def assemble_context(self, query: str) -> dict[str, object]:
+        self.short_term.add("user", query)
+        return {
+            "short_term": self.short_term.to_messages(),
+            "long_term_hits": self.long_term.search(query, top_k=3),
+            "recent_episodes": self.episodic.recent(limit=2),
+            "skill_instructions": self.procedural.as_instructions(),
         }
-        return context
 
 
 def run_demo() -> None:
-    agent = PydanticAIStyleAgent()
-    agent.seed()
+    memory = LocalLayeredMemory(short_term_capacity=4)
+    memory.seed_demo_data()
 
-    queries = [
-        "推荐一部科幻电影?",
-        "我住的城市的天气怎么样?",
-        "我适合买什么风险等级的基金?",
-    ]
-    for q in queries:
-        print(f"=== User: {q} ===")
-        ctx = agent.ask(q)
-        print("  STM (最近):", [m["content"][:40] for m in ctx["stm"][-2:]])
-        print("  LTM 命中: ", [f["text"] for f in ctx["ltm_hits"]] or "(无)")
-        print("  Episodic:  ", [e["summary"] for e in ctx["episodic"]] or "(无)")
-        print("  Skills:    ", ctx["skills"] or "(无)")
+    print("=== 框架无关的本地分层记忆示例（未调用模型） ===\n")
+    for query in ("推荐一部科幻电影", "北京的天气怎么样", "我适合买什么风险等级的基金"):
+        context = memory.assemble_context(query)
+        long_term_hits = context["long_term_hits"]
+        recent_episodes = context["recent_episodes"]
+        assert isinstance(long_term_hits, list)
+        assert isinstance(recent_episodes, list)
+
+        print(f"User: {query}")
+        print("  LTM 命中:", [fact["text"] for fact in long_term_hits] or "(无)")
+        print("  Episodic:", [episode["summary"] for episode in recent_episodes] or "(无)")
+        print("  Skills:", context["skill_instructions"] or "(无)")
+        memory.episodic.add(f"用户问过：{query}")
+        memory.short_term.add("assistant", "[offline placeholder]")
         print()
-        agent.episodic.add(f"用户问: {q}")
-        agent.stm.add("assistant", f"[mock] 基于 LTM={len(ctx['ltm_hits'])} 条事实回答: {q}")
+
+    print("生产化还需：可信来源、权限隔离、加密、过期/删除、冲突更新与检索评测。")
 
 
 if __name__ == "__main__":
     run_demo()
+    print("\nOK")

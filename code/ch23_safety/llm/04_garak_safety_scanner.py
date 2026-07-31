@@ -35,7 +35,7 @@ garak --model_type huggingface \\
 
 # 只检测越狱漏洞
 garak --model_type openai \\
-      --model_name gpt-4 \\
+      --model_name gpt-5.6 \\
       --probes jailbreak
 
 # 生成HTML报告
@@ -112,3 +112,4 @@ if __name__ == "__main__":
         probes="dan,encoding",
     )
     print(f"\n模拟扫描结果: {result}")
+    print("OK")

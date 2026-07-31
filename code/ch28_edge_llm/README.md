@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch28_edge_llm/gpu/01_mlx_apple_silicon.py
+python ch28_edge_llm/gpu/01_apple_mlx_basic.py
 ```
 
 ## 关联章节

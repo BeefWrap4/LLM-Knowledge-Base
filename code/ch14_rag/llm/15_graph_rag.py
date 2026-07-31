@@ -17,8 +17,14 @@
 
 # Graph RAG 简化实现
 import json
+import os
 
 import numpy as np
+
+DEFAULT_OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6")
+OPENAI_REASONING_KWARGS = (
+    {"reasoning_effort": "none"} if DEFAULT_OPENAI_MODEL.startswith("gpt-5.6") else {}
+)
 
 
 class GraphRAG:
@@ -31,7 +37,8 @@ class GraphRAG:
             import networkx as nx
         except ImportError:
             nx = None
-        self.graph = nx.Graph() if nx is not None else None
+        # 关系三元组具有方向，必须使用 DiGraph，避免反向遍历伪造关系。
+        self.graph = nx.DiGraph() if nx is not None else None
         self._nx = nx
 
     def extract_entities_relations(self, text: str) -> list[dict]:
@@ -43,9 +50,10 @@ class GraphRAG:
 """
         if self.llm is not None:
             response = self.llm.chat.completions.create(
-                model="gpt-4",
+                model=DEFAULT_OPENAI_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
+                **OPENAI_REASONING_KWARGS,
             )
             return json.loads(response.choices[0].message.content)
         # Mock 三元组抽取
@@ -56,6 +64,8 @@ class GraphRAG:
 
     def build_graph(self, documents: list[str]):
         """从文档构建知识图谱"""
+        if self.graph is None:
+            raise RuntimeError("需要 networkx；请安装 requirements-llm.txt")
         for doc in documents:
             triples = self.extract_entities_relations(doc)
             for t in triples:
@@ -68,6 +78,8 @@ class GraphRAG:
 
     def retrieve(self, query: str, max_hops: int = 2) -> list[str]:
         """图检索：从查询实体出发，进行多跳邻居遍历"""
+        if self.graph is None:
+            raise RuntimeError("需要 networkx；请安装 requirements-llm.txt")
         # 从查询中提取实体（简化：假设查询就是实体名）
         if self.embedder is not None:
             query_embedding = self.embedder.encode(query)
@@ -117,8 +129,13 @@ class GraphRAG:
 
 if __name__ == "__main__":
     g = GraphRAG(llm_client=None, embedder=None)
+    if g.graph is None:
+        print("[SKIP] 需要 networkx")
+        print("OK")
+        raise SystemExit(0)
     g.build_graph(["Alice reports to Bob at TechCorp."])
     paths = g.retrieve("Alice", max_hops=2)
     print("图遍历结果:")
     for p in paths:
         print(f"  {p}")
+    print("OK")

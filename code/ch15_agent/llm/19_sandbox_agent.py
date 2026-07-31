@@ -1,161 +1,101 @@
 # ---
 # chapter: 15
 # topic: Agent智能体开发
-# section: 15.9.4 SandboxAgent - 隔离的代码执行环境
+# section: 15.9.4 SandboxAgent - 隔离工作区
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: llm
-# deps: []
+# deps: [openai-agents>=0.14.0]  # --check-sdk 模式需要
 # run: python 19_sandbox_agent.py
-# expected_runtime: <1s（无 Docker 时演示静态分析）
-# expected_output: 静态分析结果；docker 可用时执行沙箱代码
+# expected_runtime: 离线 <1s（默认配置检查）
+# expected_output: Manifest/SandboxAgent/SandboxRunConfig 责任边界
 # ---
 # See: ../tutorial/15_Agent智能体开发.md#15.9.4-SandboxAgent
 # Interview hooks:
-#   1. 沙箱执行为什么用 Docker 而不是 Python subprocess + namespace？
-#   2. 静态分析 + 资源限制 + 网络隔离是"纵深防御"，单层够不够？为什么？
-#   3. 防御模式 (DANGEROUS_PATTERNS) 的局限是什么？有什么绕过方式？
+#   1. Manifest、SandboxAgent、SandboxRunConfig 分别负责什么？
+#   2. 为什么 Manifest 不是网络、资源或审批策略的替代品？
+#   3. Windows 本地开发为什么优先选 Docker 或托管 sandbox client？
 """
-SandboxAgent - 隔离的代码执行环境
-基于 OpenAI Agents SDK v0.14.0 沙箱模式
+OpenAI Agents SDK Sandbox Agents（beta）当前 API 形状。
+
+默认模式不调用模型、不创建 sandbox，只校验配置责任边界。显式 ``--check-sdk``
+会导入 ``agents.sandbox`` 并构造对象，但仍不会调用模型；真实运行必须由应用注入
+一个受支持且已经配置好的 sandbox client。
 """
 
-import re
-import shutil
-import subprocess
-import tempfile
-import uuid
-
-# 1. 基础沙箱 Agent 配置（实际由 OpenAI Agents SDK 提供）
-SANDBOX_CONFIG = {
-    "mode": "docker",
-    "image": "python:3.12-slim",
-    "memory_limit": "512m",
-    "cpu_limit": "1.0",
-    "network": "isolated",
-    "allowed_domains": ["pypi.org"],
-    "timeout_seconds": 30,
-    "read_only_root": True,
-}
+import argparse
+from typing import Any
 
 
-# 2. 工具实现：受限容器内执行 Python
-def python_executor(code: str) -> str:
-    """
-    在隔离 Docker 容器中执行 Python 代码
-    """
-    if not shutil.which("docker"):
-        return "[Mock] docker 不可用，跳过实际执行；返回静态分析结果。"
-
-    container_name = f"sandbox-{uuid.uuid4().hex[:8]}"
-    try:
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(code)
-            code_path = f.name
-
-        result = subprocess.run(
-            [
-                "docker",
-                "run",
-                "--name",
-                container_name,
-                "--rm",
-                "-m",
-                "512m",
-                "--cpus",
-                "1.0",
-                "--network",
-                "none",
-                "-v",
-                f"{code_path}:/tmp/code.py:ro",
-                "--read-only",
-                "--tmpfs",
-                "/tmp:size=100m",
-                "python:3.12-slim",
-                "python",
-                "/tmp/code.py",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-
-        if result.returncode == 0:
-            return f"执行成功:\n{result.stdout}"
-        else:
-            return f"执行失败 (code={result.returncode}):\n{result.stderr}"
-
-    except subprocess.TimeoutExpired:
-        return "执行超时（30秒）"
-    finally:
-        subprocess.run(
-            ["docker", "rm", "-f", container_name],
-            capture_output=True,
-            timeout=5,
-        )
-
-
-# 3. 多层防御深度
-class DefenseInDepth:
-    """
-    SandboxAgent 多层防御：
-    1. 静态分析：扫描危险 API
-    2. 资源限制：CPU 与内存与磁盘
-    3. 网络隔离：默认全断
-    4. 行为监控：异常行为检测
-    """
-
-    DANGEROUS_PATTERNS = [
-        r"\bos\.system\b",
-        r"\bsubprocess\b",
-        r"\beval\s*\(",
-        r"\bexec\s*\(",
-        r"\b__import__\b",
-        r"\bopen\s*\(.*['\"]/etc",
-        r"\bopen\s*\(.*['\"]/proc",
-    ]
-
-    @classmethod
-    def static_analysis(cls, code: str) -> tuple[bool, str]:
-        """静态分析代码安全性"""
-        for pattern in cls.DANGEROUS_PATTERNS:
-            if re.search(pattern, code):
-                return False, f"检测到危险 API: {pattern}"
-        return True, "静态分析通过"
-
-    @classmethod
-    def runtime_monitor(cls) -> dict:
-        """运行时资源监控配置"""
-        return {
-            "memory": "512m",
-            "cpu": "1.0",
-            "pids_limit": 100,
-            "network": "none",
-            "read_only_fs": True,
-            "no_new_privileges": True,
-            "cap_drop": ["ALL"],
-        }
-
-
-def demo_sandbox():
-    cases = [
-        (
-            "safe code",
-            "import numpy as np\narr = np.array([1, 2, 3, 4, 5])\nprint(f'Mean: {arr.mean()}, Std: {arr.std()}')",
+def offline_plan() -> dict[str, Any]:
+    """返回与官方 API 分层一致、但不会冒充 SDK 对象的离线计划。"""
+    return {
+        "agent": {
+            "type": "SandboxAgent",
+            "default_manifest": {
+                "type": "Manifest",
+                "entries": ["task.md", "output/"],
+            },
+        },
+        "run": {
+            "type": "SandboxRunConfig",
+            "client": "injected BaseSandboxClient",
+        },
+        "boundary": (
+            "Manifest 描述新工作区内容；SandboxAgent 描述角色与默认工作区；"
+            "SandboxRunConfig 在每次运行时选择 client/session/snapshot。"
         ),
-        ("os.system", "import os\nos.system('rm -rf /tmp/important')"),
-        ("eval", 'eval(\'__import__("os").system("whoami")\')'),
-        ("read /etc", "open('/etc/passwd', 'r').read()"),
-    ]
+    }
 
-    for label, code in cases:
-        print(f"=== {label} ===")
-        safe, reason = DefenseInDepth.static_analysis(code)
-        print(f"Static analysis: {safe} ({reason})")
-        if safe:
-            result = python_executor(code)
-            print(f"Execution result: {result[:120]}")
-        print()
+
+def build_sdk_objects(model: str, client=None):
+    """按当前官方导入构建 SDK 对象；client=None 时只用于静态检查。"""
+    try:
+        from agents.run import RunConfig
+        from agents.sandbox import Manifest, SandboxAgent, SandboxRunConfig
+        from agents.sandbox.entries import Dir, File
+    except ImportError as exc:
+        raise RuntimeError(
+            "SDK 检查需要支持 Sandbox Agents 的 `openai-agents>=0.14.0`；"
+            "当前环境可能仍是旧版。"
+        ) from exc
+
+    manifest = Manifest(
+        entries={
+            "task.md": File(content=b"Write a short answer to output/result.txt."),
+            "output": Dir(),
+        }
+    )
+    agent = SandboxAgent(
+        name="Sandbox writer",
+        model=model,
+        instructions="Read task.md, write the result under output/, then summarize the verification.",
+        default_manifest=manifest,
+    )
+    run_config = RunConfig(
+        sandbox=SandboxRunConfig(client=client),
+        workflow_name="Sandbox API tutorial",
+    )
+    return agent, run_config
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check-sdk", action="store_true", help="导入当前 SDK 并构造对象")
+    parser.add_argument("--model", default="gpt-5.6-sol")
+    args = parser.parse_args()
+
+    if args.check_sdk:
+        agent, run_config = build_sdk_objects(args.model)
+        print(type(agent).__name__)
+        print(type(run_config.sandbox).__name__)
+        print("[check] 未注入 client，不执行 Runner")
+    else:
+        plan = offline_plan()
+        print(plan["agent"])
+        print(plan["run"])
+        print(plan["boundary"])
+    print("OK")
 
 
 if __name__ == "__main__":
-    demo_sandbox()
+    main()

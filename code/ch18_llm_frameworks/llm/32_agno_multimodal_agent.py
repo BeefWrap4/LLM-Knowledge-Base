@@ -16,6 +16,8 @@
 """
 Agno 实战：多模态研究助手 - 离线 mock 结构
 """
+import os
+
 # 真实环境:
 # from agno.agent import Agent
 # from agno.models.openai import OpenAIChat
@@ -38,7 +40,7 @@ storage_config = {
 
 agent = {
     "name": "Researcher",
-    "model": "OpenAIChat(id='gpt-4o')",
+    "model": f"OpenAIChat(id='{os.environ.get('OPENAI_MODEL', 'gpt-5.6')}')",
     "tools": ["DuckDuckGoTools()"],
     "knowledge": knowledge_config,
     "storage": storage_config,

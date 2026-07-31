@@ -44,3 +44,4 @@ if __name__ == "__main__":
     print("===== 替换后的实际 Prompt =====")
     print(few_shot_cot_prompt.format(question=question))
     print("\n[期望推理] 1/(1/6 + 1/4) = 1 / (5/12) = 12/5 = 2.4 小时")
+    print("OK")

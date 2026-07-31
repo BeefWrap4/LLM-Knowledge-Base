@@ -4,6 +4,7 @@
 # section: 26.3.2 Diffusion Policy — Chi 等 2023
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: torch
 # run: python 06_diffusion_policy.py
 # expected_runtime: 5-15s (1D UNet 50 步 DDPM 训练)
@@ -176,13 +177,13 @@ def main() -> None:
 
     print()
     print("=" * 60)
-    print("生产 Diffusion Policy (Chi et al. 2023):")
-    print("  - Backbone: Conv1D UNet (处理时序 chunk)")
-    print("  - 训练: T=100 DDPM, ε-prediction")
-    print("  - 推理: DDIM sampler 10-20 步 (vs naive 100 步)")
+    print("Diffusion Policy 论文路线与工程边界:")
+    print("  - 可用时序去噪网络建模动作 chunk")
+    print("  - 训练目标、噪声 schedule 与推理步数必须按具体实现/质量延迟实验选择")
     print("  - 多模态优势: 可建模 (state → action) 多峰分布")
-    print("  - 集成: LeRobot + HuggingFace Trainer")
+    print("  - 本脚本未使用真实视觉观测、机器人数据、LeRobot Trainer 或闭环 rollout")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

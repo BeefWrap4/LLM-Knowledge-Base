@@ -4,6 +4,7 @@
 # section: 26.3.1 LeRobot ACT — Action Chunking Transformer
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: lerobot (optional, raises if missing)
 # run: python 05_lerobot_act.py
 # expected_runtime: 5-15s (架构 + ACT 训练/推理示例)
@@ -167,18 +168,14 @@ def main() -> None:
 
     print()
     print("=" * 60)
-    print("LeRobot ACT 训练 (Python 端真实代码, 需 lerobot 装好):")
-    print("  from lerobot.common.policies.act import ACTPolicy, ACTConfig")
-    print("  cfg = ACTConfig(")
-    print("      input_shapes={'observation.state': (state_dim,), ")
-    print("                   'observation.image': (3, 480, 640)},")
-    print("      output_shapes={'action': (chunk_size, action_dim)},")
-    print("  )")
-    print("  policy = ACTPolicy(cfg)")
-    print("  # 用 LeRobotDataset + Trainer 训练")
+    print("LeRobot ACT 接入边界:")
+    print("  - 本脚本是小型 CVAE/动作分块教学实现，不是 LeRobot 训练任务")
+    print("  - ACTConfig、feature schema、dataset 与训练入口应按已安装 LeRobot 版本核对")
+    print("  - 真实验收需记录 dataset revision、归一化统计、checkpoint reload 与 rollout 指标")
     print()
-    print("ACT 推理: 1 次 forward 预测 chunk_size 个动作, open-loop 执行 K 步.")
+    print("ACT 类方法通常一次预测动作 chunk；实际执行/重规划策略由控制回路决定。")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

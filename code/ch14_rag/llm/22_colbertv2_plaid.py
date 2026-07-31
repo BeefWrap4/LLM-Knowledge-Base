@@ -86,3 +86,4 @@ if __name__ == "__main__":
         print(f"\nQuery {q_idx} top-k:")
         for d_idx, s in hits:
             print(f"  doc={documents[d_idx]!r}  score={s:.3f}")
+    print("OK")

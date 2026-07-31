@@ -22,29 +22,27 @@
 
 
 def main() -> None:
-    context = "Python 3.13 引入了新的 GIL 实现"
-    question = "Python 3.13 有哪些新特性？"
+    context = "退款政策：购买后 30 天内可凭原始收据退款；客服时间为工作日 9:00-18:00。"
+    question = "我购买商品 20 天了，应该怎样退款？"
 
     print(f"上下文: {context}")
     print(f"问题: {question}")
     print()
 
     # 高 Faithfulness + 低 Relevancy:
-    answer_a = "Python 3.13 引入了新的 GIL 实现（仅此而已）"
-    print("[案例 A] 高 Faithfulness + 低 Relevancy（忠实但不全面）:")
+    answer_a = "客服时间为工作日 9:00-18:00。"
+    print("[案例 A] 高 Faithfulness + 低 Relevancy（有依据但没有回答退款条件）:")
     print(f"  回答: {answer_a}")
     print()
 
     # 低 Faithfulness + 高 Relevancy:
-    answer_b = "Python 3.13 引入了新的 GIL 实现和 JIT 编译器和模式匹配"
-    print("[案例 B] 低 Faithfulness + 高 Relevancy（可能相关但 JIT 和模式匹配非真 = 幻觉）:")
+    answer_b = "购买后 60 天内都可以无收据退款。"
+    print("[案例 B] 低 Faithfulness + 高 Relevancy（切题但与上下文冲突）:")
     print(f"  回答: {answer_b}")
     print()
 
     # 高 Faithfulness + 高 Relevancy: 是最理想的情况
-    answer_ideal = (
-        "Python 3.13 引入了新的实验性 GIL 实现（PEP 703），在保证现有兼容性的同时探索无 GIL 模式的可能。"
-    )
+    answer_ideal = "你仍在 30 天期限内，请携带原始收据申请退款。"
     print("[案例 理想] 高 Faithfulness + 高 Relevancy（最理想）:")
     print(f"  回答: {answer_ideal}")
     print()
@@ -52,8 +50,9 @@ def main() -> None:
     print("结论:")
     print("- Faithfulness 检查 '是否编造'（回答 ⊆ 上下文）")
     print("- Answer Relevancy 检查 '是否切题'（回答 ↔ 问题）")
-    print("- 两个指标互相独立、缺一不可")
+    print("- 两者衡量不同维度，实测可能相关；都需结合业务验收标准")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

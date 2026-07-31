@@ -1,68 +1,82 @@
 # ---
 # chapter: 21
 # topic: 多模态大模型
-# section: 21.6.1 世界模型 - NVIDIA Cosmos 未来帧预测
-# difficulty: ⭐⭐⭐⭐
+# section: 21.7.1 世界模型 - NVIDIA Cosmos 3 当前接口
+# difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
-# deps: torch (真实模式需 cosmos + diffusers)
-# run: python 08_cosmos_world_model.py
-# expected_runtime: <5s (mock)
-# expected_output: 演示 world model 的输入/输出形状
+# deps: torch, current diffusers, cosmos_guardrail (all lazy; real mode only)
+# run: python 08_cosmos_world_model.py --mock
+# expected_runtime: immediate skip by default; real runtime depends on checkpoint and hardware
+# expected_output: [SKIP] unless real GPU mode and COSMOS3_RUN=1 are both explicit
 # ---
-# See: ../tutorial/21_多模态大模型.md#21-6-1-世界模型（world-models）
+# See: 21_多模态大模型.md#2171-世界模型world-models
+# Official API: https://huggingface.co/docs/diffusers/main/api/pipelines/cosmos3
 # Interview hooks:
-#   1. 世界模型 (World Model) 与普通视频生成模型的核心区别是什么？
-#   2. Cosmos 在机器人 / 自动驾驶场景中如何接入 RL 训练？
-#   3. guidance_scale 在条件视频生成中起什么作用？
+#   1. 世界模型与通用视频生成模型应如何按证据区分？
+#   2. 为什么“生成成功”不能证明物理正确性或机器人闭环安全？
+#   3. Cosmos 3 相比早期分立 Predict/Reason/Transfer 路线有什么接口变化？
+"""Cosmos 3 当前 Diffusers 接口的条件性真跑示例。
 
+默认 GPU runner 传入 ``--mock``，因此不会访问网络、加载 CUDA 或下载权重。即使启用
+``--real-gpu``，仍须显式设置 ``COSMOS3_RUN=1``；这是为了避免把大型模型下载当作普通
+离线验收。真跑只生成一张 text-to-image 样例，不验证物理正确性、动作策略或闭环效果。
+"""
 
-# === Multi-GPU / heavy model guard (auto-added) ===
-import os as _os
-import sys as _sys
-
-_NGPU = _os.environ.get("WORLD_SIZE", "1")
-if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
-    _sys.exit(0)
+import json
 import os
+import sys
+from pathlib import Path
+
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
+
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock
 
 
-def main():
-    use_mock = os.environ.get("CH21_MOCK", "1") == "1"
-
-    if use_mock:
-        # 演示世界模型的输入/输出张量形状
-        import torch
-
-        B, T_in, T_out, H, W = 1, 4, 64, 256, 256
-        action_dim = 7
-        # 当前观测 (T_in 帧历史)
-        current_obs = torch.randn(B, T_in, H, W, 3)
-        # 机器人动作序列
-        robot_action_seq = torch.randn(B, T_out, action_dim)
-        # 模拟未来帧预测输出
-        future_frames = torch.randn(B, T_out, H, W, 3)
-        print(f"Input obs shape:    {tuple(current_obs.shape)}")
-        print(f"Input action shape: {tuple(robot_action_seq.shape)}")
-        print(f"Output frames shape: {tuple(future_frames.shape)}")
-        print("Cosmos world model demo OK")
+def main() -> None:
+    if skip_if_mock(
+        "an NVIDIA GPU, current Cosmos 3 Diffusers dependencies, model-license review, "
+        "remote weights, and COSMOS3_RUN=1"
+    ):
         return
 
-    # 真实模式：使用 NVIDIA Cosmos 推理
+    if os.environ.get("COSMOS3_RUN") != "1":
+        print("[SKIP] Real GPU mode selected, but COSMOS3_RUN=1 was not explicitly set.")
+        print("Review the current model card, license, guardrail requirements, storage, and VRAM first.")
+        return
+
+    require_nvidia_gpu(min_vram_gb=0, min_count=1)
+
     try:
-        from cosmos import CosmosPredictPipeline
+        import torch
+        from diffusers import Cosmos3OmniPipeline
     except ImportError:
-        print("cosmos package not installed. Skipping real mode.")
+        print("[SKIP] Current diffusers with Cosmos3OmniPipeline is not installed.")
+        print("Follow the NVIDIA Cosmos 3 / Diffusers installation guide for a compatible environment.")
         return
 
-    pipe = CosmosPredictPipeline.from_pretrained("nvidia/Cosmos-1.0-Diffusion-7B-Video2World")
-    future_frames = pipe(
-        init_frames=current_obs,  # [B, T_in, H, W, 3]
-        actions=robot_action_seq,  # [B, T_out, action_dim]
-        num_future_frames=64,
-        guidance_scale=7.0,
-    ).frames
-    print(f"Generated future frames shape: {tuple(future_frames.shape)}")
+    model_id = os.environ.get("COSMOS3_MODEL_ID", "nvidia/Cosmos3-Nano")
+    output_path = Path(os.environ.get("COSMOS3_OUTPUT", "cosmos3_t2i.jpg")).resolve()
+    prompt = json.dumps({"scene": os.environ.get("COSMOS3_SCENE", "A robot arm in a kitchen")})
+
+    print(f"Loading {model_id}; this may download large remote weights.")
+    pipe = Cosmos3OmniPipeline.from_pretrained(
+        model_id,
+        torch_dtype=torch.bfloat16,
+        device_map="cuda",
+    )
+    result = pipe(
+        prompt=prompt,
+        num_frames=1,
+        height=720,
+        width=1280,
+    )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    result.video[0].save(output_path, format="JPEG", quality=85)
+
+    print(f"Saved one Cosmos 3 text-to-image output: {output_path}")
+    print("Boundary: this does not validate physical consistency, action control, or robot safety.")
 
 
 if __name__ == "__main__":

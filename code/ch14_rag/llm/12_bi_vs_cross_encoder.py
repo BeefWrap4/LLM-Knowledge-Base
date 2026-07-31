@@ -45,8 +45,7 @@ def cross_encoder_demo():
 # 优点：查询和文档在注意力层充分交互，精度高
 # 缺点：无法预计算，每次都要完整前向传播
 def cross_encoder_pair_score(query: str, doc: str) -> float:
-    pair_input = f"[CLS] {query} [SEP] {doc}"
-    # score = cross_encoder.predict(pair_input)  # 真实使用
+    # 真实使用: cross_encoder.predict(f"[CLS] {query} [SEP] {doc}")
     score = cross_encoder_demo()
     return score
 
@@ -59,3 +58,4 @@ if __name__ == "__main__":
     )
     print(f"Bi-Encoder dot-product 相似度: {bi_sim:.4f}")
     print(f"Cross-Encoder 相关性分数: {ce_score:.4f}")
+    print("OK")

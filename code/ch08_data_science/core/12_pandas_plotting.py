@@ -7,13 +7,16 @@
 # deps: pandas, numpy, matplotlib
 # run: python 12_pandas_plotting.py
 # expected_runtime: <5s
-# expected_output: 线图/面积图/柱状图/饼图四张子图保存
+# expected_output: 线图/面积图/柱状图/饼图在内存中构建；仅 --output 时保存
 # ---
 # See: ../tutorial/08_Python数据科学核心库.md (Section 8.3.3 Pandas 内置绘图)
 # Interview hooks:
 #   1. ts.plot() 默认绘制的是什么类型图？能否一行代码切换为面积图？
 #   2. plot.pie 的 autopct 参数控制什么？
 #   3. Pandas 内置绘图与 Matplotlib 之间的关系是什么（封装关系）？
+
+import argparse
+from pathlib import Path
 
 import matplotlib
 
@@ -53,8 +56,23 @@ axes[1, 1].set_title("Composition (last day)")
 axes[1, 1].set_ylabel("")
 
 plt.tight_layout()
-plt.savefig("pandas_plotting.png", dpi=150, bbox_inches="tight")
-plt.close(fig)
+
+
+def main(output_path: Path | None = None) -> None:
+    if output_path is not None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_path, dpi=150, bbox_inches="tight")
+        print(f"图表已保存: {output_path}")
+    else:
+        print("图表已在内存中构建；默认不落盘（使用 --output PATH 可显式保存）。")
+    plt.close(fig)
+    print("OK")
+
 
 if __name__ == "__main__":
-    print("OK")
+    parser = argparse.ArgumentParser(description="Pandas 内置绘图示例")
+    parser.add_argument("--output", type=Path, help="可选图片输出路径；默认不写文件")
+    args = parser.parse_args()
+    main(args.output)
+else:
+    plt.close(fig)

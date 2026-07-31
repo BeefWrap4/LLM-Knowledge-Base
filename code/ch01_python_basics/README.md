@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch01_python_basics/core/01_list_dict_basics.py
+python ch01_python_basics/core/22_list_dict_basics.py
 ```
 
 ## 关联章节

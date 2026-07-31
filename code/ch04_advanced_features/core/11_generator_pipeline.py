@@ -118,3 +118,4 @@ def count_ip_frequency(logfile):
 if __name__ == "__main__":
     # 单元测试：演示管道函数都是生成器工厂
     print("process_file_pipeline is callable:", callable(process_file_pipeline))
+    print("OK")

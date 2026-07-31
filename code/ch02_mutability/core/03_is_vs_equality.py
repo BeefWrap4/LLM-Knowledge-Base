@@ -33,16 +33,18 @@ print(a == b)  # True  — 值相等
 print(a is b)  # False — 不同对象
 
 # ─────────────────────────────────────────────────────────────
-# 小整数缓存(-5 ~ 256)
+# 整数对象复用（实现细节，不能写进业务判断）
 # ─────────────────────────────────────────────────────────────
 
-a = 100
-b = 100
-print(a is b)  # True — 小整数被缓存复用
+small_a = int("100")
+small_b = int("100")
+print(f"small_a == small_b: {small_a == small_b}")
+print(f"small_a is small_b: {small_a is small_b}（CPython 实现细节，不能依赖）")
 
-c = 1000
-d = 1000
-print(c is d)  # False — 大整数不缓存(交互模式下可能缓存)
+large_a = int("1000")
+large_b = int("1000")
+print(f"large_a == large_b: {large_a == large_b}")
+print(f"large_a is large_b: {large_a is large_b}（结果不属于 Python 语言保证）")
 
 # ─────────────────────────────────────────────────────────────
 # 字符串驻留(Interning)
@@ -50,11 +52,11 @@ print(c is d)  # False — 大整数不缓存(交互模式下可能缓存)
 
 s1 = "hello"
 s2 = "hello"
-print(s1 is s2)  # True — 编译期常量字符串被驻留
+print(s1 is s2)  # 常见实现会复用编译期常量，但业务逻辑不能依赖
 
 s3 = "hello world! python"
 s4 = "hello world! python"
-print(s3 is s4)  # 可能 False — 长字符串不保证驻留
+print(s3 is s4)  # 是否复用仍是实现细节，与字符串长度不存在可靠分界线
 
 # 强制驻留
 from sys import intern
@@ -72,10 +74,12 @@ print(None is None)  # True — None 是单例
 # print(None == None)     # 也返回 True,但不规范
 
 # 空容器比较
-print([] == [])  # True
-print([] == [])  # False — 两个不同的空列表
-print({} == {})  # True
-print({} == {})  # False
+empty_list_a, empty_list_b = [], []
+empty_dict_a, empty_dict_b = {}, {}
+print(empty_list_a == empty_list_b)  # True
+print(empty_list_a is empty_list_b)  # False — 两个不同的空列表
+print(empty_dict_a == empty_dict_b)  # True
+print(empty_dict_a is empty_dict_b)  # False
 
 # ─────────────────────────────────────────────────────────────
 # 🎯 面试真题:以下代码的输出是什么?
@@ -94,14 +98,15 @@ def interview_trap():
     print(a is c)  # False — 运行时拼接,不驻留
     print(a == c)  # True — 值相等
 
-    d = 256
-    e = 256
-    print(d is e)  # True — -5~256 缓存
+    d = int("256")
+    e = int("256")
+    print(f"256 identity: {d is e}（实现细节）")
 
-    f = 257
-    g = 257
-    print(f is g)  # False(通常)— 超出缓存范围
+    f = int("257")
+    g = int("257")
+    print(f"257 identity: {f is g}（实现细节）")
 
 
 if __name__ == "__main__":
     interview_trap()
+    print("OK")

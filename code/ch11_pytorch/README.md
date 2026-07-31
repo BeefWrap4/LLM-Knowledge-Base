@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch11_pytorch/core/01_tensor_basics.py
+python ch11_pytorch/core/01_tensor_ops.py
 ```
 
 ## 关联章节

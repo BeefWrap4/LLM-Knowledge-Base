@@ -15,35 +15,37 @@
 # - 命中率告警阈值如何选择？(业务相关)
 # - 如何把指标接入 Prometheus / OpenTelemetry？
 
-import time
 from collections import deque
 from dataclasses import dataclass, field
 
 
 @dataclass
 class CacheMetrics:
-    """缓存指标监控"""
+    """接收已按供应商口径归一化的 cached/total input tokens。"""
 
     window_size: int = 100
-    cache_read_tokens: int = 0
-    input_tokens: int = 0
-    history: deque = field(default_factory=lambda: deque(maxlen=100))
+    history: deque[tuple[int, int]] = field(init=False)
 
-    def record(self, cache_read: int, new_input: int):
-        self.cache_read_tokens += cache_read
-        self.input_tokens += new_input
-        hit_rate = cache_read / max(cache_read + new_input, 1)
-        self.history.append({"timestamp": time.time(), "hit_rate": hit_rate})
+    def __post_init__(self):
+        if self.window_size <= 0:
+            raise ValueError("window_size 必须大于 0")
+        self.history = deque(maxlen=self.window_size)
+
+    def record(self, cached_tokens: int, total_input_tokens: int):
+        if not 0 <= cached_tokens <= total_input_tokens:
+            raise ValueError("token 指标不合法或尚未按供应商口径归一化")
+        self.history.append((cached_tokens, total_input_tokens))
 
     @property
-    def avg_hit_rate(self) -> float:
-        if not self.history:
-            return 0.0
-        return sum(h["hit_rate"] for h in self.history) / len(self.history)
+    def weighted_reuse_rate(self) -> float:
+        cached = sum(item[0] for item in self.history)
+        total = sum(item[1] for item in self.history)
+        return cached / total if total else 0.0
 
-    def is_healthy(self) -> bool:
-        """命中率低于 50% 触发告警"""
-        return self.avg_hit_rate >= 0.5
+    def is_healthy(self, threshold: float) -> bool:
+        if not 0 <= threshold <= 1:
+            raise ValueError("threshold 必须在 [0, 1]")
+        return self.weighted_reuse_rate >= threshold
 
 
 def send_alert(message: str):
@@ -51,38 +53,19 @@ def send_alert(message: str):
     print(f"[ALERT] {message}")
 
 
-# 集成到 Anthropic 调用
-def wrapped_call(messages, client=None, metrics: CacheMetrics = None, **kwargs):
-    """演示包装函数：真实使用时 client 应为 anthropic.Anthropic()。"""
-
-    # mock 一个响应
-    class _MockUsage:
-        cache_read_input_tokens = 800
-        input_tokens = 200
-
-    class _MockResp:
-        usage = _MockUsage()
-
-    response = _MockResp()
-
-    metrics.record(cache_read=response.usage.cache_read_input_tokens, new_input=response.usage.input_tokens)
-    if not metrics.is_healthy():
-        send_alert(f"缓存命中率低: {metrics.avg_hit_rate:.2%}")
-    return response
-
-
 if __name__ == "__main__":
-    metrics = CacheMetrics()
+    metrics = CacheMetrics(window_size=10)
     # 模拟 10 次请求：前 5 次命中率高，后 5 次命中率低
     for i in range(5):
-        metrics.record(cache_read=800, new_input=200)
-    print(f"[阶段1] 5 次高命中后 avg_hit_rate = {metrics.avg_hit_rate:.2%}")
-    print(f"[健康?] {metrics.is_healthy()}")
+        metrics.record(cached_tokens=800, total_input_tokens=1000)
+    print(f"[阶段1] 5 次高命中后 weighted_reuse_rate = {metrics.weighted_reuse_rate:.2%}")
+    print(f"[健康?] {metrics.is_healthy(threshold=0.5)}")
 
     for i in range(5):
-        metrics.record(cache_read=100, new_input=900)
-    print(f"\n[阶段2] 再 5 次低命中后 avg_hit_rate = {metrics.avg_hit_rate:.2%}")
-    print(f"[健康?] {metrics.is_healthy()}")
+        metrics.record(cached_tokens=100, total_input_tokens=1000)
+    print(f"\n[阶段2] 再 5 次低命中后 weighted_reuse_rate = {metrics.weighted_reuse_rate:.2%}")
+    print(f"[健康?] {metrics.is_healthy(threshold=0.5)}")
 
-    if not metrics.is_healthy():
-        send_alert(f"缓存命中率低: {metrics.avg_hit_rate:.2%}")
+    if not metrics.is_healthy(threshold=0.5):
+        send_alert(f"缓存复用率低: {metrics.weighted_reuse_rate:.2%}")
+    print("OK")

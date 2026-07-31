@@ -16,7 +16,19 @@
 #   3. 如何构建小规模（50-100）但高质量的 RAG 评估集？
 
 import json
+import os
 import re
+
+DEFAULT_OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6")
+OPENAI_REASONING_KWARGS = (
+    {"reasoning_effort": "none"} if DEFAULT_OPENAI_MODEL.startswith("gpt-5.6") else {}
+)
+
+
+def _simple_tokens(text: str) -> set[str]:
+    """仅用于离线 smoke 的中英文字符/词元集合，不替代正式 RAG 评估。"""
+
+    return set(re.findall(r"[\u4e00-\u9fff]|[a-z0-9_]+", text.lower()))
 
 
 class RAGEvaluator:
@@ -47,9 +59,10 @@ class RAGEvaluator:
 
         if self.llm is not None:
             response = self.llm.chat.completions.create(
-                model="gpt-4",
+                model=DEFAULT_OPENAI_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
+                **OPENAI_REASONING_KWARGS,
             )
             content = response.choices[0].message.content
             json_match = re.search(r"\{.*?\}", content, re.DOTALL)
@@ -57,11 +70,11 @@ class RAGEvaluator:
                 result = json.loads(json_match.group())
                 return result.get("faithfulness_score", 0.0)
             return 0.0
-        # Mock: 简单按答案中关键词与上下文的覆盖率打分
+        # Mock: 仅用字符/词元覆盖率做确定性 smoke，不声称等价于 LLM-as-Judge。
         if not contexts:
             return 0.0
-        context_words = set(" ".join(contexts).split())
-        answer_words = set(answer.split())
+        context_words = _simple_tokens(" ".join(contexts))
+        answer_words = _simple_tokens(answer)
         coverage = len(answer_words & context_words) / max(len(answer_words), 1)
         return float(round(coverage, 3))
 
@@ -77,17 +90,18 @@ class RAGEvaluator:
 
         if self.llm is not None:
             response = self.llm.chat.completions.create(
-                model="gpt-4",
+                model=DEFAULT_OPENAI_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
+                **OPENAI_REASONING_KWARGS,
             )
             try:
                 return float(response.choices[0].message.content.strip())
             except ValueError:
                 return 0.5
         # Mock: 关键词重合度作为相关性近似
-        q_words = set(question.split())
-        a_words = set(answer.split())
+        q_words = _simple_tokens(question)
+        a_words = _simple_tokens(answer)
         return float(round(len(q_words & a_words) / max(len(q_words | a_words), 1), 3))
 
     def evaluate(self, question: str, answer: str, contexts: list) -> dict:
@@ -97,7 +111,8 @@ class RAGEvaluator:
         return {
             "faithfulness": f,
             "relevance": r,
-            "overall": None,  # 加权综合
+            "overall": round(0.7 * f + 0.3 * r, 3),
+            "mode": "llm_judge" if self.llm is not None else "offline_heuristic_smoke",
         }
 
 
@@ -108,3 +123,4 @@ if __name__ == "__main__":
     contexts = ["员工每年享有 15 天带薪年假。", "请假需提前申请。"]
     out = evaluator.evaluate(question, answer, contexts)
     print(json.dumps(out, ensure_ascii=False, indent=2))
+    print("OK")

@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch16_finetuning/gpu/01_lora_basics.py
+python ch16_finetuning/gpu/01_lora_finetuning.py
 ```
 
 ## 关联章节

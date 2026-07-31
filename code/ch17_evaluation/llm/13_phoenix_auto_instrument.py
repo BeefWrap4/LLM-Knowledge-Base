@@ -1,30 +1,28 @@
 # ---
 # chapter: 17
 # topic: 大模型评估体系
-# section: 17.11.3 Phoenix Auto-Instrumentation
+# section: 17.11.3 Phoenix tracing and client-side evals
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: arize-phoenix, phoenix.evals
+# deps: arize-phoenix-otel, arize-phoenix-evals>=3, pandas
 # run: python 13_phoenix_auto_instrument.py
 # expected_runtime: <2s (mock mode)
-# expected_output: Phoenix OTel + offline batch eval skeleton
+# expected_output: Current Phoenix tracing/evaluation flow followed by OK
 # ---
 # See: ../tutorial/17_大模型评估体系.md
 # Interview hooks:
-# - What is the OpenInference protocol and why does it matter?
-# - How does Phoenix's "auto-instrumentation" differ from manual tracing?
-# - How would you use the SpanQuery DSL to drill into specific failure modes?
+# - What does OpenInference add on top of generic OpenTelemetry traces?
+# - Why are tracing, evaluator input mapping, and score logging separate steps?
+# - What fields does a FaithfulnessEvaluator require?
 
-"""Phoenix MCP Server + Auto-Instrumentation 示例。
+"""Phoenix OTel 注册与 ``arize-phoenix-evals>=3`` 客户端评估示例。
 
-Phoenix（Arize AI 开源）是 LLM 可观测性领域的标杆项目，
-以 OpenInference 协议为核心，强调 Auto-Instrumentation（零代码一行启动）。
+默认 ``LLM_MOCK=1``，不导入 SDK、不读取密钥、不连接 Phoenix 或模型服务。
 """
 
 import os
+from typing import Any
 
-# ---- Phoenix MCP Server 配置（Claude / Cursor 直连 Phoenix 数据）----
-# 配置文件：~/.config/claude/claude_desktop_config.json
 PHOENIX_MCP_CONFIG = """
 {
   "mcpServers": {
@@ -37,64 +35,58 @@ PHOENIX_MCP_CONFIG = """
     }
   }
 }
-"""
+""".strip()
 
 
-def run_phoenix_demo() -> None:
-    print("=== Phoenix MCP Server 配置 (JSON) ===")
-    print(PHOENIX_MCP_CONFIG)
+def run_phoenix_demo() -> Any:
+    if os.environ.get("LLM_MOCK", "1") != "0":
+        print("[mock] Phoenix 当前流程（未连接 collector、未调用评审模型）")
+        print("  register(...) -> OpenInference/OTel traces")
+        print("  LLM(...) + FaithfulnessEvaluator(...)")
+        print("  evaluate_dataframe(dataframe, evaluators)")
+        print("  Client().spans.log_span_annotations_dataframe(...)")
+        return None
 
-    mock_mode = os.environ.get("PHOENIX_MOCK", "1") == "1"
-    if mock_mode:
-        print("[mock] Phoenix Auto-Instrumentation 流程")
-        print("[mock] tracer_provider = register(project_name='my-llm-app', ...)")
-        print("[mock] 之后所有 OpenAI / LangChain 调用自动 trace，零侵入")
-        print("[mock] 用 SpanQuery DSL 查询 span: child_of='retrieval'")
-        print("[mock] HallucinationEvaluator(model='gpt-4o') -> run_evals")
-        print("[mock] 结果 DataFrame head: 3 rows × 4 cols")
-        return
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("真实模式需要 OPENAI_API_KEY；默认请使用 LLM_MOCK=1")
 
     try:
+        import pandas as pd
+        from phoenix.evals import LLM, evaluate_dataframe
+        from phoenix.evals.metrics import FaithfulnessEvaluator
         from phoenix.otel import register
     except ImportError as exc:
-        print(f"[mock] phoenix 未安装 ({exc})，使用模拟输出")
-        return
+        raise RuntimeError("真实模式需要 arize-phoenix-otel、arize-phoenix-evals>=3 和 pandas") from exc
 
-    # ---- Python 端：Phoenix Auto-Instrumentation ----
-    # 一行代码启动 OpenTelemetry trace
-    tracer_provider = register(
-        project_name="my-llm-app",
-        endpoint="http://localhost:6006/v1/traces",
+    register(
+        project_name=os.environ.get("PHOENIX_PROJECT_NAME", "ch17-evaluation"),
+        endpoint=os.environ.get(
+            "PHOENIX_OTLP_ENDPOINT",
+            "http://localhost:6006/v1/traces",
+        ),
         set_global_tracer_provider=True,
     )
-    # 之后所有 OpenAI / LangChain 调用自动 trace，零侵入
 
-    # ---- 离线批量评估 ----
-    try:
-        import phoenix as px
-        from phoenix.evals import HallucinationEvaluator, run_evals
-        from phoenix.trace.dsl import SpanQuery
-    except ImportError as exc:
-        print(f"[mock] phoenix.evals 未安装 ({exc})")
-        return
-
-    # 用 DSL 查询特定的 span
-    query = SpanQuery().select(
-        span="llm.generation",
-        child_of="retrieval",
-        columns=["input.value", "output.value", "context.value"],
+    dataframe = pd.DataFrame(
+        [
+            {
+                "input": "CPython 中的 GIL 是什么？",
+                "output": "GIL 是 CPython 的全局解释器锁。",
+                "context": "GIL 是 CPython 解释器用于协调 Python 字节码执行的全局锁。",
+            }
+        ]
     )
-
-    spans_df = px.Client().query_spans(query)
-
-    # 跑幻觉评估（内置 LLM judge）
-    hallucination_eval = HallucinationEvaluator(model="gpt-4o")
-    hallucination_results = run_evals(
-        dataframe=spans_df,
-        evaluators=[hallucination_eval],
+    judge = LLM(
+        provider="openai",
+        model=os.environ.get("OPENAI_MODEL", "gpt-5.6"),
+        client="openai",
     )
-    print(hallucination_results.head())
+    evaluator = FaithfulnessEvaluator(llm=judge)
+    result = evaluate_dataframe(dataframe=dataframe, evaluators=[evaluator])
+    print(result)
+    return result
 
 
 if __name__ == "__main__":
     run_phoenix_demo()
+    print("OK")

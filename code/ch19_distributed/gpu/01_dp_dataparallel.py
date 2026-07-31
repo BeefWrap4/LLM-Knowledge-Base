@@ -20,10 +20,24 @@
 # === Multi-GPU / heavy model guard (auto-added) ===
 import os as _os
 import sys as _sys
+from pathlib import Path as _Path
+
+_code_root = _Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in _sys.path:
+    _sys.path.insert(0, str(_code_root))
+
+from shared.gpu_guard import skip_if_mock
+
+if skip_if_mock("one or more CUDA GPUs; DataParallel is retained only as a legacy teaching example"):
+    _sys.exit(0)
 
 _NGPU = _os.environ.get("WORLD_SIZE", "1")
 if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
+    print(
+        f"[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, "
+        "用 torchrun 或设置 FORCE_GPU_RUN=1"
+    )
+    print("OK")
     _sys.exit(0)
 import torch
 import torch.nn as nn

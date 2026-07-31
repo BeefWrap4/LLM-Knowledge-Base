@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch19_distributed/gpu/01_ddp_basics.py
+python ch19_distributed/gpu/02_ddp_training.py
 ```
 
 ## 关联章节

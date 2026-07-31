@@ -12,8 +12,9 @@
 # See: ../tutorial/18_LLM工程框架实战.md § 18.7 (面试真题精选)
 # Interview hooks:
 #   1. 在生产环境中如何选择合适的 Memory 策略？需要考虑哪些权衡？
-#   2. 为什么推荐用便宜的模型（如 gpt-4o-mini）做摘要？
+#   2. 为什么应从提供商当前模型目录中选择经评测的低成本模型做摘要？
 # 推荐配置：Summary + Buffer 混合策略
+import os
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
 
@@ -25,7 +26,7 @@ if str(_code_root) not in _sys_path_setup.path:
 from shared._error_helper import raise_with_help
 from shared.chatmodel_factory import make_chat_model
 
-llm = make_chat_model()  # 默认厂商 (cheap mini model)
+llm = "<offline-summary-model>" if os.environ.get("LLM_MOCK") != "0" else make_chat_model()
 if llm is None:
     raise_with_help(
         "需要 LLM_PROVIDER + API Key 来运行此例子.",
@@ -43,7 +44,10 @@ print("=== Memory 配置 ===")
 for k, v in memory_config.items():
     if k == "llm":
         # ChatOpenAI exposes .model_name
-        print(f"  {k}: <{getattr(v, 'model_name', getattr(v, 'model', 'unknown'))}>")
+        if isinstance(v, str):
+            print(f"  {k}: {v}")
+        else:
+            print(f"  {k}: <{getattr(v, 'model_name', getattr(v, 'model', 'unknown'))}>")
     else:
         print(f"  {k}: {v}")
 

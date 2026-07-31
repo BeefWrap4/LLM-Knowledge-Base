@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package llm.inference.v1;
+
+service LLMInference {
+  rpc Generate(GenerateRequest) returns (GenerateResponse);
+  rpc GenerateStream(GenerateRequest) returns (stream GenerateStreamResponse);
+}
+
+message ChatMessage {
+  string role = 1;
+  string content = 2;
+}
+
+message SamplingParams {
+  float temperature = 1;
+  int32 max_tokens = 2;
+  float top_p = 3;
+  int32 top_k = 4;
+}
+
+message GenerateRequest {
+  repeated ChatMessage messages = 1;
+  SamplingParams sampling_params = 2;
+  string request_id = 3;
+}
+
+message Completion {
+  int32 index = 1;
+  string text = 2;
+  string finish_reason = 3;
+}
+
+message TokenUsage {
+  int32 prompt_tokens = 1;
+  int32 completion_tokens = 2;
+  int32 total_tokens = 3;
+}
+
+message GenerateResponse {
+  string request_id = 1;
+  repeated Completion completion = 2;
+  TokenUsage usage = 3;
+}
+
+message TokenDelta {
+  int32 index = 1;
+  string delta_text = 2;
+  bool is_final = 3;
+  string finish_reason = 4;
+}
+
+message GenerateStreamResponse {
+  string request_id = 1;
+  TokenDelta token = 2;
+}

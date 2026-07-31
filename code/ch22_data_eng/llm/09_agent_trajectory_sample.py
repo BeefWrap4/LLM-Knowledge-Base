@@ -1,7 +1,7 @@
 # ---
 # chapter: 22
 # topic: 大模型数据工程
-# section: 22.5.3 Agent Trajectory 数据格式（ReAct 风格）
+# section: 22.6.3 Agent Trajectory 数据格式（ReAct 风格）
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: stdlib only
@@ -66,6 +66,7 @@ def main():
     print(f"步数: {trajectory_sample['num_steps']}, 结果: {trajectory_sample['outcome']}")
     print("\n完整轨迹 JSON:")
     print(json.dumps(trajectory_sample, ensure_ascii=False, indent=2))
+    print("OK")
 
 
 if __name__ == "__main__":

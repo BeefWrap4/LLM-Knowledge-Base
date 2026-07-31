@@ -17,10 +17,14 @@
 
 # MRL Embedding 使用（OpenAI text-embedding-3 系列原生支持，mock 演示版）
 
+import os
+
 
 def get_mrl_embedding(text: str, dimensions: int = 512, api_key: str = None):
     """支持 256, 512, 1024, 3072 维动态选择"""
     if api_key:
+        if os.environ.get("LLM_MOCK") != "0":
+            raise RuntimeError("只有显式 LLM_MOCK=0 才允许使用真实 embedding API")
         from openai import OpenAI
 
         client = OpenAI(api_key=api_key)
@@ -44,3 +48,4 @@ if __name__ == "__main__":
     for dim in [256, 512, 1024, 3072]:
         vec = get_mrl_embedding(text, dimensions=dim, api_key=None)
         print(f"dimensions={dim:4d} -> vector len={len(vec)}")
+    print("OK")

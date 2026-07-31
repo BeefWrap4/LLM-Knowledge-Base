@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch23_safety/llm/01_prompt_injection_demo.py
+python ch23_safety/llm/02_prompt_injection_detector.py
 ```
 
 ## 关联章节

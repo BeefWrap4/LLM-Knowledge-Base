@@ -1,7 +1,7 @@
 # ---
 # chapter: 22
 # topic: 大模型数据工程
-# section: 22.6.5 数据版本管理 - DVC 与 HuggingFace Datasets
+# section: 22.7.5 数据版本管理 - DVC 与 HuggingFace Datasets
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: stdlib only
@@ -110,6 +110,7 @@ def main():
     demo_hf_datasets_versioning()
     demo_dvc_metadata()
     print("\n所有版本管理伪代码演示完成。")
+    print("OK")
 
 
 if __name__ == "__main__":

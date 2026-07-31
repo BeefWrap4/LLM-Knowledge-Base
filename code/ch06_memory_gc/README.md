@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch06_memory_gc/core/01_refcount_demo.py
+python ch06_memory_gc/core/03_getrefcount_demo.py
 ```
 
 ## 关联章节

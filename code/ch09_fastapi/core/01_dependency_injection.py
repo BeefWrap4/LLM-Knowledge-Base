@@ -14,11 +14,15 @@
 #   1. FastAPI 的 Depends() 与路径参数解析流程是怎样的？
 #   2. 为什么 yield 依赖能管理数据库连接的生命周期？
 #   3. 同一请求内相同依赖被调用多次，会发生什么？
+import os
+import secrets
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 app = FastAPI()
+bearer = HTTPBearer(auto_error=False)
 
 
 # 定义依赖函数
@@ -31,9 +35,23 @@ def get_db_connection():
         conn["status"] = "closed"
 
 
-def get_current_user(token: str = ""):
-    """模拟认证依赖"""
-    return {"user_id": 1, "name": "admin"}
+def get_current_user(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
+):
+    """教学用 Bearer 校验；生产环境还需验证 JWT claims 与 scope。"""
+    expected = os.getenv("DEMO_API_TOKEN")
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="服务端尚未配置 DEMO_API_TOKEN",
+        )
+    if credentials is None or not secrets.compare_digest(credentials.credentials, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效或缺失的 Bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return {"user_id": 1, "name": "demo-user"}
 
 
 # 路由中注入依赖 - 自动解析并按需调用

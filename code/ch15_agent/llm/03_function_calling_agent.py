@@ -40,12 +40,25 @@ class FunctionCallingAgent:
     4. 将结果返回给模型，生成最终回答
     """
 
-    def __init__(self, api_key: str | None = None, mock: bool = False):
-        self.model = "gpt-4"
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        mock: bool = False,
+    ):
+        self.model = model or os.environ.get("OPENAI_MODEL", "gpt-5.6")
+        self.model_kwargs = (
+            {"reasoning_effort": "none"} if self.model.startswith("gpt-5.6") else {}
+        )
         self.tools = []
         self.tool_functions = {}
         self.conversation = []
-        self.mock = mock or not HAS_OPENAI or not (api_key or os.getenv("OPENAI_API_KEY"))
+        self.mock = (
+            mock
+            or os.environ.get("LLM_MOCK") != "0"
+            or not HAS_OPENAI
+            or not (api_key or os.getenv("OPENAI_API_KEY"))
+        )
         if not self.mock and HAS_OPENAI:
             self.client = openai.OpenAI(api_key=api_key)
 
@@ -106,6 +119,7 @@ class FunctionCallingAgent:
                     messages=self.conversation,
                     tools=self.tools if self.tools else None,
                     tool_choice="auto",
+                    **self.model_kwargs,
                 )
 
             message = response.choices[0].message
@@ -159,6 +173,7 @@ class FunctionCallingAgent:
         final_response = self.client.chat.completions.create(
             model=self.model,
             messages=self.conversation,
+            **self.model_kwargs,
         )
         return final_response.choices[0].message.content
 
@@ -265,6 +280,7 @@ def main():
     result = agent.execute(query)
     print(f"查询：{query}")
     print(f"结果：{result}")
+    print("OK")
 
 
 if __name__ == "__main__":

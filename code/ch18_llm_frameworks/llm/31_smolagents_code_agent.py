@@ -16,7 +16,9 @@
 """
 Smolagents 实战：极简 code-agent - 离线 mock 结构
 """
-# 真实环境: from smolagents import CodeAgent, HfApiModel, tool
+import os
+
+# 真实环境: from smolagents import CodeAgent, InferenceClientModel, tool
 
 
 # ===== 工具定义 =====
@@ -25,10 +27,10 @@ def get_weather(city: str) -> str:
     return f"{city}: 晴 25°C"
 
 
-# HuggingFace Inference API 上的 Qwen2.5
+# 真实运行时从 Hub 当前可用且已获授权的模型中选择
 model_config = {
-    "model_id": "Qwen/Qwen2.5-72B-Instruct",
-    "provider": "HfApiModel",
+    "model_id": os.environ.get("HF_MODEL_ID", "<set HF_MODEL_ID>"),
+    "provider": "InferenceClientModel",
 }
 
 agent_config = {

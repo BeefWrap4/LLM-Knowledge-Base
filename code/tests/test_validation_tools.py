@@ -1,0 +1,210 @@
+"""Regression tests for fail-closed repository validation."""
+
+import sys
+from pathlib import Path
+
+import pytest
+
+from scripts import run_all_examples, sync_links, verify_all
+
+
+def test_tutorial_section_parser_supports_four_levels() -> None:
+    match = sync_links.TUTORIAL_SECTION_RE.match("### 24.6.5.1 主流推理引擎")
+    assert match is not None
+    number, title = match.groups()
+    assert number == "24.6.5.1"
+    assert title == "主流推理引擎"
+
+
+def test_code_section_parser_supports_four_levels() -> None:
+    match = sync_links.CODE_SECTION_RE.match("# section: 24.6.5.1 K8s adapter")
+    assert match is not None
+    number, title = match.groups()
+    assert number == "24.6.5.1"
+    assert title == "K8s adapter"
+
+
+def test_llm_runner_defaults_to_mock(monkeypatch, tmp_path: Path) -> None:
+    script = tmp_path / "example.py"
+    script.write_text(
+        "import os\n"
+        "assert os.environ.get('LLM_MOCK') == '1'\n"
+        "print('OK')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(run_all_examples, "CODE", tmp_path)
+    monkeypatch.setattr(run_all_examples, "PY", sys.executable)
+    monkeypatch.delenv("LLM_MOCK", raising=False)
+
+    rel, passed, output, _ = run_all_examples.run_one(script, timeout=10, tier="llm")
+
+    assert rel == "example.py"
+    assert passed, output
+
+
+def test_llm_runner_overrides_parent_real_mode(monkeypatch, tmp_path: Path) -> None:
+    """批量验收不能继承父进程的真实 API 开关。"""
+    script = tmp_path / "example.py"
+    script.write_text(
+        "import os\n"
+        "assert os.environ.get('LLM_MOCK') == '1'\n"
+        "print('OK')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(run_all_examples, "CODE", tmp_path)
+    monkeypatch.setattr(run_all_examples, "PY", sys.executable)
+    monkeypatch.setenv("LLM_MOCK", "0")
+
+    _, passed, output, _ = run_all_examples.run_one(script, timeout=10, tier="llm")
+
+    assert passed, output
+
+
+def test_runner_preserves_skip_marker_before_truncation(monkeypatch, tmp_path: Path) -> None:
+    script = tmp_path / "example.py"
+    script.write_text(
+        "print('[SKIP] ' + 'requirement-' * 30)\n"
+        "print('OK')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(run_all_examples, "CODE", tmp_path)
+    monkeypatch.setattr(run_all_examples, "PY", sys.executable)
+
+    _, passed, output, _ = run_all_examples.run_one(script, timeout=10, tier="gpu")
+
+    assert passed, output
+    assert "[SKIP]" in output
+
+
+def test_runner_rejects_silent_success_without_ok(monkeypatch, tmp_path: Path) -> None:
+    script = tmp_path / "example.py"
+    script.write_text("print('Skipping real mode')\n", encoding="utf-8")
+    monkeypatch.setattr(run_all_examples, "CODE", tmp_path)
+    monkeypatch.setattr(run_all_examples, "PY", sys.executable)
+
+    _, passed, output, _ = run_all_examples.run_one(script, timeout=10, tier="gpu")
+
+    assert not passed
+    assert "[MISSING OK MARKER]" in output
+
+
+def test_gpu_runner_mock_flag_is_explicitly_disableable(monkeypatch, tmp_path: Path) -> None:
+    script = tmp_path / "example.py"
+    script.write_text(
+        "import sys\n"
+        "print('MOCK=' + str('--mock' in sys.argv))\n"
+        "print('OK')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(run_all_examples, "CODE", tmp_path)
+    monkeypatch.setattr(run_all_examples, "PY", sys.executable)
+
+    _, default_passed, default_output, _ = run_all_examples.run_one(
+        script, timeout=10, tier="gpu"
+    )
+    _, real_passed, real_output, _ = run_all_examples.run_one(
+        script, timeout=10, tier="gpu", real_gpu=True
+    )
+
+    assert default_passed and "MOCK=True" in default_output
+    assert real_passed and "MOCK=False" in real_output
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["run_all_examples.py", "--tier", "gpu", "--real-gpu", "--parallel", "1"],
+        [
+            "run_all_examples.py",
+            "--tier",
+            "gpu",
+            "--real-gpu",
+            "--chapter",
+            "ch21",
+            "--parallel",
+            "2",
+        ],
+    ],
+)
+def test_real_gpu_runner_requires_narrow_serial_scope(monkeypatch, argv) -> None:
+    monkeypatch.setattr(sys, "argv", argv)
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_all_examples.main()
+
+    assert exc_info.value.code == 2
+
+
+def test_current_repository_snapshot() -> None:
+    assert len(verify_all.canonical_chapters()) == verify_all.EXPECTED_CHAPTERS
+    examples = list(verify_all.CODE.glob("ch[0-9][0-9]_*/*/*.py"))
+    assert len(examples) == verify_all.EXPECTED_EXAMPLES
+    for tier in ("core", "llm", "gpu"):
+        assert (verify_all.CODE / f"requirements-{tier}.ci.lock").is_file()
+
+
+def test_python_reference_gate_detects_missing_file(monkeypatch, tmp_path: Path) -> None:
+    code = tmp_path / "code"
+    code.mkdir()
+    (tmp_path / "README.md").write_text(
+        "python ch15_agent/llm/01_missing.py\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+    monkeypatch.setattr(verify_all, "CODE", code)
+
+    assert verify_all.find_broken_python_references() == [
+        ("README.md", 1, "ch15_agent/llm/01_missing.py")
+    ]
+
+
+def test_python_reference_gate_accepts_existing_code_prefix(monkeypatch, tmp_path: Path) -> None:
+    target = tmp_path / "code/ch15_agent/llm/01_agent.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("print('OK')\n", encoding="utf-8")
+    (tmp_path / "README.md").write_text(
+        "python code/ch15_agent/llm/01_agent.py\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+    monkeypatch.setattr(verify_all, "CODE", tmp_path / "code")
+
+    assert verify_all.find_broken_python_references() == []
+
+
+def test_gpu_mock_contract_rejects_unmarked_script(monkeypatch, tmp_path: Path) -> None:
+    script = tmp_path / "ch25_demo/gpu/01_demo.py"
+    script.parent.mkdir(parents=True)
+    script.write_text("print('OK')\n", encoding="utf-8")
+    monkeypatch.setattr(verify_all, "CODE", tmp_path)
+
+    assert "missing skip_if_mock" in verify_all.find_gpu_mock_contract_failures()[0]
+
+
+def test_gpu_mock_safe_metadata_rejects_network_like_call(
+    monkeypatch, tmp_path: Path
+) -> None:
+    script = tmp_path / "ch25_demo/gpu/01_demo.py"
+    script.parent.mkdir(parents=True)
+    script.write_text(
+        "# ---\n# tier: gpu\n# mock_safe: true\n# ---\n"
+        "from transformers import AutoModel\n"
+        "AutoModel.from_pretrained('remote/model')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "CODE", tmp_path)
+
+    assert "from_pretrained" in verify_all.find_gpu_mock_contract_failures()[0]
+
+
+def test_examples_do_not_use_builtin_eval_or_exec() -> None:
+    assert verify_all.find_dynamic_execution_failures() == []
+
+
+def test_dynamic_execution_gate_rejects_eval(monkeypatch, tmp_path: Path) -> None:
+    script = tmp_path / "ch15_demo/llm/01_demo.py"
+    script.parent.mkdir(parents=True)
+    script.write_text("result = eval(model_output)\n", encoding="utf-8")
+    monkeypatch.setattr(verify_all, "CODE", tmp_path)
+
+    assert "builtin eval() is forbidden" in verify_all.find_dynamic_execution_failures()[0]

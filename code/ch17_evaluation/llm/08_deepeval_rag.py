@@ -6,34 +6,35 @@
 # tier: llm
 # deps: deepeval
 # run: python 08_deepeval_rag.py
-# expected_runtime: <2s (mock mode) / 10-30s (real)
-# expected_output: Per-metric scores for the RAG test case
+# expected_runtime: <2s (mock mode) / workload-dependent (real)
+# expected_output: Offline metric configuration or measured values followed by OK
 # ---
 # See: ../tutorial/17_大模型评估体系.md
 # Interview hooks:
-# - Why is DeepEval considered "pytest for LLMs"?
-# - Compare HallucinationMetric (deepeval) vs Faithfulness (ragas).
-# - How does DeepEval integrate with CI/CD pipelines?
+# - Why is DeepEval considered pytest for LLM applications?
+# - Why is Faithfulness preferable to HallucinationMetric for a RAG test case?
+# - How do explicit thresholds become CI quality gates?
 
-"""DeepEval 评估示例。
+"""DeepEval RAG 评估示例。
 
-DeepEval 是一个面向 LLM 应用的测试框架，类似于"LLM 的 pytest"。
+默认 ``LLM_MOCK=1``，不导入 DeepEval、不读取密钥且不联网。显式设置
+``LLM_MOCK=0`` 后才创建评审模型；任何真实模式错误都会向上抛出。
 """
 
 import os
+from typing import Any
 
 
-def run_deepeval_test() -> None:
-    mock_mode = os.environ.get("DEEPEVAL_MOCK", "1") == "1"
+def run_deepeval_test() -> list[Any]:
+    if os.environ.get("LLM_MOCK", "1") != "0":
+        print("[mock] DeepEval RAG 指标配置；未调用评审模型、未生成分数")
+        print(
+            "  AnswerRelevancyMetric, FaithfulnessMetric, ContextualRecallMetric, ContextualPrecisionMetric"
+        )
+        return []
 
-    if mock_mode:
-        print("[mock] DeepEval RAG 评估输出")
-        print("AnswerRelevancyMetric: 0.875")
-        print("FaithfulnessMetric: 0.920")
-        print("ContextualRecallMetric: 0.850")
-        print("ContextualPrecisionMetric: 0.830")
-        print("HallucinationMetric: 0.150")
-        return
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("真实模式需要 OPENAI_API_KEY；默认请使用 LLM_MOCK=1")
 
     try:
         from deepeval import assert_test
@@ -42,46 +43,42 @@ def run_deepeval_test() -> None:
             ContextualPrecisionMetric,
             ContextualRecallMetric,
             FaithfulnessMetric,
-            HallucinationMetric,
         )
+        from deepeval.models import GPTModel
         from deepeval.test_case import LLMTestCase
     except ImportError as exc:
-        print(f"[mock] deepeval 未安装 ({exc})，使用模拟输出")
-        return
+        raise RuntimeError("真实模式需要 deepeval：pip install deepeval") from exc
 
-    # 创建测试用例
+    judge_model = GPTModel(
+        model=os.environ.get("OPENAI_MODEL", "gpt-5.6"),
+        generation_kwargs={"reasoning_effort": "low"},
+    )
     test_case = LLMTestCase(
         input="什么是机器学习中的过拟合？",
         actual_output=(
-            "过拟合是指模型在训练数据上表现很好，但在测试数据上表现差的现象。"
-            "这通常是因为模型过于复杂，学习了训练数据中的噪声而非真正的模式。"
-            "解决方法包括：正则化（L1/L2）、Dropout、早停、数据增强、交叉验证等。"
+            "过拟合是模型在训练数据上表现好、在未见数据上泛化差的现象。"
+            "常见缓解方法包括正则化、早停、数据增强和交叉验证。"
         ),
         expected_output="过拟合是模型对训练数据学习过度，导致泛化能力差的现象。",
         retrieval_context=[
-            "过拟合发生在模型在训练数据上表现良好但泛化到新数据时表现不佳的情况。",
-            "正则化和增加训练数据是解决过拟合的常用方法。",
-            "过拟合与模型的复杂度有关，过于复杂的模型更容易过拟合。",
+            "过拟合表现为训练集性能良好，但对未见数据的泛化性能不佳。",
+            "正则化和增加有效训练数据是常见缓解方法。",
         ],
     )
-
-    # 定义评估指标
     metrics = [
-        AnswerRelevancyMetric(threshold=0.7),
-        FaithfulnessMetric(threshold=0.7),
-        ContextualRecallMetric(threshold=0.7),
-        ContextualPrecisionMetric(threshold=0.7),
-        HallucinationMetric(threshold=0.3),  # 幻觉分数越低越好
+        AnswerRelevancyMetric(threshold=0.7, model=judge_model),
+        FaithfulnessMetric(threshold=0.7, model=judge_model),
+        ContextualRecallMetric(threshold=0.7, model=judge_model),
+        ContextualPrecisionMetric(threshold=0.7, model=judge_model),
     ]
 
-    # 执行测试
     for metric in metrics:
         metric.measure(test_case)
         print(f"{metric.__class__.__name__}: {metric.score:.3f}")
-
-    # 显式 assert 也可以用 assert_test
     assert_test(test_case, metrics)
+    return metrics
 
 
 if __name__ == "__main__":
     run_deepeval_test()
+    print("OK")

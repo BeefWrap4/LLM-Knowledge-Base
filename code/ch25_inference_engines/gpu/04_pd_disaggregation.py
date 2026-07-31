@@ -42,7 +42,12 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import gpu_summary, require_nvidia_gpu
+from shared.gpu_guard import (
+    gpu_summary,
+    require_nvidia_gpu,
+    skip_if_mock,
+    skip_unless_enabled,
+)
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 # 1 个长 prompt (prefill-heavy) + 8 个短 prompt (decode-heavy) 混合
@@ -51,6 +56,12 @@ SHORT_PROMPTS = [f"Q: Hello {i}? A:" for i in range(8)]
 
 
 def main() -> None:
+    if skip_if_mock("an NVIDIA GPU, CUDA, vLLM, and local model weights"):
+        return
+    if skip_unless_enabled(
+        "VLLM_EXAMPLE_RUN", "the Linux/WSL2 vLLM runtime and local model weights"
+    ):
+        return
     require_nvidia_gpu(min_vram_gb=8)
     print(gpu_summary())
     print()
@@ -133,7 +144,7 @@ def main() -> None:
     print("  - 每个 step: 1 chunk prefill + N short decode, 混合 batch")
     print("  - 避免长 prompt 阻塞短 prompt 的 decode (vs static batching)")
     print("  - 真正跨节点 PD-Disagg 需 vLLM XPyD + KV transfer (RDMA/NVLink)")
-    print("  - 实测: 长 prompt TTFT 改善, 短 prompt TPOT 维持, 整体吞吐提升")
+    print("  - 验收目标: 比较长 prompt TTFT、短请求 TPOT、吞吐和 KV 传输开销")
     print("=" * 60)
 
 

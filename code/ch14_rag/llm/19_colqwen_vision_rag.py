@@ -64,3 +64,4 @@ if __name__ == "__main__":
     scores = model.score_multi_vector(query_embeddings, doc_embeddings)
     top_k_indices = scores[0].topk(3).indices.tolist() if hasattr(scores[0], "topk") else [0, 1, 2]
     print(f"Top-3 pages: {top_k_indices}")
+    print("OK")

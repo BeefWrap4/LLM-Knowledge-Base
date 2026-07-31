@@ -29,7 +29,7 @@ repos:
         entry: ruff check --fix
         language: system
         types: [python]
-        # 只检查 staged 的 .py, 避免跑 439 个文件
+        # 只检查 staged 的 .py, 避免每次提交都跑 433 个示例
 
       - id: ruff-format
         name: ruff format

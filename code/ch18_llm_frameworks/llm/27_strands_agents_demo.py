@@ -16,6 +16,8 @@
 """
 Strands Agents SDK 实战：双向流式研究 Agent - 离线 mock 结构
 """
+import os
+
 # 真实环境:
 # from strands import Agent, tool
 # from strands.models import BedrockModel
@@ -37,7 +39,7 @@ mcp_config = {
 
 # ===== 3. Bedrock 模型配置 =====
 model_config = {
-    "model_id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+    "model_id": os.environ.get("BEDROCK_MODEL_ID", "<set BEDROCK_MODEL_ID>"),
     "temperature": 0.7,
 }
 
@@ -60,9 +62,9 @@ print("\n 双向流：边思考边输出，边调工具")
 print("\n=== 模拟流式事件 ===")
 mock_events = [
     {"data": "正在比较"},
-    {"data": " Claude 3.5"},
+    {"data": " 已配置的 Bedrock 模型"},
     {"tool_use": {"name": "get_weather", "args": {"city": "Seattle"}}},
-    {"data": " 与 Claude 3.7..."},
+    {"data": " 在当前区域的能力与成本..."},
 ]
 for ev in mock_events:
     if "data" in ev:

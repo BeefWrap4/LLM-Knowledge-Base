@@ -1,17 +1,10 @@
-import sys as _sys_path_setup
-from pathlib import Path as _Path_setup
-
-_code_root = _Path_setup(__file__).resolve().parent.parent.parent
-if str(_code_root) not in _sys_path_setup.path:
-    _sys_path_setup.path.insert(0, str(_code_root))
-
 # ---
 # chapter: 13
 # topic: Prompt Engineering
 # section: 13.7.4 OpenAI JSON Schema 严格模式
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: openai (via shared.llm_client), pydantic
+# deps: openai, pydantic
 # run: python 20_openai_json_schema_strict.py
 # expected_runtime: 3-10s (real api)
 # expected_output: 打印符合 schema 的结构化输出
@@ -20,16 +13,16 @@ if str(_code_root) not in _sys_path_setup.path:
 # Interview hooks:
 # - OpenAI JSON Schema strict 模式与 JSON Mode 的差异？
 # - 为何 Pydantic + model_json_schema 是推荐组合？
-# - strict=True 是否影响延迟？(轻微增加)
+# - strict/parse 在拒绝或截断时应如何处理？
 
-import json
-import re
+import os
 
 from pydantic import BaseModel
 
-from shared.llm_client import UnifiedClient
-
-_client = UnifiedClient()
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
 
 
 class UserInfo(BaseModel):
@@ -38,34 +31,39 @@ class UserInfo(BaseModel):
     skills: list[str]
 
 
+def _real_api_ready() -> bool:
+    if os.environ.get("LLM_MOCK") != "0":
+        print("[SKIP] 离线安全模式：只有显式设置 LLM_MOCK=0 才会调用 OpenAI API")
+        print("OK")
+        return False
+    if OpenAI is None or not os.environ.get("OPENAI_API_KEY"):
+        print("[SKIP] 真实调用需要 openai、pydantic 和 OPENAI_API_KEY")
+        print("OK")
+        return False
+    return True
+
+
 def call_openai_structured(user_text: str):
-    # Wave 16: 改用 UnifiedClient (注: response_format 仅 OpenAI 完整支持, 其他厂商可能忽略)
-    return _client.chat(
-        messages=[
+    if not _real_api_ready():
+        return None
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    return client.responses.parse(
+        model=os.environ.get("OPENAI_MODEL", "gpt-5.6"),
+        input=[
             {"role": "system", "content": "从用户描述中提取结构化信息。"},
             {"role": "user", "content": user_text},
         ],
-        # 注: 真实 json_schema 仅 OpenAI 支持; 其他厂商会回退到普通 JSON 模式
+        text_format=UserInfo,
     )
 
 
 if __name__ == "__main__":
     response = call_openai_structured("张伟今年 28 岁，擅长 Python 和 Rust。")
-
-    # 输出 100% 符合 schema，可直接 parse
-    # Wave 24: 适配 UnifiedClient 的 _LLMResponse (无 .choices 属性)
-    content = response.content if hasattr(response, "content") else response.choices[0].message.content
-    # Wave 24: 部分厂商不严格遵循 JSON, 用 regex 提取首个 {...} 块
-    json_match = re.search(r"\{[^{}]*\}", content, re.DOTALL)
-    if json_match:
-        data = json.loads(json_match.group(0))
-        print(f"[Parsed Data] {data}")
-    else:
-        # 厂商未返回 JSON, 输出原文让用户看到
-        print(f"[Raw Response] {content[:200]}")
-        print(f"[Schema (expected)] {UserInfo.model_json_schema()}")
-        data = None
-    # data = {"name": "张伟", "age": 28, "skills": ["Python", "Rust"]} (when schema 严格)
-    if data:
-        print(f"[Parsed Data] {data}")
+    if response is None:
+        raise SystemExit(0)
+    if response.output_parsed is None:
+        raise RuntimeError(f"未得到结构化结果，status={response.status}")
+    data = response.output_parsed
+    print(f"[Parsed Data] {data.model_dump()}")
     print(f"[Schema] {UserInfo.model_json_schema()}")
+    print("OK")

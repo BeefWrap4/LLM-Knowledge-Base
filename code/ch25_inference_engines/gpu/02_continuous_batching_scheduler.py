@@ -23,7 +23,7 @@ Continuous batching 允许 decode 阶段动态插入/驱逐请求, 不像 static
 
 vLLM 的连续批处理通过以下机制实现 (vllm/v1/core/scheduler.py):
   - 每个 decode step 重新选择 running batch: 完成的 evict, 等待的 admit
-  - Iteration-level scheduling (vLLM 关键论文: "How continuous batching enables 23x throughput")
+  - Iteration-level scheduling；收益必须在相同模型、流量与延迟 SLO 下对照测试
   - PagedAttention 让变长 batch 不需要 contiguous KV
 
 注意: vLLM 的 scheduler 是内部类 (需 vllm._C), 行为通过 ``AsyncLLMEngine.generate``
@@ -41,7 +41,12 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import gpu_summary, require_nvidia_gpu
+from shared.gpu_guard import (
+    gpu_summary,
+    require_nvidia_gpu,
+    skip_if_mock,
+    skip_unless_enabled,
+)
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 N_CONCURRENT = 8
@@ -148,6 +153,12 @@ async def run() -> None:
 
 
 def main() -> None:
+    if skip_if_mock("an NVIDIA GPU, CUDA, vLLM, and local model weights"):
+        return
+    if skip_unless_enabled(
+        "VLLM_EXAMPLE_RUN", "the Linux/WSL2 vLLM runtime and local model weights"
+    ):
+        return
     require_nvidia_gpu(min_vram_gb=8)
     print(gpu_summary())
     print()

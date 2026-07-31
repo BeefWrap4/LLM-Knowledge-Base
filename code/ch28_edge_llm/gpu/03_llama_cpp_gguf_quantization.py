@@ -26,6 +26,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import skip_if_mock, skip_unless_enabled
 
 # GGUF 量化类型: 精度 vs 模型大小 vs 适用场景
 QUANT_TABLE = [
@@ -65,6 +66,12 @@ def device_recommendation() -> None:
 
 
 def main() -> None:
+    if skip_if_mock("llama-cpp-python 和本地 GGUF 模型"):
+        return
+    if skip_unless_enabled(
+        "LLAMA_CPP_RUN", "the llama-cpp-python backend and a reviewed local GGUF path"
+    ):
+        return
     # 1. 量化等级参考表 (无需库, 教学用)
     print_quant_table()
     device_recommendation()
@@ -113,6 +120,7 @@ def main() -> None:
 
     # 4. 资源清理
     print("\n✅ GGUF 优势: 单文件 + mmap + 跨平台 + 量化粒度细 (加载时间 ≈ 50ms)")
+    print("OK")
 
 
 if __name__ == "__main__":

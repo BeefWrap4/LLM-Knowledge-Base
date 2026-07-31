@@ -48,9 +48,9 @@ Python 3.13 核心新特性速览
 （以下代码需在 Python 3.13+ 环境中运行）
 """
 
-# 1. 实验性 no-GIL 模式（自由线程）— PEP 703
-#    2026年状态：已可通过官方实验性构建体验，生产环境尚不建议
-#    编译时启用：--disable-gil
+# 1. 可选的自由线程模式（free-threaded CPython）— PEP 703 / PEP 779
+#    Python 3.13：实验性；Python 3.14：进入正式支持阶段，但不是默认构建
+#    可安装官方 free-threaded 构建，或编译时使用 --disable-gil
 #    运行时检测：
 import sys
 if hasattr(sys, '_is_gil_enabled'):
@@ -58,7 +58,7 @@ if hasattr(sys, '_is_gil_enabled'):
 
 # 2. 改进的交互式解释器（彩色高亮、多行编辑）
 
-# 3. 实验性 JIT 编译器（性能提升 2-9%，基于复制解释的即时编译）
+# 3. 实验性 JIT 编译器（需使用启用 JIT 的 CPython 构建；收益依工作负载而异）
 
 # 4. 新的类型标注语法（PEP 702 警告废弃）
 from warnings import deprecated
@@ -72,23 +72,23 @@ def old_func():
 # 6. os.register_at_fork() 的清理机制改进
 ```
 
-**面试关键考点**：no-GIL 模式允许 Python 真正利用多核 CPU，多线程不再受 GIL 限制。这使得 Python 3.13+ 在 CPU 密集型任务中**有望**不再需要多进程方案。但截至 2026 年，nogil 仍为实验性功能，需专门编译启用，主流发行版尚未默认支持。
+**面试关键考点**：自由线程构建允许多个线程并行执行 Python 字节码，但它不会让所有多线程程序自动变快。锁竞争、对象访问模式、第三方 C 扩展兼容性和单线程性能都需要实测；多进程仍适用于隔离性更强或扩展尚未适配的场景。
 
-> 🆕 **2026年更新**：Python 3.13 的 nogil 模式已从"前瞻概念"进入"实验可用"阶段。PEP 703 已被接受，社区正在推进 C 扩展的线程安全适配。面试中需能解释 nogil 的底层实现原理（biased reference counting + 线程本地内存分配器）。
+> **截至 2026-07-31**：Python 3.13 的自由线程构建是实验性功能；Python 3.14 按 PEP 779 进入正式支持阶段，并提供可选官方构建，但默认 CPython 仍启用 GIL。面试中应区分“语言支持”“默认安装”和“第三方扩展已适配”三个层次。
 
 ---
 
-### 🆕 1.1.3 Python 3.14 新特性前瞻（2026年面试新考点）⭐⭐
+### 🆕 1.1.3 Python 3.14 已发布特性（截至 2026-07-31）⭐⭐
 
-Python 3.14 预计于 **2026 年 10 月**发布，是 Python 社区近年来的又一个里程碑版本。以下是已确认的核心新特性：
+Python 3.14 已于 **2025 年 10 月 7 日**发布。本节只列入 Python 官方文档确认的特性；具体补丁版本应以 [python.org 下载页](https://www.python.org/downloads/) 为准。
 
-#### 1. REPL 革命性改进（无需配置，开箱即用）
+#### 1. 新 REPL：3.13 引入，3.14 延续改进
 
-Python 3.14 的交互式解释器获得重大升级：
+彩色提示符、多行编辑、历史浏览和粘贴模式是 **Python 3.13 新 REPL** 的核心改进，不应归为 3.14 首次引入。Python 3.14 继续完善语法高亮等交互体验：
 
 ```python
 """
-🆕 Python 3.14 REPL 新特性（无需任何第三方库）
+Python 3.13+ 新 REPL 特性（无需第三方库）
 """
 
 # 1. 默认语法高亮 — 关键字、字符串、注释等自动着色
@@ -108,78 +108,52 @@ Python 3.14 的交互式解释器获得重大升级：
 # 5. 帮助文档直接显示 — help() 输出支持分页和语法高亮
 ```
 
-| 特性 | Python 3.13 及之前 | Python 3.14 |
-|------|-------------------|-------------|
-| 语法高亮 | 不支持（需 IPython/bpython） | ✅ 原生支持 |
-| 多行编辑 | ❌ 不支持 | ✅ Alt+Enter 插入新行 |
-| 历史搜索 | ↑↓ 逐条浏览 | ✅ Ctrl+R 模糊搜索 |
-| 粘贴模式 | 可能逐行执行出错 | ✅ 智能识别 |
-| 帮助显示 | 纯文本 | ✅ 高亮+分页 |
+| 特性 | 旧式 REPL | Python 3.13+ 新 REPL |
+|------|-----------|-----------------------|
+| 语法高亮 | 无内置彩色提示 | ✅ 3.13 引入彩色提示，3.14 继续扩展 |
+| 多行编辑 | 能输入代码块，但编辑能力有限 | ✅ 支持跨行编辑 |
+| 历史浏览 | 基础历史 | ✅ 改进的交互式历史浏览 |
+| 粘贴模式 | 多行粘贴容易受提示符影响 | ✅ 支持粘贴模式 |
 
-#### 2. 解释器性能优化
+#### 2. Python 3.14 的解释器与标准库变化
 
 ```python
 """
-🆕 Python 3.14 性能层面的改进
+Python 3.14 已确认变化
 """
 
-# 1. f-string 解析优化：PEP 701 引入的语法在 3.14 中进一步提速
-#    f"Hello {name}!" 的解析效率在嵌套场景下提升明显
+# 1. PEP 750：模板字符串（t-string），供库安全处理插值内容
+# 2. PEP 734：标准库 interpreters 模块，支持多个解释器
+# 3. PEP 784：标准库加入 Zstandard 压缩支持
+# 4. 实验性 JIT 和 tail-call interpreter 都依赖特定构建，
+#    不能承诺固定的性能提升
 
-# 2. __attribute__((noinline)) 等编译器提示优化 CPython 性能
-
-# 3. 字典和列表的内部实现微优化，减少内存碎片
-
-# 4. comptime（编译期求值）— 实验性功能
-#    允许在编译时计算常量表达式，减少运行时开销
-#    from __future__ import comptime  # 可能的使用方式（待定）
+# 注意：Python 3.14 没有 `from __future__ import comptime`
 ```
 
 #### 3. 类型系统增强
 
 ```python
 """
-🆕 Python 3.14 类型注解改进
+Python 3.14 类型注解改进
 """
 
-# 1. 泛型类型别名语法 — 使用 type 语句（PEP 695 的延伸）
-from typing import TypeVar
+# PEP 649 / PEP 749：注解默认延迟求值
+def repeat(value: "T", count: int) -> list["T"]:
+    return [value] * count
 
-T = TypeVar('T')
-
-# Python 3.12+ 方式
-# Point = tuple[float, float]
-
-# 3.14 支持的更清晰语法
-# type Point[T] = tuple[T, T]  # 泛型类型别名
-
-# 2. 更完善的 TypedDict 和 dataclass 互操作
-
-# 3. 类型收窄（Type Narrowing）行为改进
-#    isinstance()  narrowing 在更多场景下生效
-
-# 4. 更好的错误信息 — 类型相关报错信息更精确
+# `type Point[T] = tuple[T, T]` 是 PEP 695 语法，
+# 已在 Python 3.12 引入，不是 Python 3.14 新语法。
 ```
 
-#### 4. 开发者体验改进
+**面试要点**：优先回答“3.14 已发布的、能在官方文档定位的特性”，并说明自由线程、JIT 和 tail-call interpreter 是否属于默认构建。不要把 3.13 的 REPL、3.12 的 PEP 695 或未经接受的提案写成 3.14 新特性。
 
-```python
-"""
-🆕 Python 3.14 开发者体验（DX）改进
-"""
+**参考资料（核对日期：2026-07-31）**：
 
-# 1. 更精确的错误位置提示
-#    异常追踪现在能指向更精确的表达式位置
-
-# 2. 弃用警告改进 — @warnings.deprecated 的装饰器增强
-
-# 3. 模块级 __getattr__ 的类型推断改进
-
-# 4. 新的 warnings 过滤选项
-#    python -W error::DeprecationWarning script.py
-```
-
-**面试要点**：Python 3.14 的核心主题是**开发者体验**。REPL 的改进使得 IPython 不再是必需；性能优化延续了"每版本提速"的趋势；类型系统继续追赶 TypeScript 的表达能力。面试中提及这些新特性能展示你对 Python 生态的持续关注。
+- [Python 3.14.0 发布页](https://www.python.org/downloads/release/python-3140/)
+- [Python 3.14 新特性](https://docs.python.org/3/whatsnew/3.14.html)
+- [Python 3.13 新 REPL](https://docs.python.org/3.13/tutorial/appendix.html)
+- [PEP 779：Free-threaded Python is supported](https://peps.python.org/pep-0779/)
 
 ### 1.1.4 虚拟环境管理 ⭐⭐
 
@@ -1411,7 +1385,7 @@ def process_data(
 
 **启用方式**：`./configure --disable-gil` 后编译，运行时 `sys._is_gil_enabled()` 返回 `False`。
 
-**现状（2026年）**：仍为实验性功能，需要专门编译。主流第三方库（NumPy、PyTorch 等）正在适配线程安全的 C 扩展。生产环境建议使用标准 GIL 版本。
+**现状（截至 2026-07-31）**：3.13 中是实验性功能；3.14 中已进入正式支持阶段并有可选官方构建，但仍不是默认构建。上线前要验证 C 扩展兼容性、线程安全和实际吞吐，不能仅凭“无 GIL”推断会更快。
 
 **对并发编程的影响**：
 - CPU 密集型多线程**不再受 GIL 限制**，可以真正利用多核
@@ -1420,12 +1394,15 @@ def process_data(
 
 ### 🎯🆕 Q9：Python 3.14 有哪些值得关注的新特性？
 
-**A**：Python 3.14（预计 2026 年 10 月发布）的核心主题是**开发者体验**：
+**A**：Python 3.14 已于 2025 年 10 月 7 日发布。面试中可回答：
 
-1. **REPL 革命性改进**：原生语法高亮、多行编辑（Alt+Enter）、Ctrl+R 历史搜索、智能粘贴模式 —— 使得 IPython 不再是必需
-2. **解释器性能优化**：f-string 解析进一步优化、编译器提示优化（`noinline`）、字典/列表内存碎片减少
-3. **类型系统增强**：泛型类型别名语法 `type Point[T] = tuple[T, T]`、TypedDict 与 dataclass 互操作改进、类型收窄行为更完善
-4. **开发者体验**：更精确的异常位置追踪、`@warnings.deprecated` 增强
+1. **延迟求值注解**：PEP 649/749 改变注解的求值与读取方式
+2. **模板字符串**：PEP 750 为安全、可定制的插值处理提供结构化输入
+3. **多解释器标准库 API**：PEP 734 的 `interpreters` 模块
+4. **标准库能力**：加入 Zstandard 压缩支持
+5. **运行时演进**：自由线程进入支持阶段；JIT 与 tail-call interpreter 仍取决于构建方式
+
+新 REPL 主要由 Python 3.13 引入；PEP 695 的 `type Point[T] = ...` 则由 Python 3.12 引入。
 
 面试中提及这些新特性能展示候选人对 Python 生态的持续关注和前瞻性视野。
 
@@ -1436,8 +1413,8 @@ def process_data(
 ```
 Python 编程基础
 ├── 语言概览
-│   ├── Python 3.13 no-GIL 实验性
-│   ├── Python 3.14 REPL高亮/类型增强
+│   ├── Python 3.13 自由线程实验构建 / 新 REPL
+│   ├── Python 3.14 延迟注解 / t-string / 多解释器
 │   └── venv / conda 虚拟环境
 ├── 基础语法
 │   ├── 变量与数据类型
@@ -1460,7 +1437,7 @@ Python 编程基础
     └── PEP 8 编码规范
 ```
 
-> **章节小结**：本章从 Python 语言概览出发，覆盖了基础语法、四大核心数据结构、函数机制和异常处理。其中**字典哈希表原理**、**元组不可变性陷阱**、**默认参数延迟绑定**、**LEGB 规则**是面试中出现频率最高的考点，务必深入理解其底层机制。Python 3.13 的 **nogil 实验性模式** 和 Python 3.14 的 **REPL 改进** 是 2026 年面试中的新兴加分项，建议持续关注。
+> **章节小结**：本章从 Python 语言概览出发，覆盖了基础语法、四大核心数据结构、函数机制和异常处理。其中**字典哈希表原理**、**元组不可变性陷阱**、**默认参数延迟绑定**、**LEGB 规则**是面试中出现频率最高的考点，务必深入理解其底层机制。版本题要准确区分：Python 3.13 引入实验性自由线程构建和新 REPL，Python 3.14 让自由线程进入支持阶段并加入延迟注解、t-string 等特性。
 
 ## 📋 本章速查表
 

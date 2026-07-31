@@ -4,7 +4,7 @@
 # section: 20.2.3 Weights & Biases (W&B) 实战
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: wandb, openai (mocked fallback if unavailable)
+# deps: wandb, openai (live requires LLM_MOCK=0 and LLM_REAL_API=1)
 # run: python 03_wandb_llm_tracking.py
 # expected_runtime: < 1s (mocked) / depends on API (live)
 # expected_output: W&B run logged with results table; accuracy reported
@@ -16,52 +16,33 @@
 #  - 在没有 W&B 账号时如何离线模拟其核心数据流？
 
 import os
+import time
 
 try:
     import wandb
-
-    _HAS_WANDB = bool(os.getenv("WANDB_API_KEY"))
 except ImportError:
     wandb = None  # type: ignore
-    _HAS_WANDB = False
 
 try:
     from openai import OpenAI
-
-    _HAS_OPENAI = bool(os.getenv("OPENAI_API_KEY"))
 except ImportError:
     OpenAI = None  # type: ignore
-    _HAS_OPENAI = False
-
-
-def _mock_openai():
-    class _Choice:
-        def __init__(self, content, ct, tt):
-            self.message = type("M", (), {"content": content})()
-            self.usage = type("U", (), {"completion_tokens": ct, "total_tokens": tt})()
-
-    class _Mock:
-        class chat:
-            class completions:
-                @staticmethod
-                def create(model, messages, temperature=0.1, max_tokens=200):
-                    user_msg = messages[-1]["content"]
-                    return _Choice(f"Answer for: {user_msg}", ct=50, tt=80)
-
-    return _Mock()
-
 
 def main():
-    if wandb is None or not _HAS_WANDB:
-        print("wandb not available — running offline mock to demonstrate data flow")
+    live_api = os.environ.get("LLM_REAL_API") == "1" and os.environ.get("LLM_MOCK") == "0"
+    if not live_api:
         return _offline_mock()
+    if wandb is None or OpenAI is None:
+        raise RuntimeError("LLM_REAL_API=1 requires both wandb and openai packages")
+
+    model = os.environ.get("OPENAI_MODEL", "gpt-5.6")
 
     # 初始化 W&B
     wandb.init(
         project="llm-qa-evaluation",
         name=f"experiment-{wandb.util.generate_id()}",
         config={
-            "model": "gpt-4o",
+            "model": model,
             "temperature": 0.1,
             "max_tokens": 200,
             "prompt_version": "v3_expert",
@@ -69,7 +50,7 @@ def main():
         },
     )
 
-    client = OpenAI() if _HAS_OPENAI and OpenAI is not None else _mock_openai()
+    client = OpenAI()
 
     # 创建 W&B Table 记录每个样本的详细结果
     results_table = wandb.Table(columns=["query", "expected", "predicted", "correct", "latency_ms", "tokens"])
@@ -80,13 +61,23 @@ def main():
     ]
 
     for query, expected in test_data:
+        started_at = time.perf_counter()
+        model_kwargs = (
+            {
+                "reasoning_effort": "none",
+                "max_completion_tokens": wandb.config.max_tokens,
+            }
+            if model.startswith("gpt-5.6")
+            else {"max_tokens": wandb.config.max_tokens}
+        )
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=model,
             messages=[{"role": "user", "content": query}],
             temperature=wandb.config.temperature,
-            max_tokens=wandb.config.max_tokens,
+            **model_kwargs,
         )
         predicted = response.choices[0].message.content
+        latency_ms = (time.perf_counter() - started_at) * 1000
         is_correct = expected.lower() in predicted.lower()
 
         results_table.add_data(
@@ -94,7 +85,7 @@ def main():
             expected,
             predicted[:200],
             is_correct,
-            response.usage.completion_tokens,
+            latency_ms,
             response.usage.total_tokens,
         )
 
@@ -107,6 +98,7 @@ def main():
     )
 
     wandb.finish()
+    print("OK")
 
 
 def _offline_mock():
@@ -124,6 +116,7 @@ def _offline_mock():
     ]
     accuracy = sum(1 for r in rows if r[3]) / len(rows)
     print(f"[offline] accuracy={accuracy:.2%}, table_rows={len(rows)}")
+    print("OK")
 
 
 if __name__ == "__main__":

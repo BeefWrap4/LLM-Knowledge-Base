@@ -4,6 +4,7 @@
 # section: 26.2.3 Action Chunking — VLA 通用技术
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: torch
 # run: python 08_action_chunking.py
 # expected_runtime: 5-10s (action chunking 演示)
@@ -148,12 +149,13 @@ def main() -> None:
     print("=" * 60)
     print("Action Chunking 优势:")
     print("  - 平滑: 1 次预测 K 步, 避免单步抖动")
-    print("  - 高效: 1 次 forward vs K 次单步 (节省 K 倍计算)")
+    print("  - 调度: 以一次 chunk 预测替代逐步调用；实际加速不等于固定 K 倍")
     print("  - 时序: 显式建模动作轨迹 (适合长任务)")
     print("  - 风险: open-loop 错误累积 (compounding error)")
     print()
-    print("应用: ACT (chunk=100), Diffusion Policy (chunk=8-16), Pi0 (chunk=50)")
+    print("ACT、Diffusion Policy、π0 等均可使用动作分块；chunk 长度按任务与实现核对。")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

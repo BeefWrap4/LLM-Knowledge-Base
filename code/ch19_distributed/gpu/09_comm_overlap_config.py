@@ -4,6 +4,7 @@
 # section: 19.8.3
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: 无 (配置示例)
 # run: python 09_comm_overlap_config.py
 # expected_runtime: <1s
@@ -19,7 +20,7 @@
 DEEPSPEED_COMM_OVERLAP_CONFIG = {
     "zero_optimization": {
         "overlap_comm": True,  # ✅ 启用通信重叠
-        "reduce_bucket_size": 5e8,  # 500MB bucket (更大 = 更好重叠)
+        "reduce_bucket_size": 5e8,  # 示例值；更大不必然更快，也会增加峰值内存/等待时间
         "allgather_bucket_size": 5e8,
         "contiguous_gradients": True,  # ✅ 梯度连续存储
         "round_robin_gradients": True,  # ✅ 轮询梯度分组 (更好的负载均衡)
@@ -49,7 +50,7 @@ def make_fsdp_with_prefetch(model, local_rank):
     return FSDP(
         model,
         backward_prefetch=BackwardPrefetch.BACKWARD_PRE,
-        forward_prefetch=True,  # FSDP2 支持前向预取
+        forward_prefetch=True,  # 适合静态图且 CPU 调度受限场景，需 profile 决定
         device_id=local_rank,
     )
 
@@ -63,8 +64,9 @@ def main():
     print("=" * 60)
     print("FSDP 通信重叠:")
     print("  backward_prefetch=BackwardPrefetch.BACKWARD_PRE")
-    print("  forward_prefetch=True  # FSDP2 新特性")
+    print("  forward_prefetch=True  # 仅作静态图配置示例，生产需 profile")
     print("=" * 60)
+    print("OK")
 
 
 if __name__ == "__main__":

@@ -133,3 +133,4 @@ if __name__ == "__main__":
             f"Train Acc={train_acc:.4f}, Test Loss={test_loss:.4f}, "
             f"Test Acc={test_acc:.4f}"
         )
+    print("OK")

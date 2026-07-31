@@ -26,8 +26,13 @@ def nucleus_sampling(logits, p: float = 0.9):
         logits: 模型输出的原始分数 [vocab_size]
         p: 累积概率阈值（通常 0.85-0.95）
     """
-    # 1. 计算概率分布
-    probs = np.exp(logits) / np.sum(np.exp(logits))
+    if not 0 < p <= 1:
+        raise ValueError("p 必须在 (0, 1] 范围内")
+
+    # 1. 计算概率分布；减去最大值避免较大 logits 触发 exp 溢出
+    shifted_logits = logits - np.max(logits)
+    exp_logits = np.exp(shifted_logits)
+    probs = exp_logits / np.sum(exp_logits)
 
     # 2. 按概率降序排序
     sorted_indices = np.argsort(probs)[::-1]
@@ -35,7 +40,7 @@ def nucleus_sampling(logits, p: float = 0.9):
 
     # 3. 累积概率，找到核
     cumsum = np.cumsum(sorted_probs)
-    nucleus_size = np.searchsorted(cumsum, p) + 1
+    nucleus_size = min(int(np.searchsorted(cumsum, p, side="left")) + 1, len(sorted_probs))
 
     # 4. 只在核内重新归一化并采样
     nucleus_probs = sorted_probs[:nucleus_size]
@@ -55,3 +60,4 @@ if __name__ == "__main__":
     for p in [0.5, 0.9, 0.99]:
         chosen, n_size = nucleus_sampling(logits, p=p)
         print(f"p={p:.2f} → 核大小={n_size}, 采样 token id={chosen}")
+    print("OK")

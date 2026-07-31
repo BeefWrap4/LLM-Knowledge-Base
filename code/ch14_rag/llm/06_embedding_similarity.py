@@ -31,17 +31,21 @@ def get_mock_embeddings(sentences: list[str]) -> np.ndarray:
     return base / norms
 
 
-sentences = [
-    "机器学习是人工智能的一个分支",
-    "深度学习是机器学习的一种方法",
-    "苹果是一种水果",
-]
-embeddings = get_mock_embeddings(sentences)
+def main() -> None:
+    sentences = [
+        "机器学习是人工智能的一个分支",
+        "深度学习是机器学习的一种方法",
+        "苹果是一种水果",
+    ]
+    embeddings = get_mock_embeddings(sentences)
 
-# 计算余弦相似度矩阵
-sim_matrix = np.dot(embeddings, embeddings.T)
-print("相似度矩阵：")
-print(np.round(sim_matrix, 2))
-# 期望效果：前两句相似度高（都是 AI 相关），第三句差异大
+    # 计算余弦相似度矩阵
+    sim_matrix = np.dot(embeddings, embeddings.T)
+    print("相似度矩阵：")
+    print(np.round(sim_matrix, 2))
+    # 期望效果：前两句相似度高（都是 AI 相关），第三句差异大
+    print("OK")
 
-print("OK")
+
+if __name__ == "__main__":
+    main()

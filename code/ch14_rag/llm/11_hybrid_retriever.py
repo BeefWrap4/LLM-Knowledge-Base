@@ -103,7 +103,7 @@ if __name__ == "__main__":
         "Vector search is fast for semantic match.",
         "BM25 用于关键词匹配。",
         "今天天气很好。",
-        "GPT-4 是 OpenAI 的大模型。",
+        "gpt-5.6 是 OpenAI 当前 GPT-5.6 Sol 的 API 别名。",
     ]
     rng = np.random.default_rng(0)
     emb = rng.normal(size=(len(docs), 32)).astype(np.float32)
@@ -114,3 +114,4 @@ if __name__ == "__main__":
     results = retriever.search("什么是 RAG", q_emb, top_k=3, alpha=0.7, beta=0.3)
     for idx, score in results:
         print(f"  idx={idx}  score={score:.4f}  doc={docs[idx]!r}")
+    print("OK")

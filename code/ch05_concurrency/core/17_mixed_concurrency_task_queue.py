@@ -16,9 +16,11 @@
 #   - asyncio.Queue + Semaphore 实现"有限并发"的常见模式？
 import asyncio
 import time
+from collections.abc import Coroutine
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 
 # ========== 混合并发：IO 协程 + CPU 进程池 ==========
@@ -37,7 +39,7 @@ async def fetch_data(session, url: str) -> dict:
     return {"id": url, "value": 1}
 
 
-async def process_urls(urls: list) -> list:
+async def process_urls(urls: list[str]) -> list[dict]:
     """
     混合并发模式：
     - IO 部分用 asyncio（协程处理 HTTP 请求）
@@ -98,7 +100,7 @@ class TaskStatus(Enum):
 @dataclass
 class Task:
     id: str
-    coro: "asyncio.coroutines"  # 协程对象
+    coro: Coroutine[Any, Any, object]
     status: TaskStatus = TaskStatus.PENDING
     result: object = None
 
@@ -112,7 +114,7 @@ class TaskQueue:
         self.tasks = {}
         self.semaphore = asyncio.Semaphore(max_workers)
 
-    async def submit(self, task_id: str, coro) -> Task:
+    async def submit(self, task_id: str, coro: Coroutine[Any, Any, object]) -> Task:
         """提交任务到队列"""
         task = Task(id=task_id, coro=coro)
         self.tasks[task_id] = task
@@ -180,3 +182,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+    print("OK")

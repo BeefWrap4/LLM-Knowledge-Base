@@ -85,3 +85,4 @@ def full_comparison():
 
 if __name__ == "__main__":
     full_comparison()
+    print("OK")

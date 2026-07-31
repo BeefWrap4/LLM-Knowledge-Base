@@ -17,6 +17,8 @@
 
 # bge-reranker-v2-m3 重排序示例（mock 演示版）
 
+import re
+
 
 class FlagRerankerMock:
     """Mock FlagReranker: 模拟 FlagEmbedding 接口"""
@@ -35,9 +37,9 @@ class FlagRerankerMock:
         """返回每个候选的相关性分数"""
         scores = []
         for query, doc in pairs:
-            # Mock: 简单关键词重合度 + 长度奖励
-            q_words = set(query.lower().split())
-            d_words = set(doc.lower().split())
+            # 离线近似：中英文字符/词元重合度；不代表真实模型分数。
+            q_words = set(re.findall(r"[\u4e00-\u9fff]|[a-z0-9_]+", query.lower()))
+            d_words = set(re.findall(r"[\u4e00-\u9fff]|[a-z0-9_]+", doc.lower()))
             overlap = len(q_words & d_words)
             score = overlap / max(len(q_words | d_words), 1)
             scores.append(float(score))
@@ -59,3 +61,4 @@ if __name__ == "__main__":
     # scores = [0.95, 0.02, 0.89]
     for c, s in zip(candidates, scores):
         print(f"  score={s:.3f}  doc={c!r}")
+    print("OK")

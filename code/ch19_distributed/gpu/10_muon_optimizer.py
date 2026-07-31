@@ -4,6 +4,7 @@
 # section: 19.9.1
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: torch
 # run: python 10_muon_optimizer.py
 # expected_runtime: <5s (无 torch.compile 时)
@@ -18,21 +19,20 @@
 # 4. Muon 与 ZeRO-3 兼容吗? 它的动量如何被分片?
 
 
-# === Multi-GPU / heavy model guard (auto-added) ===
 import os as _os
-import sys as _sys
 
-_NGPU = _os.environ.get("WORLD_SIZE", "1")
-if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
-    _sys.exit(0)
-import torch
+try:
+    import torch
+except ImportError:
+    print("[SKIP] 需要 torch；请安装 GPU tier 依赖")
+    print("OK")
+    raise SystemExit(0)
 from torch import Tensor
 
-# 在没有 torch.compile 的环境下, 退化为普通函数
-try:
+# 编译会产生较大一次性开销；默认 smoke 使用普通函数，显式开启才编译。
+if _os.environ.get("CH19_MUON_COMPILE") == "1" and hasattr(torch, "compile"):
     _compile = torch.compile
-except AttributeError:
+else:
 
     def _compile(fn, **_kw):
         return fn
@@ -62,9 +62,9 @@ def zeropower_via_newtonschulz5(G: Tensor, steps: int = 5, eps: float = 1e-7) ->
 
 class Muon(torch.optim.Optimizer):
     """
-    Muon: Momentum Orthogonalized by Newton-Schulz.
+    Muon 核心步骤的教学实现，不替代 DeepSpeed/PyTorch 生产实现。
     用法: optimizer = Muon(model_params, lr=0.02, momentum=0.95)
-    注意: 仅用于 >= 2D 参数 (矩阵), embedding / lm_head 仍用 AdamW。
+    生产实践通常只将符合条件的隐藏层矩阵交给 Muon，其余参数交给 AdamW。
     """
 
     def __init__(
@@ -141,8 +141,9 @@ def main():
     muon.step()
     muon.zero_grad()
     print("=" * 60)
-    print("DeepSpeed 2026.06 集成方式:")
-    print("  deepspeed --num_gpus=64 train.py --optimizer muon")
+    print("DeepSpeed 配置入口（当前官方支持 ZeRO 1/2/3）:")
+    print('  "optimizer": {"type": "Muon", "params": {"lr": 0.001, "momentum": 0.95}}')
+    print("  参数分组、ns_method 与 ZeRO/offload 选项请以当前 DeepSpeed 文档为准")
     print("=" * 60)
 
 

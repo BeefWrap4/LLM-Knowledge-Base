@@ -6,8 +6,54 @@
 See: tutorial/Ch11_深度学习与PyTorch, Ch25_推理引擎与高性能服务 §25.4
 """
 
+import os
 import shutil
 import sys
+
+
+def skip_if_mock(requirement: str) -> bool:
+    """在显式 mock 模式下跳过真实硬件或本地服务调用。
+
+    ``run_all_examples.py --tier gpu`` 会向 GPU 示例传入 ``--mock``。
+    示例必须在接触 CUDA、模型文件、浏览器或本地推理服务之前调用本函数，
+    从而让离线 CI 清楚地区分“条件性跳过”和“真实运行通过”。
+
+    Args:
+        requirement: 面向读者的真实运行前置条件说明。
+
+    Returns:
+        ``True`` 表示调用方应立即从 ``main()`` 返回；否则继续真实运行。
+    """
+    mock_requested = "--mock" in sys.argv or os.environ.get("GPU_MOCK") == "1"
+    if not mock_requested:
+        return False
+
+    print(f"[SKIP] GPU mock mode: real execution requires {requirement}.")
+    print("OK")
+    return True
+
+
+def skip_unless_enabled(env_var: str, requirement: str) -> bool:
+    """Skip an external, long-running, or costly path unless explicitly enabled.
+
+    Real-GPU batch validation intentionally does not imply permission to bind a
+    service port, compile an engine, deploy cloud resources, or download a
+    checkpoint. Those operations need their own named environment gate.
+    """
+    if os.environ.get(env_var) == "1":
+        return False
+    print(f"[SKIP] Set {env_var}=1 only after reviewing {requirement}.")
+    print("OK")
+    return True
+
+
+def skip_unless_apple_silicon(requirement: str = "Apple Silicon and MLX") -> bool:
+    """Return a structured skip on non-Apple-Silicon hosts."""
+    if _platform_system() == "Darwin" and _platform_machine() == "arm64":
+        return False
+    print(f"[SKIP] This example requires {requirement}.")
+    print("OK")
+    return True
 
 
 def require_cuda(min_gb: float = 0) -> dict:

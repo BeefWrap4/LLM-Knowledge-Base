@@ -65,3 +65,4 @@ if __name__ == "__main__":
     # 不再断言 app.middleware_stack (懒加载), 只验证 add_middleware 已注册
     assert len(middleware_classes) >= 2
     print("自定义 log_requests 中间件通过 add_middleware 链路生效")
+    print("OK")

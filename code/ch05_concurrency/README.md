@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch05_concurrency/core/01_threading_basics.py
+python ch05_concurrency/core/04_threading_basics.py
 ```
 
 ## 关联章节

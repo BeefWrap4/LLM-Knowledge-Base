@@ -14,7 +14,7 @@
 # Interview hooks:
 #  1. ReduceLROnPlateau 与其他 scheduler 在 step() 调用上有什么不同? (需要传 metric)
 #  2. CosineAnnealingWarmRestarts 的 T_0/T_mult 含义? 与 OneCycleLR 的对比?
-#  3. Warmup 阶段的作用是什么? 为什么 Transformer 训练必须有 warmup?
+#  3. Warmup 阶段的作用是什么? 为什么 Transformer 训练经常使用而非强制要求 warmup?
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
 
@@ -23,13 +23,13 @@ _dummy_model = torch.nn.Linear(10, 2)
 optimizer = torch.optim.Adam(_dummy_model.parameters(), lr=1e-3)
 
 # 方式1: Step Decay
-scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
+step_scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
 
-# 方式2: Reduce on Plateau（推荐通用场景）
-scheduler = ReduceLROnPlateau(optimizer, mode="min", patience=5, factor=0.5)
+# 方式2: Reduce on Plateau（适合有稳定验证指标的场景）
+plateau_scheduler = ReduceLROnPlateau(optimizer, mode="min", patience=5, factor=0.5)
 
-# 方式3: Cosine Annealing with Warmup（Transformer 训练）
-scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
+# 方式3: Cosine Annealing with Warm Restarts（周期重启，不是线性 warmup）
+cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
 
 
 if __name__ == "__main__":
@@ -41,6 +41,14 @@ if __name__ == "__main__":
     sch = StepLR(opt, step_size=2, gamma=0.5)  # 短 step 便于演示
 
     print("StepLR lr 走势 (step_size=2, gamma=0.5):")
-    for step in range(5):
-        print(f"  step={step}  lr={opt.param_groups[0]['lr']:.6f}")
+    for epoch in range(5):
+        lr_used = opt.param_groups[0]["lr"]
+        opt.zero_grad()
+        loss = m(torch.zeros(1, 10)).sum()
+        loss.backward()
+        opt.step()
+        # epoch-based scheduler 应在 optimizer.step() 之后调用。
         sch.step()
+        next_lr = opt.param_groups[0]["lr"]
+        print(f"  epoch={epoch + 1}  lr_used={lr_used:.6f}  next_lr={next_lr:.6f}")
+    print("OK")

@@ -7,7 +7,7 @@
 #   python code/scripts/sync_links.py --inject     # 自动给教程补充 → [code] 链接
 # ---
 """
-解析教程 ## X.Y(.Z) 章节 + code # section: X.Y(.Z), 验证双向链接.
+解析教程 ## X.Y(.Z...) 章节 + code # section: X.Y(.Z...), 验证双向链接.
 
 报告 3 项:
   1. 教程章节覆盖: 哪些 §X.Y 有 code 例子, 哪些没有
@@ -27,20 +27,21 @@ REPO = Path(__file__).resolve().parent.parent.parent
 TUTORIAL_DIR = REPO
 CODE_DIR = REPO / "code"
 
-# 匹配 ## 12.2 或 ## 12.2.5 (h2) 或 ### 12.2.5 (h3, sub-section)
-TUTORIAL_SECTION_RE = re.compile(r"^#{2,3}\s+(\d{1,2})\.(\d+)(?:\.(\d+))?\s+(.+?)(?:\s+⭐+)?\s*$")
-# 匹配 code frontmatter 中的 section: X.Y(.Z) + 可选标题
-CODE_SECTION_RE = re.compile(r"#\s*section:\s*(\d{1,2})\.(\d+)(?:\.(\d+))?(?:\s+(.+?))?\s*$")
+# 支持 12.2、12.2.5、24.6.5.1 等任意合理深度，避免四级编号被静默忽略。
+TUTORIAL_SECTION_RE = re.compile(
+    r"^#{2,6}\s+(\d{1,2}(?:\.\d+)+)\s+(.+?)(?:\s+⭐+)?\s*$"
+)
+# 匹配 code frontmatter 中的 section: X.Y(.Z...) + 可选标题
+CODE_SECTION_RE = re.compile(r"#\s*section:\s*(\d{1,2}(?:\.\d+)+)(?:\s+(.+?))?\s*$")
 
 
-def parse_tutorial_sections() -> dict[tuple, list[tuple[Path, int, str]]]:
-    """Returns {(chapter, section, sub): [(file, line, title), ...]}.
+def parse_tutorial_sections() -> dict[tuple[int, ...], list[tuple[Path, int, str]]]:
+    """Returns {(chapter, section, ...): [(file, line, title), ...]}.
 
     Example: {(12, 2, 5): [(Path('12_...md'), 123, 'Self-Attention ...')]}
-    Sub=0 means main section (12.2 not 12.2.5).
     """
-    sections: dict[tuple, list[tuple[Path, int, str]]] = defaultdict(list)
-    for md in sorted(TUTORIAL_DIR.glob("*.md")):
+    sections: dict[tuple[int, ...], list[tuple[Path, int, str]]] = defaultdict(list)
+    for md in sorted(TUTORIAL_DIR.glob("[0-9][0-9]_*.md")):
         if md.name in (
             "00_目录索引.md",
             "99_库健康检查报告.md",
@@ -52,35 +53,29 @@ def parse_tutorial_sections() -> dict[tuple, list[tuple[Path, int, str]]]:
         for line_no, line in enumerate(md.read_text(encoding="utf-8").splitlines(), 1):
             m = TUTORIAL_SECTION_RE.match(line)
             if m:
-                ch, sec, sub, title = m.groups()
-                key = (int(ch), int(sec), int(sub) if sub else 0)
+                number, title = m.groups()
+                key = tuple(int(part) for part in number.split("."))
                 sections[key].append((md, line_no, title.strip()))
     return sections
 
 
-def parse_code_sections() -> list[tuple[Path, tuple, str]]:
-    """Returns [(code_file, (ch, sec, sub), title), ...]."""
+def parse_code_sections() -> list[tuple[Path, tuple[int, ...], str]]:
+    """Returns [(code_file, (ch, section, ...), title), ...]."""
     results: list[tuple[Path, tuple, str]] = []
     for py in sorted(CODE_DIR.glob("ch*/*/*.py")):
         for line in py.read_text(encoding="utf-8").splitlines()[:15]:
             m = CODE_SECTION_RE.match(line)
             if m:
-                ch, sec, sub, title = m.groups()
-                key = (int(ch), int(sec), int(sub) if sub else 0)
+                number, title = m.groups()
+                key = tuple(int(part) for part in number.split("."))
                 results.append((py, key, (title or "").strip()))
                 break
     return results
 
 
-def normalize_section(key: tuple) -> tuple:
-    """Allow sub=0 to match any sub-section, and vice versa.
-
-    Accepts both 2-tuple (ch, sec) and 3-tuple (ch, sec, sub).
-    """
-    if len(key) == 2:
-        return key
-    ch, sec, sub = key
-    return (ch, sec)
+def normalize_section(key: tuple[int, ...]) -> tuple[int, int]:
+    """Normalize any section depth to its chapter + main-section key."""
+    return key[0], key[1]
 
 
 def coverage_report(tut_sections: dict, code_refs: list) -> tuple[int, int, list, list]:
@@ -88,34 +83,20 @@ def coverage_report(tut_sections: dict, code_refs: list) -> tuple[int, int, list
 
     Smart matching: if code refs §1.1.2 and tutorial has only §1.1, treat as match.
     """
-    # All tutorial section keys (ch, sec, sub) and (ch, sec)
-    tut_main_keys = set()  # (ch, sec) — for section-level coverage
-    tut_sub_keys = set()  # (ch, sec, sub) — for sub-level matching
-    for key in tut_sections.keys():
-        ch, sec, sub = key
-        tut_main_keys.add((ch, sec))
-        if sub:
-            tut_sub_keys.add((ch, sec, sub))
+    # All exact tutorial keys and their chapter + main-section parents.
+    tut_exact_keys = set(tut_sections)
+    tut_main_keys = {normalize_section(key) for key in tut_sections}
 
     # Code references: smart matching
     code_keys = set()
     orphan = []
     for py, key, title in code_refs:
-        ch, sec, sub = key
-        if sub:
-            # Try exact (ch, sec, sub) first, then fallback to (ch, sec)
-            if (ch, sec, sub) in tut_sub_keys:
-                code_keys.add((ch, sec, sub))
-            elif (ch, sec) in tut_main_keys:
-                code_keys.add((ch, sec))  # fallback to parent section
-            else:
-                orphan.append((py, key, title))
+        if key in tut_exact_keys:
+            code_keys.add(key)
+        elif normalize_section(key) in tut_main_keys:
+            code_keys.add(normalize_section(key))
         else:
-            # sub=0 → check (ch, sec) exists
-            if (ch, sec) in tut_main_keys:
-                code_keys.add((ch, sec))
-            else:
-                orphan.append((py, key, title))
+            orphan.append((py, key, title))
 
     # Sections with code
     sections_with_code = set()
@@ -125,8 +106,7 @@ def coverage_report(tut_sections: dict, code_refs: list) -> tuple[int, int, list
     # Tutorial sections without any code
     missing = []
     for key in tut_sections.keys():
-        ch, sec, sub = key
-        if (ch, sec) not in sections_with_code:
+        if normalize_section(key) not in sections_with_code:
             missing.append(key)
 
     return len(tut_sections), len(sections_with_code), orphan, missing
@@ -140,17 +120,18 @@ def inject_links(tut_sections: dict, code_refs: list) -> dict[Path, list[str]]:
     # Build (ch, sec, sub) -> [(code_path_rel, title), ...]
     code_by_section: dict[tuple, list[tuple[str, str]]] = defaultdict(list)
     for py, key, title in code_refs:
-        ch, sec, sub = key
         rel_path = str(py.relative_to(REPO))
         code_by_section[key].append((rel_path, title))
 
     # Group by tutorial md
     injects: dict[Path, list[tuple[int, str]]] = defaultdict(list)
     for key, refs in tut_sections.items():
-        ch, sec, sub = key
         # Find code for this section
-        # Match by (ch, sec, sub) exact, or (ch, sec) with sub=0
-        candidates = code_by_section.get((ch, sec, sub), []) + code_by_section.get((ch, sec, 0), [])
+        # Match the exact section first, then the chapter + main-section parent.
+        candidates = list(code_by_section.get(key, []))
+        parent = normalize_section(key)
+        if key != parent:
+            candidates += code_by_section.get(parent, [])
         if not candidates:
             continue
         # Find the first reference's md + line
@@ -175,6 +156,12 @@ def inject_links(tut_sections: dict, code_refs: list) -> dict[Path, list[str]]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--inject", action="store_true", help="自动给教程补充 → [code] 链接")
+    ap.add_argument(
+        "--min-coverage",
+        type=float,
+        default=13.0,
+        help="章节主节代码覆盖率最低百分比；默认守住当前 13%% 基线",
+    )
     args = ap.parse_args()
 
     tut_sections = parse_tutorial_sections()
@@ -202,9 +189,10 @@ def main() -> int:
     total_sections, sections_with_code, orphans, missing = coverage_report(tut_sections, code_refs)
 
     print("\n[3/3] 双向覆盖率")
+    cov = 0.0
     if total_sections > 0:
-        cov = sections_with_code * 100 // total_sections
-        print(f"  教程章节有 code 覆盖: {sections_with_code}/{total_sections} ({cov}%)")
+        cov = sections_with_code * 100 / total_sections
+        print(f"  教程章节有 code 覆盖: {sections_with_code}/{total_sections} ({cov:.1f}%)")
 
     if orphans:
         print(f"\n--- ORPHAN CODE REFS ({len(orphans)}) ---")
@@ -217,15 +205,20 @@ def main() -> int:
     if missing:
         print(f"\n--- TUTORIAL SECTIONS WITHOUT CODE ({len(missing)}) ---")
         for key in sorted(missing)[:20]:
-            ch, sec, sub = key
-            label = f"§{ch}.{sec}" + (f".{sub}" if sub else "")
+            label = "§" + ".".join(map(str, key))
             print(f"  {label}  (in {tut_sections[key][0][0].name})")
         if len(missing) > 20:
             print(f"  ... and {len(missing) - 20} more")
 
-    print(f"\n=== {'PASS' if not orphans else 'FAIL (orphan code refs)'} ===")
+    coverage_ok = cov >= args.min_coverage
+    failures = []
+    if orphans:
+        failures.append("orphan code refs")
+    if not coverage_ok:
+        failures.append(f"coverage {cov:.1f}% < {args.min_coverage:.1f}%")
+    print(f"\n=== {'PASS' if not failures else 'FAIL (' + '; '.join(failures) + ')'} ===")
 
-    if args.inject and not orphans:
+    if args.inject and not failures:
         # Auto-inject links
         print("\n=== Injecting → [code] links ===")
         injects = inject_links(tut_sections, code_refs)
@@ -235,7 +228,7 @@ def main() -> int:
     elif args.inject:
         print("\n  ! Skip inject due to orphan code refs (fix those first)")
 
-    return 1 if orphans else 0
+    return 1 if failures else 0
 
 
 if __name__ == "__main__":

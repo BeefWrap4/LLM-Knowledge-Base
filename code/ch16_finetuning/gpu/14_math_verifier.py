@@ -1,23 +1,25 @@
 # ---
 # chapter: 16
 # topic: 数学表达式验证器 (RLVR Verifier, 纯 stdlib)
-# section: 16.11.4
+# section: 16.10.4
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: (stdlib only - ast, re, fractions)
 # run: python 14_math_verifier.py
 # expected_runtime: <1s
 # expected_output: 7 个测试用例的 verify 结果
 # ---
-# See: ../tutorial/16_模型微调与推理优化.md §16.11.4
+# See: ../../../16_模型微调与推理优化.md §16.10.4
 #
 # Interview hooks:
-#   1. RLVR 与传统 RLHF 的核心区别？奖励噪声对比？
+#   1. Verifier 可重复为什么不等于“奖励无噪声”？
 #   2. 数学题 verifier 的容错设计：符号等价 / 数值等价 / 表达式解析？
 #   3. 复合奖励 (准确性 + 格式) 的工程价值？避免模型"猜答案"投机？
 """RLVR (RL with Verifiable Rewards) 数学表达式验证器.
 
-奖励来自可自动验证的程序 (非人类偏好), 几乎零噪声.
+程序化 verifier 可以重复执行，但其规格、解析器、标准答案与测试覆盖仍可能有误，也可能被
+策略利用。本例只覆盖有限算术语法，不代表数学证明验证器。
 
 支持:
   - 基本运算 + - * /
@@ -27,6 +29,7 @@
 """
 
 import ast
+import math
 import re
 import sys
 from fractions import Fraction
@@ -39,13 +42,17 @@ if str(_code_root) not in sys.path:
 
 def safe_eval(expr: str) -> float:
     """用 ast 安全求值, 无内置 eval 注入风险."""
+    if len(expr) > 128:
+        raise ValueError("表达式过长")
     tree = ast.parse(expr, mode="eval")
     return _eval_node(tree.body)
 
 
 def _eval_node(node):
     if isinstance(node, ast.Constant):
-        if isinstance(node.value, (int, float)):
+        if type(node.value) in {int, float}:
+            if not math.isfinite(node.value) or abs(node.value) > 1e12:
+                raise ValueError("数值超出教学验证器范围")
             return node.value
         raise ValueError(f"不支持的字面量: {type(node.value).__name__}")
     if isinstance(node, ast.BinOp):
@@ -64,6 +71,8 @@ def _eval_node(node):
         if isinstance(node.op, ast.Mod):
             return left % right
         if isinstance(node.op, ast.Pow):
+            if not isinstance(right, int) or abs(right) > 12:
+                raise ValueError("指数超出教学验证器范围")
             return left**right
     if isinstance(node, ast.UnaryOp):
         if isinstance(node.op, ast.USub):
@@ -92,7 +101,7 @@ def verify(expected: str, predicted: str, tol: float = 1e-6) -> bool:
         e_val = Fraction(safe_eval(expected))
         p_val = Fraction(safe_eval(predicted))
         return abs(float(e_val - p_val)) < tol
-    except (ValueError, SyntaxError, ZeroDivisionError):
+    except (OverflowError, TypeError, ValueError, SyntaxError, ZeroDivisionError):
         return False
 
 
@@ -141,7 +150,7 @@ def main():
         print(f"  [{mark}] verify({expected!r}, {predicted!r}) = {got}  (期望 {want})")
     print(f"\n  {correct}/{len(test_cases)} 通过\n")
 
-    print("[2/2] composite_reward() RLVR 复合奖励 (DeepSeek-R1 风格):\n")
+    print("[2/2] composite_reward() 复合奖励（格式 bonus 不证明过程正确）:\n")
     rlvr_cases = [
         ("<think>因式分解 (x-2)(x-3)...</think>答案是 \\boxed{2, 3}", "2, 3"),
         ("<think>...</think>\\boxed{1, 4}", "2, 3"),  # 错答案
@@ -155,6 +164,8 @@ def main():
             f"| boxed={info['has_boxed']} | think={info['has_think']}"
         )
         print(f"    pred='{output[:60]}...' gt='{gt}'")
+    print("\n  注意: verifier 仍需规格审查、对抗测试和人工抽检")
+    print("OK")
 
 
 if __name__ == "__main__":

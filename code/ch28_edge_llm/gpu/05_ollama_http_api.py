@@ -27,6 +27,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import require_ollama, skip_if_mock, skip_unless_enabled
 
 
 def call_ollama_native(prompt: str = "Hello!", model: str = "llama3.2:3b") -> str:
@@ -82,9 +83,13 @@ def call_ollama_openai_compat(prompt: str = "Hello!", model: str = "llama3.2:3b"
 
 
 def main() -> None:
+    if skip_if_mock("运行中的 Ollama 服务和已下载的 llama3.2:3b 模型"):
+        return
+    if skip_unless_enabled(
+        "OLLAMA_EXAMPLE_RUN", "the local Ollama service, installed model, and prompt boundary"
+    ):
+        return
     # 1) 健康检查: Ollama 服务 + 模型可用性
-    from shared.gpu_guard import require_ollama
-
     require_ollama(model="llama3.2:3b")
 
     print("=== Ollama 原生 API ===")
@@ -94,6 +99,7 @@ def main() -> None:
     print("=== Ollama OpenAI 兼容 ===")
     result = call_ollama_openai_compat("用一句话介绍你自己, 30 字以内.")
     print(f"Response: {result}")
+    print("OK")
 
 
 if __name__ == "__main__":

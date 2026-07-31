@@ -17,7 +17,8 @@
 """vLLM AsyncLLMEngine 流式生成演示 (真实 vLLM).
 
 AsyncLLMEngine 是 vLLM 0.4+ 的核心: 单进程多请求流式 batched 生成.
-相比同步 LLMEngine, 吞吐提升 10-20x (continuous batching).
+相对同步逐请求执行，continuous batching 可改善资源利用率；幅度取决于模型、
+输入/输出长度、并发、硬件与延迟 SLO。
 """
 
 import asyncio
@@ -29,7 +30,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help
-from shared.gpu_guard import require_nvidia_gpu
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock, skip_unless_enabled
 
 
 def check_hardware():
@@ -53,6 +54,12 @@ def check_vllm_engine():
 
 
 async def main():
+    if skip_if_mock("an NVIDIA GPU, CUDA, vLLM, and local model weights"):
+        return
+    if skip_unless_enabled(
+        "VLLM_EXAMPLE_RUN", "the Linux/WSL2 vLLM runtime and local model weights"
+    ):
+        return
     check_hardware()
     check_vllm_engine()
 
@@ -108,6 +115,7 @@ async def main():
     print("\n=== 完成 ===")
     print(f"  总生成 tokens: ~{sum(len(r.split()) for r in results)}")
     print(f"  并发请求数: {len(results)}")
+    print("OK")
 
 
 if __name__ == "__main__":

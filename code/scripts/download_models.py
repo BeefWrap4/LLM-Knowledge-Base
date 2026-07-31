@@ -2,33 +2,36 @@
 # ---
 # code/scripts/download_models.py
 # 从国内源 (ModelScope / hf-mirror) 下载教程所需模型
-# Usage: python code/scripts/download_models.py [--all | --embedding | --reranker | --llm]
+# Usage: python code/scripts/download_models.py [--list | --required-only | ...]
 # ---
 """
-下载模型到 code/models/ 目录, 国内源优先 (ModelScope).
+下载模型到 code/models/ 目录。默认模型使用 ModelScope → Hugging Face 镜像 →
+Hugging Face 官方端点的顺序；需要精确文件过滤的模型直接使用 Hugging Face。
 
-支持的模型 (12 个, 默认下载 * 标记的):
-  * bge-small-zh-v1.5       (0.1GB, embedding)     [默认下载]
-  * bge-reranker-v2-m3      (0.6GB, reranker)      [默认下载]
-  * Qwen2.5-0.5B-Instruct   (1.0GB, llm-small)     [默认下载]
-  - Qwen2.5-7B-Instruct     (15GB,  llm-medium)    [--llm-medium]
-  - Llama-3.1-8B-Instruct   (16GB,  llm-medium)    [--llm-medium, needs_auth]
-  - Cosmos-1.0-7B           (14GB,  world-model)   [--world-model]
-  - Pi0-VLA-base            (8GB,   vla)           [--vla]
-  - DeepSeek-R1-Distill-1.5B (3GB,  reasoner)      [--reasoner]
-  - Qwen2.5-7B-4bit-mlx     (5GB,   edge-mlx)      [--edge-mlx, Apple Silicon]
-  - llama-3.2-3b-q4_k_m.gguf (2GB,  edge-gguf)     [--edge-gguf]
-  - Qwen2.5-0.5B-lora       (0.1GB, training)      [--training, depends on qwen0_5b]
-  - Qwen2.5-0.5B-ddp        (1.0GB, training)      [--training, depends on qwen0_5b]
+注册模型（截至 2026-07-31；默认只下载 * 标记的 3 个）:
+  * bge-small-zh-v1.5        (embedding)       [默认下载]
+  * bge-reranker-v2-m3       (reranker)        [默认下载]
+  * Qwen2.5-0.5B-Instruct    (llm-small)       [默认下载]
+  - Qwen2.5-7B-Instruct      (llm-medium)      [--llm-medium --confirm-large]
+  - Llama-3.1-8B-Instruct    (llm-medium)      [--llm-medium --confirm-large, 需授权]
+  - Cosmos3-Nano             (world-model)     [--world-model --confirm-large]
+  - lerobot/pi0_base         (vla)             [--world-model --confirm-large]
+  - DeepSeek-R1-Distill-1.5B (reasoner)        [--reasoner]
+  - Qwen2.5-7B-4bit-mlx      (edge-mlx)        [--edge-mlx, Apple Silicon]
+  - Llama-3.2-3B Q4_K_M      (edge-gguf)       [--edge-gguf，仅下载指定 GGUF]
+  - Qwen2.5-0.5B-lora        (training)        [--training, depends on qwen0_5b]
+  - Qwen2.5-0.5B-ddp         (training)        [--training, depends on qwen0_5b]
 
 下载源策略:
-  1. ModelScope (国内 CDN, 5-10 MB/s)
-  2. HuggingFace 镜像 hf-mirror.com (1-3 MB/s)
-  3. HuggingFace 直连 (海外用户)
+  1. ModelScope（若仓库存在）
+  2. Hugging Face 镜像 hf-mirror.com
+  3. Hugging Face 官方端点
+
+``size_gb`` 仅是规划值，不是承诺；仓库 revision、dtype、量化和筛选文件会改变实际下载量。
+大型/受许可模型必须先阅读当前模型卡，并显式传入 ``--confirm-large``。
 """
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
@@ -81,6 +84,7 @@ MODELS_TO_DOWNLOAD = {
         "tier": "llm-medium",
         "chapters": ["ch25_inference_engines"],
         "required": False,
+        "requires_confirmation": True,
     },
     "llama8b": {
         "model_id": "meta-llama/Llama-3.1-8B-Instruct",
@@ -90,22 +94,26 @@ MODELS_TO_DOWNLOAD = {
         "chapters": ["ch25_inference_engines"],
         "required": False,
         "needs_auth": True,
+        "requires_confirmation": True,
     },
-    "cosmos7b": {
-        "model_id": "nvidia/Cosmos-1.0-7B",
-        "local_name": "Cosmos-1.0-7B",
-        "size_gb": 14.0,
+    "cosmos3-nano": {
+        "model_id": "nvidia/Cosmos3-Nano",
+        "local_name": "Cosmos3-Nano",
+        # 多组件仓库的实际体积必须按当前 revision 和所选组件 dry-run。
+        "size_gb": None,
         "tier": "world-model",
         "chapters": ["ch26_world_models"],
         "required": False,
+        "requires_confirmation": True,
     },
     "pi0-vla": {
-        "model_id": "lerobot/pi0-base",
-        "local_name": "Pi0-VLA-base",
-        "size_gb": 8.0,
+        "model_id": "lerobot/pi0_base",
+        "local_name": "pi0_base",
+        "size_gb": 14.0,
         "tier": "vla",
         "chapters": ["ch26_world_models"],
         "required": False,
+        "requires_confirmation": True,
     },
     "r1-distill-1_5b": {
         "model_id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
@@ -125,12 +133,15 @@ MODELS_TO_DOWNLOAD = {
         "platform": "apple-silicon",
     },
     "llama-cpp-3b": {
-        "model_id": "TheBloke/Llama-3.2-3B-Instruct-GGUF",
-        "local_name": "llama-3.2-3b-instruct-q4_k_m.gguf",
+        "model_id": "bartowski/Llama-3.2-3B-Instruct-GGUF",
+        "local_name": "Llama-3.2-3B-Instruct-GGUF",
         "size_gb": 2.0,
         "tier": "edge-gguf",
         "chapters": ["ch28_edge_llm"],
         "required": False,
+        "allow_patterns": ["Llama-3.2-3B-Instruct-Q4_K_M.gguf", "README.md"],
+        "sentinel": "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+        "hf_only": True,
     },
     # === 训练辅助 (复用 qwen0_5b) ===
     "qwen0_5b-lora": {
@@ -169,18 +180,23 @@ def download_modelscope(repo_id: str, local_dir: Path) -> bool:
         return False
 
 
-def download_hf_mirror(repo_id: str, local_dir: Path) -> bool:
-    """通过 HF 镜像 (hf-mirror.com) 下载."""
-    env = os.environ.copy()
-    env["HF_ENDPOINT"] = "https://hf-mirror.com"
+def download_hf_snapshot(
+    repo_id: str,
+    local_dir: Path,
+    *,
+    endpoint: str | None,
+    allow_patterns: list[str] | None = None,
+) -> bool:
+    """通过指定 Hugging Face endpoint 下载，可精确限制文件集合。"""
+    label = endpoint or "https://huggingface.co"
     try:
         from huggingface_hub import snapshot_download
 
-        # max_workers=4 并行下载, 比默认 8 更稳 (CDN 限流时不会拖慢)
         snapshot_download(
             repo_id=repo_id,
             local_dir=str(local_dir),
-            env=env,
+            endpoint=endpoint,
+            allow_patterns=allow_patterns,
             max_workers=4,
         )
         return True
@@ -188,25 +204,42 @@ def download_hf_mirror(repo_id: str, local_dir: Path) -> bool:
         print("  [WARN] huggingface_hub 未安装, pip install huggingface_hub")
         return False
     except Exception as e:
-        print(f"  [WARN] hf-mirror 下载失败: {e}")
+        print(f"  [WARN] Hugging Face endpoint {label} 下载失败: {e}")
         return False
 
 
-def download(repo_id: str, local_name: str) -> bool:
+def download(
+    repo_id: str,
+    local_name: str,
+    *,
+    allow_patterns: list[str] | None = None,
+    sentinel: str = "config.json",
+    hf_only: bool = False,
+) -> bool:
     local_dir = MODELS / local_name
-    if (local_dir / "config.json").exists():
+    if (local_dir / sentinel).exists():
         print(f"  [SKIP] {local_name} 已存在 ({local_dir})")
         return True
     print(f"\n  下载 {repo_id} → {local_dir}")
     local_dir.mkdir(parents=True, exist_ok=True)
 
-    # 策略 1: ModelScope (国内优先)
-    if download_modelscope(repo_id, local_dir):
+    # ModelScope 的文件过滤语义与 HF 不同；精确筛选模型不走此分支。
+    if not hf_only and allow_patterns is None and download_modelscope(repo_id, local_dir):
         return True
-    # 策略 2: HF 镜像
-    if download_hf_mirror(repo_id, local_dir):
+    if download_hf_snapshot(
+        repo_id,
+        local_dir,
+        endpoint="https://hf-mirror.com",
+        allow_patterns=allow_patterns,
+    ):
         return True
-    # 策略 3: 失败
+    if download_hf_snapshot(
+        repo_id,
+        local_dir,
+        endpoint=None,
+        allow_patterns=allow_patterns,
+    ):
+        return True
     print(f"  [FAIL] 所有源都失败, 请手动下载 {repo_id}")
     return False
 
@@ -214,18 +247,36 @@ def download(repo_id: str, local_name: str) -> bool:
 def main() -> int:
     ap = argparse.ArgumentParser()
     grp = ap.add_mutually_exclusive_group()
-    grp.add_argument("--all", action="store_true", help="下载全部 12 个模型 (含 LLM, 边端等)")
+    grp.add_argument("--list", action="store_true", help="只列出注册模型与门禁，不下载")
+    grp.add_argument("--all", action="store_true", help="选择全部注册模型（大型模型仍需 --confirm-large）")
     grp.add_argument("--embedding", action="store_true", help="仅 embedding (bge-small-zh)")
     grp.add_argument("--reranker", action="store_true", help="仅 reranker (bge-reranker-v2-m3)")
     grp.add_argument("--llm", action="store_true", help="仅小型 LLM (qwen0_5b)")
     grp.add_argument("--llm-medium", action="store_true", help="中等 LLM (qwen7b + llama8b)")
-    grp.add_argument("--world-model", action="store_true", help="世界模型 (cosmos7b + pi0-vla)")
+    grp.add_argument("--world-model", action="store_true", help="Physical AI 模型 (cosmos3-nano + pi0-vla)")
     grp.add_argument("--reasoner", action="store_true", help="推理模型 (r1-distill-1_5b)")
     grp.add_argument("--edge-mlx", action="store_true", help="Apple Silicon 量化 (mlx-qwen7b-4bit)")
     grp.add_argument("--edge-gguf", action="store_true", help="GGUF 量化 (llama-cpp-3b)")
     grp.add_argument("--training", action="store_true", help="训练辅助 (qwen0_5b-lora + qwen0_5b-ddp)")
     grp.add_argument("--required-only", action="store_true", help="仅下载 required=True 的模型 (默认 3 个)")
+    ap.add_argument(
+        "--confirm-large",
+        action="store_true",
+        help="确认已阅读模型卡/许可证并核对磁盘、显存与网络预算",
+    )
     args = ap.parse_args()
+
+    if args.list:
+        print("key\ttier\trequired\tconfirmation\tplanning_size_gb\tmodel_id")
+        for key, info in MODELS_TO_DOWNLOAD.items():
+            size = info.get("size_gb")
+            print(
+                f"{key}\t{info['tier']}\t{bool(info.get('required'))}\t"
+                f"{bool(info.get('requires_confirmation'))}\t"
+                f"{size if size is not None else 'unknown'}\t{info['model_id']}"
+            )
+        print("\nsize_gb 仅用于初步规划；下载前以当前仓库 revision/dry-run 为准。")
+        return 0
 
     # 根据 tier / required 选 targets
     targets = []
@@ -252,8 +303,14 @@ def main() -> int:
     elif args.training:
         targets = [k for k, v in MODELS_TO_DOWNLOAD.items() if v["tier"] == "training"]
     else:
-        # 默认: required=True 的 (~1.7GB)
+        # 默认仅选择 required=True；实际体积以当前 revision/dry-run 为准。
         targets = [k for k, v in MODELS_TO_DOWNLOAD.items() if v.get("required")]
+
+    unconfirmed = [key for key in targets if MODELS_TO_DOWNLOAD[key].get("requires_confirmation")]
+    if unconfirmed and not args.confirm_large:
+        print(f"[REFUSE] 大型或受许可模型需要显式 --confirm-large: {unconfirmed}")
+        print("请先阅读当前模型卡/许可证，并用 Hub dry-run 核对实际下载量。")
+        return 2
 
     print("=" * 60)
     print("  模型下载器 (国内源优先)")
@@ -266,7 +323,13 @@ def main() -> int:
     failed = []
     for key in targets:
         info = MODELS_TO_DOWNLOAD[key]
-        if not download(info["model_id"], info["local_name"]):
+        if not download(
+            info["model_id"],
+            info["local_name"],
+            allow_patterns=info.get("allow_patterns"),
+            sentinel=info.get("sentinel", "config.json"),
+            hf_only=info.get("hf_only", False),
+        ):
             failed.append(key)
 
     print("\n" + "=" * 60)

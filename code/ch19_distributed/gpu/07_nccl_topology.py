@@ -4,6 +4,7 @@
 # section: 19.8.2
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: torch
 # run: python 07_nccl_topology.py
 # expected_runtime: <2s
@@ -17,15 +18,12 @@
 # 3. 哪些 NCCL 环境变量对跨节点 InfiniBand 性能影响最大?
 
 
-# === Multi-GPU / heavy model guard (auto-added) ===
-import os as _os
-import sys as _sys
-
-_NGPU = _os.environ.get("WORLD_SIZE", "1")
-if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
-    _sys.exit(0)
-import torch.distributed as dist
+try:
+    import torch.distributed as dist
+except ImportError:
+    print("[SKIP] 需要 torch；请安装 GPU tier 依赖")
+    print("OK")
+    raise SystemExit(0)
 
 
 def inspect_nccl_topology():
@@ -55,25 +53,21 @@ def inspect_nccl_topology():
     except Exception as e:
         print(f"NCCL version: <error: {e}>")
 
-    # NCCL 会自动检测最优通信路径:
-    # 节点内: NVLink → NVSwitch (全互联)
-    # 节点间: InfiniBand → 环形拓扑
-    # 当检测到 NVSwitch 时, 使用 Tree 算法而非 Ring 算法
+    # NCCL 会结合拓扑、collective、消息大小和环境变量选择算法/协议；
+    # 不能把 NVSwitch 简化成“必然使用 Tree”。
     print("\nNCCL 内部通信算法选择:")
-    print("  - Ring: 默认算法, 适用于任意拓扑")
-    print("  - Tree: 当有 NVSwitch 时使用, 延迟更低")
-    print("  - CollNet: 当检测到特定 InfiniBand 拓扑时使用")
+    print("  - Ring / Tree: 由 NCCL 根据拓扑与消息大小自动选择")
+    print("  - CollNet / NVLS 等: 仅在硬件、拓扑和版本支持时可用")
 
 
 def _print_nccl_summary():
     print("=" * 60)
     print("NCCL 通信拓扑感知 (CPU/Mock 模式):")
     print("=" * 60)
-    print("互联带宽速查 (H100/A100 节点):")
-    print("  - NVLink (节点内):  900 GB/s on H100")
-    print("  - InfiniBand NDR:   400 GB/s (跨节点首选)")
-    print("  - RoCE:             200-400 GB/s")
-    print("  - 以太网:           最慢, 仅小规模使用")
+    print("互联规格示例（注意 GB/s 与 Gb/s，不等同于实测 collective 带宽）:")
+    print("  - H100 SXM NVLink: 单 GPU 双向聚合标称 900 GB/s")
+    print("  - InfiniBand NDR: 常见单端口标称 400 Gb/s（约 50 GB/s）")
+    print("  - RoCE: 取决于网卡代际与端口配置，必须查实际集群规格")
     print("=" * 60)
     print("关键 NCCL 环境变量:")
     print("  NCCL_IB_DISABLE=0        # 启用 InfiniBand")

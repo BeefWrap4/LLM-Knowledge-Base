@@ -7,7 +7,7 @@
 # deps: langsmith (mocked fallback)
 # run: python 07_langsmith_prompt_debug.py
 # expected_runtime: < 1s
-# expected_output: Diagnostic report dict with truncated/empty/long prompt buckets
+# expected_output: Diagnostic report with configurable short/empty/long character-count buckets
 # ---
 # See: ../tutorial/20_LLMOps与模型可观测性.md#2034-prompt-调试与优化-⭐⭐⭐
 # Interview hooks:
@@ -45,8 +45,15 @@ def _mock_list_runs(**kwargs):
     ]
 
 
-def debug_prompt_issue(project_name: str, query_pattern: str) -> dict[str, list]:
-    """通过 LangSmith API 批量诊断 Prompt 问题（mocked）"""
+def debug_prompt_issue(
+    project_name: str,
+    *,
+    min_prompt_chars: int,
+    max_prompt_chars: int,
+) -> dict[str, list]:
+    """用可配置的字符数规则筛选 Trace；字符数不是模型 Token/截断判据。"""
+    if min_prompt_chars < 0 or max_prompt_chars <= min_prompt_chars:
+        raise ValueError("expected 0 <= min_prompt_chars < max_prompt_chars")
     runs = _mock_list_runs(
         project_name=project_name,
         execution_order=1,
@@ -54,9 +61,9 @@ def debug_prompt_issue(project_name: str, query_pattern: str) -> dict[str, list]
     )
 
     issues: dict[str, list] = {
-        "truncated_prompts": [],
+        "short_prompts": [],
         "empty_contexts": [],
-        "long_prompts": [],
+        "long_prompts_by_chars": [],
         "malformed_outputs": [],
     }
 
@@ -64,12 +71,12 @@ def debug_prompt_issue(project_name: str, query_pattern: str) -> dict[str, list]
         prompt_text = run.outputs.get("prompt", "") if run.outputs else ""
         input_data = run.inputs or {}
 
-        # 检测1：Prompt 是否为空或过短
-        if len(prompt_text) < 50:
-            issues["truncated_prompts"].append(
+        # 字符数只用于初筛；是否截断要读取真实 tokenizer/usage 与上下文上限。
+        if len(prompt_text) < min_prompt_chars:
+            issues["short_prompts"].append(
                 {
                     "run_id": run.id,
-                    "prompt_length": len(prompt_text),
+                    "prompt_chars": len(prompt_text),
                     "input": input_data,
                 }
             )
@@ -83,23 +90,28 @@ def debug_prompt_issue(project_name: str, query_pattern: str) -> dict[str, list]
                 }
             )
 
-        # 检测3：Prompt 是否过长（可能被 API 截断）
-        if len(prompt_text) > 8000:
-            issues["long_prompts"].append(
+        if len(prompt_text) > max_prompt_chars:
+            issues["long_prompts_by_chars"].append(
                 {
                     "run_id": run.id,
-                    "prompt_length": len(prompt_text),
+                    "prompt_chars": len(prompt_text),
                 }
             )
 
     print("=== Prompt 诊断报告 (mocked) ===")
     print(f"总 Trace 数: {len(runs)}")
-    print(f"截断/过短: {len(issues['truncated_prompts'])}")
+    print(f"字符数偏短: {len(issues['short_prompts'])}")
     print(f"空上下文: {len(issues['empty_contexts'])}")
-    print(f"过长 Prompt: {len(issues['long_prompts'])}")
+    print(f"字符数偏长: {len(issues['long_prompts_by_chars'])}")
     return issues
 
 
 if __name__ == "__main__":
-    issues = debug_prompt_issue("my-qa-system", "customer support")
+    # 20/8000 是可复现教学筛选器，不代表模型上下文边界。
+    issues = debug_prompt_issue(
+        "my-qa-system",
+        min_prompt_chars=20,
+        max_prompt_chars=8000,
+    )
     print(issues)
+    print("OK")

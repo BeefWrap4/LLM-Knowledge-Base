@@ -18,6 +18,9 @@
 文件操作最佳实践
 """
 
+import tempfile
+from pathlib import Path
+
 # ─────────────────────────────────────────────────────────────
 # with 语句 — 自动关闭文件（面试必考）
 # ─────────────────────────────────────────────────────────────
@@ -57,24 +60,20 @@ def read_large_file(filepath: str):
 # "b"     二进制模式（如 "rb"）
 # "+"     读写模式（如 "r+"）
 
-# 演示：写入文件再读取
-demo_file = "_demo_file.txt"
-with open(demo_file, "w", encoding="utf-8") as f:
-    f.write("line1\nline2\nline3\n")
+def demonstrate_file_operations() -> None:
+    """在自动清理的临时目录中完成写入与读取，不污染当前工作目录。"""
+    with tempfile.TemporaryDirectory(prefix="python-file-demo-") as temp_dir:
+        demo_file = Path(temp_dir) / "demo.txt"
+        with demo_file.open("w", encoding="utf-8") as file_handle:
+            file_handle.write("line1\nline2\nline3\n")
 
-# 读取演示
-content = read_file_safe(demo_file)
-print(f"文件内容: {content!r}")
+        content = read_file_safe(str(demo_file))
+        print(f"文件内容: {content!r}")
 
-# 逐行读取（生成器）
-lines = list(read_large_file(demo_file))
-print(f"逐行读取: {lines}")
+        lines = list(read_large_file(str(demo_file)))
+        print(f"逐行读取: {lines}")
 
-# 清理演示文件
-import os
-
-if os.path.exists(demo_file):
-    os.remove(demo_file)
 
 if __name__ == "__main__":
+    demonstrate_file_operations()
     print("OK")

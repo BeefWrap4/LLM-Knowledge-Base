@@ -16,6 +16,9 @@
 #   3. 为什么不直接用大上下文模型代替 RAG（成本/延迟权衡）？
 
 # Contextual Retrieval 实现（Anthropic 官方推荐写法，mock 演示版）
+import os
+
+DEFAULT_ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
 
 
 def add_context_to_chunk(chunk: str, full_document: str, client=None) -> str:
@@ -31,16 +34,18 @@ def add_context_to_chunk(chunk: str, full_document: str, client=None) -> str:
 
     上下文描述（简洁，不要重复片段内容）："""
 
-    if client is not None:
-        # 真实调用
+    real_mode = os.getenv("LLM_MOCK", "1") == "0"
+    if real_mode:
+        if client is None:
+            raise RuntimeError("真实模式需要显式传入 Anthropic client")
         response = client.messages.create(
-            model="claude-haiku-4-5",  # 用小模型即可
+            model=DEFAULT_ANTHROPIC_MODEL,
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}],
         )
         context = response.content[0].text
     else:
-        # Mock: 用文档前 50 字作为上下文前缀
+        # 默认 mock：即使调用者误传 client，也不读取 Key 或联网。
         context = f"本文档主题: {full_document[:50]}"
     return f"[上下文：{context}]\n\n{chunk}"  # 合并后一起 Embedding
 
@@ -53,3 +58,4 @@ if __name__ == "__main__":
     print(f"  {chunk}")
     print("\n注入上下文后:")
     print(enriched)
+    print("OK")

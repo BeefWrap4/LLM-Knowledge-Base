@@ -1,15 +1,16 @@
 # ---
 # chapter: 16
 # topic: GRPO Loss (真实可微 PyTorch 实现)
-# section: 16.11.1
+# section: 16.10.1
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: torch
 # run: python 12_grpo_loss.py
 # expected_runtime: <3s
 # expected_output: GRPO loss 值 + .backward() 验证可微
 # ---
-# See: ../tutorial/16_模型微调与推理优化.md §16.11.1
+# See: ../../../16_模型微调与推理优化.md §16.10.1
 #
 # Interview hooks:
 #   1. GRPO 相对 PPO 的核心简化？为什么可以去掉 Critic / Value Network？
@@ -49,14 +50,20 @@ def grpo_loss(
     rewards: torch.Tensor,  # [B*K]   每条样本的标量 reward
     beta: float = 0.04,
     clip_range: float = 0.2,
+    group_size: int = 1,
 ) -> torch.Tensor:
     """GRPO loss = clipped surrogate + β * KL penalty.
 
     L = -E[min(ratio * A, clip(ratio, 1-ε, 1+ε) * A)] + β * KL(π || π_ref)
     """
-    B = rewards.shape[0]
-    # 1) 组内 z-score 归一化 (假设每 K 条共享 prompt, 此处简化为全 batch z-score)
-    advantages = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
+    if group_size < 2 or rewards.numel() % group_size != 0:
+        raise ValueError("group_size 必须 >=2，且 rewards 数量必须能被 group_size 整除")
+
+    # 1) 每 group_size 条共享一个 prompt；只在各 prompt 的候选组内标准化。
+    grouped_rewards = rewards.reshape(-1, group_size)
+    group_mean = grouped_rewards.mean(dim=1, keepdim=True)
+    group_std = grouped_rewards.std(dim=1, keepdim=True, unbiased=False)
+    advantages = ((grouped_rewards - group_mean) / (group_std + 1e-8)).reshape(-1)
 
     # 2) Importance sampling ratio + clip
     ratio = torch.exp(log_probs - old_log_probs)
@@ -64,8 +71,8 @@ def grpo_loss(
     surr2 = ratio.clamp(1 - clip_range, 1 + clip_range) * advantages.unsqueeze(-1)
     policy_loss = -torch.min(surr1, surr2).mean()
 
-    # 3) KL 惩罚 (k3 估计器)
-    log_ratio = log_probs - ref_log_probs
+    # 3) KL 惩罚 (k3): r = log(pi_ref / pi_policy)
+    log_ratio = ref_log_probs - log_probs
     kl = (log_ratio.exp() - log_ratio - 1.0).mean()
 
     return policy_loss + beta * kl
@@ -92,14 +99,15 @@ def main():
     print(f"  rewards shape:      {tuple(rewards.shape)}")
     print(f"  rewards range:      [{rewards.min().item():.3f}, {rewards.max().item():.3f}]")
 
-    loss = grpo_loss(log_probs, old_log_probs, ref_log_probs, rewards)
+    loss = grpo_loss(log_probs, old_log_probs, ref_log_probs, rewards, group_size=K)
     loss.backward()
 
     print(f"  loss:               {loss.item():.4f}")
     print(f"  loss requires_grad: {log_probs.requires_grad}")
     print(f"  log_probs.grad norm: {log_probs.grad.norm().item():.4f}")
-    print("\n  GRPO loss 可微, 可直接用于 RLHF/GRPO 训练")
-    print("  DeepSeek-R1 / 通义千问 QwQ 都用此 loss")
+    print("\n  该教学目标函数可微，并正确执行组内 advantage 标准化")
+    print("  生产 GRPO 还需 response mask、按 token 聚合、分布式采样与稳定性监控")
+    print("OK")
 
 
 if __name__ == "__main__":

@@ -1,8 +1,35 @@
 # Changelog
 
-> **LLM-Knowledge-Base** 项目演进史 — 23 个 Wave, 24 commits, 2026-06-01 → 2026-06-07.
+> **LLM-Knowledge-Base** 项目演进与发布记录。
 
-## v14.0 (2026-06-07) — 完整发布版
+## v1.1.0 (2026-07-31) — 40 章审校与 fail-closed 验收
+
+### 教程与来源
+
+- 正文扩展并统一为 Ch01–Ch40；代码伴侣保持 29 章、433 个示例。
+- 对模型/API/框架/安全/国内岗位材料进行时效性与准确性审校。
+- 新增 40/40 章权威来源台账；README、目录、思维导图与健康报告统计一致。
+
+### 验证与安全
+
+- 十阶段离线门禁覆盖结构、WikiLinks、来源、快照、代码引用和代表性 smoke。
+- 禁止示例使用内置 `eval`/`exec`；真实 API 需双重确认，LLM runner 强制离线。
+- GPU 外部副作用按下载、服务、端口、编译、浏览器、云和平台分别显式授权。
+- 本地回归：304 non-GPU pytest PASS、3 GPU pytest PASS、Ruff/compileall PASS。
+- 433 个示例离线终态：365 PASS、68 SKIP、0 FAIL。
+
+### 条件性实测与修复
+
+- RTX 5090 D：76 个 GPU 示例按章串行，47 PASS、29 条件 SKIP、0 FAIL。
+- DeepSeek 最小真实冒烟与 bge/Redis/pgvector/DeepSeek 四组件集成通过。
+- Docker 改用官方 PyPI 默认源，镜像包含完整教程验收输入；容器内十阶段门禁通过。
+- Docker Actions 升级到 Node.js 24 运行时主版本，消除 GitHub Runner 的 Node.js 20 弃用告警。
+- Compose 支持隔离项目名，补齐 pgvector `15432` 映射及可配置 Redis/Postgres 连接。
+- 修复 Flash Attention naive/SDPA causal 语义不一致及多个示例缺失 `OK` 契约。
+
+> `v1.1.0` 标签已在远端 Verify 与 Docker/GHCR 工作流全部通过后发布。
+
+## Legacy Wave 14.0 snapshot (2026-06-07)
 
 ### 教程内容 (29 章)
 - **Ch01-11**: Python 基础 (可变/并发/内存/算法/数据科学/Web/ML/DL)
