@@ -84,9 +84,9 @@ ci-llm:  ## 仅 llm tier — ~3 min (mock 模式, 无需 API Key)
 # Docker (Wave 14-C)
 # ─────────────────────────────────────────────────────────
 
-docker-build:  ## 构建 Docker 镜像 (默认 core + llm tier, 国内源)
+docker-build:  ## 构建 Docker 镜像 (默认官方 PyPI；可用 PIP_INDEX_URL 覆盖)
 	docker build -t llm-kb:latest \
-		--build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+		--build-arg PIP_INDEX_URL=$${PIP_INDEX_URL:-https://pypi.org/simple} \
 		--build-arg REGISTRY=docker.io \
 		-t llm-kb:latest .
 

@@ -97,6 +97,13 @@ def sample_once(base_url: str, model: str, prompt: str) -> str:
 def main() -> None:
     if skip_if_mock("本机已启动的 SGLang 服务和对应 GPU/模型"):
         return
+    if os.getenv("SGLANG_ROLLOUT_RUN") != "1":
+        print(
+            "[SKIP] Set SGLANG_ROLLOUT_RUN=1 only after starting and reviewing "
+            "the loopback SGLang service and served model."
+        )
+        print("OK")
+        return
 
     base_url = validate_loopback_base_url(
         os.getenv("SGLANG_BASE_URL", "http://127.0.0.1:30000")

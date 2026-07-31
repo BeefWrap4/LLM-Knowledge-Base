@@ -41,7 +41,12 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import gpu_summary, require_nvidia_gpu, skip_if_mock
+from shared.gpu_guard import (
+    gpu_summary,
+    require_nvidia_gpu,
+    skip_if_mock,
+    skip_unless_enabled,
+)
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 N_CONCURRENT = 8
@@ -149,6 +154,10 @@ async def run() -> None:
 
 def main() -> None:
     if skip_if_mock("an NVIDIA GPU, CUDA, vLLM, and local model weights"):
+        return
+    if skip_unless_enabled(
+        "VLLM_EXAMPLE_RUN", "the Linux/WSL2 vLLM runtime and local model weights"
+    ):
         return
     require_nvidia_gpu(min_vram_gb=8)
     print(gpu_summary())

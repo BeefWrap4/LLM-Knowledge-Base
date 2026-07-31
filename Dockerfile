@@ -10,8 +10,9 @@ ARG PYTHON_VERSION=3.12
 ARG REGISTRY=docker.io
 FROM ${REGISTRY}/library/python:${PYTHON_VERSION}-slim AS builder
 
-# 国内 pip 镜像加速 (build 时可通过 --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple 覆盖)
-ARG PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+# 默认使用 PyPI 官方索引；需要镜像时可通过 --build-arg PIP_INDEX_URL=... 显式覆盖。
+# 第三方镜像的同步状态和访问策略可能变化，不应成为发布构建的单点依赖。
+ARG PIP_INDEX_URL=https://pypi.org/simple
 ENV PIP_INDEX_URL=${PIP_INDEX_URL}
 
 WORKDIR /build
@@ -40,7 +41,7 @@ FROM ${REGISTRY}/library/python:${PYTHON_VERSION}-slim AS runtime
 
 LABEL maintainer="BeefWrap4" \
       description="LLM Knowledge Base - 2026 LLM Interview Tutorial" \
-      version="14.0"
+      version="1.1.0"
 
 # 运行时系统依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -54,8 +55,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 WORKDIR /app
 
-# 复制应用代码 (可被 -v 挂载覆盖)
-COPY code/ /app/code/
+# 复制教程根文档与代码。容器内 verify_all.py 会同时校验根目录章节、
+# 来源台账和 code/，因此不能只复制 code/。
+COPY . /app/
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY docker/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/healthcheck.sh

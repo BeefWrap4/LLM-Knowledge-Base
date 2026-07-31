@@ -65,7 +65,7 @@ jobs:
           build-args: |
             PYTHON_VERSION=3.12
             REGISTRY=docker.io
-            PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+            PIP_INDEX_URL=https://pypi.org/simple
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

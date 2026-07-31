@@ -53,10 +53,11 @@ def test_embedding():
 def test_redis(embeddings):
     """[2/4] Redis 16379 读写."""
     redis_host = os.environ.get("REDIS_HOST", "localhost")
-    print(f"\n[2/4] Redis ({redis_host}:16379)...")
+    redis_port = int(os.environ.get("REDIS_PORT", "16379"))
+    print(f"\n[2/4] Redis ({redis_host}:{redis_port})...")
     import redis
 
-    r = redis.Redis(host=redis_host, port=16379, db=0, socket_connect_timeout=3)
+    r = redis.Redis(host=redis_host, port=redis_port, db=0, socket_connect_timeout=3)
     r.ping()
     print(f"  PING: ✓, version={r.info('server')['redis_version']}")
     # Write/read test
@@ -76,10 +77,20 @@ def test_redis(embeddings):
 def test_pgvector(embeddings):
     """[3/4] pgvector 向量检索 (cosine similarity)."""
     pg_host = os.environ.get("PG_HOST", "localhost")
-    print(f"\n[3/4] pgvector ({pg_host}:15432)...")
+    pg_port = int(os.environ.get("PG_PORT", "15432"))
+    pg_user = os.environ.get("PG_USER", "llmkb")
+    pg_password = os.environ.get("PG_PASSWORD", "llmkb_test")
+    pg_database = os.environ.get("PG_DATABASE", "vectordb")
+    print(f"\n[3/4] pgvector ({pg_host}:{pg_port})...")
     import psycopg2
 
-    c = psycopg2.connect(host=pg_host, port=15432, user="llmkb", password="llmkb_test", dbname="vectordb")
+    c = psycopg2.connect(
+        host=pg_host,
+        port=pg_port,
+        user=pg_user,
+        password=pg_password,
+        dbname=pg_database,
+    )
     c.autocommit = True
     cur = c.cursor()
     cur.execute("CREATE EXTENSION IF NOT EXISTS vector")

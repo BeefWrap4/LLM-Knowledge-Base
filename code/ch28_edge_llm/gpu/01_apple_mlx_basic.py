@@ -26,7 +26,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help
-from shared.gpu_guard import require_apple_silicon, skip_if_mock
+from shared.gpu_guard import require_apple_silicon, skip_if_mock, skip_unless_apple_silicon
 
 
 # === 硬件检查函数 (供测试用) ===
@@ -38,6 +38,8 @@ def check_hardware() -> None:
 # === 主代码 ===
 def main() -> None:
     if skip_if_mock("Apple Silicon、MLX 依赖和本地模型权重"):
+        return
+    if skip_unless_apple_silicon("Apple Silicon、MLX 依赖和本地模型权重"):
         return
     check_hardware()
 
@@ -73,6 +75,7 @@ def main() -> None:
         verbose=True,
     )
     print(f"\nMLX response: {response}")
+    print("OK")
 
 
 if __name__ == "__main__":

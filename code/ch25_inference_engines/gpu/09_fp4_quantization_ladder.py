@@ -133,6 +133,9 @@ def main():
         except Exception as e:
             print(f"   ❌ {type(e).__name__}: {str(e)[:120]}\n")
 
+    if not results:
+        raise RuntimeError("FP16/INT8/FP4 均未成功；不能把空基准计为通过")
+
     # 对比
     fp16 = next((r for r in results if r["quant_type"] == "fp16"), None)
     if fp16 and len(results) >= 2:
@@ -145,6 +148,7 @@ def main():
                     f"  {r['quant_type']}: VRAM 节省 {vram_saving:+.0f}%, "
                     f"延迟 {speed:.2f}x ({r['vram_gb']}GB, {r['inference_ms']}ms)"
                 )
+    print("OK")
 
 
 if __name__ == "__main__":

@@ -113,6 +113,7 @@ def main():
         print(f"  本环境: awq {awq.__version__} 已装, 可加载 AWQ 模型")
     except ImportError:
         print("  本环境: awq 未装 (NF4 已足够演示 4-bit 推理)")
+    print("OK")
 
 
 if __name__ == "__main__":

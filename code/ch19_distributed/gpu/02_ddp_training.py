@@ -154,6 +154,7 @@ def main():
 
     if world_size > 1:
         dist.destroy_process_group()
+    print("OK")
 
 
 if __name__ == "__main__":

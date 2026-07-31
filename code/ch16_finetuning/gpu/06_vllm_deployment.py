@@ -28,6 +28,7 @@ OpenAI 客户端:
         messages=[{'role': 'user', 'content': 'Hello!'}])
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -60,6 +61,13 @@ def check_vllm_engine():
 
 def main():
     if skip_if_mock("Linux、NVIDIA GPU、vLLM 编译扩展和本地模型"):
+        return
+    if os.environ.get("VLLM_DEPLOYMENT_RUN") != "1":
+        print(
+            "[SKIP] Set VLLM_DEPLOYMENT_RUN=1 only on a reviewed Linux/WSL2 "
+            "vLLM environment with local model weights."
+        )
+        print("OK")
         return
     check_hardware()
     check_vllm_engine()
@@ -102,6 +110,7 @@ def main():
     sampling = SamplingParams(temperature=0.7, max_tokens=32)
     outputs = llm.generate(["Hello! Introduce yourself briefly."], sampling)
     print(f"Direct LLM result:\n  {outputs[0].outputs[0].text[:200]}")
+    print("OK")
 
 
 if __name__ == "__main__":

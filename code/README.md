@@ -85,7 +85,9 @@ python scripts/run_all_examples.py --tier gpu --chapter ch16 --real-gpu  # 真�
 
 `gpu/` 同时包含 NVIDIA、Apple Silicon、Ollama 和浏览器示例，单台机器不应宣称真实跑通
 全部 76 个。默认 runner 传入 `--mock` 并分别统计 Passed/Skipped/Failed；
-`--real-gpu` 会关闭该保护，只应在隔离环境中按 `--chapter` 运行兼容子集。
+`--real-gpu` 只关闭默认 mock，仍不会自动授权下载、端口监听、引擎编译、浏览器或
+云部署；这些路径需要各脚本声明的独立环境开关。只应在隔离环境中按 `--chapter`
+串行运行兼容子集。
 
 ## 🖥️ 硬件 × 章节矩阵
 

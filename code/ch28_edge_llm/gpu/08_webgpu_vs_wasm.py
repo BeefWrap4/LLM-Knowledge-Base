@@ -216,6 +216,7 @@ def main() -> None:
     print(f"  平均: {result['avg_us_per_call']}μs/次")
     print()
     print("WebGPU (浏览器内) 对比需在带 GPU 的浏览器交互运行, 本环境无法跑.")
+    print("OK")
 
 
 if __name__ == "__main__":

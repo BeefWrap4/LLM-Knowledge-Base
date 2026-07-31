@@ -15,6 +15,8 @@ from shared.gpu_guard import (
     require_nvidia_gpu,
     require_ollama,
     skip_if_mock,
+    skip_unless_apple_silicon,
+    skip_unless_enabled,
 )
 
 
@@ -35,6 +37,33 @@ def test_skip_if_mock_disabled():
         patch.dict("shared.gpu_guard.os.environ", {}, clear=True),
     ):
         assert skip_if_mock("CUDA") is False
+
+
+def test_skip_unless_enabled_requires_exact_one(capsys):
+    with patch.dict("shared.gpu_guard.os.environ", {"SERVICE_RUN": "true"}, clear=True):
+        assert skip_unless_enabled("SERVICE_RUN", "the local service") is True
+    output = capsys.readouterr().out
+    assert "[SKIP]" in output
+    assert "SERVICE_RUN=1" in output
+    assert "OK" in output
+
+    with patch.dict("shared.gpu_guard.os.environ", {"SERVICE_RUN": "1"}, clear=True):
+        assert skip_unless_enabled("SERVICE_RUN", "the local service") is False
+
+
+def test_skip_unless_apple_silicon(capsys):
+    with (
+        patch("shared.gpu_guard._platform_system", return_value="Windows"),
+        patch("shared.gpu_guard._platform_machine", return_value="AMD64"),
+    ):
+        assert skip_unless_apple_silicon() is True
+    assert "[SKIP]" in capsys.readouterr().out
+
+    with (
+        patch("shared.gpu_guard._platform_system", return_value="Darwin"),
+        patch("shared.gpu_guard._platform_machine", return_value="arm64"),
+    ):
+        assert skip_unless_apple_silicon() is False
 
 
 def test_require_nvidia_gpu_no_cuda():

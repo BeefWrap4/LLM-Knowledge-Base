@@ -58,6 +58,7 @@ def main():
             "[SKIP] Real DeepSeek call requires both LLM_MOCK=0 and DEEPSEEK_EDGE_RUN=1 "
             "after reviewing model availability, quota, and cost."
         )
+        print("OK")
         return
 
     api_key = get_deepseek_key()

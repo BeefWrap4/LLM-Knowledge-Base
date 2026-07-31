@@ -104,6 +104,7 @@ def main():
         print(f"  top-5 tokens: {top_tokens}")
         print(f"  top-5 logprob: {[f'{x:.3f}' for x in top_logprobs]}")
         print(f"  confidence:    {conf:.3f} → {decision}\n")
+    print("OK")
 
 
 if __name__ == "__main__":

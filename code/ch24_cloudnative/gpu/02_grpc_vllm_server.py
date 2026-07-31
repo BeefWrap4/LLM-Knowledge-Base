@@ -219,4 +219,11 @@ async def serve() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(serve())
+    if os.environ.get("GRPC_VLLM_SERVER_RUN") != "1":
+        print(
+            "[SKIP] Set GRPC_VLLM_SERVER_RUN=1 only after generating protobuf modules "
+            "and reviewing MODEL_PATH, GPU capacity, and the local listening port."
+        )
+        print("OK")
+    else:
+        asyncio.run(serve())

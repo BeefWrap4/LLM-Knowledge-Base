@@ -42,7 +42,11 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help  # noqa: E402
-from shared.gpu_guard import require_nvidia_gpu, skip_if_mock  # noqa: E402
+from shared.gpu_guard import (  # noqa: E402
+    require_nvidia_gpu,
+    skip_if_mock,
+    skip_unless_enabled,
+)
 
 
 def check_hardware() -> None:
@@ -147,6 +151,10 @@ def build_engine(
 
 def main() -> None:
     if skip_if_mock("Linux, an NVIDIA GPU, TensorRT-LLM CLIs, and a local checkpoint"):
+        return
+    if skip_unless_enabled(
+        "TRTLLM_BUILD_RUN", "the TensorRT-LLM toolchain, output path, and local checkpoint"
+    ):
         return
     check_hardware()
 

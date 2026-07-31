@@ -28,7 +28,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help
-from shared.gpu_guard import skip_if_mock
+from shared.gpu_guard import skip_if_mock, skip_unless_enabled
 
 
 def _default_modelfile_path() -> str:
@@ -119,6 +119,11 @@ def create_ollama_model(modelfile_path: str, model_name: str = "tutorial-llama")
 def main() -> None:
     if skip_if_mock("Ollama CLI、运行中的服务和基础模型"):
         return
+    if skip_unless_enabled(
+        "OLLAMA_MODEL_CREATE_RUN",
+        "the Ollama service, base model download, generated file, and target model name",
+    ):
+        return
     # 1. 真实写 Modelfile 到磁盘
     modelfile = generate_modelfile()
     print(f"Modelfile 已写入: {modelfile}")
@@ -132,6 +137,7 @@ def main() -> None:
 
     # 3. 给用户后续命令提示
     print(f"\n测试命令: ollama run {model} '讲个笑话'")
+    print("OK")
 
 
 if __name__ == "__main__":

@@ -33,6 +33,29 @@ def skip_if_mock(requirement: str) -> bool:
     return True
 
 
+def skip_unless_enabled(env_var: str, requirement: str) -> bool:
+    """Skip an external, long-running, or costly path unless explicitly enabled.
+
+    Real-GPU batch validation intentionally does not imply permission to bind a
+    service port, compile an engine, deploy cloud resources, or download a
+    checkpoint. Those operations need their own named environment gate.
+    """
+    if os.environ.get(env_var) == "1":
+        return False
+    print(f"[SKIP] Set {env_var}=1 only after reviewing {requirement}.")
+    print("OK")
+    return True
+
+
+def skip_unless_apple_silicon(requirement: str = "Apple Silicon and MLX") -> bool:
+    """Return a structured skip on non-Apple-Silicon hosts."""
+    if _platform_system() == "Darwin" and _platform_machine() == "arm64":
+        return False
+    print(f"[SKIP] This example requires {requirement}.")
+    print("OK")
+    return True
+
+
 def require_cuda(min_gb: float = 0) -> dict:
     """检查 CUDA 可用性. 不可用时输出清晰错误并退出.
 

@@ -146,6 +146,7 @@ def main():
     save_path = str(_code_root / "models" / "lora_adapter")
     model.save_pretrained(save_path)
     print(f"  adapter saved to: {save_path}")
+    print("OK")
 
 
 if __name__ == "__main__":

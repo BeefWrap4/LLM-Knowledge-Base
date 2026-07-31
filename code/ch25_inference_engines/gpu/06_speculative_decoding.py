@@ -41,13 +41,22 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import gpu_summary, require_nvidia_gpu, skip_if_mock
+from shared.gpu_guard import (
+    gpu_summary,
+    require_nvidia_gpu,
+    skip_if_mock,
+    skip_unless_enabled,
+)
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"  # 1GB, 已下载到本地 HF cache
 
 
 def main() -> None:
     if skip_if_mock("Linux、NVIDIA GPU、vLLM 编译扩展和本地模型"):
+        return
+    if skip_unless_enabled(
+        "VLLM_EXAMPLE_RUN", "the Linux/WSL2 vLLM runtime and local model weights"
+    ):
         return
     require_nvidia_gpu(min_vram_gb=16)
     print(gpu_summary())

@@ -112,7 +112,8 @@ export OPENAI_API_KEY=sk-...
 
 ### 装包太慢
 ```bash
-pip install --index-url https://pypi.tuna.tsinghua.edu.cn/simple -r requirements-core.txt
+# 默认使用 PyPI 官方索引；仅在镜像已经过当前网络验证时显式替换
+pip install --index-url https://pypi.org/simple -r requirements-core.txt
 ```
 
 ## 卸载

@@ -73,18 +73,20 @@ docker compose --profile gpu up -d
 
 - 3 个容器: `app` + `redis` + `postgres (pgvector)`
 - 额外: pgvector 扩展 (RAG 向量存储)
+- 本机测试端口: Redis `16379`、pgvector `15432`；可用 `REDIS_PORT` / `PG_PORT` 覆盖
 - 前提: 主机有 NVIDIA GPU + 安装 `nvidia-container-toolkit`
 - 适用: 在兼容的本地 NVIDIA 容器栈中逐项验证 Ch16/19/25/26 的条件路径
 - 不代表生产安全、容量、持久化、可观测性或故障恢复已经验收
 
-## 3. 国内源加速 (推荐国内用户)
+## 3. 软件源与镜像（按环境显式选择）
 
-仓库可能配置下列镜像/索引候选；实际生效值以 Dockerfile、Compose 与当前环境为准：
+发布构建默认使用 PyPI 官方索引，避免第三方镜像的同步延迟或临时访问限制影响 CI。
+如组织允许使用镜像，应在当前网络中先验证，再通过构建参数显式覆盖：
 
-| 资源 | 国内源 |
-|------|--------|
+| 资源 | 默认值 / 可选方案 |
+|------|-------------------|
 | Docker base image | `docker.io/library/python:3.12-slim` (可换阿里云) |
-| pip | `https://pypi.tuna.tsinghua.edu.cn/simple` |
+| pip | 默认 `https://pypi.org/simple`；可用 `PIP_INDEX_URL` 覆盖 |
 | HuggingFace | `https://hf-mirror.com` |
 | ModelScope | 内置 (无需镜像) |
 
@@ -171,10 +173,11 @@ DOCKER_BUILDKIT=1 make -C code docker-build
 
 ### `pip install` 在容器内失败
 
-已在 Dockerfile 中设置清华源, 但如果你在 `make docker-build` 中看到 pypi 慢, 检查 build arg:
+先用默认官方索引重试并核对代理、DNS 与证书。如果所在组织提供经过验证的镜像，
+再显式设置 build arg；镜像地址仅作示例，不保证当前可用：
 
 ```bash
-docker build --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple .
+docker build --build-arg PIP_INDEX_URL=https://your-approved-mirror.example/simple .
 ```
 
 ### `make ci` 在容器内 OOM

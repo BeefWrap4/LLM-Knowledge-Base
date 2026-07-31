@@ -254,12 +254,19 @@ def _build_prompt(messages: list[ChatMessage]) -> str:
 
 # ====== 入口 ======
 if __name__ == "__main__":
-    print("Starting LLM Inference Server (use curl http://localhost:8000/health to test)")
-    print("Open: http://localhost:8000/docs for interactive Swagger UI")
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=config.PORT,
-        log_level="info",
-        limit_concurrency=config.MAX_CONCURRENT_REQUESTS,
-    )
+    if os.environ.get("FASTAPI_VLLM_SERVER_RUN") != "1":
+        print(
+            "[SKIP] Set FASTAPI_VLLM_SERVER_RUN=1 only after reviewing MODEL_PATH, "
+            "GPU capacity, authentication boundary, and the listening port."
+        )
+        print("OK")
+    else:
+        print("Starting LLM Inference Server (use curl http://localhost:8000/health to test)")
+        print("Open: http://localhost:8000/docs for interactive Swagger UI")
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=config.PORT,
+            log_level="info",
+            limit_concurrency=config.MAX_CONCURRENT_REQUESTS,
+        )

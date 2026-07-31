@@ -116,6 +116,13 @@ def _chat(client_class: Any, *, host: str, model: str, prompt: str, headers=None
 def main() -> int:
     if skip_if_mock("an explicitly selected local or Ollama Cloud endpoint"):
         return 0
+    if len(sys.argv) == 1 and os.environ.get("OLLAMA_INTEGRATION_RUN") != "1":
+        print(
+            "[SKIP] Set OLLAMA_INTEGRATION_RUN=1 and pass --mode only after "
+            "reviewing the selected local or cloud endpoint, model, and data boundary."
+        )
+        print("OK")
+        return 0
 
     args = _parser().parse_args()
     cloud_key = ""

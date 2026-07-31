@@ -2,6 +2,8 @@
 .git/
 .github/
 .vscode/
+.idea/
+.claudian/
 __pycache__/
 *.pyc
 *.pyo
@@ -30,8 +32,4 @@ test.txt
 output/
 figures/
 
-# 排除 docs 和 scripts 之外的项目文件
-docs/
-*.md
-!code/docs/**/*.md
-!code/models/README.md
+# 根目录教程 Markdown 与 docs/ 是容器内 verify_all.py 的验收输入，必须保留。

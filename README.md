@@ -24,7 +24,7 @@
 - 📋 **统一章节模板** — YAML frontmatter、图示、速查表、面试题和交叉引用
 - 🛠️ **分层代码伴侣** — core、LLM mock、GPU 三类；通过验收脚本报告实际状态
 - 🤖 **真实 API 条件性验收** — 默认离线；真实调用需选定厂商、有效 Key、`LLM_MOCK=0` 与费用确认
-- 🐳 **Docker 化部署** — `make docker-build` 构建, 3 profile (core/llm/gpu), 国内源加速
+- 🐳 **Docker 化部署** — `make docker-build` 构建, 3 profile (core/llm/gpu), 软件源可显式覆盖
 - 🧾 **[真实调用记录说明](code/docs/REAL_DEMOS.md)** — 历史快照与复测边界；不能替代当前账号/模型验收
 
 ## 📚 知识体系
@@ -117,7 +117,8 @@ python ch12_transformer_architecture/core/01_scaled_dot_product_attention.py
 
 `llm/` 默认使用 `LLM_MOCK=1` 离线验收。`gpu/` runner 默认执行 mock/skip 契约；
 真实运行须显式使用 `--real-gpu` 并按章节选择与当前 NVIDIA、Apple Silicon、
-Ollama 或浏览器环境兼容的子集。真实 API 还需显式密钥。
+Ollama 或浏览器环境兼容的子集。`--real-gpu` 不授权模型下载、端口监听、引擎编译、
+浏览器或云部署；这些路径仍需脚本声明的独立环境开关。真实 API 还需显式密钥。
 
 ### 三层依赖策略 (按需升级)
 
@@ -277,7 +278,7 @@ make download-models-default  # 按注册表下载 required 集合
 ### Docker 化部署 (Wave 14-C)
 
 ```bash
-make -C code docker-build    # 构建镜像 (国内源加速)
+make -C code docker-build    # 构建镜像（默认 PyPI 官方索引）
 make -C code docker-llm      # 启动 app + Redis
 make -C code docker-bash     # 进容器
 ```
@@ -360,7 +361,8 @@ cd code
 export DEEPSEEK_API_KEY=sk-xxx
 LLM_MOCK=0 python ch15_agent/llm/02_react_agent_from_scratch.py  # 显式真实 API
 python ch16_finetuning/gpu/01_lora_finetuning.py  # 真实 LoRA 训练
-python ch25_inference_engines/gpu/10_vllm_async_engine.py  # 真实 vLLM
+$env:VLLM_EXAMPLE_RUN = "1"  # PowerShell；确认 Linux/WSL2、模型与资源后
+python ch25_inference_engines/gpu/10_vllm_async_engine.py
 ```
 
 ### 硬件 × 章节需求

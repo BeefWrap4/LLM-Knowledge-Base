@@ -144,6 +144,7 @@ def main():
             print("=" * 70)
             print("\n[fallback] 进入 FSDP 概念演示 (无 distributed init)...")
             _demo_fsdp_concepts(model, model_path, vram_before, vram_after_load, device)
+            print("OK")
             return
         else:
             raise
@@ -229,6 +230,7 @@ def main():
         import torch.distributed as dist
 
         dist.destroy_process_group()
+    print("OK")
 
 
 def _demo_fsdp_concepts(model, model_path: str, vram_before: float, vram_after_load: float, device):
