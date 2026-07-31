@@ -15,11 +15,25 @@
 #   2. recall_k 和 final_k 如何选择（典型 20-50 / 5-10）？
 #   3. bge-reranker-large 相比 MiniLM 有什么精度/速度权衡？
 
+import os
+import re
+
+DEFAULT_OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6")
+OPENAI_REASONING_KWARGS = (
+    {"reasoning_effort": "none"} if DEFAULT_OPENAI_MODEL.startswith("gpt-5.6") else {}
+)
+
+
 # Cross-Encoder Re-ranking 实战
 class Reranker:
     """Cross-Encoder 重排序器（mock 演示版）"""
 
-    def __init__(self, model_name: str = "BAAI/bge-reranker-large"):
+    def __init__(
+        self,
+        model_name: str = "BAAI/bge-reranker-v2-m3",
+        *,
+        load_real_model: bool = False,
+    ):
         """
         推荐模型：
         - BAAI/bge-reranker-large：中文场景首选
@@ -27,12 +41,18 @@ class Reranker:
         - cross-encoder/ms-marco-MiniLM-L-6-v2：英文场景
         """
         self.model_name = model_name
+        self.model = None
+        if not load_real_model:
+            return
         try:
             from sentence_transformers import CrossEncoder
 
             self.model = CrossEncoder(model_name)
-        except Exception:
-            self.model = None
+        except (ImportError, OSError, ValueError) as exc:
+            raise RuntimeError(
+                "真实 reranker 加载失败；请先显式下载模型并检查依赖，"
+                "或保持 load_real_model=False 使用离线教学评分"
+            ) from exc
 
     def rerank(self, query: str, documents: list[str], top_k: int = 5):
         """
@@ -47,11 +67,11 @@ class Reranker:
             [(文档, 重排序分数), ...]
         """
         if self.model is None:
-            # Mock: 关键词重合度打分
-            q_words = set(query.lower().split())
+            # 离线教学近似：中英文字符/词元重合度，不代表真实 reranker 质量。
+            q_words = set(re.findall(r"[\u4e00-\u9fff]|[a-z0-9_]+", query.lower()))
             scored = []
             for doc in documents:
-                d_words = set(doc.lower().split())
+                d_words = set(re.findall(r"[\u4e00-\u9fff]|[a-z0-9_]+", doc.lower()))
                 score = float(len(q_words & d_words)) / max(len(q_words | d_words), 1)
                 scored.append((doc, score))
             scored.sort(key=lambda x: x[1], reverse=True)
@@ -103,9 +123,10 @@ class AdvancedRAG:
 请给出准确、简洁的回答。"""
         if self.llm is not None:
             response = self.llm.chat.completions.create(
-                model="gpt-4",
+                model=DEFAULT_OPENAI_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
+                **OPENAI_REASONING_KWARGS,
             )
             answer = response.choices[0].message.content
         else:
@@ -131,10 +152,11 @@ if __name__ == "__main__":
     # 复用 11_hybrid_retriever 的 HybridRetriever
     hr_mod = import_module("11_hybrid_retriever")
     retriever = hr_mod.HybridRetriever(docs, emb)
-    reranker = Reranker(model_name="mock")
+    reranker = Reranker(load_real_model=False)
     rag = AdvancedRAG(vectorstore=None, retriever=retriever, reranker=reranker, llm_client=None)
     out = rag.query("RAG 是什么", recall_k=4, final_k=2)
     print(f"answer: {out['answer']}")
     print(f"recall_count: {out['recall_count']}")
     for doc, score in out["sources"]:
         print(f"  score={score:.3f}  doc={doc!r}")
+    print("OK")

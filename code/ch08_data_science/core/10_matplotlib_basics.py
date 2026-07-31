@@ -7,13 +7,16 @@
 # deps: matplotlib, numpy
 # run: python 10_matplotlib_basics.py
 # expected_runtime: <5s
-# expected_output: 4 宫格图表（线/散点/柱状/直方图）渲染并保存
+# expected_output: 4 宫格图表在内存中构建；仅 --output 时保存
 # ---
 # See: ../tutorial/08_Python数据科学核心库.md (Section 8.3.1 Matplotlib 基础)
 # Interview hooks:
 #   1. fig, axes = plt.subplots(2, 2) 中 axes 的索引顺序是什么？
 #   2. tight_layout 与 subplots_adjust 的区别？
 #   3. axvline 与 axhline 在标注统计量时的常用场景？
+
+import argparse
+from pathlib import Path
 
 import matplotlib
 
@@ -57,8 +60,23 @@ axes[1, 1].axvline(data.mean(), color="red", linestyle="--", label=f"Mean={data.
 axes[1, 1].legend()
 
 plt.tight_layout()
-plt.savefig("matplotlib_basics.png", dpi=150, bbox_inches="tight")
-plt.close(fig)
+
+
+def main(output_path: Path | None = None) -> None:
+    if output_path is not None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_path, dpi=150, bbox_inches="tight")
+        print(f"图表已保存: {output_path}")
+    else:
+        print("图表已在内存中构建；默认不落盘（使用 --output PATH 可显式保存）。")
+    plt.close(fig)
+    print("OK")
+
 
 if __name__ == "__main__":
-    print("OK")
+    parser = argparse.ArgumentParser(description="Matplotlib 四宫格示例")
+    parser.add_argument("--output", type=Path, help="可选图片输出路径；默认不写文件")
+    args = parser.parse_args()
+    main(args.output)
+else:
+    plt.close(fig)

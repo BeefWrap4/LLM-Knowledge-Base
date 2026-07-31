@@ -4,6 +4,7 @@
 # section: 21.5.2 DDPM 简化实现 - SinusoidalPositionEmbedding + SimpleUNet + DDPM
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: torch
 # run: python 05_ddpm_diffusion.py
 # expected_runtime: 5-15s
@@ -15,15 +16,6 @@
 #   2. 为什么需要重参数化技巧直接采样 x_t？
 #   3. 线性 / cosine 噪声调度对生成质量有什么影响？
 
-
-# === Multi-GPU / heavy model guard (auto-added) ===
-import os as _os
-import sys as _sys
-
-_NGPU = _os.environ.get("WORLD_SIZE", "1")
-if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
-    _sys.exit(0)
 import math
 
 import torch

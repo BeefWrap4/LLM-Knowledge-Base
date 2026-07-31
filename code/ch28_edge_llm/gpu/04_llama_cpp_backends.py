@@ -27,6 +27,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import skip_if_mock
 
 # llama.cpp 支持的后端矩阵
 BACKENDS = [
@@ -84,6 +85,8 @@ def _select_backend() -> tuple[str, int]:
 
 
 def main() -> None:
+    if skip_if_mock("匹配当前平台的 llama.cpp 后端和本地 GGUF 模型"):
+        return
     # 1. 后端能力矩阵
     print_backend_table()
     compile_commands()

@@ -83,3 +83,4 @@ if __name__ == "__main__":
     best = tot.search(initial)
     print("[最佳推理状态]")
     print(best)
+    print("OK")

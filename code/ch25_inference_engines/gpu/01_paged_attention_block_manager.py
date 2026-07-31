@@ -45,12 +45,14 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import gpu_summary, require_nvidia_gpu
+from shared.gpu_guard import gpu_summary, require_nvidia_gpu, skip_if_mock
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"  # 1GB, 已下载到本地 HF cache
 
 
 def main() -> None:
+    if skip_if_mock("an NVIDIA GPU, CUDA, vLLM, and local model weights"):
+        return
     require_nvidia_gpu(min_vram_gb=8)
     print(gpu_summary())
     print()

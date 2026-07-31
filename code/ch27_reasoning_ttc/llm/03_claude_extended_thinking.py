@@ -1,25 +1,24 @@
 # ---
 # chapter: 27
-# topic: Claude 4.6 Extended Thinking + Interleaved Thinking
+# topic: Claude Fable 5 adaptive thinking and summarized display
 # section: 27.2 Reasoning Effort API
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: llm
-# deps: anthropic>=0.40.0
+# deps: anthropic>=0.120.2,<1
 # run: python 03_claude_extended_thinking.py
-# expected_runtime: <60s (real Anthropic API call with thinking blocks)
-# expected_output: prints <thinking>...</thinking> block + final answer, or friendly error
+# expected_runtime: <2s mock; variable for a real Anthropic API call
+# expected_output: prints a summarized thinking block and final answer
 # ---
-# See: ../tutorial/27_推理模型与Test-Time_Compute.md §27.3
+# See: ../tutorial/27_推理模型与Test-Time_Compute.md §27.2
 # Interview hooks:
-#   1. Claude Extended Thinking 与 o3 reasoning_effort 的本质区别？
-#   2. thinking budget_tokens 与 max_tokens 的关系？interleaved thinking？
-#   3. 如何在 tool_use 中启用 extended thinking？
-"""Claude Extended Thinking (Anthropic).
+#   1. Claude Fable 5 为什么不能继续使用 ``budget_tokens``？
+#   2. ``thinking.display`` 的 summarized 与 omitted 分别返回什么？
+#   3. ``output_config.effort`` 为什么不是严格的 token 预算？
+"""Claude Fable 5 的 always-on adaptive thinking 示例。
 
-Extended thinking 让 Claude 在生成最终回答前显式思考:
-  - 思考内容: <thinking>...</thinking> 块 (用户可见)
-  - 最大思考 token: thinking budget (max_tokens 参数)
-  - 适合: 复杂推理, 多步问题
+Fable 5 不接受旧式 ``thinking.type="enabled"`` / ``budget_tokens``。推理深度由
+``output_config.effort`` 控制；``thinking.display="summarized"`` 只返回可读摘要，
+不会返回原始思维链。脚本默认离线 mock，只有 ``LLM_MOCK=0`` 才调用真实 API。
 """
 
 import os
@@ -38,36 +37,45 @@ def get_anthropic_key() -> str:
     if not key or key == "YOUR_API_KEY":
         raise_with_help(
             "ANTHROPIC_API_KEY 未设置",
-            "国内用户可用 DeepSeek-R1 替代.",
+            "真实调用需同时设置 `LLM_MOCK=0` 与 `ANTHROPIC_API_KEY`；离线运行请保留默认 mock。",
         )
     return key
 
 
 def main():
+    if os.environ.get("LLM_MOCK", "1").strip() != "0":
+        print("=== Claude Fable 5 adaptive thinking（离线 mock，默认）===")
+        print("<thinking-summary>这是可读摘要示例，不是原始思维链。</thinking-summary>")
+        print("回答: 9.9 更大。")
+        return
+
     api_key = get_anthropic_key()
 
     import anthropic
 
     client = anthropic.Anthropic(api_key=api_key)
 
-    print("=== Claude Extended Thinking ===\n")
+    print("=== Claude Fable 5 adaptive thinking ===\n")
 
     response = client.messages.create(
-        model="claude-sonnet-4-5",
+        model="claude-fable-5",
         max_tokens=4096,
         thinking={
-            "type": "enabled",
-            "budget_tokens": 2048,
+            "type": "adaptive",
+            "display": "summarized",
         },
+        output_config={"effort": "medium"},
         messages=[{"role": "user", "content": "9.11 和 9.9 哪个更大?"}],
     )
 
     for block in response.content:
         if block.type == "thinking":
-            print(f"\n<thinking>\n{block.thinking[:500]}\n</thinking>")
+            summary = block.thinking or "(未返回可读摘要)"
+            print(f"\n<thinking-summary>\n{summary[:500]}\n</thinking-summary>")
         elif block.type == "text":
             print(f"\n回答: {block.text}")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

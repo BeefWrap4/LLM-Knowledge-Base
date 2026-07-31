@@ -7,14 +7,16 @@
 # deps: tiktoken (fallback estimator if missing)
 # run: python 11_token_estimator.py
 # expected_runtime: < 1s
-# expected_output: Token counts, cost estimates, and per-model comparison
+# expected_output: Token count and cost estimate based on an injected illustrative rate card
 # ---
 # See: ../tutorial/20_LLMOps与模型可观测性.md#2052-token-计数与预估-⭐⭐⭐
 # Interview hooks:
-#  - tiktoken 与模型编码之间如何映射？
-#  - 在没有 tiktoken 时如何粗略估算 Token 数？
-#  - 上下文窗口使用率为什么是 LLMOps 关注指标？
+#  - 为什么应优先使用模型返回的 usage，而不是把本地估算当账单？
+#  - 模型名无法被本地 tokenizer 识别时如何安全降级？
+#  - 价格与上下文窗口为何必须按供应商当前文档注入？
 
+import os
+from dataclasses import dataclass
 
 try:
     import tiktoken
@@ -25,88 +27,84 @@ except ImportError:
     _HAS_TIKTOKEN = False
 
 
+@dataclass(frozen=True)
+class ModelCostConfig:
+    input_usd_per_million: float
+    output_usd_per_million: float
+    context_window_tokens: int
+    source: str
+
+
 class TokenEstimator:
-    """Token 计数与成本预估器"""
-
-    MODEL_ENCODING_MAP: dict[str, str] = {
-        "gpt-4o": "o200k_base",
-        "gpt-4o-mini": "o200k_base",
-        "gpt-4": "cl100k_base",
-        "gpt-3.5-turbo": "cl100k_base",
-        "text-embedding-3": "cl100k_base",
-    }
-
-    PRICING: dict[str, dict[str, float]] = {
-        "gpt-4o": {"input": 2.50, "output": 10.00, "context_window": 128000},
-        "gpt-4o-mini": {"input": 0.15, "output": 0.60, "context_window": 128000},
-        "claude-sonnet-4": {"input": 3.00, "output": 15.00, "context_window": 200000},
-        "claude-haiku-4": {"input": 0.25, "output": 1.25, "context_window": 200000},
-    }
+    """规划阶段估算器；最终计费应以供应商 usage 与账单为准。"""
 
     @classmethod
-    def count_tokens(cls, text: str, model: str = "gpt-4o") -> int:
-        """统计文本的 Token 数量"""
+    def count_tokens(cls, text: str, model: str) -> int:
         if _HAS_TIKTOKEN:
-            encoding_name = cls.MODEL_ENCODING_MAP.get(model, "cl100k_base")
             try:
-                encoding = tiktoken.get_encoding(encoding_name)
-                return len(encoding.encode(text))
-            except Exception:
-                pass
+                encoding = tiktoken.encoding_for_model(model)
+            except (KeyError, ValueError):
+                try:
+                    encoding = tiktoken.get_encoding("o200k_base")
+                except Exception:
+                    encoding = None
+            if encoding is not None:
+                try:
+                    return len(encoding.encode(text))
+                except Exception:
+                    pass
         return cls._estimate_tokens(text)
 
     @staticmethod
     def _estimate_tokens(text: str) -> int:
-        """Token 估算（不依赖 tiktoken）：中文 1.5 字符/token，英文 4 字符/token。"""
-        chinese_chars = sum(1 for c in text if "一" <= c <= "鿿")
+        """粗估：中文按 1.5 字符/Token、其他按 4 字符/Token；只用于容量规划。"""
+        chinese_chars = sum(1 for char in text if "\u4e00" <= char <= "\u9fff")
         other_chars = len(text) - chinese_chars
-        return int(chinese_chars / 1.5 + other_chars / 4)
+        return max(1, int(chinese_chars / 1.5 + other_chars / 4))
 
     @classmethod
     def estimate_cost(
         cls,
         prompt: str,
-        expected_output_length: int = 200,
-        model: str = "gpt-4o",
-    ) -> dict[str, float]:
-        """预估单次调用成本"""
+        expected_output_tokens: int,
+        model: str,
+        config: ModelCostConfig,
+    ) -> dict[str, float | int | str]:
+        if expected_output_tokens < 0 or config.context_window_tokens <= 0:
+            raise ValueError("output tokens must be non-negative and context window must be positive")
         input_tokens = cls.count_tokens(prompt, model)
-        output_tokens = expected_output_length
-        pricing = cls.PRICING.get(model, cls.PRICING["gpt-4o-mini"])
-
-        input_cost = (input_tokens / 1_000_000) * pricing["input"]
-        output_cost = (output_tokens / 1_000_000) * pricing["output"]
-        total_cost = input_cost + output_cost
-
+        input_cost = input_tokens / 1_000_000 * config.input_usd_per_million
+        output_cost = expected_output_tokens / 1_000_000 * config.output_usd_per_million
         return {
             "model": model,
-            "input_tokens": input_tokens,
-            "output_tokens_estimated": output_tokens,
-            "input_cost": round(input_cost, 6),
-            "output_cost": round(output_cost, 6),
-            "total_cost": round(total_cost, 6),
-            "context_window_used_pct": round(input_tokens / pricing["context_window"] * 100, 1),
+            "input_tokens_estimated": input_tokens,
+            "output_tokens_estimated": expected_output_tokens,
+            "input_cost_usd_estimated": round(input_cost, 6),
+            "output_cost_usd_estimated": round(output_cost, 6),
+            "total_cost_usd_estimated": round(input_cost + output_cost, 6),
+            "context_window_used_pct_estimated": round(
+                input_tokens / config.context_window_tokens * 100,
+                2,
+            ),
+            "rate_source": config.source,
         }
-
-    @classmethod
-    def compare_models(cls, prompt: str, expected_output: int = 200) -> list[dict]:
-        """对比不同模型的成本"""
-        results: list[dict] = []
-        for model in cls.PRICING:
-            results.append(cls.estimate_cost(prompt, expected_output, model))
-        results.sort(key=lambda x: x["total_cost"])
-        return results
 
 
 if __name__ == "__main__":
-    estimator = TokenEstimator()
-
-    prompt = "请详细解释 Python 中的异步编程模型，包括 asyncio、协程和事件循环的概念。" * 5
-
-    cost = estimator.estimate_cost(prompt, model="gpt-4o")
-    print(f"GPT-4o: ${cost['total_cost']:.4f} ({cost['input_tokens']} input tokens)")
-
-    comparison = estimator.compare_models(prompt)
-    print("\n=== 模型成本对比 ===")
-    for c in comparison:
-        print(f"{c['model']}: ${c['total_cost']:.6f}")
+    model = os.environ.get("OPENAI_MODEL", "gpt-5.6")
+    # 默认值是教学输入，不代表供应商当前价格或上下文上限。
+    demo_config = ModelCostConfig(
+        input_usd_per_million=float(os.environ.get("LLM_INPUT_USD_PER_MILLION", "1")),
+        output_usd_per_million=float(os.environ.get("LLM_OUTPUT_USD_PER_MILLION", "4")),
+        context_window_tokens=int(os.environ.get("LLM_CONTEXT_WINDOW_TOKENS", "100000")),
+        source=os.environ.get("LLM_RATE_SOURCE", "illustrative-demo-rate-card"),
+    )
+    prompt = "请解释 Python 中的 asyncio、协程和事件循环。" * 5
+    estimate = TokenEstimator.estimate_cost(
+        prompt,
+        expected_output_tokens=200,
+        model=model,
+        config=demo_config,
+    )
+    print(estimate)
+    print("OK")

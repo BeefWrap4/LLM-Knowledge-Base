@@ -6,14 +6,21 @@
 
 | Tier | Files | 主题 |
 |------|-------|------|
-| gpu | 11 | CLIP / LLaVA / Whisper / Diffusion LLM / 世界模型 (Genie 3/Veo 3/Cosmos) / 实时语音 |
+| gpu | 11 | CLIP / LLaVA / Diffusion LLM / Cosmos 3 条件接口 / 实时语音 |
 
 ## 快速开始
 
 ```bash
 cd code/
-python ch21_multimodal/gpu/01_clip_basics.py
+python scripts/run_all_examples.py --tier gpu --chapter ch21  # 离线：结构示例或明确 SKIP
+
+# 真实 OpenCLIP：会使用 GPU/权重/本地图像
+CH21_OPENCLIP_RUN=1 CH21_IMAGE=/path/to/image.jpg \
+  python ch21_multimodal/gpu/01_openclip_zero_shot.py
 ```
+
+`04/06/07/10/11` 是明确标注的结构或算法骨架，不代表加载了真实 VLM、执行了训练、
+连接了 Moshi，或完成了端到端多模态 RAG。
 
 ## 关联章节
 

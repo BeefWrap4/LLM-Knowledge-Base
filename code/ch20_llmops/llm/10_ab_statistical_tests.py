@@ -12,7 +12,7 @@
 # See: ../tutorial/20_LLMOps与模型可观测性.md#2043-统计显著性检验-⭐⭐
 # Interview hooks:
 #  - 双比例 Z 检验与 Welch T 检验分别适用于什么类型指标？
-#  - 怎么估算"要检测 5% 提升需要多少样本"？
+#  - 怎么估算“要检测 5 个百分点的绝对差需要多少样本”？
 #  - p 值与置信区间在 A/B 测试报告里该如何正确呈现？
 
 import numpy as np
@@ -31,6 +31,12 @@ class ABStatisticalTests:
         alpha: float = 0.05,
     ) -> dict:
         """双比例 Z 检验（用于二分类指标）"""
+        if n_a <= 0 or n_b <= 0:
+            raise ValueError("group sizes must be positive")
+        if not 0 <= successes_a <= n_a or not 0 <= successes_b <= n_b:
+            raise ValueError("successes must be in [0, group size]")
+        if not 0 < alpha < 1:
+            raise ValueError("alpha must be in (0, 1)")
         p_a = successes_a / n_a
         p_b = successes_b / n_b
         p_pool = (successes_a + successes_b) / (n_a + n_b)
@@ -53,7 +59,8 @@ class ABStatisticalTests:
             "z_score": z_score,
             "p_value": p_value,
             "significant": p_value < alpha,
-            "ci_95": (ci_lower, ci_upper),
+            "confidence_level": 1 - alpha,
+            "confidence_interval": (ci_lower, ci_upper),
         }
 
     @staticmethod
@@ -63,6 +70,10 @@ class ABStatisticalTests:
         alpha: float = 0.05,
     ) -> dict:
         """Welch's T 检验（用于连续指标：延迟/Token 数/评分）"""
+        if len(values_a) < 2 or len(values_b) < 2:
+            raise ValueError("Welch's t-test requires at least two observations per group")
+        if not 0 < alpha < 1:
+            raise ValueError("alpha must be in (0, 1)")
         t_stat, p_value = stats.ttest_ind(values_b, values_a, equal_var=False)
         mean_a = float(np.mean(values_a))
         mean_b = float(np.mean(values_b))
@@ -84,14 +95,17 @@ class ABStatisticalTests:
         alpha: float = 0.05,
         power: float = 0.80,
     ) -> int:
-        """计算 A/B 测试所需的最小样本量"""
+        """用 Cohen's h 近似计算等样本两组各自所需的样本量。"""
+        treatment_rate = baseline_rate + minimum_detectable_effect
+        if not 0 < baseline_rate < 1 or not 0 < treatment_rate < 1:
+            raise ValueError("baseline and baseline + effect must be in (0, 1)")
+        if minimum_detectable_effect == 0:
+            raise ValueError("minimum_detectable_effect must be non-zero")
+        if not 0 < alpha < 1 or not 0 < power < 1:
+            raise ValueError("alpha and power must be in (0, 1)")
         z_alpha = stats.norm.ppf(1 - alpha / 2)
         z_beta = stats.norm.ppf(power)
-        h = 2 * np.arcsin(np.sqrt(baseline_rate + minimum_detectable_effect)) - 2 * np.arcsin(
-            np.sqrt(baseline_rate)
-        )
-        if h == 0:
-            return 0
+        h = 2 * np.arcsin(np.sqrt(treatment_rate)) - 2 * np.arcsin(np.sqrt(baseline_rate))
         n = 2 * ((z_alpha + z_beta) / h) ** 2
         return int(np.ceil(n))
 
@@ -109,8 +123,9 @@ if __name__ == "__main__":
     print(f"正确率对比: p={result1['p_value']:.4f}, 显著={result1['significant']}")
 
     # 示例2：连续指标（延迟）
-    lat_a = np.random.normal(800, 100, size=200).tolist()
-    lat_b = np.random.normal(820, 110, size=200).tolist()
+    rng = np.random.default_rng(0)
+    lat_a = rng.normal(800, 100, size=200).tolist()
+    lat_b = rng.normal(820, 110, size=200).tolist()
     result2 = tester.welch_t_test(lat_a, lat_b)
     print(f"延迟对比: p={result2['p_value']:.4f}, 显著={result2['significant']}")
 
@@ -120,3 +135,4 @@ if __name__ == "__main__":
         minimum_detectable_effect=0.05,
     )
     print(f"每组需要 {n_required} 个样本")
+    print("OK")

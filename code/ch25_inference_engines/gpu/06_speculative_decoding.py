@@ -7,28 +7,29 @@
 # deps: vllm>=0.21.0, torch>=2.5
 # run: python 06_speculative_decoding.py
 # expected_runtime: ~30-60s (model load + speculative generate)
-# expected_output: 真实 vLLM LLM 跑 2 prompt 启用 speculative decoding,
-#                    打印 accepted/draft token 统计
+# expected_output: 真实 vLLM LLM 跑 2 prompt，启用 n-gram speculative decoding
 # ---
 # See: ../tutorial/25_推理引擎与高性能服务.md §25.4
 # Interview hooks:
-#   1. Speculative decoding 加速原理？(答: 一次 verify 多个 draft token，接受率 α 时 ~1/(1-α) 加速)
+#   1. Speculative decoding 加速原理？(答: proposer 草拟多个 token，target 并行验证；收益需实测)
 #   2. Draft model 如何选？(答: 小同族模型、Medusa、n-gram、EAGLE、self-speculative)
 #   3. 接受率 0 时会发生什么？(答: 回退到单 token 步，无收益)
-#   4. vLLM 0.21.0 如何启用？(答: speculative_model + num_speculative_tokens 参数)
+#   4. vLLM 0.21.0 如何启用？(答: LLM(..., speculative_config={...}))
 
 """Speculative Decoding 演示 (真实 vLLM 0.21.0).
 
-Speculative decoding 用小 draft model 先预测 K 个 token, 大 target model
-一次 verify K 个. 加速比 ≈ K × α (α = 接受率).
+Speculative decoding 由 proposer 草拟多个 token，再由 target model 并行验证。
+实际收益取决于接受率、proposer 成本、流量、硬件和采样配置，不能只用 K 或 α 推出。
 
 vLLM 0.21.0 启用方式 (LLM 构造参数):
-    - speculative_model       : draft model HF 名 (或同模型做 self-speculative)
-    - num_speculative_tokens  : K (每个 step 草拟几个 token)
-    - speculative_draft_tensor_parallel_size : draft model 的 TP
+    speculative_config={
+        "method": "ngram",
+        "num_speculative_tokens": 5,
+        "prompt_lookup_min": 2,
+        "prompt_lookup_max": 5,
+    }
 
-vLLM 同时支持无模型的 Medusa / EAGLE / n-gram 方案, 此处演示同模型
-self-speculative (单模型 demo, 实际生产用小 draft).
+vLLM 还支持 draft model、EAGLE、MTP、suffix 等方案；本例用无需额外权重的 n-gram。
 """
 
 from __future__ import annotations
@@ -40,12 +41,14 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import gpu_summary, require_nvidia_gpu
+from shared.gpu_guard import gpu_summary, require_nvidia_gpu, skip_if_mock
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"  # 1GB, 已下载到本地 HF cache
 
 
 def main() -> None:
+    if skip_if_mock("Linux、NVIDIA GPU、vLLM 编译扩展和本地模型"):
+        return
     require_nvidia_gpu(min_vram_gb=16)
     print(gpu_summary())
     print()
@@ -71,16 +74,19 @@ def main() -> None:
             return
         raise
 
-    # 启用 speculative decoding
-    # 注: 同模型做 self-speculative (实际生产用更小的 draft model)
-    #     vLLM 0.21.0 必须传 HF 模型 ID 字符串, 不能传 None
+    # vLLM 0.21.0 的公共入口是 speculative_config。
+    # n-gram proposer 不需要额外 draft 权重，适合演示配置和结果等价性。
     llm = LLM(
         model=MODEL,
         gpu_memory_utilization=0.5,
         max_num_seqs=4,
         max_model_len=512,
-        speculative_model=MODEL,  # 同模型 self-speculative demo
-        num_speculative_tokens=5,  # K=5 draft tokens
+        speculative_config={
+            "method": "ngram",
+            "num_speculative_tokens": 5,
+            "prompt_lookup_min": 2,
+            "prompt_lookup_max": 5,
+        },
         enforce_eager=True,
     )
 
@@ -98,20 +104,15 @@ def main() -> None:
         text = out.outputs[0].text[:120].replace("\n", " ")
         ptoks = len(out.prompt_token_ids)
         ctoks = len(out.outputs[0].token_ids)
-        # vLLM 0.21.0 把 acceptance 统计放在 RequestOutput 里
-        n_draft = getattr(out, "num_draft_tokens", 0)
-        n_acc = getattr(out, "num_accepted_tokens", 0)
         print(f"  [{i}] prompt={ptoks}t -> gen={ctoks}t")
         print(f"       text={text!r}")
-        if n_draft:
-            print(f"       draft={n_draft}  accepted={n_acc}  rate={100 * n_acc / max(n_draft, 1):.0f}%")
     print()
     print("=" * 60)
     print("Speculative Decoding 关键 takeaway:")
-    print("  - 1 个 verify forward 同时 verify K=5 draft tokens")
-    print("  - 接受率 α 时期望加速: K×α / (1 - (1-α)^K)")
-    print("  - draft model 越小越好 (e.g. 0.5B target + 0.1B draft)")
-    print("  - 同模型 self-speculative 是 fallback (无 draft 时)")
+    print("  - proposer 草拟 token，target model 并行验证")
+    print("  - 在相同采样配置下保持 target 分布，不以近似输出换速度")
+    print("  - 本例使用 n-gram proposer；draft model、EAGLE、MTP 需分别配置")
+    print("  - 必须用目标流量实测 TTFT、TPOT、吞吐、显存和接受率")
     print("=" * 60)
 
 

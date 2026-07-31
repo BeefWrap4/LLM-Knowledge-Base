@@ -1,152 +1,124 @@
-# 教程例子迁移到 UnifiedClient (Wave 15)
+# 教程例子迁移到 UnifiedClient
 
-> 本教程所有调用 LLM 的代码可零成本切换到 **真实厂商 API** (DeepSeek / Kimi / SiliconFlow / MiniMax 等),
-> 只需设置环境变量 + 调用 `UnifiedClient`. 详见本指南.
+> 核验日期：2026-07-31。`UnifiedClient` 统一的是仓库中的常见文本 Chat Completions 调用，
+> 不是所有厂商 API、所有字段或所有模型能力的抽象。
 
-## 1. 现状 (Wave 14-F)
+## 1. 当前行为
 
-| 已改造 (✓ 真实调用验证) | 状态 |
-|---|---|
-| `ch13/llm/06_self_consistency_cot.py` | ✓ MiniMax 实测通过 |
-| `ch13/llm/09_compare_temperatures.py` | ✓ MiniMax 实测通过 (3 个温度样本) |
+| 条件 | 构造结果 | `chat()` 结果 |
+|---|---|---|
+| `LLM_MOCK=1` | 创建离线 client，不扫描/读取 `.env`、不返回/使用厂商 Key、不联网 | `resp.mock is True`，确定性本地响应 |
+| `LLM_MOCK=0`，Key 与依赖齐全 | 创建真实客户端 | 成功时 `resp.mock is False` |
+| `LLM_MOCK=0`，缺 Key | 构造时抛 `RuntimeError` | 不会自动进入 mock |
+| 真实请求发生鉴权、网络或协议异常 | 已创建的真实客户端继续执行异常处理 | 返回 `resp.mock is True`、`model` 以 `error/` 开头，`raw` 保存异常 |
 
-`make llm-doctor` 在你的环境 (DEEPSEEK + KIMI + SILICONFLOW + MINIMAX) 显示 **4/4 passed**.
+最后一行是“带错误标记的兜底响应”，不是成功。真实验收必须断言 `resp.mock is False`；
+`quick_chat()` 只返回字符串，会隐藏这个状态，不适合作为真实 API 验收入口。
 
-## 2. 迁移一个例子的标准流程 (5 行改动)
+## 2. 标准迁移
 
-### Step 1: 加 path setup (让 shared 可导入)
+### 历史 Before（仅展示迁移起点）
 
-文件顶部插入:
+下面的 `gpt-4` 是旧示例中的硬编码模型：
 
-```python
-import sys as _sys_path_setup
-from pathlib import Path as _Path_setup
-_code_root = _Path_setup(__file__).resolve().parent.parent.parent  # /app/code 或 code/
-if str(_code_root) not in _sys_path_setup.path:
-    _sys_path_setup.path.insert(0, str(_code_root))
-```
-
-### Step 2: 替换 `import openai` + `openai.chat.completions.create` 块
-
-**Before**:
 ```python
 import openai
+
 response = openai.chat.completions.create(
     model="gpt-4",
     messages=[{"role": "user", "content": prompt}],
-    temperature=temperature,
 )
 content = response.choices[0].message.content
 ```
 
-**After**:
+### 当前写法
+
 ```python
+import os
+
+if os.environ.get("LLM_MOCK") != "0":
+    print("[SKIP] 只有显式 LLM_MOCK=0 才执行真实调用")
+    raise SystemExit(0)
+
 from shared.llm_client import UnifiedClient
-_client = UnifiedClient()
-resp = _client.chat(
+
+client = UnifiedClient()
+resp = client.chat(
     messages=[{"role": "user", "content": prompt}],
-    temperature=temperature,
-    # model 省略 = 用 provider 默认 (deepseek-chat, MiniMax-Text-01, etc.)
+    temperature=0.7,
+    max_tokens=256,
 )
-content = resp.content
+if resp.mock:
+    raise RuntimeError(f"真实 API 未通过：{type(resp.raw).__name__}: {resp.raw}")
+
+print(f"[{resp.provider}/{resp.model}] {resp.content}")
+print(resp.usage)
 ```
 
-### Step 3: (可选) 启用真实调用
-
-```bash
-# 默认 mock (防止误用 API), 设 USE_REAL_API=1 启用真实调用
-USE_REAL_API=1 python your_example.py
-```
-
-## 3. 改造前后对比
-
-| 维度 | 改造前 | 改造后 |
-|------|--------|--------|
-| API Key 配置 | 写死 `os.environ["OPENAI_API_KEY"]` | 自动从 6 家厂商任选 |
-| 厂商切换 | 改 base_url + model 字符串 | 改 1 个参数 `provider="kimi"` |
-| 失败回退 | 抛异常, 例子崩 | 自动降级 mock, 例子继续 |
-| Mock 模式 | 单独写一份 | 同一份代码, 缺 Key 时降级 |
-| 跑通例子 | 需 OPENAI_API_KEY | 1 家厂商 Key (推荐 DeepSeek) |
-| 多模态/特殊 | 需用 Anthropic SDK | 同 `_client.chat(messages, ...)` |
-
-## 4. 迁移清单 (剩余 ~20 个可改造例子)
-
-### 简单 (1-2 行改动) — 推荐
-
-| 文件 | 现状 | 难度 |
-|------|------|------|
-| `ch13/llm/06_self_consistency_cot.py` | ✓ 已完成 | 模板 |
-| `ch13/llm/09_compare_temperatures.py` | ✓ 已完成 | 模板 |
-| `ch13/llm/14_openai_auto_caching.py` | 未改 | 简单 |
-| `ch13/llm/20_openai_json_schema_strict.py` | 未改 | 简单 |
-| `ch17/llm/05_llm_as_judge.py` | 未改 | 中等 (类封装) |
-| `ch17/llm/12_langfuse_v3.py` | 未改 | 中等 |
-
-### 复杂 (框架封装, 不建议改) — 已 SKIP
-
-| 类别 | 文件 | 原因 |
-|------|------|------|
-| LangChain | `ch18/llm/02-09_*.py` | 已用 langchain_openai.ChatOpenAI, 框架特性 |
-| LlamaIndex | `ch18/llm/13-18_*.py` | 已用 OpenAILike, 框架特性 |
-| LangGraph | `ch18/llm/10-12_*.py` | 与 LangChain 深度耦合 |
-| Haystack | `ch18/llm/30_*.py` | Haystack 组件系统 |
-
-### OpenAI-特定 (Wave 17 标注)
-
-以下例子使用 OpenAI 独有特性, 其他厂商不支持. 保留 SDK 调用, 跑通需 `OPENAI_API_KEY`:
-
-| 文件 | 特性 | 替代方案 |
-|------|------|---------|
-| `ch15/llm/03_function_calling_agent.py` | `tools=[...]` + `tool_choice="auto"` | 用 LangChain (见上) 或 OpenAI only |
-| `ch27/llm/01_o3_api_basic.py` | `model="o3-mini"` + `reasoning_effort=...` | 用 DeepSeek-R1 (`deepseek-reasoner`) 替代 |
-
-**这些例子保留 SDK 调用, 通过 SKIP 模式跳过 — 不破坏 100% 通过率**.
-
-## 5. 调试技巧
-
-### 如何确认用 mock 还是真实 API?
+省略 `provider` 时，选择顺序由 `shared/provider_registry.py` 决定。生产或验收任务应显式指定，
+避免机器上多个 Key 导致路由变化：
 
 ```python
-from shared.llm_client import UnifiedClient
-c = UnifiedClient()
-print(f"provider: {c.provider.name}, model: {c.model}, mock: {c.is_mock}")
+client = UnifiedClient(provider="deepseek", model="deepseek-v4-flash")
 ```
 
-输出:
-- `mock: False` → 真实调用 (会扣费!)
-- `mock: True` → 降级 mock (安全)
+## 3. 运行方式
 
-### 单独测试某个厂商
+离线运行：
 
 ```bash
-LLM_PROVIDER=deepseek python your_script.py
-LLM_PROVIDER=kimi python your_script.py
-LLM_PROVIDER=siliconflow python your_script.py
-LLM_PROVIDER=MiniMax python your_script.py
+LLM_MOCK=1 python your_example.py
 ```
 
-### Token 使用量
+真实运行：
 
-`UnifiedClient` 返回 `.usage` 字段:
-
-```python
-resp = _client.chat(prompt="hi", max_tokens=10)
-print(f"消耗 {resp.usage['total_tokens']} tokens ({resp.provider}/{resp.model})")
+```bash
+LLM_MOCK=0 LLM_PROVIDER=deepseek python your_example.py
 ```
 
-## 6. 例子 PR 模板
+PowerShell：
 
-如果你想贡献新例子, 提交 PR 时:
+```powershell
+$env:LLM_MOCK="0"; $env:LLM_PROVIDER="deepseek"; python your_example.py
+```
 
-1. 文件头加 YAML 注释 (见 `code/ch12/.../01_attention.py` 模板)
-2. 顶部加 path setup (Step 1)
-3. 主逻辑用 UnifiedClient
-4. 加 `if __name__ == "__main__"` 入口
-5. 跑通 `USE_REAL_API=1 python your_file.py`
-6. 跑通 `make ci` (默认 mock 也通过)
+`UnifiedClient` 只把 `LLM_MOCK` 作为离线/真实模式开关；其他历史开关名称不会生效。
 
-## 7. 未来工作 (Wave 16+)
+## 4. 能力边界
 
-- 改写剩余 6 个简单例子 (见上表)
-- CI 中跑 `llm-doctor` 真实调用 (需在 GitHub Secrets 配置 Key)
-- 给 LangChain/LlamaIndex 例子加 vendor 选择 helper
+- `UnifiedClient.chat()` 会按 provider 的 `api_style` 路由：OpenAI-compatible 厂商使用
+  `chat.completions.create()`，Anthropic 使用原生 `messages.create()`。
+- Anthropic 统一层已覆盖字符串 system prompt、`user`/`assistant` 文本消息与 token usage 转换；
+  tool/content blocks、多模态与扩展 thinking 参数仍应直接使用官方 SDK 或专用框架并单独测试。
+- OpenAI `gpt-5.6*` 在当前实现中使用 `max_completion_tokens`，并按 reasoning 设置处理温度；
+  其他厂商仍使用 `max_tokens`。这不代表其他 OpenAI 风格端点支持全部 OpenAI 参数。
+- 多模态、Responses API、工具调用、严格 JSON Schema、缓存与思考内容均需专用适配和单独测试。
+- 当前 provider、默认模型、base URL 与 Key 变量见 [API_KEYS.md](API_KEYS.md)。
+
+## 5. Provider 选择注意
+
+当前 provider 查找大小写不敏感；`UnifiedClient(provider="MiniMax")` 和
+`LLM_PROVIDER=MiniMax` 都会命中 canonical name 为 `MiniMax` 的配置。未知名称会直接抛错，
+不会静默切到 mock 或另一个已配置厂商；真实验收仍须核对 `resp.provider` 与目标厂商一致。
+
+## 6. 真实验收
+
+一个最小的严格探针：
+
+```bash
+LLM_MOCK=0 LLM_PROVIDER=deepseek python -c "from shared.llm_client import UnifiedClient; r=UnifiedClient().chat(prompt='Reply only OK', max_tokens=16); assert not r.mock, repr(r.raw); print(r.provider, r.model, r.usage)"
+```
+
+验收结果至少包含：
+
+- 命令中的 `LLM_MOCK=0` 与显式 provider；
+- `resp.mock is False`；
+- 实际 provider/model、退出码和运行时间；
+- 请求失败时的异常类型，而不是兜底文本；
+- 目标字段或业务断言，而不只是“返回了非空字符串”。
+
+离线 CI 与真实 API 验收要分开报告。离线通过只证明导入、分支和示例流程可运行：
+
+```bash
+LLM_MOCK=1 python -m pytest tests/ -m "not gpu" -q
+```

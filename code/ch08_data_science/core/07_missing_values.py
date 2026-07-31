@@ -42,8 +42,8 @@ df.dropna(thresh=3)  # 保留至少 3 个非 NaN 值的行
 # ========== 填充缺失值 ==========
 df["A"].fillna(0)  # 用 0 填充
 df["A"].fillna(df["A"].mean())  # 用均值填充
-df["A"].fillna(method="ffill")  # 前向填充（用前一个有效值）
-df["A"].fillna(method="bfill")  # 后向填充（用后一个有效值）
+df["A"].ffill()  # 前向填充（用前一个有效值）
+df["A"].bfill()  # 后向填充（用后一个有效值）
 df["A"].interpolate()  # 线性插值
 
 # ========== 不同列用不同策略 ==========

@@ -26,7 +26,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help
-from shared.gpu_guard import require_apple_silicon
+from shared.gpu_guard import require_apple_silicon, skip_if_mock
 
 
 # === 硬件检查函数 (供测试用) ===
@@ -111,6 +111,8 @@ def benchmark_summary() -> None:
 
 
 def main() -> None:
+    if skip_if_mock("Apple Silicon 和 MLX 依赖"):
+        return
     check_hardware()
     mlx_unified_memory_demo()
     pytorch_mps_demo()

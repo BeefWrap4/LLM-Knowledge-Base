@@ -32,3 +32,4 @@ if __name__ == "__main__":
     import json
 
     print(json.dumps(chunk_with_metadata, ensure_ascii=False, indent=2))
+    print("OK")

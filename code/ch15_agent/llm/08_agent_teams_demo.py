@@ -269,3 +269,4 @@ def demo_agent_teams():
 
 if __name__ == "__main__":
     demo_agent_teams()
+    print("OK")

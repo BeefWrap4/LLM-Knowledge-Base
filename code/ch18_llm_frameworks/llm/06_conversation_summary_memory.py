@@ -4,7 +4,7 @@
 # section: 18.1.3 Memory 机制 - ConversationSummaryMemory
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: langchain, langchain-openai
+# deps: langchain-classic
 # run: python 06_conversation_summary_memory.py
 # expected_runtime: <1s (mock mode)
 # expected_output: summarized history
@@ -15,11 +15,18 @@
 #   2. max_token_limit 起什么作用？过小会丢失什么？
 
 
+import os
+
+if os.environ.get("LLM_MOCK") != "0":
+    print("[SKIP] LangChain Classic 迁移示例仅在显式 LLM_MOCK=0 时运行")
+    print("OK")
+    raise SystemExit(0)
+
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
 
 try:
-    from langchain.memory import ConversationSummaryMemory
+    from langchain_classic.memory import ConversationSummaryMemory
 
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
@@ -30,7 +37,7 @@ if _SKIP_REASON:
 print(
     "OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)"
 )
-from langchain.chains import ConversationChain
+from langchain_classic.chains import ConversationChain
 
 
 class _MockChatModel:

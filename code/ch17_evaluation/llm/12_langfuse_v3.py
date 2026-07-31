@@ -1,102 +1,95 @@
-import sys as _sys_path_setup
-from pathlib import Path as _Path_setup
-
-_code_root = _Path_setup(__file__).resolve().parent.parent.parent
-if str(_code_root) not in _sys_path_setup.path:
-    _sys_path_setup.path.insert(0, str(_code_root))
-
 # ---
 # chapter: 17
 # topic: 大模型评估体系
-# section: 17.11.2 Langfuse v3 评估与可观测性平台
+# section: 17.11.2 Langfuse Experiment Runner
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: langfuse, openai
 # run: python 12_langfuse_v3.py
 # expected_runtime: <2s (mock mode)
-# expected_output: Demonstrates Langfuse prompt management + LLM-as-Judge skeleton
+# expected_output: Current Langfuse experiment flow followed by OK
 # ---
 # See: ../tutorial/17_大模型评估体系.md
 # Interview hooks:
-# - What changed in Langfuse v3 (ClickHouse + OTel) vs v2?
-# - Why is centralized prompt management critical for production LLM apps?
-# - How does Langfuse integrate with the broader OpenTelemetry ecosystem?
+# - What does run_experiment automate, and what does it not validate for you?
+# - When should an evaluator be deterministic code instead of LLM-as-Judge?
+# - Why must a short-lived process call langfuse.flush()?
 
-"""Langfuse v3 评估与 Prompt 管理示例。
+"""Langfuse 当前 Python SDK 的本地数据集实验示例。
 
-Langfuse v3 将 LLM 可观测性、Prompt 管理、评估、LLM-as-Judge 整合到同一平台，
-从 v2 的 PostgreSQL 单一后端演进为 ClickHouse 事件存储 + OTel 协议。
+示例使用 ``get_client``、``Evaluation``、``run_experiment`` 以及 Langfuse 的
+OpenAI drop-in client。默认 ``LLM_MOCK=1``，不导入 SDK、不读取凭据、不联网。
 """
+
 import os
+from typing import Any
 
 
-def run_langfuse_v3_demo() -> None:
-    mock_mode = os.environ.get("LANGFUSE_MOCK", "1") == "1"
+def run_langfuse_experiment_demo() -> Any:
+    if os.environ.get("LLM_MOCK", "1") != "0":
+        print("[mock] Langfuse 当前 Experiment Runner 流程（未创建 trace）")
+        print("  get_client() -> run_experiment(data, task, evaluators)")
+        print("  task -> langfuse.openai.OpenAI().responses.create(...)")
+        print("  evaluator -> Evaluation(name, value, comment)")
+        print("  short-lived process -> langfuse.flush()")
+        return None
 
-    if mock_mode:
-        print("[mock] Langfuse v3 + Prompt 管理 + LLM-as-Judge 流程")
-        print("[mock] 1. 初始化 Langfuse 客户端 (cloud.langfuse.com)")
-        print("[mock] 2. 拉取 prompt='summarizer', version=3, label='production'")
-        print("[mock] 3. 调用 GPT-4o 生成 summary")
-        print("[mock] 4. OTel 自动上报 token/latency/model-args")
-        print("[mock] 5. 跑 LLM-as-Judge 'relevance' (threshold=0.7)")
-        print("[mock] 评估结果: passes=True")
-        return
+    required = [
+        name
+        for name in ("LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "OPENAI_API_KEY")
+        if not os.environ.get(name)
+    ]
+    if required:
+        raise RuntimeError(f"真实模式缺少环境变量: {', '.join(required)}")
 
     try:
-        from langfuse import Langfuse
-        from langfuse.decorators import langfuse_context, observe
-        from langfuse.evaluation import evaluate
-
-        from shared.llm_client import UnifiedClient  # Wave 16
+        from langfuse import Evaluation, get_client
+        from langfuse.openai import OpenAI
     except ImportError as exc:
-        print(f"[mock] langfuse/openai 未安装 ({exc})，使用模拟输出")
-        return
+        raise RuntimeError("真实模式需要 langfuse 和 openai") from exc
 
-    # 1. 初始化 Langfuse v3
-    langfuse = Langfuse(
-        public_key=os.environ.get("LANGFUSE_PUBLIC_KEY", "pk-lf-..."),
-        secret_key=os.environ.get("LANGFUSE_SECRET_KEY", "sk-lf-..."),
-        host=os.environ.get("LANGFUSE_HOST", "https://cloud.langfuse.com"),
-    )
-    openai_client = UnifiedClient()  # Wave 16: 统一多厂商 (deepseek/kimi/siliconflow/MiniMax)
+    langfuse = get_client()
+    openai_client = OpenAI()
+    model = os.environ.get("OPENAI_MODEL", "gpt-5.6")
 
-    # 2. 集中式 Prompt 管理（生产环境不写死在代码里）
-    prompt = langfuse.get_prompt("summarizer", version=3, label="production")
-    compiled_prompt = prompt.compile(variables={"max_words": 200})
-
-    # 3. 追踪 LLM 调用（OpenTelemetry 自动捕获）
-    @observe(as_type="generation")
-    def summarize(text: str) -> str:
-        resp = openai_client.chat(
-            messages=[{"role": "user", "content": f"{compiled_prompt}\n\n{text}"}],
+    def answer_task(*, item: dict[str, str], **_: Any) -> str:
+        response = openai_client.responses.create(
+            model=model,
+            input=item["input"],
+            reasoning={"effort": "none"},
         )
-        # 自动上报 token / 延迟 / 模型参数
-        langfuse_context.update_current_observation(
-            model=resp.model,
-            usage={
-                "input": resp.usage["prompt_tokens"],
-                "output": resp.usage["completion_tokens"],
-            },
-        )
-        return resp.choices[0].message.content
+        return response.output_text
 
-    # 4. LLM-as-Judge 评估（内置 60+ 模板）
-    judge_prompt = langfuse.get_prompt("judge-summarization", version=1)
-    sample = "原文本"
-    result = evaluate(
-        data=[{"input": sample, "output": summarize(sample)}],
-        evaluators=[
-            {
-                "name": "relevance",
-                "prompt": judge_prompt.compile(),
-                "model": "gpt-4o",
-                "threshold": 0.7,
-            }
+    def exact_match_evaluator(
+        *,
+        output: str,
+        expected_output: str | None,
+        **_: Any,
+    ) -> Any:
+        matched = bool(expected_output and expected_output.casefold().strip() in output.casefold().strip())
+        return Evaluation(
+            name="contains_expected_answer",
+            value=1.0 if matched else 0.0,
+            comment="Deterministic substring check; not an LLM judge.",
+        )
+
+    result = langfuse.run_experiment(
+        name="ch17-geography-smoke",
+        description="Current SDK local-dataset experiment example",
+        data=[
+            {"input": "法国的首都是哪里？只回答城市名。", "expected_output": "巴黎"},
+            {"input": "德国的首都是哪里？只回答城市名。", "expected_output": "柏林"},
         ],
+        task=answer_task,
+        evaluators=[exact_match_evaluator],
+        metadata={"model": model, "reasoning_effort": "none"},
+        max_concurrency=2,
     )
-    print(f"评估结果: {result.passes}")
+    print(result.format())
+    langfuse.flush()
+    return result
 
 
 if __name__ == "__main__":
-    run_langfuse_v3_demo()
+    run_langfuse_experiment_demo()
+    print("OK")

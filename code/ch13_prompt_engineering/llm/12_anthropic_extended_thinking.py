@@ -12,22 +12,38 @@
 # See: ../tutorial/13_Prompt_Engineering.md#13.7.1
 # Interview hooks:
 # - Extended Thinking 与普通 CoT Prompt 的本质区别？
-# - budget_tokens 太大太小各有什么风险？
-# - thinking tokens 是否计费？为什么需要单独区分？
+# - adaptive thinking 与旧版 budget_tokens 的迁移差异？
+# - 为什么应通过评测选择 effort，而不是默认最高档？
 
-import anthropic
+import os
 
-_client = anthropic.Anthropic()
+try:
+    import anthropic
+except ImportError:
+    anthropic = None
+
+
+def _real_api_ready() -> bool:
+    if os.environ.get("LLM_MOCK") != "0":
+        print("[SKIP] 离线安全模式：只有显式设置 LLM_MOCK=0 才会调用 Anthropic API")
+        print("OK")
+        return False
+    if anthropic is None or not os.environ.get("ANTHROPIC_API_KEY"):
+        print("[SKIP] 真实调用需要 anthropic 和 ANTHROPIC_API_KEY")
+        print("OK")
+        return False
+    return True
 
 
 def call_anthropic(question: str):
-    return _client.messages.create(
-        model="claude-sonnet-4-5",
+    if not _real_api_ready():
+        return None
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    return client.messages.create(
+        model=os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-8"),
         max_tokens=16000,
-        thinking={
-            "type": "enabled",
-            "budget_tokens": 5000,  # 最多使用 5000 tokens 进行思考
-        },
+        thinking={"type": "adaptive"},
+        output_config={"effort": "high"},
         messages=[{"role": "user", "content": question}],
     )
 
@@ -41,14 +57,16 @@ if __name__ == "__main__":
     )
 
     response = call_anthropic(question)
+    if response is None:
+        raise SystemExit(0)
 
-    # 响应包含两个 block：thinking block 和 text block
+    # thinking block 是否出现由模型和响应决定；不要假设固定有两个 block
     for block in response.content:
         if block.type == "thinking":
-            print(f"【思考过程】{block.thinking[:500]}...")
+            print(f"【API 提供的 thinking 内容】{block.thinking[:500]}...")
         elif block.type == "text":
             print(f"【最终答案】{block.text}")
 
     print(f"输入 tokens:  {response.usage.input_tokens}")
     print(f"输出 tokens:  {response.usage.output_tokens}")
-    print(f"思考 tokens:  {getattr(response.usage, 'thinking_tokens', 'N/A')}")
+    print("OK")

@@ -17,6 +17,12 @@
 
 # Agentic RAG 核心实现
 import json
+import os
+
+DEFAULT_OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6")
+OPENAI_REASONING_KWARGS = (
+    {"reasoning_effort": "none"} if DEFAULT_OPENAI_MODEL.startswith("gpt-5.6") else {}
+)
 
 
 class AgenticRAG:
@@ -49,9 +55,10 @@ class AgenticRAG:
 请输出 JSON 格式："""
         if self.llm is not None:
             response = self.llm.chat.completions.create(
-                model="gpt-4",
+                model=DEFAULT_OPENAI_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
+                **OPENAI_REASONING_KWARGS,
             )
             return json.loads(response.choices[0].message.content)
         # Mock: 简单规则路由
@@ -108,9 +115,10 @@ class AgenticRAG:
 """
         if self.llm is not None:
             response = self.llm.chat.completions.create(
-                model="gpt-4",
+                model=DEFAULT_OPENAI_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
+                **OPENAI_REASONING_KWARGS,
             )
             result = response.choices[0].message.content
             return "CONSISTENT" in result, result
@@ -144,9 +152,10 @@ class AgenticRAG:
 请给出准确、简洁的回答。"""
             if self.llm is not None:
                 response = self.llm.chat.completions.create(
-                    model="gpt-4",
+                    model=DEFAULT_OPENAI_MODEL,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.3,
+                    **OPENAI_REASONING_KWARGS,
                 )
                 answer = response.choices[0].message.content
             else:
@@ -178,3 +187,4 @@ if __name__ == "__main__":
     print(f"answer: {out['answer']}")
     print(f"iterations: {out['iterations']}")
     print(f"check: {out['check']}")
+    print("OK")

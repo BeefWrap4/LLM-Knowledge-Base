@@ -10,7 +10,31 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from shared.gpu_guard import require_apple_silicon, require_nvidia_gpu, require_ollama
+from shared.gpu_guard import (
+    require_apple_silicon,
+    require_nvidia_gpu,
+    require_ollama,
+    skip_if_mock,
+)
+
+
+def test_skip_if_mock_from_cli(capsys):
+    """显式 --mock 必须在真实硬件调用前返回可识别的 SKIP。"""
+    with patch("shared.gpu_guard.sys.argv", ["example.py", "--mock"]):
+        assert skip_if_mock("CUDA") is True
+
+    output = capsys.readouterr().out
+    assert "[SKIP]" in output
+    assert output.rstrip().endswith("OK")
+
+
+def test_skip_if_mock_disabled():
+    """没有 CLI 参数或环境变量时继续真实执行路径。"""
+    with (
+        patch("shared.gpu_guard.sys.argv", ["example.py"]),
+        patch.dict("shared.gpu_guard.os.environ", {}, clear=True),
+    ):
+        assert skip_if_mock("CUDA") is False
 
 
 def test_require_nvidia_gpu_no_cuda():

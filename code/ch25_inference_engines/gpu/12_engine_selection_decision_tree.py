@@ -4,6 +4,7 @@
 # section: 25.7
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: none
 # run: python 12_engine_selection_decision_tree.py
 # expected_runtime: <1s
@@ -11,13 +12,16 @@
 # ---
 # See: ../tutorial/25_推理引擎与高性能服务.md §25.7
 # Interview hooks:
-#   1. vLLM vs TensorRT-LLM 核心权衡？(答: TRT 编译慢但运行极快; vLLM 启动快迭代友好)
+#   1. vLLM vs TensorRT-LLM 核心权衡？(答: 编译与运维成本、硬件支持、性能和迭代速度)
 #   2. 如何根据硬件预算选引擎？
 #   3. 端侧 / 云端 推理引擎选择差异？
-"""推理引擎选择决策函数 (纯逻辑, 无 GPU 加载).
+"""推理引擎候选预筛函数（纯逻辑，无 GPU 加载）。
 
 输入: 硬件预算 (VRAM GB) + 延迟 SLO (ms) + 模型规模 + 部署场景
 输出: 推荐引擎 + 关键理由 + 备选
+
+这是教学规则而非容量规划器。正式选型至少还要测 TTFT、TPOT、吞吐、
+并发、KV cache、模型架构支持、量化质量和部署冷启动。
 """
 
 from dataclasses import dataclass
@@ -47,7 +51,7 @@ def pick_engine(
     deployment: Deployment,
     needs_quantization: bool = True,
 ) -> EngineRecommendation:
-    """根据硬件 + SLO + 部署 推荐推理引擎."""
+    """根据硬件 + SLO + 部署预筛候选；``latency_slo_ms`` 在此指目标 TPOT。"""
     reasoning = []
 
     # 1. 端侧场景
@@ -64,7 +68,7 @@ def pick_engine(
             engine="tensorrt_llm",
             config={"quant": "int8", "engine_cache": True, "max_batch_size": 4},
             reasoning=["Jetson/Orin 边缘: TensorRT 编译后推理"],
-            alternatives=["vllm (enforce_eager)"],
+            alternatives=["llama.cpp CUDA（先核对模型/算子支持）"],
         )
 
     if deployment == Deployment.EDGE_CPU:
@@ -79,8 +83,21 @@ def pick_engine(
         return EngineRecommendation(
             engine="vllm",
             config={"quant": "awq" if needs_quantization else "fp16", "max_num_seqs": 32},
-            reasoning=["Serverless 冷启动敏感: 选启动快的 vLLM (不用 TRT)"],
-            alternatives=["tgi (HuggingFace TGI)"],
+            reasoning=["Serverless 先用 vLLM 做候选；冷启动仍主要取决于镜像、权重加载与缓存"],
+            alternatives=["SGLang", "TensorRT-LLM（若可复用预编译 engine）"],
+        )
+
+    # 粗略权重+运行时余量预筛；KV cache/并发和具体架构仍需独立容量计算。
+    estimated_runtime_gb = model_size_b * (0.75 if needs_quantization else 2.4)
+    if vram_gb < estimated_runtime_gb:
+        return EngineRecommendation(
+            engine="capacity_check_required",
+            config={"estimated_min_total_vram_gb": round(estimated_runtime_gb, 1)},
+            reasoning=[
+                f"总 VRAM {vram_gb}GB 低于粗略预筛值 {estimated_runtime_gb:.1f}GB",
+                "需更强量化、CPU offload、更多 GPU 或更小模型；再计算 KV cache/并发余量",
+            ],
+            alternatives=["llama.cpp/CPU offload", "更小模型", "增加 GPU"],
         )
 
     # 2. 云端场景 - 按 VRAM + latency SLO
@@ -118,11 +135,13 @@ def pick_engine(
         )
 
     if vram_gb < 80:
-        reasoning.append(f"VRAM {vram_gb}GB (24-80): 单卡 70B 量化 或 7B-13B fp16")
+        reasoning.append(
+            f"VRAM {vram_gb}GB (24-80): 已通过粗略权重预筛，仍需计算 KV cache 与并发余量"
+        )
         if model_size_b >= 70:
             return EngineRecommendation(
                 engine="vllm",
-                config={"quant": "awq", "max_num_seqs": 8, "tp_size": 1},
+                config={"quant": "awq", "max_num_seqs": 8, "tensor_parallel_size": 1},
                 reasoning=reasoning,
                 alternatives=["tensorrt_llm", "sglang"],
             )
@@ -142,16 +161,17 @@ def pick_engine(
             reasoning=reasoning,
             alternatives=["vllm (TP=4)"],
         )
-    return EngineRecommendation(
-        engine="vllm",
-        config={"quant": "fp16", "tp_size": 2, "max_num_seqs": 128},
-        reasoning=reasoning,
-        alternatives=["tensorrt_llm", "sglang"],
+        return EngineRecommendation(
+            engine="vllm",
+            config={"quant": "fp16", "tensor_parallel_size": 2, "max_num_seqs": 128},
+            reasoning=reasoning,
+            alternatives=["tensorrt_llm", "sglang"],
     )
 
 
 def main():
     print("=== 推理引擎选择决策树 ===\n")
+    print("说明: 以下是候选预筛，不是性能承诺；SLO 统一按目标 TPOT 解读。\n")
 
     scenarios = [
         ("7B 量化 + 12GB 显卡 + 50ms SLO + 云端 (显存偏紧)", 7, 12, 50, Deployment.CLOUD),
@@ -173,6 +193,7 @@ def main():
         if rec.alternatives:
             print(f"   备选: {rec.alternatives}")
         print()
+    print("OK")
 
 
 if __name__ == "__main__":

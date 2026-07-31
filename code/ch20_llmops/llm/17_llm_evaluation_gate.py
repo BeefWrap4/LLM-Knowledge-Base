@@ -16,20 +16,29 @@
 #  - 评估集大小与统计稳定性如何权衡？
 
 import json
+import math
 import random
 from collections.abc import Callable
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(frozen=True)
 class QualityGate:
-    """评估门禁配置"""
+    """业务注入的评估门禁；不存在跨任务通用默认阈值。"""
 
-    min_accuracy: float = 0.85
-    max_hallucination_rate: float = 0.05
-    max_latency_p95_ms: float = 3000
-    max_cost_per_query: float = 0.05
+    min_accuracy: float
+    max_hallucination_rate: float
+    max_latency_p95_ms: float
+    max_cost_per_query: float
     require_safety_check: bool = True
+
+    def __post_init__(self):
+        if not 0 <= self.min_accuracy <= 1:
+            raise ValueError("min_accuracy must be in [0, 1]")
+        if not 0 <= self.max_hallucination_rate <= 1:
+            raise ValueError("max_hallucination_rate must be in [0, 1]")
+        if self.max_latency_p95_ms <= 0 or self.max_cost_per_query < 0:
+            raise ValueError("latency threshold must be positive and cost budget non-negative")
 
 
 class LLMEvaluationGate:
@@ -46,9 +55,10 @@ class LLMEvaluationGate:
         self.test_dataset = test_dataset
 
     def run_evaluation(self, prompt_version: str) -> dict:
+        if not self.test_dataset:
+            raise ValueError("test_dataset must not be empty")
         results: list[dict] = []
         total_cost = 0.0
-        total_latency = 0.0
         for test_case in self.test_dataset:
             result = self.eval_fn(
                 prompt_version=prompt_version,
@@ -57,14 +67,19 @@ class LLMEvaluationGate:
                 context=test_case.get("context"),
             )
             results.append(result)
-            total_cost += result.get("cost", 0)
-            total_latency += result.get("latency_ms", 0)
+            observed_cost = result.get("cost", 0)
+            if observed_cost < 0:
+                raise ValueError("observed cost must be non-negative")
+            total_cost += observed_cost
 
         n = len(results)
         avg_accuracy = sum(r.get("correct", 0) for r in results) / n
         hallucination_count = sum(r.get("hallucination", False) for r in results)
         avg_cost = total_cost / n
-        p95_latency = sorted(r.get("latency_ms", 0) for r in results)[int(n * 0.95)]
+        latencies = sorted(r.get("latency_ms", 0) for r in results)
+        if any(latency < 0 for latency in latencies):
+            raise ValueError("latency_ms must be non-negative")
+        p95_latency = latencies[max(0, math.ceil(0.95 * n) - 1)]
 
         checks = {
             "accuracy": {
@@ -88,6 +103,14 @@ class LLMEvaluationGate:
                 "passed": avg_cost <= self.config.max_cost_per_query,
             },
         }
+        if self.config.require_safety_check:
+            safety_passed = all(bool(result.get("safety_passed", False)) for result in results)
+            checks["safety"] = {
+                "value": safety_passed,
+                "threshold": True,
+                # 缺失安全结果按失败处理，避免 fail-open。
+                "passed": safety_passed,
+            }
         all_passed = all(c["passed"] for c in checks.values())
         return {
             "prompt_version": prompt_version,
@@ -110,16 +133,19 @@ class LLMEvaluationGate:
 
 
 if __name__ == "__main__":
+    random.seed(0)
 
     def mock_eval_fn(prompt_version, query, expected=None, context=None):
         return {
             "correct": random.random() > 0.1,
             "hallucination": random.random() < 0.03,
             "cost": random.uniform(0.001, 0.02),
-            "latency_ms": random.gauss(800, 200),
+            "latency_ms": max(0, random.gauss(800, 200)),
+            "safety_passed": True,
         }
 
     gate = LLMEvaluationGate(
+        # 以下仅是教学策略；生产值由标注集基线、统计不确定性、SLO 和预算确定。
         gate_config=QualityGate(
             min_accuracy=0.85,
             max_hallucination_rate=0.05,
@@ -132,3 +158,4 @@ if __name__ == "__main__":
     report = gate.run_evaluation("prompt_v4.0.0")
     print(report["recommendation"])
     print(json.dumps(report["checks"], ensure_ascii=False, indent=2))
+    print("OK")

@@ -39,7 +39,7 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-from shared.gpu_guard import gpu_summary, require_nvidia_gpu
+from shared.gpu_guard import gpu_summary, require_nvidia_gpu, skip_if_mock
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 # 真实场景: shared system prompt + few-shot 模板 + 4 个不同问题
@@ -58,6 +58,8 @@ TAILS = [
 
 
 def main() -> None:
+    if skip_if_mock("an NVIDIA GPU, CUDA, vLLM, and local model weights"):
+        return
     require_nvidia_gpu(min_vram_gb=8)
     print(gpu_summary())
     print()
@@ -136,7 +138,7 @@ def main() -> None:
     print("  - 共享 prefix 的 KV 只算 1 次, 后 3 个 req 直接复用 (理论 ~4x prefix 加速)")
     print("  - 实测加速取决于 prefix 长度 / 总 prompt 长度比")
     print("  - 内部: vllm/v1/core/kv_cache_coordinator.py 维护 hash→block 映射")
-    print("  - 真实系统 prompt + few-shot 场景下, 收益最大 (10x+ 加速)")
+    print("  - 共享系统提示或 few-shot 前缀通常更容易受益；幅度必须用命中率和同流量基线实测")
     print("=" * 60)
 
 

@@ -1,6 +1,6 @@
 # ---
 # chapter: 29
-# topic: Token 经济学 — 成本/延迟与 Context 长度的关系
+# topic: Token 经济学 — 用可注入费率表核算上下文成本
 # section: 29.3
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
@@ -16,112 +16,136 @@
 #   - Ch27 Test-Time Compute (延迟预算)
 #
 # Interview hooks:
-#   - "Context 长度如何影响成本?"   →  输入按 token 线性计价, 缓存可省 90%
-#   - "TTFT vs TPOT 是什么?"        →  TTFT = Prefill 时间; TPOT = 逐 token 生成时间
-#   - "200K context 是否值得用?"     →  看质量, 64K 后存在 Context Rot
+#   - "Context 长度如何影响成本?" → 分开核算未缓存输入、缓存写/读、输出和存储
+#   - "缓存折扣等于总成本折扣吗?" → 不等于；还要计入 miss、write、output、storage 等
+#   - "长 context 是否值得用?"   → 用目标任务质量、延迟与实际账单共同判断
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-# 2026 主流模型定价 (USD per 1M tokens, 公开口径, mock)
-PRICING = {
-    "claude-sonnet-4": {
-        "in": 3.0,
-        "out": 15.0,
-        "cache_write": 3.75,
-        "cache_read": 0.30,
-        "ctx": 200_000,
-    },
-    "gpt-5": {"in": 2.5, "out": 10.0, "cache_write": 0.0, "cache_read": 0.0, "ctx": 1_000_000},
-    "gemini-2.5-pro": {
-        "in": 1.25,
-        "out": 5.0,
-        "cache_write": 0.0,
-        "cache_read": 0.0,
-        "ctx": 1_000_000,
-    },
-    "deepseek-v3.2": {
-        "in": 0.27,
-        "out": 1.1,
-        "cache_write": 0.0,
-        "cache_read": 0.0,
-        "ctx": 128_000,
-    },
-}
 
+@dataclass(frozen=True)
+class RateCard:
+    """由调用方在部署日从官方价格页填入的费率表。
 
-# 经验值 (mock): 在不同 context 长度下, 模型对中后段信息的"关注度"
-def attention_quality(context_len_tokens: int) -> float:
-    """返回 0-1 之间的质量分数, 模拟 Context Rot 现象。"""
-    if context_len_tokens <= 8_000:
-        return 1.0
-    if context_len_tokens <= 32_000:
-        return 1.0 - 0.05 * (context_len_tokens - 8_000) / 24_000
-    if context_len_tokens <= 64_000:
-        return 0.95 - 0.10 * (context_len_tokens - 32_000) / 32_000
-    if context_len_tokens <= 200_000:
-        return 0.85 - 0.20 * (context_len_tokens - 64_000) / 136_000
-    return max(0.45, 0.65 - 0.15 * (context_len_tokens - 200_000) / 800_000)
+    所有费率均为 ``currency / 1M tokens``；storage 是
+    ``currency / (1M token × hour)``。不同提供方若没有某一项，可填 0。
+    """
 
+    label: str
+    currency: str
+    checked_on: str
+    source_url: str
+    uncached_input: float
+    cache_read: float
+    cache_write: float
+    output: float
+    storage_per_million_token_hour: float = 0.0
 
-@dataclass
-class CostEstimate:
-    model: str
-    input_tokens: int
-    output_tokens: int
-    cache_hit_ratio: float  # 0-1
-    input_cost: float
-    output_cost: float
-    cache_saving: float
-    total_usd: float
-    latency_s: float
-    quality: float
-
-    def report(self) -> str:
-        return (
-            f"[{self.model}]\n"
-            f"  in={self.input_tokens:,} out={self.output_tokens:,} cache_hit={self.cache_hit_ratio:.0%}\n"
-            f"  cost: input=${self.input_cost:.4f} output=${self.output_cost:.4f} "
-            f"cache_saving=${self.cache_saving:.4f} -> total=${self.total_usd:.4f}\n"
-            f"  latency ≈ {self.latency_s:.2f}s   quality ≈ {self.quality:.2f}"
+    def __post_init__(self) -> None:
+        rates = (
+            self.uncached_input,
+            self.cache_read,
+            self.cache_write,
+            self.output,
+            self.storage_per_million_token_hour,
         )
+        if any(rate < 0 for rate in rates):
+            raise ValueError("费率不能为负数")
 
 
-def estimate(model: str, input_tokens: int, output_tokens: int, cache_hit: float = 0.0) -> CostEstimate:
-    p = PRICING[model]
-    # 缓存命中部分走 cache_read 价, 未命中部分走 in 价
-    cached = int(input_tokens * cache_hit)
-    fresh = input_tokens - cached
-    in_cost = fresh / 1e6 * p["in"]
-    cache_saving = cached / 1e6 * (p["in"] - p["cache_read"])
-    out_cost = output_tokens / 1e6 * p["out"]
-    # 延迟: TTFT ∝ √(input_tokens) (粗略), TPOT 固定 25ms
-    ttft = 0.05 + 0.0001 * (input_tokens**0.5)
-    tpot = 0.025
-    latency = ttft + tpot * output_tokens
-    return CostEstimate(
-        model=model,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cache_hit_ratio=cache_hit,
-        input_cost=in_cost,
-        output_cost=out_cost,
-        cache_saving=cache_saving,
-        total_usd=in_cost + out_cost,
-        latency_s=latency,
-        quality=attention_quality(input_tokens),
+@dataclass(frozen=True)
+class TokenUsage:
+    """一次或一批请求的实际 usage 分类。"""
+
+    uncached_input_tokens: int
+    cache_read_tokens: int
+    cache_write_tokens: int
+    output_tokens: int
+    stored_token_hours: float = 0.0
+
+    def __post_init__(self) -> None:
+        values = (
+            self.uncached_input_tokens,
+            self.cache_read_tokens,
+            self.cache_write_tokens,
+            self.output_tokens,
+            self.stored_token_hours,
+        )
+        if any(value < 0 for value in values):
+            raise ValueError("usage 不能为负数")
+
+
+@dataclass(frozen=True)
+class CostBreakdown:
+    uncached_input: float
+    cache_read: float
+    cache_write: float
+    output: float
+    storage: float
+
+    @property
+    def total(self) -> float:
+        return self.uncached_input + self.cache_read + self.cache_write + self.output + self.storage
+
+
+def estimate_cost(rate_card: RateCard, usage: TokenUsage) -> CostBreakdown:
+    """按显式 usage 与费率表计算成本，不估算质量或延迟。"""
+
+    per_million = 1_000_000
+    return CostBreakdown(
+        uncached_input=usage.uncached_input_tokens / per_million * rate_card.uncached_input,
+        cache_read=usage.cache_read_tokens / per_million * rate_card.cache_read,
+        cache_write=usage.cache_write_tokens / per_million * rate_card.cache_write,
+        output=usage.output_tokens / per_million * rate_card.output,
+        storage=usage.stored_token_hours / per_million * rate_card.storage_per_million_token_hour,
     )
 
 
 def run_demo() -> None:
-    print("=== 不同 Context 长度下的成本与质量 (mock) ===\n")
-    for n_in in [2_000, 16_000, 64_000, 128_000, 200_000, 500_000]:
-        for model in ["claude-sonnet-4", "gpt-5", "deepseek-v3.2"]:
-            est = estimate(model, n_in, 500)
-            print(est.report())
-        print()
+    # 这些是任意的归一化教学参数，不是任何厂商或模型的美元报价。
+    demo_rates = RateCard(
+        label="synthetic-normalized-rates-not-live-pricing",
+        currency="cost-unit",
+        checked_on="N/A",
+        source_url="replace-with-provider-official-pricing-page",
+        uncached_input=1.0,
+        cache_read=0.35,
+        cache_write=1.20,
+        output=4.0,
+        storage_per_million_token_hour=0.02,
+    )
+    scenarios = {
+        "无缓存": TokenUsage(
+            uncached_input_tokens=80_000,
+            cache_read_tokens=0,
+            cache_write_tokens=0,
+            output_tokens=2_000,
+        ),
+        "有写入和命中": TokenUsage(
+            uncached_input_tokens=16_000,
+            cache_read_tokens=64_000,
+            cache_write_tokens=8_000,
+            output_tokens=2_000,
+            stored_token_hours=8_000,
+        ),
+    }
+
+    print("=== Token 成本公式演示（归一化教学参数，不是厂商现价） ===")
+    print("上线时必须用目标模型、区域和服务层的官方价格覆盖 RateCard。\n")
+    for name, usage in scenarios.items():
+        cost = estimate_cost(demo_rates, usage)
+        print(f"[{name}]")
+        print(
+            f"  uncached={cost.uncached_input:.4f}, read={cost.cache_read:.4f}, "
+            f"write={cost.cache_write:.4f}, output={cost.output:.4f}, storage={cost.storage:.4f}"
+        )
+        print(f"  total={cost.total:.4f} {demo_rates.currency}\n")
+
+    print("质量和端到端延迟没有跨模型通用公式；请从真实评测与 usage/trace 读取。")
 
 
 if __name__ == "__main__":
     run_demo()
+    print("\nOK")

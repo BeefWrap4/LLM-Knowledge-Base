@@ -4,6 +4,7 @@
 # section: 26.2.1 Pi0 / Pi0.5 — Physical Intelligence VLA
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: torch
 # run: python 03_pi0_vla_flow_matching.py
 # expected_runtime: 5-15s (小 MLP 训练 50 步)
@@ -133,13 +134,12 @@ def main() -> None:
 
     print()
     print("=" * 60)
-    print("Pi0 生产模型 (Physical Intelligence 2024):")
-    print("  - VLM 基础: PaliGemma 2B / 3B (vision + language)")
-    print("  - Action expert: 300M flow matching transformer")
-    print("  - 训练: 10+ 机器人数据 (Aloha, Franka, etc.)")
-    print("  - 推理: 10 步 ODE 积分 (vs diffusion 50+ DDIM 步)")
-    print("  - 控制频率: 50 Hz")
+    print("π0 论文/模型卡背景（不是本脚本的运行证据）:")
+    print("  - 开放 checkpoint 的 VLM backbone 与 action expert 以当前模型卡为准")
+    print("  - flow-matching 积分步数、动作 chunk 和控制频率是部署配置，不作通用承诺")
+    print("  - 本脚本只拟合合成张量，未加载 lerobot/pi0_base、机器人数据或控制器")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

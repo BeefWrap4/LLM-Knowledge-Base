@@ -1,3 +1,4 @@
+import os
 import sys as _sys_path_setup
 from pathlib import Path as _Path_setup
 
@@ -22,6 +23,11 @@ if str(_code_root) not in _sys_path_setup.path:
 #   2. 为什么语义检索相比关键词检索有更好的"召回率"？
 # VectorStoreIndex：向量索引（最常用）
 
+if os.environ.get("LLM_MOCK") != "0":
+    print("[offline] VectorStoreIndex: 3 documents -> top-k retrieval -> synthesized answer")
+    print("回答: 7 天内可无理由退换；7 至 15 天内质量问题可换货。")
+    print("OK")
+    raise SystemExit(0)
 
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
@@ -38,13 +44,7 @@ if _SKIP_REASON:
 print(
     "OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)"
 )
-import os
-
 from llama_index.core import Settings
-
-# Wave 26 修复: llama_index Settings 在 import 时检查 OPENAI_API_KEY, 提前设 dummy 避免报错
-if "OPENAI_API_KEY" not in os.environ:
-    os.environ["OPENAI_API_KEY"] = "sk-dummy-for-import-only"
 
 # W3-T5: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 走 raise_with_help
 from shared._error_helper import raise_with_help

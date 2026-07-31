@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 # ---
 # code/scripts/test_integration.py (Wave 26-E)
-# 真实集成测试: Redis + pgvector + 真实模型 + 真实 LLM
-# 验证整个本地部署栈完全可用
-# Usage: python code/scripts/test_integration.py
+# 条件性集成测试: Redis + pgvector + 本地 embedding + 一个真实 LLM provider
+# Usage: RUN_REAL_INTEGRATION=1 LLM_MOCK=0 LLM_PROVIDER=deepseek python code/scripts/test_integration.py
 # Exit code: 0 全部 PASS, 1 至少 1 项失败
 # ---
 """
-本地部署集成测试 — 不依赖 mock.
+本地部署的条件性集成测试 — 显式禁止 mock.
 
 测试 4 个核心组件:
   1. bge-small-zh-v1.5 embedding (本机推理)
   2. Redis (端口 16379)
   3. pgvector (端口 15432)
-  4. MiniMax (或其他 4 厂商) 真实 LLM API
+  4. 由 LLM_PROVIDER 指定的一个真实 LLM API
 
-预期: 4/4 PASS 表示本地环境已就绪, 教程所有"打桩代码"可替换为真实执行.
+4/4 PASS 只覆盖本次模型、Redis、pgvector 与所选 provider；不代表教程其他框架、API、
+GPU、Docker profile 或生产要求已经验收。
 """
 
 import os
@@ -114,34 +114,40 @@ def test_pgvector(embeddings):
 
 
 def test_llm():
-    """[4/4] 真实 LLM API (4 厂商轮询)."""
+    """[4/4] 仅测试 LLM_PROVIDER 指定的一个真实 LLM API。"""
     print("\n[4/4] 真实 LLM API...")
     from shared.llm_client import UnifiedClient
-    from shared.provider_registry import PROVIDERS
+    from shared.provider_registry import get_provider
 
-    available = [p for p in PROVIDERS.values() if p.has_key() and p.name != "mock"]
-    if not available:
-        print("  ⚠️  无任何 API Key, 跳过 (至少 1 个 key 才会跑)")
-        return False
-    print(f"  发现 {len(available)} 家厂商, 跑 quick test...")
-    for p in available:
-        c = UnifiedClient(provider=p.name)
-        if c.is_mock:
-            continue
-        t0 = time.perf_counter()
-        try:
-            resp = c.chat(prompt="用一句话介绍 Python 编程语言", max_tokens=60)
-            elapsed = time.perf_counter() - t0
-            if resp.mock:
-                print(f"  [{p.name}] fallback to mock: {resp.content[:50]}")
-            else:
-                print(f"  [{p.name}] {elapsed:.2f}s | {resp.content[:60]}")
-        except Exception as e:
-            print(f"  [{p.name}] ERROR: {type(e).__name__}: {str(e)[:80]}")
+    provider_name = os.environ.get("LLM_PROVIDER", "").strip()
+    if not provider_name:
+        raise RuntimeError("真实集成测试要求显式设置 LLM_PROVIDER")
+    provider = get_provider(provider_name)
+    if provider.name == "mock":
+        raise RuntimeError(f"未知或不允许的 LLM_PROVIDER={provider_name}")
+    if not provider.has_key():
+        raise RuntimeError(f"LLM_PROVIDER={provider.name} 缺少 {provider.env_key}")
+
+    client = UnifiedClient(provider=provider.name)
+    if client.is_mock:
+        raise RuntimeError("检测到 mock client，不能计为真实集成通过")
+    started = time.perf_counter()
+    response = client.chat(prompt="用一句话介绍 Python 编程语言", max_tokens=60)
+    elapsed = time.perf_counter() - started
+    if response.mock or not response.content.strip():
+        raise RuntimeError("provider 返回 mock 或空响应")
+    print(f"  [{provider.name}] {elapsed:.2f}s | {response.content[:60]}")
     return True
 
 
 def main():
+    if os.environ.get("RUN_REAL_INTEGRATION") != "1" or os.environ.get("LLM_MOCK") != "0":
+        print("拒绝运行：此脚本会访问本地服务和一个计费 LLM API。")
+        print(
+            "显式设置 RUN_REAL_INTEGRATION=1、LLM_MOCK=0、LLM_PROVIDER 和对应 API Key 后重试。"
+        )
+        return 2
+
     print("=" * 60)
     print("  本地部署集成测试 (Real LLM + Real Models + Middleware)")
     print("=" * 60)
@@ -192,7 +198,7 @@ def main():
     print("=" * 60)
 
     if all(results.values()):
-        print("\n  🎉 全部通过! 本地环境已就绪, 教程所有真实调用代码可执行.")
+        print("\n  4/4 通过：仅确认本次 embedding、Redis、pgvector 与所选 LLM provider。")
         return 0
     else:
         print("\n  ⚠️  部分失败, 参考上方错误信息排查.")

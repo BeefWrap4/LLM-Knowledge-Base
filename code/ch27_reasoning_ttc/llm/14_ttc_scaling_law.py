@@ -14,11 +14,11 @@
 #   1. TTC scaling law 的数学形式？和预训练 scaling law 区别？
 #   2. 何时 BoN > CoT-extension > MCTS-PRM？
 #   3. verifier 饱和点 vs 模型能力饱和点？
-"""Test-Time Compute Scaling 模拟。
+"""Test-Time Compute Scaling 教学模拟。
 
-Snell et al. 2024 核心结论 (MATH 任务):
-  accuracy ≈ 1 - (c0 / compute)^α   α ≈ 0.3-0.5
-  即 256× compute ≈ +40% 准确率。
+下面的饱和曲线和参数是人为设定的可视化示例，不是 Snell et al. (2024) 拟合出的
+通用定律。论文强调方法效果随题目难度、基础模型与 verifier 变化。
+Source: https://arxiv.org/abs/2408.03314
 """
 
 from __future__ import annotations
@@ -45,11 +45,10 @@ def main() -> None:
         "CoT-extended (4×)": 4,
         "Self-Consistency N=8": 8,
         "BoN N=64": 64,
-        "BoN N=256": 256,
         "MCTS+PRM": 128,
     }
 
-    print("=== Test-Time Compute Scaling (MATH-style) ===\n")
+    print("=== Test-Time Compute Scaling（合成曲线，不是 benchmark）===\n")
     print(f"  {'Strategy':<22} {'Compute':>8} {'Accuracy':>9} {'Δ acc':>7}")
     print("  " + "-" * 50)
     base = accuracy_at_compute(1.0)
@@ -67,7 +66,7 @@ def main() -> None:
     a_mcts = accuracy_at_compute(compute * 0.85) * 1.02  # MCTS
     print(f"  Pure BoN        (64×): {a_bon:.1%}")
     print(f"  SC + PRM rerank (45×): {a_sc:.1%}")
-    print(f"  MCTS+PRM        (54×): {a_mcts:.1%}  ← 通常最优")
+    print(f"  MCTS+PRM        (54×): {a_mcts:.1%}  ← 仅为人为参数下的结果")
 
     # 拐点
     print("\n=== 收益拐点 (α=0.4 模型) ===")
@@ -78,10 +77,11 @@ def main() -> None:
 
     # 实战策略
     print("\n=== 实战建议 ===")
-    print("  • 简单任务(<70% 目标): CoT-extension, N=1~4")
-    print("  • 中等(70-90%):        BoN N=8~32")
-    print("  • 高难度(>90%):        MCTS+PRM, N=128+, 强 verifier")
-    print("  • 自适应: 小分类器先估难度, 再分配 compute")
+    print("  • 在目标集上按难度分桶，同时记录质量、成本、延迟与方差")
+    print("  • 固定 FLOPs 比较 CoT、BoN、搜索与自适应策略")
+    print("  • 先验证 verifier 校准，再扩大采样或搜索预算")
+    print("  • 线上按 SLO 分配预算，并保留超时/取消与回退")
+    print("OK")
 
 
 if __name__ == "__main__":

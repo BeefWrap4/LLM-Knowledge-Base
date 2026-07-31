@@ -4,6 +4,7 @@
 # section: 16.4.2
 # difficulty: ⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: none
 # run: python 03_kv_cache.py
 # expected_runtime: <1s
@@ -13,7 +14,7 @@
 #
 # Interview hooks:
 #   1. KV Cache 的显存公式？LLaMA-2-7B, seq=4096, bs=1 时约多少 GB？
-#   2. MQA / GQA（Multi/Grouped Query Attention）如何将 KV Cache 压缩到 1/4~1/8？
+#   2. MQA / GQA 如何按 query heads / KV heads 的比率减少 KV Cache？边界是什么？
 #   3. KV Cache 与 Paged Attention 的关系？为什么连续分配会有碎片问题？
 """KV Cache 内存计算器 (纯计算, 无 GPU 加载).
 
@@ -21,8 +22,9 @@ KV Cache 显存公式:
   per_token = 2 (K+V) × num_layers × num_kv_heads × head_dim × dtype_bytes
   total     = per_token × seq_len × batch_size
 
-GQA (Grouped Query Attention) 通过 num_kv_heads < num_heads 节省 KV cache.
-例: Qwen2.5-7B 28 layers, 28 query heads, 4 kv heads → 节省 7x.
+GQA (Grouped Query Attention) 通过 num_kv_heads < num_heads 减少 KV cache.
+相对同层数、head_dim、dtype 的 MHA，理论 K/V 元素数量比为 num_kv_heads / num_heads；
+具体架构、滑动窗口、混合层与量化会改变总显存。
 """
 
 from dataclasses import dataclass
@@ -102,13 +104,13 @@ def main():
     print("-" * 50)
     cfg = CONFIGS["qwen2.5-7b"]
     fp16 = total_kv(cfg)
-    for label, nbytes in [("fp16", 2), ("int8", 1), ("int4", 1)]:
-        # int4 KV cache 用 0.5 字节
-        scale = 1.0 if nbytes == 2 else (0.5 if nbytes == 1 and label == "int4" else 0.5)
-        v = fp16 * (nbytes / 2) * (0.5 if label == "int4" else 1.0)
+    for label, bytes_per_value in [("fp16", 2.0), ("int8", 1.0), ("int4", 0.5)]:
+        # 这里只计算理想数据位宽；真实实现还会有 scale/zero-point 与对齐开销。
+        v = fp16 * (bytes_per_value / 2.0)
         v_gb = v / (1024**3)
         saving = (1 - v / fp16) * 100
-        print(f"{label:<10} {nbytes:>8} {v_gb:>12.2f}GB {saving:>9.0f}%")
+        print(f"{label:<10} {bytes_per_value:>8g} {v_gb:>12.2f}GB {saving:>9.0f}%")
+    print("OK")
 
 
 if __name__ == "__main__":

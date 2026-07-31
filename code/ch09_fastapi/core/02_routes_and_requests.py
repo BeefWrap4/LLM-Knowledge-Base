@@ -60,13 +60,13 @@ async def chat(request: ChatRequest):
     """
     # 模拟 LLM 推理
     reply = f"收到消息：{request.message[:50]}..."
-    return ChatResponse(reply=reply, tokens_used=42, model="gpt-4o")
+    return ChatResponse(reply=reply, tokens_used=42, model="demo-chat-v1")
 
 
 @app.get("/models/{model_id}", summary="获取模型信息")
 async def get_model(model_id: str = Path(description="模型ID", pattern=r"^[a-zA-Z0-9-_]+$")):
     """路径参数 + 正则校验"""
-    models_db = {"gpt-4o": "OpenAI", "qwen-72b": "阿里", "llama-3": "Meta"}
+    models_db = {"demo-chat-v1": "Demo", "local-chat": "Self-hosted"}
     if model_id not in models_db:
         raise HTTPException(status_code=404, detail=f"模型 {model_id} 不存在")
     return {"model_id": model_id, "provider": models_db[model_id]}
@@ -86,8 +86,8 @@ if __name__ == "__main__":
     # 1. 验证 Pydantic 模型行为
     req = ChatRequest(message="hello world")
     assert req.temperature == 0.7  # default 值
-    resp = ChatResponse(reply="hi", tokens_used=1, model="gpt-4o")
-    assert resp.model_dump() == {"reply": "hi", "tokens_used": 1, "model": "gpt-4o"}
+    resp = ChatResponse(reply="hi", tokens_used=1, model="demo-chat-v1")
+    assert resp.model_dump() == {"reply": "hi", "tokens_used": 1, "model": "demo-chat-v1"}
 
     # 2. 校验非法输入
     try:
@@ -101,3 +101,4 @@ if __name__ == "__main__":
     assert "/models/{model_id}" in paths
     assert "/search" in paths
     print(f"已注册 {len(paths)} 个路由: {', '.join(paths)}")
+    print("OK")

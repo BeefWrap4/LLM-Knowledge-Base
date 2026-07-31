@@ -1,38 +1,38 @@
 # ---
 # chapter: 28
-# topic: Secure Minions 端云协作隐私推理 (真实 mTLS 模拟)
-# section: 28.6 Secure Minions (隐私推理)
+# topic: Secure Minions 安全边界 (TLS 教学演示，不含 TEE)
+# section: 28.6 Secure Minions (机密计算)
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
 # deps: (Python stdlib: ssl, hashlib, secrets) — 无第三方依赖
 # run: python 10_secure_minions_protocol.py
 # expected_runtime: <1s
-# expected_output: 真实 mTLS 握手演示 (Python stdlib ssl 模块) + 端云分工
+# expected_output: 本地 mTLS 握手演示 + TLS/TEE 安全边界说明
 # ---
 # See: ../tutorial/28_端侧与边缘LLM.md § 28.6, § 28.7
 # Interview hooks:
-#   1. Secure Minions 如何防止云端从嵌入向量重建原始数据?
-#   2. 加密投影矩阵 P 的关键性质是什么 (随机正交/不可逆)?
-#   3. Secure Minions 相比纯端侧方案在性能和质量上如何权衡?
-"""Secure Minions 端云协作隐私推理 — 真实 Python mTLS 协议模拟.
+#   1. TLS、远程证明和 TEE 分别解决什么问题?
+#   2. 为什么哈希 prompt/token 不能替代机密推理?
+#   3. Secure Minions 相比纯端侧方案扩大了哪些信任边界?
+"""Secure Minions 安全边界教学：本地 mTLS 演示，不是官方协议实现。
 
-本文件用 Python stdlib (ssl / hashlib / secrets / socket) 模拟完整
-端云 mTLS 握手 + 加密通信流程, 不做真实 LLM 推理.
+本文件只用 Python stdlib (ssl / hashlib / secrets / socket) 演示
+双向 TLS 的传输加密与身份认证，不做真实 LLM 推理，也不实现
+Secure Minions Secure Chat 所需的远程证明、机密 CPU/GPU 或 TEE。
 
 工作流:
-  1. 端侧生成 ephemeral session key (secrets 模块, 密码学安全 RNG)
-  2. 端云 mTLS 握手 (ssl 模块, TLSv1.3 + AES-256-GCM)
+  1. 端侧生成一次性请求 nonce（仅用于演示请求关联）
+  2. 端云 mTLS 握手 (ssl 模块, TLSv1.3)
      - 端侧验证云端 CA 证书
      - 云端验证端侧设备证书 (双向认证)
-  3. 端侧对 token IDs 做 SHA-256 (隐私: 云端看不到原始 token)
-  4. 仅传 SHA-256 + 加密 session 请求
-  5. 云端 LLM 推理后, 返回加密的 response
-  6. 端侧解密, 仅持有 response tokens (无模型权重)
+  3. 用 SHA-256 生成日志指纹（仅用于完整性/关联，不提供 prompt 隐私）
+  4. 明确真实推理服务必须在 TEE 内看到明文 prompt 才能推理
+  5. 云端 mock 推理后，通过 TLS 返回明文响应
 
-核心安全性质:
-  - 端侧: 永不暴露原始 prompt
-  - 云端: 永不暴露模型权重
-  - 通信: mTLS 加密 + 双向认证
+安全边界:
+  - 本演示能证明：通信链路加密 + 双向证书认证
+  - 本演示不能证明：云端运营方看不到 prompt、代码/模型在可信 TEE 中运行
+  - 生产 Secure Minions 还需要远程证明与机密计算基础设施
 """
 
 from __future__ import annotations
@@ -53,25 +53,22 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help  # noqa: E402
+from shared.gpu_guard import skip_if_mock  # noqa: E402
 
 
 # ============================================================
-# 1. 密码学原语 (端侧 / 云端共享)
+# 1. 演示用 nonce 与日志指纹
 # ============================================================
-def generate_minion_session_key() -> bytes:
-    """端侧: 生成临时 session key (secrets 模块, 密码学安全 RNG).
-
-    真实场景中, 这是 ECDHE (Elliptic Curve Diffie-Hellman Ephemeral)
-    的输出. 简化版用 secrets.token_bytes(32) 模拟 256-bit 共享密钥.
-    """
-    return secrets.token_bytes(32)  # 32 bytes = 256 bits
+def generate_request_nonce() -> bytes:
+    """生成一次性请求 nonce；TLS 会自行协商会话密钥。"""
+    return secrets.token_bytes(32)
 
 
-def hash_tokens_for_transmission(tokens: list[int]) -> str:
-    """端侧: 对 token IDs 做 SHA-256, 仅传哈希 (保护原始 token).
+def fingerprint_tokens(tokens: list[int]) -> str:
+    """为日志/测试生成确定性指纹，不把哈希误当作隐私保护。
 
-    真实 Secure Minions 协议中, 这步是嵌入 + 随机投影, 但 demo
-    简化为哈希 (更直观展示 "云端看不到原始 token").
+    Token 空间小且结构化，哈希可能被字典攻击；模型也无法仅凭哈希
+    执行常规推理。实际请求仍会在 TLS 连接内传输，并在受信 TEE 内解密。
     """
     h = hashlib.sha256()
     for t in tokens:
@@ -105,6 +102,28 @@ def _generate_self_signed_cert(
 
     cert_path.parent.mkdir(parents=True, exist_ok=True)
     key_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path = cert_path.with_suffix(".cnf")
+    config_path.write_text(
+        "\n".join(
+            [
+                "[req]",
+                "distinguished_name = subject",
+                "prompt = no",
+                "x509_extensions = certificate_extensions",
+                "",
+                "[subject]",
+                f"CN = {common_name}",
+                "",
+                "[certificate_extensions]",
+                "basicConstraints = critical,CA:TRUE",
+                "keyUsage = critical,digitalSignature,keyEncipherment,keyCertSign",
+                "extendedKeyUsage = serverAuth,clientAuth",
+                f"subjectAltName = DNS:{common_name}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
 
     # 1) 生成私钥 (RSA 2048)
     subprocess.run(
@@ -114,25 +133,34 @@ def _generate_self_signed_cert(
         text=True,
     )
     # 2) 生成自签名证书 (有效期 1 天, demo 足够)
-    subprocess.run(
-        [
-            openssl,
-            "req",
-            "-new",
-            "-x509",
-            "-key",
-            str(key_path),
-            "-out",
-            str(cert_path),
-            "-days",
-            "1",
-            "-subj",
-            f"/CN={common_name}",
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        subprocess.run(
+            [
+                openssl,
+                "req",
+                "-new",
+                "-x509",
+                "-key",
+                str(key_path),
+                "-out",
+                str(cert_path),
+                "-days",
+                "1",
+                "-config",
+                str(config_path),
+                "-extensions",
+                "certificate_extensions",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or exc.stdout or str(exc)).strip()
+        raise_with_help(
+            f"openssl 生成演示证书失败: {detail}",
+            f"检查 OpenSSL 可执行文件 `{openssl}`；本示例不会修改系统 OpenSSL 配置。",
+        )
 
 
 # ============================================================
@@ -280,15 +308,15 @@ def simulate_mtls_handshake(
 # 4. 端云协议完整演示
 # ============================================================
 def run_secure_minions_demo() -> dict:
-    """完整端云 mTLS 协议演示 (无第三方依赖)."""
+    """运行 TLS 教学演示，并显式报告未实现的 Secure Minions 能力。"""
     print("=" * 60)
-    print("Secure Minions 端云协作隐私推理 — 真实 mTLS 模拟")
+    print("Secure Minions 安全边界 — 本地 mTLS 教学演示")
     print("=" * 60)
 
-    # 1) 端侧生成 session key
-    session_key = generate_minion_session_key()
-    print("\n[1] 端侧生成 ephemeral session key (256-bit)")
-    print(f"    key preview: {session_key[:8].hex()}...{session_key[-4:].hex()}")
+    # 1) 端侧生成请求 nonce；TLS 会自行协商真正的会话密钥
+    request_nonce = generate_request_nonce()
+    print("\n[1] 端侧生成一次性请求 nonce (256-bit)")
+    print(f"    nonce preview: {request_nonce[:8].hex()}...{request_nonce[-4:].hex()}")
 
     # 2) 端云 mTLS 握手
     print("\n[2] 端云 mTLS 握手 (TLSv1.3 + AES-256-GCM)...")
@@ -300,38 +328,42 @@ def run_secure_minions_demo() -> dict:
     print(f"    握手耗时: {handshake['handshake_ms']}ms")
     print(f"    临时证书目录: {handshake['cert_dir']}")
 
-    # 3) 端侧对 token IDs 做 SHA-256
+    # 3) SHA-256 只作为日志指纹，绝不声称它能隐藏低熵 token
     mock_tokens = [9906, 1917, 3186]  # 模拟 tokenizer.encode("Hello world!")
-    print("\n[3] 端侧对 token IDs 做 SHA-256 (隐私保护)")
-    print(f"    原始 tokens: {mock_tokens}  (永不离开端侧)")
-    token_hash = hash_tokens_for_transmission(mock_tokens)
-    print(f"    token SHA-256: {token_hash[:32]}...{token_hash[-8:]}")
+    print("\n[3] 生成请求日志指纹（不是隐私机制）")
+    print(f"    原始 tokens: {mock_tokens}")
+    token_fingerprint = fingerprint_tokens(mock_tokens)
+    print(f"    token fingerprint: {token_fingerprint[:32]}...{token_fingerprint[-8:]}")
+    print("    注意: 服务端必须在可信执行环境内看到明文，才能执行常规 LLM 推理")
 
-    # 4) 加密 session 请求 (模拟)
-    request_fingerprint = hashlib.sha256(session_key + token_hash.encode()).hexdigest()
-    print("\n[4] 加密 session 请求 (TLS channel 保护)")
+    # 4) TLS 保护传输；指纹只用于关联请求
+    request_fingerprint = hashlib.sha256(request_nonce + token_fingerprint.encode()).hexdigest()
+    print("\n[4] 通过 TLS 通道传输请求")
     print(f"    request fingerprint: {request_fingerprint[:32]}...{request_fingerprint[-8:]}")
 
-    # 5) 云端 LLM 推理 (mock) + 返回加密 response
-    print("\n[5] 云端 LLM 推理 (mock) + 加密 response")
+    # 5) 云端 mock 推理 + TLS 返回响应
+    print("\n[5] 云端 mock 推理 + TLS 返回响应")
     mock_response_tokens = [13, 5782, 318, 1128, 13, 0]  # 模拟 "<|im_start|>..."
-    response_hash = hash_tokens_for_transmission(mock_response_tokens)
+    response_fingerprint = fingerprint_tokens(mock_response_tokens)
     print(f"    response tokens 数量: {len(mock_response_tokens)}")
-    print(f"    response SHA-256: {response_hash[:32]}...{response_hash[-8:]}")
+    print(f"    response fingerprint: {response_fingerprint[:32]}...{response_fingerprint[-8:]}")
 
-    # 6) 端侧解密
-    print("\n[6] 端侧解密 response (TLS channel 保护)")
-    print(f"    端侧收到: {len(mock_response_tokens)} 个 token (无模型权重)")
+    # 6) 报告本演示的能力边界
+    print("\n[6] 能力边界")
+    print("    已演示: TLS 传输加密、双向证书认证")
+    print("    未实现: 远程证明、机密 CPU/GPU、TEE 内推理")
 
     return {
-        "session_key_bytes": len(session_key),
+        "request_nonce_bytes": len(request_nonce),
         "handshake_ms": handshake["handshake_ms"],
         "token_count": len(mock_tokens),
-        "token_sha256": token_hash[:16] + "...",
+        "token_fingerprint": token_fingerprint[:16] + "...",
         "request_fingerprint": request_fingerprint[:16] + "...",
         "response_count": len(mock_response_tokens),
         "cipher": handshake["client_cipher"],
         "protocol": handshake["client_protocol"],
+        "remote_attestation": "NOT_IMPLEMENTED",
+        "confidential_compute": "NOT_IMPLEMENTED",
     }
 
 
@@ -339,11 +371,13 @@ def run_secure_minions_demo() -> dict:
 # 5. 主流程
 # ============================================================
 def main() -> None:
-    print("=== Secure Minions Protocol (mTLS) ===\n")
-    print("场景: 端云分离 LLM 推理")
-    print("  端侧: 用户 prompt, 临时 session key")
-    print("  云端: LLM 模型权重")
-    print("  协议: mTLS 加密 token 哈希\n")
+    if skip_if_mock("OpenSSL, local loopback sockets, and temporary certificate files"):
+        return
+    print("=== Secure Minions Security Boundary (TLS-only demo) ===\n")
+    print("场景: 端云分离 LLM 推理的传输层教学")
+    print("  本地: mTLS 握手与请求/响应指纹")
+    print("  缺失: 远程证明、TEE 与机密 GPU")
+    print("  结论: 这不是 Secure Minions 官方协议或生产实现\n")
 
     result = run_secure_minions_demo()
     print()
@@ -351,9 +385,10 @@ def main() -> None:
     for k, v in result.items():
         print(f"  {k}: {v}")
     print()
-    print("✅ 端侧: 永不暴露原始 prompt (仅传 SHA-256)")
-    print("✅ 云端: 永不暴露模型权重 (仅返回 token 哈希)")
-    print("✅ 通信: mTLS 加密 + 双向证书认证")
+    print("✅ 通信链路: mTLS 加密 + 双向证书认证")
+    print("⚠️  服务端可信性: 本示例没有远程证明或 TEE，不能防云端运营方读取明文")
+    print("⚠️  SHA-256: 仅作指纹，不是 prompt 隐私或 LLM 推理协议")
+    print("OK")
 
 
 if __name__ == "__main__":

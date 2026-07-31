@@ -7,57 +7,56 @@
 # deps: openai
 # run: python 17_openai_cua.py
 # expected_runtime: 10-20s (real api)
-# expected_output: 打印 CUA 返回的动作序列
+# expected_output: 无 Key 时 [SKIP]；有 Key 时只打印待验证动作，不执行
 # ---
 # See: ../tutorial/13_Prompt_Engineering.md#13.7.3
 # Interview hooks:
 # - OpenAI CUA 与 Claude Computer Use 的协议层差异？
 # - reasoning.effort 三档对成本和延迟的影响？
-# - environment 参数（browser/mac/windows）如何影响动作集？
+# - 宿主为何必须独立校验动作并在隔离环境执行？
 
-import base64
+import os
 
-from openai import OpenAI
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
 
-_client = OpenAI()
+
+def _real_api_ready() -> bool:
+    if os.environ.get("LLM_MOCK") != "0":
+        print("[SKIP] 离线安全模式：只有显式设置 LLM_MOCK=0 才会调用 OpenAI API")
+        print("OK")
+        return False
+    if OpenAI is None or not os.environ.get("OPENAI_API_KEY"):
+        print("[SKIP] 真实调用需要 openai 和 OPENAI_API_KEY")
+        print("OK")
+        return False
+    return True
 
 
-def call_openai_cua(screenshot_b64: str, user_msg: str):
-    # OpenAI CUA 通过 Responses API 使用
-    return _client.responses.create(
-        model="computer-use-preview",  # 专用 CUA 模型
-        input=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "input_image", "image_url": f"data:image/png;base64,{screenshot_b64}"},
-                    {"type": "input_text", "text": user_msg},
-                ],
-            }
-        ],
-        tools=[
-            {
-                "type": "computer_use_preview",
-                "display_width": 1440,
-                "display_height": 900,
-                "environment": "browser",  # browser | mac | windows | linux
-            }
-        ],
-        reasoning={
-            "summary": "auto",  # 返回思考摘要
-            "effort": "medium",  # low / medium / high
-        },
-        truncation="auto",
+def call_openai_computer(user_msg: str):
+    if not _real_api_ready():
+        return None
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    return client.responses.create(
+        model=os.environ.get("OPENAI_MODEL", "gpt-5.6"),
+        tools=[{"type": "computer"}],
+        input=user_msg,
     )
 
 
 if __name__ == "__main__":
-    fake_png = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"\x00" * 50).decode()
-    response = call_openai_cua(fake_png, "登录这个网站并下载年度报告")
+    response = call_openai_computer(
+        "在隔离浏览器中打开公司公开主页；不要登录、下载或提交表单。"
+    )
+    if response is None:
+        raise SystemExit(0)
 
-    # 解析 CUA 返回的动作
+    # 只打印模型建议；真实宿主须逐项授权、执行，再按 call_id 回传截图。
     for item in response.output:
         if item.type == "computer_call":
-            action = item.action
-            coords = getattr(action, "coordinates", None)
-            print(f"动作: {action.type}, 坐标: {coords if coords else 'N/A'}")
+            for action in item.actions:
+                print("[待验证动作]", action)
+    print("[安全默认] 本示例不执行任何宿主 GUI 动作")
+    print("OK")

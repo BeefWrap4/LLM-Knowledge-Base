@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch15_agent/llm/01_react_basic.py
+python ch15_agent/llm/02_react_agent_from_scratch.py
 ```
 
 ## 关联章节

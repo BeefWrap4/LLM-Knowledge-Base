@@ -19,7 +19,7 @@
 
 TensorRT-LLM 是 NVIDIA 的 LLM 推理编译器:
   - 把 HuggingFace 模型编译成 TensorRT engine (graph capture + kernel autotune)
-  - 编译慢但运行极快 (10x vs vanilla HF)
+  - 通过图优化、量化与目标硬件 kernel 调优换取运行时性能；收益需按基线实测
 
 工作流:
   1. trtllm-build --checkpoint_dir ... --output_dir engine
@@ -42,7 +42,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help  # noqa: E402
-from shared.gpu_guard import require_nvidia_gpu  # noqa: E402
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock  # noqa: E402
 
 
 def check_hardware() -> None:
@@ -146,6 +146,8 @@ def build_engine(
 
 
 def main() -> None:
+    if skip_if_mock("Linux, an NVIDIA GPU, TensorRT-LLM CLIs, and a local checkpoint"):
+        return
     check_hardware()
 
     # 1. 找 HuggingFace checkpoint

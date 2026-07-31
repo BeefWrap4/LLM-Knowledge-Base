@@ -14,14 +14,11 @@
 #   1. NF4 vs FP4 区别？(答: NF4 (4-bit NormalFloat) 数据类型专为正态分布权重设计; FP4 真浮点)
 #   2. 4-bit 量化精度损失如何控制？(答: 校准集 / group size / double quant / outlier 处理)
 #   3. PTQ vs QAT 取舍？(答: PTQ 简单但损失大; QAT 慢但精度好)
-"""FP4 / INT4 / INT8 量化阶梯 (真实 bitsandbytes + transformers).
+"""FP16 / INT8 / NF4 量化阶梯 (真实 bitsandbytes + transformers).
 
-VRAM 节省 (Qwen2.5-0.5B 实测):
-  - fp16:  ~0.94GB
-  - int8:  ~0.60GB  (-36%)
-  - fp4:   ~0.44GB  (-53%, NF4 + double quant)
-
-性能 vs 精度: 4bit 几乎不损精度 (QLoRA 论文已证)
+脚本在同一机器、模型、提示词和运行参数下测量峰值显存与一次生成延迟。
+结果只用于展示测量方法；量化后的任务质量、吞吐和显存收益必须分别评估，
+不能由位宽或 QLoRA 训练结果直接推出。
 """
 
 import sys
@@ -35,7 +32,7 @@ if str(_code_root) not in sys.path:
 import torch
 
 from shared._error_helper import raise_with_help
-from shared.gpu_guard import require_nvidia_gpu
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock
 
 
 def check_hardware():
@@ -112,6 +109,8 @@ def benchmark(quant_type: str, model_path: str, prompt: str = "Q: What is 2+2?\n
 
 
 def main():
+    if skip_if_mock("an NVIDIA GPU, bitsandbytes, transformers, and local model weights"):
+        return
     check_hardware()
 
     model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")

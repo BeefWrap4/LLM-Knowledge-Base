@@ -35,3 +35,4 @@ prompt = """
 if __name__ == "__main__":
     print(prompt)
     print(f"\n[Prompt 长度] {len(prompt)} 字符")
+    print("OK")

@@ -1,20 +1,24 @@
 # ---
 # chapter: 27
-# topic: o3 streaming with hidden reasoning tokens
+# topic: GPT-5.6 Sol streaming with the Responses API
 # section: 27.2 Reasoning Effort API
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: llm
-# deps: openai>=1.40.0
+# deps: openai>=2.51.0,<3
 # run: python 02_o3_streaming.py
-# expected_runtime: <60s (real streaming API call)
-# expected_output: streams code blocks live, or friendly error if no key
+# expected_runtime: <2s mock; variable for a real streaming API call
+# expected_output: streams text deltas; real API requires LLM_MOCK=0 and a key
 # ---
 # See: ../tutorial/27_推理模型与Test-Time_Compute.md §27.2
 # Interview hooks:
-#   1. 流式响应的 delta 字段结构？reasoning_content 与 content 分流？
-#   2. 为什么流式推理比 batch 推理的 TTFT (time-to-first-token) 短？
-#   3. o3 streaming 与 o1 的 SDK 兼容性差异？
-"""OpenAI o3 流式推理 (真实 streaming)."""
+#   1. Responses API 的 ``response.output_text.delta`` 事件如何消费？
+#   2. 流式传输为何改善感知延迟，却不保证降低服务端首个文本 token 的生成时间？
+#   3. 为什么不应把未返回的原始推理链当作可流式读取字段？
+"""用 GPT-5.6 Sol + Responses API 演示文本增量流。
+
+文件名保留 ``o3`` 仅为兼容既有教程链接。脚本默认离线 mock；只有显式设置
+``LLM_MOCK=0`` 才会调用真实 API。Responses API 返回可展示的文本增量，而不是原始思维链。
+"""
 
 import os
 import sys
@@ -32,36 +36,41 @@ def get_openai_key() -> str:
     if not key or key == "YOUR_API_KEY":
         raise_with_help(
             "OPENAI_API_KEY 未设置",
-            "国内用户可用 DeepSeek-R1 替代: `export DEEPSEEK_API_KEY=...` + 改 base_url.",
+            "真实调用需同时设置 `LLM_MOCK=0` 与 `OPENAI_API_KEY`；离线运行请保留默认 mock。",
         )
     return key
 
 
 def main():
+    if os.environ.get("LLM_MOCK", "1").strip() != "0":
+        print("=== GPT-5.6 Sol Responses 流（离线 mock，默认）===")
+        for delta in ["def ", "is_palindrome", "(text): ", "return text == text[::-1]"]:
+            print(delta, end="", flush=True)
+        print()
+        return
+
     api_key = get_openai_key()
 
     from openai import OpenAI
 
     client = OpenAI(api_key=api_key)
 
-    print("=== OpenAI o3 流式推理 ===\n")
+    print("=== GPT-5.6 Sol + Responses API 流式文本 ===\n")
 
-    stream = client.chat.completions.create(
-        model="o3-mini",
-        messages=[{"role": "user", "content": "写一个 Python 函数判断回文"}],
-        reasoning_effort="medium",
-        max_completion_tokens=2048,
+    stream = client.responses.create(
+        model="gpt-5.6-sol",
+        input="写一个 Python 函数判断回文，并给出两个测试样例。",
+        reasoning={"effort": "medium"},
+        max_output_tokens=2048,
         stream=True,
     )
 
-    full_text = ""
-    for chunk in stream:
-        if chunk.choices and chunk.choices[0].delta.content:
-            delta = chunk.choices[0].delta.content
-            full_text += delta
-            print(delta, end="", flush=True)
+    for event in stream:
+        if event.type == "response.output_text.delta":
+            print(event.delta, end="", flush=True)
     print()
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

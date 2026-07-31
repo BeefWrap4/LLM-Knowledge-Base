@@ -18,8 +18,12 @@ AG2 实战：现代化多 Agent 协作 - 离线 mock 结构
 """
 # 真实环境: from ag2 import AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager
 
+
 # 配置 LLM
-llm_config = {"model": "gpt-4o", "api_key": "sk-..."}
+llm_config = {
+    "model": "<inject-current-model-in-real-integration>",
+    "api_key": "<inject-from-secret-store-in-real-integration>",
+}
 
 # ===== 定义 Agents =====
 planner = {

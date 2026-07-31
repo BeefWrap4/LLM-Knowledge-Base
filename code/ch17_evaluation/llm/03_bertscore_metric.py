@@ -6,8 +6,8 @@
 # tier: llm
 # deps: bert-score, torch, transformers
 # run: python 03_bertscore_metric.py
-# expected_runtime: 30-60s (first run downloads model)
-# expected_output: BERTScore Precision/Recall/F1 around 0.85
+# expected_runtime: <2s (mock mode) / model-dependent (real)
+# expected_output: Skip notice in mock mode or measured BERTScore values in real mode
 # ---
 # See: ../tutorial/17_大模型评估体系.md
 # Interview hooks:
@@ -17,45 +17,48 @@
 
 """BERTScore 计算示例。
 
-BERTScore 使用预训练语言模型的上下文嵌入计算生成文本和参考文本之间的语义相似度。
+默认 ``LLM_MOCK=1`` 不加载或下载模型。设置 ``LLM_MOCK=0`` 后才执行真实计算，
+并用 ``BERTSCORE_MODEL`` 固定 backbone；依赖或模型错误不会伪装成模拟分数。
 """
 
+import os
 
-def compute_bertscore_demo() -> None:
+
+def compute_bertscore_demo() -> tuple[float, float, float]:
+    if os.environ.get("LLM_MOCK", "1") != "0":
+        raise RuntimeError("LLM_MOCK=1：未加载模型；真实计算请显式设置 LLM_MOCK=0")
+
     try:
         from bert_score import score
-    except ImportError:
-        print("[mock] bert_score 未安装。模拟 BERTScore 输出。")
-        print("BERTScore Precision: 0.8500")
-        print("BERTScore Recall:    0.8700")
-        print("BERTScore F1:        0.8600")
-        return
+    except ImportError as exc:
+        raise RuntimeError("真实模式需要 bert-score、torch 和 transformers") from exc
 
     references = ["The cat is sitting on the mat."]
     candidates = ["A feline rests upon the rug."]
-
-    try:
-        P, R, F1 = score(
-            candidates,
-            references,
-            model_type="microsoft/deberta-xlarge-mnli",
-            lang="en",
-            verbose=True,
-        )
-
-        print(f"BERTScore Precision: {P.mean().item():.4f}")
-        print(f"BERTScore Recall:    {R.mean().item():.4f}")
-        print(f"BERTScore F1:        {F1.mean().item():.4f}")
-        # 典型输出（即使词语完全不同，语义相似度高）：
-        # BERTScore Precision: ~0.8500
-        # BERTScore Recall:    ~0.8700
-        # BERTScore F1:        ~0.8600
-    except Exception as exc:
-        print(f"[mock] 模型加载失败 ({exc})。模拟输出。")
-        print("BERTScore Precision: 0.8500")
-        print("BERTScore Recall:    0.8700")
-        print("BERTScore F1:        0.8600")
+    precision, recall, f1 = score(
+        candidates,
+        references,
+        model_type=os.environ.get(
+            "BERTSCORE_MODEL",
+            "microsoft/deberta-xlarge-mnli",
+        ),
+        lang="en",
+        verbose=True,
+    )
+    values = (
+        precision.mean().item(),
+        recall.mean().item(),
+        f1.mean().item(),
+    )
+    print(f"BERTScore Precision: {values[0]:.4f}")
+    print(f"BERTScore Recall:    {values[1]:.4f}")
+    print(f"BERTScore F1:        {values[2]:.4f}")
+    return values
 
 
 if __name__ == "__main__":
-    compute_bertscore_demo()
+    if os.environ.get("LLM_MOCK", "1") != "0":
+        print("[SKIP] LLM_MOCK=1：未加载模型，未生成伪 BERTScore")
+    else:
+        compute_bertscore_demo()
+    print("OK")

@@ -271,6 +271,8 @@ class ReActAgent:
         self.memory: list[dict] = []  # 历史记录
         self.max_iterations = 10      # 最大迭代次数，防止无限循环
         self.llm_api_key = llm_api_key or os.getenv("OPENAI_API_KEY")
+        self.model = os.getenv("OPENAI_MODEL", "gpt-5.6")
+        self.mock = os.getenv("LLM_MOCK", "1") != "0"
         
         # ReAct Prompt 模板
         self.react_prompt_template = """你是一个智能助手，可以通过调用工具来完成任务。
@@ -302,23 +304,29 @@ Thought: """
         return "\n".join([t.to_prompt_format() for t in self.tools.values()])
     
     def _call_llm(self, prompt: str) -> str:
-        """调用 LLM（支持 OpenAI 和模拟模式）"""
-        try:
-            import openai
-            client = openai.OpenAI(api_key=self.llm_api_key)
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "你是一个严格遵循 ReAct 格式的智能助手。"},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1,
-                stop=["Observation:"],  # 在 Observation 前停止，等待工具执行
-            )
-            return response.choices[0].message.content
-        except Exception:
-            # 模拟模式（用于演示和测试）
+        """默认离线模拟；仅在 LLM_MOCK=0 时调用 Responses API。"""
+        if self.mock:
             return self._simulate_llm(prompt)
+
+        if not self.llm_api_key:
+            raise RuntimeError("LLM_MOCK=0 时必须设置 OPENAI_API_KEY")
+
+        from openai import OpenAI
+
+        client = OpenAI(api_key=self.llm_api_key)
+        response_kwargs = (
+            {"reasoning": {"effort": "low"}} if self.model.startswith("gpt-5.6") else {}
+        )
+        response = client.responses.create(
+            model=self.model,
+            instructions=(
+                "你是严格遵循 ReAct 格式的助手。每轮只返回下一条 Action 或 Final Answer；"
+                "不要自行编造 Observation。"
+            ),
+            input=prompt,
+            **response_kwargs,
+        )
+        return response.output_text
     
     def _simulate_llm(self, prompt: str) -> str:
         """LLM 模拟器（用于无 API 时的测试）"""
@@ -588,7 +596,7 @@ sequenceDiagram
 | **输出格式** | 文本格式（Thought + Action） | 结构化 JSON |
 | **解析方式** | 正则/规则解析 | 原生 JSON 解析 |
 | **思考过程** | 显式输出 Thought | 隐式（模型内部） |
-| **模型支持** | 任何 LLM（通过 Prompt） | 需要模型原生支持（GPT-4、Claude、Qwen 等）|
+| **模型支持** | 任何 LLM（通过 Prompt） | 需要模型原生支持（如 GPT-5.6、Claude、Qwen）|
 | **可靠性** | 中（解析可能出错） | 高（结构化输出） |
 | **灵活性** | 高（可自定义格式） | 中（遵循 API 格式） |
 
@@ -601,6 +609,7 @@ sequenceDiagram
 Function Calling 多工具 Agent - 完整实战
 """
 import json
+import os
 import openai
 
 class FunctionCallingAgent:
@@ -616,7 +625,11 @@ class FunctionCallingAgent:
     
     def __init__(self, api_key: str = None):
         self.client = openai.OpenAI(api_key=api_key)
-        self.model = "gpt-4"
+        self.model = os.getenv("OPENAI_MODEL", "gpt-5.6")
+        # 此处保留 Chat Completions 以教学 message.tool_calls；GPT-5.6 关闭 reasoning。
+        self.model_kwargs = (
+            {"reasoning_effort": "none"} if self.model.startswith("gpt-5.6") else {}
+        )
         self.tools = []
         self.tool_functions = {}
         self.conversation = []
@@ -643,6 +656,7 @@ class FunctionCallingAgent:
                 messages=self.conversation,
                 tools=self.tools if self.tools else None,
                 tool_choice="auto",
+                **self.model_kwargs,
             )
             
             message = response.choices[0].message
@@ -690,6 +704,7 @@ class FunctionCallingAgent:
         final_response = self.client.chat.completions.create(
             model=self.model,
             messages=self.conversation,
+            **self.model_kwargs,
         )
         return final_response.choices[0].message.content
 
@@ -1714,7 +1729,10 @@ graph LR
 
 ## 15.6.4 Agent Teams 架构 🆕（2026年更新）
 
-> Agent Teams 是 Claude 4.6 引入的革命性架构，标志着多 Agent 协作从**串行流水线**进入**并行协作**时代。2026年面试高频考点。
+> Anthropic 在 2026 年 2 月发布 Claude Opus 4.6 时，为 **Claude Code** 引入了
+> Agent Teams 研究预览。它是产品编排能力，不是某个模型天然具备的通用 API
+> “架构”；适合可拆成独立、偏读取子任务的并行协作，功能状态与限制应以上线时的
+> Claude Code 文档为准。
 
 #### 1. Agent Teams 核心概念
 
@@ -1722,7 +1740,7 @@ graph LR
 
 ```mermaid
 graph TB
-    subgraph "Agent Teams 架构（Claude 4.6）"
+    subgraph "Claude Code Agent Teams（研究预览）"
         direction TB
 
         TL["👤 Team Lead
@@ -1774,16 +1792,17 @@ graph TB
 
 #### 2. Agent Teams vs 传统 Multi-Agent vs 子代理
 
-| 维度 | 传统 Multi-Agent | Agent Teams (Claude 4.6) | 子代理 (Sub-agent) |
+| 维度 | 传统 Multi-Agent | Claude Code Agent Teams | 子代理 (Sub-agent) |
 |------|-----------------|-------------------------|-------------------|
 | **架构模式** | 串行流水线 | 并行协作 | 嵌套调用 |
 | **上下文** | 共享/透传 | 独立上下文 | 继承父上下文 |
-| **生命周期** | 随任务创建销毁 | 持久性独立实例 | 临时实例 |
+| **生命周期** | 随任务创建销毁 | 团队运行期间的独立会话 | 临时实例 |
 | **通信方式** | 直接函数调用 | Mailbox + Shared Task List | 参数传递 |
 | **协作关系** | Manager-Worker | Team Lead + Teammates | Parent-Child |
 | **类比** | 工厂流水线 | 敏捷开发团队 | 函数嵌套调用 |
 
-**核心区别**：Agent Teams 的 Teammates 是**持久性独立实例**，拥有各自的上下文和状态，不是临时创建销毁的子代理。
+**核心区别**：Agent Teams 的 Teammates 在团队运行期间拥有各自的上下文和状态，
+通过共享任务与消息协作；这不等于跨运行永久存在，也不代表所有 Multi-Agent 框架都采用同一实现。
 
 #### 3. Agent Teams 关键组件
 
@@ -2087,12 +2106,17 @@ Agent 间通信"]
 
 ### 15.7.1 智能客服 Agent 完整实现
 
+下面是显式真实调用的架构片段；可运行配套脚本默认使用 `LLM_MOCK=1`，不会读取 Key
+或联网。生产工具调用还必须补充身份鉴权、幂等键、参数校验、审批和审计，不能把模型给出的
+参数直接视为操作授权。
+
 ```python
 """
 智能客服 Agent - 完整实战
 集成：ReAct + Function Calling + RAG + 记忆管理
 """
 import json
+import os
 import openai
 from typing import Optional
 from dataclasses import dataclass, field
@@ -2112,12 +2136,15 @@ class CustomerServiceAgent:
     """
     
     api_key: str
-    model: str = "gpt-4"
+    model: str = field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-5.6"))
     conversation: list = field(default_factory=list)
     escalation_threshold: float = 0.8  # 转人工阈值
     
     def __post_init__(self):
         self.client = openai.OpenAI(api_key=self.api_key)
+        self.model_kwargs = (
+            {"reasoning_effort": "none"} if self.model.startswith("gpt-5.6") else {}
+        )
         self.tools = self._define_tools()
         self.system_prompt = self._build_system_prompt()
     
@@ -2222,10 +2249,11 @@ class CustomerServiceAgent:
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
+                **self.model_kwargs,
             )
             result = json.loads(response.choices[0].message.content)
             return result
-        except Exception:
+        except (json.JSONDecodeError, TypeError, ValueError):
             return {"sentiment": "neutral", "intensity": 0.5, "needs_escalation": False}
     
     def handle(self, user_message: str, user_id: str = "anonymous") -> dict:
@@ -2268,6 +2296,7 @@ class CustomerServiceAgent:
                 messages=messages,
                 tools=self.tools,
                 tool_choice="auto",
+                **self.model_kwargs,
             )
             
             message = response.choices[0].message
@@ -2824,6 +2853,21 @@ Skills 是 2026 年的重要概念，面试中经常要求"设计一个 Skill"�
 - 超出能力范围: 诚恳告知 + 转人工
 ```
 
+### 15.8.4 失败语义、幂等与人工确认（2026 国内面试高频）
+
+“失败就重试三次”不是生产级答案。只读查询超时可以在预算内指数退避；写操作超时可能已经成功，只是响应丢失，盲目重试会造成重复扣款、重复发信或重复写入。
+
+生产 Agent 至少应做到：
+
+1. 每次运行和步骤都有 `run_id` / `step_id`，写工具携带幂等键；
+2. 工具状态区分执行中、成功、确定失败、结果未知；
+3. 删除、支付、发送、审批等操作在提交前显式确认；
+4. 持久化最后一个已确认步骤，恢复时不重放整个轨迹；
+5. 分开统计工具选择准确率、参数合法率、执行成功率和端到端任务成功率；
+6. 达到步数、成本、连续失败或重复动作阈值后熔断并转人工。
+
+系统化项目深挖、故障矩阵与写操作幂等示例见 [[40_国内大模型岗位面试实战_2026]]。
+
 ### 🎯 高频题1：AI Agent 和普通 LLM 调用的本质区别是什么？
 
 **参考答案**：
@@ -2903,40 +2947,48 @@ Agent 记忆通常分三层：
 
 ## 15.9 A2A协议与Skills生态 🆕
 
-> 2026年 Agent 生态进入"协议化、标准化"阶段。本节聚焦 2026 年最新趋势：A2A 协议被 Linux Foundation 接管成为开放标准、Skills 生态从 Anthropic 内部走向开放市场、Voice/实时双向 Agent 兴起、沙箱化代码执行、持久化执行（durable execution）以及 ACI（Agent-Computer Interface）设计原则。
+> Agent 生态正在进入协议化阶段。本节按 **2026-07-31** 可核验的公开规范介绍 A2A、Skills、实时语音、沙箱与持久化执行；协议示例必须标明版本，避免把旧草案 API 当成当前标准。
 
 ---
 
-### 15.9.1 A2A 协议：Agent Cards + JSON-RPC over HTTP/SSE
+### 15.9.1 A2A v1.0：Agent Card + 多协议绑定
 
-A2A（Agent-to-Agent）协议在 2026 年完成重大演进：从 Google 单家项目升级为 **Linux Foundation 治理的开放标准**，类似当年 Kubernetes 从 CNCF 毕业的路径。
+A2A（Agent-to-Agent）由 Google 于 2025 年 4 月公开，并于 **2025 年 6 月**捐赠给 Linux Foundation。按 2026-07-31 的 A2A v1.0 规范，协议定义等价的 **JSON-RPC、HTTP+JSON/REST、gRPC** 绑定，而不是只绑定 HTTP+SSE。官方规范见 [A2A v1.0](https://a2a-protocol.org/latest/whats-new-v1/)。
 
 #### 1. Agent Card：Agent 的"身份证"
 
-Agent Card 是描述 Agent 能力的标准 JSON 文档，托管在 `/.well-known/agent.json` 路径上：
+Agent Card 是描述 Agent 能力、认证方式和协议端点的标准 JSON 文档，标准发现路径是 `/.well-known/agent-card.json`：
 
 ```json
 {
   "name": "WeatherAgent",
   "version": "1.0.0",
   "description": "查询全球天气信息",
-  "url": "https://weather-agent.example.com",
+  "supportedInterfaces": [
+    {
+      "url": "https://weather-agent.example.com/a2a",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    }
+  ],
   "provider": {
     "organization": "Example Corp",
     "url": "https://example.com"
   },
   "capabilities": {
     "streaming": true,
-    "pushNotifications": true,
-    "stateTransitionHistory": false
+    "pushNotifications": true
   },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain", "application/json"],
   "skills": [
     {
       "id": "get_weather",
       "name": "Get Weather",
       "description": "获取指定城市的当前天气和预报",
-      "inputModes": ["text"],
-      "outputModes": ["text", "json"],
+      "tags": ["weather", "forecast"],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/plain", "application/json"],
       "examples": [
         "北京今天天气怎么样？",
         "明天上海会下雨吗？"
@@ -2945,22 +2997,31 @@ Agent Card 是描述 Agent 能力的标准 JSON 文档，托管在 `/.well-known
   ],
   "securitySchemes": {
     "bearer": {
-      "type": "http",
-      "scheme": "bearer",
-      "bearerFormat": "JWT"
+      "httpAuthSecurityScheme": {
+        "scheme": "Bearer",
+        "bearerFormat": "JWT"
+      }
     }
-  }
+  },
+  "securityRequirements": [
+    {"schemes": {"bearer": {"list": []}}}
+  ]
 }
 ```
 
-#### 2. JSON-RPC over HTTP/SSE 通信
+`version`、`defaultInputModes`、`defaultOutputModes`、`skills` 都是必填字段，每个
+`AgentSkill` 还必须有 `tags`。v1.0 采用 ProtoJSON：`securitySchemes` 的每个值要用
+`httpAuthSecurityScheme`、`oauth2SecurityScheme` 等 oneof 字段包装；
+`securityRequirements` 则通过 `schemes` 映射到 scope 的 `list`。
 
-A2A 协议的核心传输基于 JSON-RPC 2.0，**HTTP 用于请求与响应，SSE（Server-Sent Events）用于流式输出**：
+#### 2. JSON-RPC v1.0 通信
+
+下面仅演示 JSON-RPC 绑定：普通调用使用 `SendMessage`，流式调用使用 `SendStreamingMessage` 并接收 SSE。生产代码应优先使用官方 SDK，并根据 Agent Card 的 `supportedInterfaces` 选择绑定。成功的 `SendMessageResponse` 不是裸 `Task`：JSON-RPC 的 `result` 内必须且只能出现 `{"task": {...}}` 或 `{"message": {...}}`。
 
 ```python
 """
-A2A Client 简化实现
-展示 JSON-RPC over HTTP + SSE 流式通信
+A2A v1.0 Client 简化实现
+展示 JSON-RPC + SSE；省略签名校验、重试和完整错误映射
 """
 import json
 import asyncio
@@ -2978,44 +3039,61 @@ class A2AClient:
     3. 订阅流式更新（SSE）
     """
 
-    def __init__(self, agent_url: str, auth_token: str = None):
+    def __init__(self, agent_url: str, auth_token: str | None = None):
         self.agent_url = agent_url.rstrip("/")
         self.auth_token = auth_token
         self._card = None
+        self._rpc_url: str | None = None
 
     async def fetch_agent_card(self) -> dict:
         """从 .well-known 路径拉取 Agent 能力描述"""
         async with httpx.AsyncClient() as client:
-            url = f"{self.agent_url}/.well-known/agent.json"
+            url = f"{self.agent_url}/.well-known/agent-card.json"
             headers = {}
             if self.auth_token:
                 headers["Authorization"] = f"Bearer {self.auth_token}"
             response = await client.get(url, headers=headers, timeout=10.0)
             response.raise_for_status()
             self._card = response.json()
+            self._rpc_url = next(
+                item["url"]
+                for item in self._card["supportedInterfaces"]
+                if item["protocolBinding"] == "JSONRPC"
+                and item["protocolVersion"] == "1.0"
+            )
             return self._card
 
-    async def send_task(self, skill_id: str, message: str, session_id: str = None) -> dict:
-        """通过 JSON-RPC 2.0 发送任务到远程 Agent"""
+    async def send_message(
+        self,
+        text: str,
+        task_id: str | None = None,
+        context_id: str | None = None,
+    ) -> dict:
+        """通过 JSON-RPC 2.0 启动或继续一个 A2A task。"""
+        message = {
+            "messageId": self._new_id(),
+            "role": "ROLE_USER",
+            "parts": [{"text": text}],
+        }
+        if task_id:
+            message["taskId"] = task_id
+        if context_id:
+            message["contextId"] = context_id
         rpc_request = {
             "jsonrpc": "2.0",
             "id": 1,
-            "method": "tasks/send",
-            "params": {
-                "skill": skill_id,
-                "message": {
-                    "role": "user",
-                    "parts": [{"type": "text", "text": message}],
-                },
-                "sessionId": session_id or self._new_session_id(),
-            }
+            "method": "SendMessage",
+            "params": {"message": message},
         }
         async with httpx.AsyncClient() as client:
-            headers = {"Content-Type": "application/json"}
+            headers = {
+                "Content-Type": "application/json",
+                "A2A-Version": "1.0",
+            }
             if self.auth_token:
                 headers["Authorization"] = f"Bearer {self.auth_token}"
             response = await client.post(
-                f"{self.agent_url}/rpc",
+                self._rpc_url,
                 json=rpc_request,
                 headers=headers,
                 timeout=60.0,
@@ -3023,28 +3101,32 @@ class A2AClient:
             response.raise_for_status()
             return response.json()
 
-    async def stream_task(self, skill_id: str, message: str) -> AsyncIterator[dict]:
+    async def stream_message(self, text: str) -> AsyncIterator[dict]:
         """通过 SSE 订阅流式输出"""
         rpc_request = {
             "jsonrpc": "2.0",
             "id": 2,
-            "method": "tasks/sendSubscribe",
+            "method": "SendStreamingMessage",
             "params": {
-                "skill": skill_id,
                 "message": {
-                    "role": "user",
-                    "parts": [{"type": "text", "text": message}],
+                    "messageId": self._new_id(),
+                    "role": "ROLE_USER",
+                    "parts": [{"text": text}],
                 }
             }
         }
-        headers = {"Accept": "text/event-stream"}
+        headers = {
+            "Accept": "text/event-stream",
+            "Content-Type": "application/json",
+            "A2A-Version": "1.0",
+        }
         if self.auth_token:
             headers["Authorization"] = f"Bearer {self.auth_token}"
 
         async with httpx.AsyncClient() as client:
             async with client.stream(
                 "POST",
-                f"{self.agent_url}/rpc/stream",
+                self._rpc_url,
                 json=rpc_request,
                 headers=headers,
                 timeout=None,
@@ -3059,7 +3141,7 @@ class A2AClient:
                                 continue
 
     @staticmethod
-    def _new_session_id() -> str:
+    def _new_id() -> str:
         import uuid
         return str(uuid.uuid4())
 
@@ -3069,10 +3151,10 @@ async def main():
     card = await client.fetch_agent_card()
     print(f"Agent: {card['name']}, Skills: {[s['id'] for s in card['skills']]}")
 
-    result = await client.send_task("get_weather", "北京今天天气怎么样？")
+    result = await client.send_message("北京今天天气怎么样？")
     print(f"Result: {result}")
 
-    async for event in client.stream_task("get_weather", "上海未来三天预报"):
+    async for event in client.stream_message("上海未来三天预报"):
         print(f"Stream event: {event}")
 
 
@@ -3086,9 +3168,9 @@ graph LR
     subgraph "A2A 协议治理演进"
         direction LR
         A["2025年4月<br/>Google 首发 A2A<br/>作为厂商提案"]
-        B["2025年Q4<br/>50+ 厂商加入<br/>IBM 微软 Red Hat"]
-        C["2026年Q1<br/>捐给 Linux Foundation<br/>成立 A2A Working Group"]
-        D["2026年Q2<br/>v0.3 发布<br/>Agent Card 标准化"]
+        B["2025年6月<br/>捐赠给 Linux Foundation"]
+        C["2025-2026<br/>工作组持续迭代"]
+        D["截至 2026-07-31<br/>v1.0 当前规范"]
 
         A --> B --> C --> D
     end
@@ -3348,346 +3430,193 @@ graph TB
 
 #### 1. Strands BidiAgent
 
-Strands Agents SDK 引入的 BidiAgent 支持**全双工语音**：
+Strands Agents SDK 的 `BidiAgent` 支持持久连接、双向音频/文本、打断和并发工具调用。
+截至 2026-07-31，它仍位于 `experimental` 命名空间，provider 依赖需安装
+`strands-agents[bidi]`；生产使用应锁定版本并做真实音频设备回归：
 
 ```python
-"""
-Strands BidiAgent - 双向语音对话示例
-展示全双工音频流处理
-"""
 import asyncio
-from strands import BidiAgent
-from strands.voice import AudioConfig
+from strands import tool
+from strands.experimental.bidi import BidiAgent
+from strands.experimental.bidi.models import BidiNovaSonicModel
+
+
+@tool
+def multiply(a: int, b: int) -> int:
+    """计算两个整数的乘积。"""
+    return a * b
 
 
 async def voice_assistant():
-    """
-    语音助手 BidiAgent
-    特性：
-    - 全双工：可被打断、随时插入
-    - 流式：边说边处理
-    - 多模态：语音加屏幕共享加工具调用
-    """
     agent = BidiAgent(
-        model="claude-4.6-realtime",
-        voice="alloy",
-        system_prompt="""你是一个友好的语音助手，名字叫小音。
-        特点：
-        - 回答简洁，语音场景不宜超过 30 字每句
-        - 主动确认关键信息
-        - 被打断时立即停止当前回答""",
-        audio_config=AudioConfig(
-            input_sample_rate=16000,
-            output_sample_rate=24000,
-            vad_sensitivity=0.6,
-        ),
+        model=BidiNovaSonicModel(),
+        tools=[multiply],
+        system_prompt="回答简洁；关键信息先确认。",
     )
-
-    @agent.tool
-    async def search_flight(origin: str, destination: str, date: str) -> dict:
-        """查询航班信息"""
-        return {"flight": "CA1234", "price": 580, "duration": "2h30m"}
-
-    await agent.start_session(
-        on_user_speech=lambda text: print(f"用户: {text}"),
-        on_agent_speech=lambda text: print(f"小音: {text}"),
-        on_interrupt=lambda: print("[用户打断]"),
-    )
+    await agent.start()
+    try:
+        await agent.send("计算 25 * 48")
+        async for event in agent.receive():
+            print(event)
+    finally:
+        await agent.stop()
 
 
 asyncio.run(voice_assistant())
 ```
 
+音频 I/O 需额外安装并验证 PyAudio 等设备依赖；上例刻意只展示基础包可导入的
+文本生命周期。配套脚本
+`code/ch15_agent/llm/17_bidi_agent.py` 默认运行框架无关 mock，不会把虚构模型名、
+`voice`、`AudioConfig` 或 `start_session` 伪装成 Strands API。
+
 #### 2. OpenAI Realtime API
 
-OpenAI Realtime API（GA 版）提供原生双向语音支持，**WebSocket + Server VAD**：
+OpenAI Realtime API（GA）支持低延迟语音对话。服务端到服务端可使用 WebSocket；
+浏览器和移动端通常应优先使用 WebRTC。下例按 2026-07-31 的官方协议使用
+`gpt-realtime-2.1`、`audio.input/output` 嵌套配置以及 Server VAD。GA WebSocket
+只需 `Authorization`，不要再发送旧的 `OpenAI-Beta: realtime=v1`。
 
 ```python
-"""
-OpenAI Realtime API - 双向语音 Agent
-通过 WebSocket 维持长连接，实时交换音频流
-"""
-import asyncio
-import json
 import base64
-import websockets
-from websockets.client import connect
+import json
+import os
 
+from websockets.asyncio.client import connect
 
-class OpenAIRealtimeAgent:
-    """
-    OpenAI Realtime API 客户端
+model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-2.1")
+url = f"wss://api.openai.com/v1/realtime?model={model}"
+headers = {"Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}"}
 
-    协议：WebSocket over HTTPS 即 wss
-    消息格式：JSON 事件流
-
-    核心事件：
-    - session.update: 配置会话
-    - conversation.item.create: 添加对话项
-    - response.audio.delta: 增量音频响应
-    - input_audio_buffer.speech_started: 用户开始说话
-    """
-
-    REALTIME_URL = "wss://api.openai.com/v1/realtime"
-
-    def __init__(self, api_key: str, model: str = "gpt-realtime"):
-        self.api_key = api_key
-        self.model = model
-        self.ws = None
-
-    async def connect(self):
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "OpenAI-Beta": "realtime=v1",
-        }
-        url = f"{self.REALTIME_URL}?model={self.model}"
-        self.ws = await connect(url, extra_headers=headers)
-
-        await self._send_event("session.update", {
-            "session": {
-                "modalities": ["text", "audio"],
-                "voice": "alloy",
-                "input_audio_format": "pcm16",
-                "output_audio_format": "pcm16",
-                "input_audio_transcription": {"model": "whisper-1"},
+session_update = {
+    "type": "session.update",
+    "session": {
+        "type": "realtime",
+        "model": model,
+        "output_modalities": ["audio"],
+        "audio": {
+            "input": {
+                "format": {"type": "audio/pcm", "rate": 24000},
                 "turn_detection": {
                     "type": "server_vad",
                     "threshold": 0.5,
                     "prefix_padding_ms": 300,
-                    "silence_duration_ms": 200,
+                    "silence_duration_ms": 500,
+                    "create_response": True,
+                    "interrupt_response": True,
                 },
-                "tools": [
-                    {
-                        "type": "function",
-                        "name": "get_weather",
-                        "description": "查询天气",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "city": {"type": "string"}
-                            },
-                            "required": ["city"]
-                        }
-                    }
-                ]
-            }
-        })
-
-    async def send_audio(self, audio_chunk: bytes):
-        """发送用户音频"""
-        await self._send_event("input_audio_buffer.append", {
-            "audio": base64.b64encode(audio_chunk).decode()
-        })
-
-    async def listen(self):
-        """监听服务器事件"""
-        async for message in self.ws:
-            event = json.loads(message)
-            event_type = event.get("type")
-
-            if event_type == "response.audio.delta":
-                yield {"type": "audio_chunk", "data": event.get("delta", "")}
-            elif event_type == "response.audio_transcript.delta":
-                yield {"type": "text", "data": event.get("delta", "")}
-            elif event_type == "input_audio_buffer.speech_started":
-                yield {"type": "user_started_speaking"}
-            elif event_type == "conversation.item.created":
-                item = event.get("item", {})
-                if item.get("type") == "function_call":
-                    yield {
-                        "type": "tool_call",
-                        "name": item["name"],
-                        "args": json.loads(item["arguments"]),
-                    }
-            elif event_type == "error":
-                yield {"type": "error", "data": event.get("error")}
-
-    async def _send_event(self, event_type: str, payload: dict):
-        event = {"type": event_type, **payload}
-        await self.ws.send(json.dumps(event))
+            },
+            "output": {
+                "format": {"type": "audio/pcm"},
+                "voice": "marin",
+            },
+        },
+        "instructions": "用简洁、自然的中文回答。",
+    },
+}
 
 
-async def realtime_voice_demo():
-    agent = OpenAIRealtimeAgent(api_key="sk-xxx")
-    await agent.connect()
+async def stream(audio_chunks):
+    async with connect(url, additional_headers=headers) as ws:
+        await ws.send(json.dumps(session_update))
+        for chunk in audio_chunks:
+            await ws.send(json.dumps({
+                "type": "input_audio_buffer.append",
+                "audio": base64.b64encode(chunk).decode("ascii"),
+            }))
 
-    async for event in agent.listen():
-        if event["type"] == "audio_chunk":
-            pass
-        elif event["type"] == "text":
-            print(f"助手说: {event['data']}")
-        elif event["type"] == "user_started_speaking":
-            print("[用户开始说话，停止当前播放]")
-
-
-asyncio.run(realtime_voice_demo())
+        async for raw in ws:
+            event = json.loads(raw)
+            if event["type"] == "response.output_audio.delta":
+                yield base64.b64decode(event["delta"])
+            elif event["type"] == "input_audio_buffer.speech_started":
+                # WebSocket 播放由客户端管理：此处停止本地播放并按需截断未播放内容。
+                yield b""
 ```
+
+实际项目还要处理 `session.created/session.updated`、错误关联、限流、连接恢复、
+播放进度和 `conversation.item.truncate`。`response.output_audio.done` 与
+`response.done` 不携带音频字节；音频数据必须从 `response.output_audio.delta`
+消费。工具调用的完整参数可从 `response.done.response.output` 中读取。
+
+配套脚本 `code/ch15_agent/llm/18_openai_realtime_agent.py` 默认
+`LLM_MOCK=1`，不会读取 Key、导入 WebSocket 客户端或联网；真实运行需显式设置
+`LLM_MOCK=0`。协议依据：
+[WebSocket 指南](https://developers.openai.com/api/docs/guides/realtime-websocket)、
+[会话与事件](https://developers.openai.com/api/docs/guides/realtime-conversations)、
+[VAD](https://developers.openai.com/api/docs/guides/realtime-vad)、
+[GPT-Realtime-2.1](https://developers.openai.com/api/docs/models/gpt-realtime-2.1)。
 
 #### 3. BidiAgent 与传统 Voice Bot 对比
 
-| 维度 | 传统 Voice Bot 与 IVR | BidiAgent 与 Realtime |
-|------|----------------------|----------------------|
-| **对话模式** | 半双工 一问一答 | 全双工 可打断与并发 |
-| **延迟** | 1 到 3 秒 | 200 到 500ms |
-| **语音处理** | ASR 与 NLU 与 TTS 流水线 | 原生多模态 端到端 |
-| **打断** | 不支持 | 支持 VAD 加 Server 检测 |
-| **情绪感知** | 无 | 原生支持 声纹与节奏 |
-| **工具调用** | 切换到文字通道 | 语音中无缝调用 |
+| 维度 | 典型流水线 Voice Bot / IVR | Realtime 原生语音 Agent |
+|------|-----------------------------|--------------------------|
+| **对话模式** | 常见实现以一问一答为主 | 支持流式输入输出与打断 |
+| **延迟** | 受 ASR、LLM、TTS 各阶段共同影响 | 减少中间阶段，但仍取决于网络、VAD、工具和播放链路 |
+| **语音处理** | ASR → 文本模型 → TTS，组件可独立替换 | 模型直接处理和生成音频，客户端仍负责采集与播放 |
+| **打断** | 取决于产品是否实现 barge-in | VAD 可触发取消；WebSocket 客户端还要停止播放并维护截断状态 |
+| **声学信息** | 可在独立 ASR/声学模块中处理 | 可利用语音中的韵律信息，但不等同于声纹认证 |
+| **工具调用** | 可由编排层调用 | 会话内可产生函数调用，结果仍须由应用执行并回传 |
+
+不要把固定毫秒数写成平台保证。上线验收应在目标地区、终端和网络下分别测
+首音频包延迟、完整回合延迟、打断成功率及 P95/P99。
 
 ---
 
 ### 15.9.4 SandboxAgent：安全的代码执行环境
 
-2026 年 Agent 越来越多地涉及"执行代码"（Code Interpreter、Computer Use），**沙箱化执行**成为必备能力。OpenAI Agents SDK v0.14.0 引入 SandboxAgent 概念。
+OpenAI Agents SDK 0.14.0 加入了 beta 的 Sandbox Agents。当前 API 不在普通
+`Agent` 构造器上附加一份沙箱配置，而是把职责拆成三层：
+
+- `Manifest`：描述新会话要物化的文件、目录、仓库、用户与权限；
+- `SandboxAgent`：保存角色、instructions、capabilities 和默认 manifest；
+- `SandboxRunConfig`：在每次运行时选择 sandbox client、现有 session、snapshot 或 manifest 覆盖。
+
+client 选择属于运行时配置：macOS/Linux 可用 `UnixLocalSandboxClient` 快速开发，
+需要更强隔离时选择 Docker 或托管 client。下面把 backend 作为依赖注入，避免把
+某个 provider 的可选依赖误写成核心 API：
 
 ```python
-"""
-SandboxAgent - 隔离的代码执行环境
-基于 OpenAI Agents SDK v0.14.0 沙箱模式
-"""
-from openai_agents import Agent, SandboxConfig
-import subprocess
-import tempfile
-import uuid
-import re
+from agents import Runner
+from agents.run import RunConfig
+from agents.sandbox import Manifest, SandboxAgent, SandboxRunConfig
+from agents.sandbox.entries import Dir, File
 
-
-# 1. 基础沙箱 Agent
-code_agent = Agent(
-    name="CodeExecutor",
-    instructions="""你是一个代码执行助手。分析用户需求，编写 Python 代码并执行。
-    约束：
-    - 只能使用白名单库：numpy, pandas, matplotlib, requests
-    - 单次执行超时 30 秒
-    - 内存限制 512MB
-    - 不允许访问网络，除白名单域名""",
-    sandbox=SandboxConfig(
-        mode="docker",
-        image="python:3.12-slim",
-        memory_limit="512m",
-        cpu_limit="1.0",
-        network="isolated",
-        allowed_domains=["pypi.org"],
-        timeout_seconds=30,
-        read_only_root=True,
-    ),
-    tools=["python_executor", "file_writer"],
+manifest = Manifest(
+    entries={
+        "task.md": File(content=b"Write the answer to output/result.txt."),
+        "output": Dir(),
+    }
 )
-
-
-# 2. 工具实现：受限容器内执行 Python
-def python_executor(code: str) -> str:
-    """
-    在隔离 Docker 容器中执行 Python 代码
-    """
-    container_name = f"sandbox-{uuid.uuid4().hex[:8]}"
-
-    try:
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(code)
-            code_path = f.name
-
-        result = subprocess.run(
-            [
-                "docker", "run",
-                "--name", container_name,
-                "--rm",
-                "-m", "512m",
-                "--cpus", "1.0",
-                "--network", "none",
-                "-v", f"{code_path}:/tmp/code.py:ro",
-                "--read-only",
-                "--tmpfs", "/tmp:size=100m",
-                "python:3.12-slim",
-                "python", "/tmp/code.py",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-
-        if result.returncode == 0:
-            return f"执行成功:\n{result.stdout}"
-        else:
-            return f"执行失败 (code={result.returncode}):\n{result.stderr}"
-
-    except subprocess.TimeoutExpired:
-        return "执行超时（30秒）"
-    finally:
-        subprocess.run(
-            ["docker", "rm", "-f", container_name],
-            capture_output=True, timeout=5,
-        )
-
-
-# 3. 多层防御深度
-class DefenseInDepth:
-    """
-    SandboxAgent 多层防御：
-    1. 静态分析：扫描危险 API
-    2. 资源限制：CPU 与内存与磁盘
-    3. 网络隔离：默认全断
-    4. 行为监控：异常行为检测
-    """
-
-    DANGEROUS_PATTERNS = [
-        r"\bos\.system\b",
-        r"\bsubprocess\b",
-        r"\beval\s*\(",
-        r"\bexec\s*\(",
-        r"\b__import__\b",
-        r"\bopen\s*\(.*['\"]/etc",
-        r"\bopen\s*\(.*['\"]/proc",
-    ]
-
-    @classmethod
-    def static_analysis(cls, code: str) -> tuple[bool, str]:
-        """静态分析代码安全性"""
-        for pattern in cls.DANGEROUS_PATTERNS:
-            if re.search(pattern, code):
-                return False, f"检测到危险 API: {pattern}"
-        return True, "静态分析通过"
-
-    @classmethod
-    def runtime_monitor(cls) -> dict:
-        """运行时资源监控配置"""
-        return {
-            "memory": "512m",
-            "cpu": "1.0",
-            "pids_limit": 100,
-            "network": "none",
-            "read_only_fs": True,
-            "no_new_privileges": True,
-            "cap_drop": ["ALL"],
-        }
-
-
-def demo_sandbox():
-    code = """
-import numpy as np
-arr = np.array([1, 2, 3, 4, 5])
-print(f"Mean: {arr.mean()}, Std: {arr.std()}")
-"""
-    safe, reason = DefenseInDepth.static_analysis(code)
-    print(f"Static analysis: {safe} ({reason})")
-    if safe:
-        result = python_executor(code)
-        print(f"Execution result: {result}")
-
-
-demo_sandbox()
+agent = SandboxAgent(
+    name="Sandbox writer",
+    model="gpt-5.6-sol",
+    instructions="Read task.md, write output/result.txt, then report verification.",
+    default_manifest=manifest,
+)
+run_config = RunConfig(
+    # sandbox_client 由 Docker、Unix-local 或托管 provider 的适配层创建
+    sandbox=SandboxRunConfig(client=sandbox_client),
+    workflow_name="Sandbox tutorial",
+)
+result = await Runner.run(agent, "完成 task.md", run_config=run_config)
 ```
+
+Sandbox Agents 仍是 beta，API 可能变化。`Manifest` 只定义工作区输入和文件权限，
+不等于网络隔离、资源上限、审批、凭据隔离或审计策略；这些仍要在选定的 sandbox
+backend 与部署平台上显式配置并验证。配套脚本默认只做离线配置检查，传入
+`--check-sdk` 也只验证核心对象能否构造，不会启动 sandbox 或调用模型。
 
 **SandboxAgent 关键能力**：
 
 | 能力 | 说明 | 实现技术 |
 |------|------|---------|
-| **进程隔离** | 每次执行独立进程 | Docker 与 Firecracker 与 gVisor |
-| **资源限制** | CPU 与内存与磁盘配额 | cgroups |
-| **网络隔离** | 默认全断，按需放行 | Network namespace |
-| **文件系统** | 根目录只读 | Read-only mount |
-| **超时控制** | 强制 kill | subprocess timeout |
-| **审计追踪** | 所有执行记录 | 日志加 Trace ID |
+| **进程隔离** | 由 backend 提供并验收 | Docker、microVM 或托管隔离 |
+| **资源限制** | 显式配置 CPU、内存、磁盘与进程数 | backend/平台配额 |
+| **网络隔离** | 默认拒绝还是按域放行必须实测 | backend 网络策略 |
+| **文件系统** | 用 Manifest 定义输入，用 backend 控制边界 | entry 权限、只读挂载 |
+| **超时控制** | runner 与 sandbox 两层超时 | SDK 配置、平台 kill |
+| **审计追踪** | 记录会话、工具和产物 | trace、平台审计日志 |
 
 ---
 
@@ -4000,7 +3929,7 @@ Agent 调用此工具的 token 消耗是否合理
 
 ### 15.9.7 面试真题精讲
 
-**Q1：A2A 协议被 Linux Foundation 接管有什么意义？**
+**Q1：A2A 进入 Linux Foundation 治理有什么意义？**
 
 **参考答案**：
 - **厂商中立**：避免被任何一家公司主导，类比 Kubernetes 捐给 CNCF
@@ -4025,7 +3954,7 @@ Agent 调用此工具的 token 消耗是否合理
 - **全双工不等于半双工**：半双工是一问一答，全双工是可被打断与并发说话
 - **技术难点**：
   - **VAD 准确性**：在背景噪音中检测用户开始说话
-  - **打断处理**：检测到打断后立即停止 TTS，小于 200ms
+  - **打断处理**：检测到打断后尽快停止 TTS；延迟 SLO 应根据终端、网络和语音栈实测
   - **并发安全**：用户说话时 Agent 思考和工具调用
 - **应用场景**：电话客服、语音助手、远程会议
 
@@ -4034,9 +3963,10 @@ Agent 调用此工具的 token 消耗是否合理
 **Q4：Durable Execution 适合所有 Agent 吗？**
 
 **参考答案**：
-- **适合**：长任务大于 5 分钟、必须完成的任务如订单处理、需要审计的场景
-- **不适合**：短任务小于 1 分钟、可重试任务如简单 Q&A、对延迟敏感的任务
-- **代价**：每步都写日志，token 和存储成本增加 10 到 30%
+- **适合**：跨进程/跨小时、必须完成或需要审计与人工介入的任务，如订单处理
+- **未必适合**：生命周期很短、无外部副作用且可由请求级重试恢复的任务，或对尾延迟极敏感的路径
+- **代价**：持久化会增加写放大、存储、序列化和恢复复杂度；实际成本需按事件量、载荷、
+  保留期和存储后端测量，不能使用通用百分比
 
 ---
 
@@ -4155,19 +4085,21 @@ Agent 调用此工具的 token 消耗是否合理
 
 ---
 
-### 🎯🆕 高频题11（2026年新题）：Agent Teams 和传统的 Multi-Agent 有什么区别？
+### 🎯🆕 高频题11（2026年新题）：Claude Code Agent Teams 和传统 Multi-Agent 有什么区别？
 
 **参考答案**：
 
-| 维度 | 传统 Multi-Agent | Agent Teams (Claude 4.6) |
+| 维度 | 传统 Multi-Agent | Claude Code Agent Teams（研究预览） |
 |------|-----------------|-------------------------|
 | **执行模式** | 串行（Manager→Worker→Manager） | 并行（Team Lead + 多 Teammate 同时执行） |
 | **上下文** | 共享/透传 | 每个 Teammate 独立上下文 |
-| **生命周期** | 随任务创建销毁 | 持久性独立实例 |
+| **生命周期** | 随任务创建销毁 | 团队运行期间的独立会话 |
 | **通信** | 直接函数调用 | Mailbox + Shared Task List |
 | **类比** | 工厂流水线 | 敏捷开发团队 |
 
-**核心区别**：Agent Teams 的 Teammates 是**持久性独立实例**，不是临时创建销毁的子代理。通过 Shared Task List 同步状态，通过 Mailbox 异步通信。
+**核心区别**：Agent Teams 的 Teammates 在一次团队运行中保持独立上下文，通过
+Shared Task List 同步状态、通过 Mailbox 异步通信；这是 Claude Code 的研究预览能力，
+不应泛化成任意模型或框架的固定语义。
 
 ---
 
@@ -4255,33 +4187,124 @@ graph TD
 
 ---
 
+## 15.11 生产级记忆框架 ⭐⭐⭐⭐⭐
+
+### 15.11.1 四层记忆架构设计
+
+生产级 Agent 需要四层记忆，而非简单的"短期+长期"二分：
+
+| 层级 | 作用 | 存储介质 | 生命周期 |
+|-----|-----|---------|---------|
+| **短期记忆（Session）** | 当前对话上下文、已执行的行动 | LLM Prompt / Window | 随 Session 结束 |
+| **用户画像（User Profile）** | 用户偏好、身份、历史行为模式 | 结构化 DB / KV | 永久 |
+| **情景记忆（Episodic）** | 事件序列（何时何地做了什么） | 时序数据库 | 永久 |
+| **语义记忆（Semantic）** | 事实知识、业务规则 | 向量数据库 | 永久 |
+
+### 15.11.2 三因子检索：相关性+重要性+时间衰减
+
+单纯向量搜索不够，需要三因子加权：
+
+$$
+\text{score} = w_{rel} \times \text{rel} + w_{imp} \times \text{imp} + w_{rec} \times \exp(-\lambda \times t)
+$$
+
+其中：
+- $\text{rel}$: 向量搜索余弦相似度
+- $\text{imp}$: 重要性（LLM 评分 0-1 或用户显式标记）
+- $\exp(-\lambda t)$: 时间衰减（越新权重越高）
+
+```python
+"""三因子检索简化实现"""
+import numpy as np
+from datetime import datetime
+from typing import List, Dict
+
+def compute_recency_score(memory_ts: datetime,
+                         now: datetime = None,
+                         lambda_decay: float = 0.1,
+                         time_window_days: int = 7):
+    now = now or datetime.now()
+    delta_days = (now - memory_ts).total_seconds() / (60*60*24)
+    t_norm = min(delta_days / time_window_days, 1.0)
+    return np.exp(-lambda_decay * t_norm)
+
+def hybrid_search(query_vec: np.ndarray,
+                 memories: List[Dict],
+                 w_rel: float = 0.5,
+                 w_imp: float = 0.3,
+                 w_rec: float = 0.2):
+    scored = []
+    for mem in memories:
+        rel = np.dot(query_vec, mem["vec"])
+        imp = mem.get("importance", 0.5)
+        rec = compute_recency_score(mem["ts"])
+        total = w_rel * rel + w_imp * imp + w_rec * rec
+        scored.append((total, mem))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [mem for (score, mem) in scored]
+```
+
+### 15.11.3 记忆框架选型：Mem0 vs Zep vs Letta
+
+| 维度 | Mem0 | Zep | Letta（原 MemGPT） |
+|-----|-----|-----|-----|
+| **易用性** | 高（API 极简） | 中 | 中高 |
+| **四层记忆** | 内置 | 有情景+语义 | 有 Core+External 分页 |
+| **知识图谱** | 无 | 有（Graphiti） | 无 |
+| **生态集成** | LangChain/LlamaIndex | LangChain | OpenAI Agents |
+| **生产成熟度** | 高 | 中高 | 中高 |
+
+**选型指南**：
+- 简单场景：选 **Mem0**（四层记忆内置，开箱即用）
+- 需要时序知识图谱：选 **Zep**
+- 需要长上下文分页机制：选 **Letta**
+
+### 15.11.4 记忆写入冲突与一致性（多 Agent）
+
+多 Agent 共享记忆时的冲突解决策略：
+
+| 策略 | 原理 | 适用场景 |
+|-----|-----|---------|
+| **Latest Wins** | 最后写入的为准 | 单用户、顺序访问 |
+| **Merge** | LLM 合并冲突信息 | 多面信息（用户既是 PM 也是工程师） |
+| **Versioned** | 保留所有版本，检索时带时间戳 | 历史回溯 |
+| **User Vote** | 用户确认正确版本 | 高价值场景 |
+
+### 15.11.5 与 [[35_生产级Agent记忆框架]] 的关联
+
+本章是基础概念，详细的框架集成代码、Mem0/Zep/Letta 完整教程、时序知识图谱 Graphiti 实现、记忆检索优化请参考新章节 [[35_生产级Agent记忆框架]]。
+
+---
+
 ## 📋 本章速查表
 
 | 概念 | 关键点 |
 |------|--------|
 | ReAct 框架 | Thought → Action → Observation 循环；推理与行动交织；通过 Prompt 模板让 LLM 输出可解析的 Action 指令 |
-| Function Calling | 模型原生能力；输出结构化 JSON 函数调用；比 ReAct 更可靠但需模型支持（GPT-4/Claude/Qwen） |
+| Function Calling | 模型原生能力；输出结构化函数调用；通常比文本正则解析可靠，但仍需 Schema 校验、权限控制与错误处理（如 GPT-5.6、Claude、Qwen） |
 | MCP 协议 | Anthropic 开放标准；Client-Server 架构；JSON-RPC 2.0 over stdio/SSE；动态工具发现（tools/list）；三大能力 Tools/Resources/Prompts |
 | Agent 记忆系统 | 短期记忆（Sliding Window 滑动窗口）+ 工作记忆（任务关键信息）+ 长期记忆（向量数据库 + 知识图谱） |
 | 多 Agent 协作模式 | 层级协作（Manager-Worker）+ 流水线（Pipeline）+ 去中心化（Hub 消息总线）；主流框架 AutoGen / MetaGPT / CrewAI |
 | A2A 协议 | Google 2025 推出；Agent ↔ Agent 通信；Agent Card 能力描述；Push Notification 异步状态更新；与 MCP 互补 |
-| Agent Teams | Claude 4.6 架构；Team Lead + Teammates 并行协作；Shared Task List + Mailbox 异步通信；持久性独立实例 |
+| Agent Teams | Claude Code 研究预览；Team Lead + Teammates 并行协作；Shared Task List + Mailbox 异步通信；适合可独立拆分的任务 |
 | Agent 安全防线 | 死循环防范（max_steps + 动作去重）+ 工具幻觉（Schema 校验 + 白名单）+ 上下文污染（截断重置）+ Token 爆炸（输出分页）+ Prompt Injection（输入过滤 + 权限隔离） |
-| 配套代码 | `ch15_agent/llm/*.py` 全部 W3 真实化, 真实 LangChain + DeepSeek + MCP | 需 `export DEEPSEEK_API_KEY=...` + 真实 API |
+| 配套代码 | `code/ch15_agent/llm/*.py`；默认离线 mock，可由章节 runner 批量验收 | 真实 API/框架示例需显式 `LLM_MOCK=0`、对应依赖与 Provider Key |
 
-## 15.x 配套代码真实化 (Wave 6 完成)
+## 15.x 配套代码运行与验收
 
-本章所有 `.py` 例子已 W3 真实化: 真实 LangChain/LangGraph Agent + 真实 ReAct/Plan-Execute 框架 + 真实 MCP 工具调用.
+仓库验收默认使用离线 mock：不读取 API Key、不访问网络、不产生费用。它验证入口、
+控制流、协议形状和友好跳过逻辑，不等价于已经验证某个真实 Provider、账号权限、
+模型可用性、网络、延迟或账单。
 
 ```bash
-# 跑本章例子
-export DEEPSEEK_API_KEY=sk-xxx
-python ch15_agent/llm/01_react_basic.py        # ReAct Agent
-python ch15_agent/llm/05_plan_execute.py       # Plan-Execute Agent
-python ch15_agent/llm/15_mcp_integration.py    # MCP 工具调用
+# 从 code/ 目录运行本章全部 LLM 示例（离线验收基线）
+$env:LLM_MOCK = "1"
+python scripts/run_all_examples.py --tier llm --chapter ch15
 ```
 
-无 Key 缺权重: 友好 `RuntimeError` + `make llm-doctor-setup` 提示.
+真实集成测试必须单独、显式设置 `LLM_MOCK=0`，再配置目标 Provider 的 Key/模型与可选
+依赖；先运行 `make llm-doctor` 检查环境，并在受控预算下验证真实返回、工具副作用、
+超时、重试和成本。真实调用不是默认 CI 验收条件。
 
 ---
 
@@ -4295,3 +4318,6 @@ python ch15_agent/llm/15_mcp_integration.py    # MCP 工具调用
 - [[17_大模型评估体系]] — Agent 评估方法与基准
 - [[25_推理引擎与高性能服务]] — Agent 推理服务化部署
 - [[29_Context_Engineering]] — Agent 上下文工程实践
+- [[30_高效序列架构SSM与Mamba]] — 高效序列建模与长上下文 Agent
+- [[35_生产级Agent记忆框架]] — Mem0/Zep/Letta 四层记忆框架集成
+- [[39_ComputerUse与GUIAgent训练]] — GUI Agent 训练范式与 OSWorld 基准

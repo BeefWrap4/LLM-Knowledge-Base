@@ -1,30 +1,27 @@
 # ---
 # chapter: 26
 # topic: 世界模型与具身AI
-# section: 26.2.2 GR00T N1.5 — NVIDIA 通用机器人基础模型
+# section: 26.2.2 Action expert 教学（文件名保留历史 N1.5 标签）
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: torch
 # run: python 04_groot_n15_vla.py
-# expected_runtime: 5-15s (action expert MLP 训练 50 步)
-# expected_output: action expert loss 下降 + Groot N1.5 部署信息
+# expected_runtime: 5-15s (small illustrative MLP, 50 steps)
+# expected_output: illustrative action-expert loss decreases + explicit GR00T boundary
 # ---
 # See: ../tutorial/26_世界模型与具身AI.md §26.2.2
 #
 # Interview hooks:
-#   1. GR00T N1.5 与 Pi0 的架构区别? (Cosmos-Reasoning VLM vs PaliGemma)
-#   2. 为什么 VLA 需要单独训 action expert 而非 end-to-end?
-#   3. Sim-to-real: Isaac Lab 仿真数据如何与真实数据混合训练?
-"""NVIDIA GR00T N1.5 VLA 演示 (action expert 训练 loop).
+#   1. 当前 GR00T N1.7 的公开架构边界是什么？
+#   2. 为什么这个 MLP 不能冒充 GR00T 的 diffusion-transformer action head？
+#   3. 从开放 checkpoint 到目标机器人部署还缺哪些数据、安全与评估步骤？
+"""通用 action-expert 接口教学；不是 GR00T N1.5/N1.7 的实现或复现。
 
-GR00T N1.5:
-  - 基础模型: VLM (Cosmos-Reasoning 70B)
-  - 适配: action expert (本 demo 重点)
-  - 数据: 真实 + Isaac Lab 仿真混合
-  - 训练: 两阶段 (VLM 预训练 + 动作 fine-tune)
-
-本 demo: 训练 action expert (VLM 特征 + state → action) with 合成数据.
-生产 GR00T: Isaac Lab 仿真 + 真实遥操数据混合训练.
+文件名是历史遗留。当前 NVIDIA 官方仓库主线为 GR00T N1.7 Early Access，公开说明包含
+Cosmos-Reason2-2B（Qwen3-VL 架构）VLM backbone、diffusion-transformer action head 与
+3B base checkpoint。本例只用随机合成张量训练一个 MLP，不能证明官方架构、数据、checkpoint、
+机器人任务效果或部署可用性。
 """
 
 import sys
@@ -41,15 +38,14 @@ from shared.gpu_guard import require_nvidia_gpu
 
 
 def check_hardware():
-    """GR00T 完整 VLM 需 24GB+ (70B 量化). action expert 训练 8GB+ 即可."""
-    require_nvidia_gpu(min_vram_gb=24, min_count=1)
+    """这里只检查小型 CUDA 教学循环；不是官方 GR00T 硬件规格。"""
+    require_nvidia_gpu(min_vram_gb=2, min_count=1)
 
 
 class ActionExpertMLP(nn.Module):
-    """Action expert: VLM 特征 + 机器人状态 → 末端执行器动作.
+    """教学 Action expert：合成视觉语言特征 + 状态 → 连续动作。
 
-    生产 GR00T: 300M transformer, 输入是 VLM hidden states + 触觉/力矩 token.
-    本 demo: 简化为 MLP (演示 gradient flow).
+    这里的维度和 MLP 都是示例设置，只演示 gradient flow，不对应 GR00T checkpoint。
     """
 
     def __init__(self, vlm_dim: int = 2048, state_dim: int = 14, action_dim: int = 7):
@@ -68,12 +64,12 @@ class ActionExpertMLP(nn.Module):
 
 def main() -> None:
     check_hardware()
-    print("=== NVIDIA GR00T N1.5 VLA (action expert demo) ===\n")
-    print("核心: VLM (Cosmos-Reasoning 70B) 输出特征 + robot state → action expert → 7-DoF")
+    print("=== 通用 action-expert 教学（非 GR00T 实现）===\n")
+    print("示意: synthetic VLM feature + robot state → MLP → continuous action")
     print()
 
     B = 8
-    # 模拟 VLM 输出: 2048-D 是 Cosmos-Reasoning hidden size
+    # 2048-D 只是教学维度，不对应当前 GR00T VLM hidden size。
     vlm_feat = torch.randn(B, 2048).cuda()
     # 14-DoF 双臂状态 (7 joint/arm × 2 arms)
     state = torch.randn(B, 14).cuda()
@@ -109,13 +105,14 @@ def main() -> None:
 
     print()
     print("=" * 60)
-    print("GR00T N1.5 真实部署 (NVIDIA 2025):")
-    print("  - VLM 基础: Cosmos-Reasoning 7B/70B")
-    print("  - Action expert: 300M transformer")
-    print("  - 训练数据: Isaac Lab 仿真 + 真实遥操混合")
-    print("  - 部署平台: NVIDIA Jetson Orin (边缘) / HGX H100 (云端)")
-    print("  - 硬件栈: Cosmos Tokenizer + Triton 推理")
+    print("当前 GR00T 事实边界（以 NVIDIA Isaac-GR00T 官方仓库为准）:")
+    print("  - 当前主线: N1.7 Early Access；旧 N1.5/N1.6 是历史版本")
+    print("  - 公开 base checkpoint: nvidia/GR00T-N1.7-3B")
+    print("  - 官方描述: Cosmos-Reason2-2B backbone + diffusion-transformer action head")
+    print("  - 本脚本未加载 checkpoint、LeRobot 数据、Isaac 环境或机器人控制器")
+    print("  - loss 下降只证明这个小 MLP 拟合了同一批随机合成目标")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

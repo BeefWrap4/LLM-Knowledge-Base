@@ -16,6 +16,8 @@
 """
 OpenAI Agents SDK 实战：多 agent 客服系统 - 离线 mock 结构
 """
+import os
+
 # 真实环境: from agents import Agent, Runner, function_tool, handoff
 # from agents.extensions.sandbox import SandboxAgent
 
@@ -30,13 +32,13 @@ def check_order(order_id: str) -> str:
 billing_agent = {
     "name": "Billing",
     "instructions": "处理账单、退款、发票问题。如不确定请转交。",
-    "model": "gpt-4o",
+    "model": os.environ.get("OPENAI_MODEL", "gpt-5.6"),
 }
 
 tech_agent = {
     "name": "TechSupport",
     "instructions": "处理技术问题：登录错误、功能 bug。",
-    "model": "gpt-4o",
+    "model": os.environ.get("OPENAI_MODEL", "gpt-5.6"),
     "tools": [check_order],
 }
 
@@ -44,7 +46,7 @@ tech_agent = {
 triage_agent = {
     "name": "Triage",
     "instructions": "根据用户问题分诊到 Billing 或 TechSupport。",
-    "model": "gpt-4o",
+    "model": os.environ.get("OPENAI_MODEL", "gpt-5.6"),
     "handoffs": [
         {"to": "Billing", "tool_description_override": "转账单客服"},
         {"to": "TechSupport", "tool_description_override": "转技术支持"},
@@ -55,10 +57,10 @@ triage_agent = {
 # ===== 4. mock 运行 =====
 class _MockRunner:
     @staticmethod
-    async def run(agent, input, session_id):
+    async def run(agent, input, session):
         return {
             "final_output": f"（mock）{agent['name']} 处理了: {input}",
-            "trace": type("T", (), {"url": f"https://platform.openai.com/traces/{session_id}"})(),
+            "session": session,
         }
 
 
@@ -74,13 +76,14 @@ import asyncio
 
 
 async def demo():
+    session = {"session_id": "user-001", "backend": "offline"}
     result = await _MockRunner.run(
         triage_agent,
         input="我的订单 #12345 一直没收到，我想退款。",
-        session_id="user-001",
+        session=session,
     )
     print(f"\n最终回复: {result['final_output']}")
-    print(f"执行轨迹: {result['trace'].url}")
+    print(f"会话: {result['session']['session_id']}（离线结构；真实 SDK 使用 SQLiteSession）")
 
 
 asyncio.run(demo())

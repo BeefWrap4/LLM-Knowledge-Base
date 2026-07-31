@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch13_prompt_engineering/llm/01_zero_shot_basics.py
+python ch13_prompt_engineering/llm/01_structured_prompt_template.py
 ```
 
 ## 关联章节

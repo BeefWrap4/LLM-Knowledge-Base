@@ -33,7 +33,7 @@ if str(_code_root) not in sys.path:
 import torch
 
 from shared._error_helper import raise_with_help
-from shared.gpu_guard import require_nvidia_gpu
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock
 
 
 def check_hardware():
@@ -60,6 +60,8 @@ class SyntheticDataset(torch.utils.data.Dataset):
 
 
 def main():
+    if skip_if_mock("an NVIDIA GPU, local model weights, and a writable training output directory"):
+        return
     check_hardware()
 
     model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")
@@ -153,8 +155,10 @@ def main():
             print("  ⚠️  loss 未明显下降 (合成随机数据, 这是正常)")
 
     vram = torch.cuda.max_memory_allocated() / (1024**3)
-    print(f"  peak VRAM: {vram:.2f}GB / 34GB")
-    print("  (对比 fp16 LoRA 节省 ~50%)")
+    total_vram = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+    print(f"  peak allocated VRAM: {vram:.2f}GB / device {total_vram:.2f}GB")
+    print("  量化收益必须与同模型、序列、batch、checkpointing 和训练步数的基线对照")
+    print("OK")
 
 
 if __name__ == "__main__":

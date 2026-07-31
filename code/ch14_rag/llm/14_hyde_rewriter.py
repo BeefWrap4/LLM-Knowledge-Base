@@ -15,6 +15,14 @@
 #   2. Query Rewriting 的三种策略（同义词扩展/HyDE/子查询分解）适用场景有何不同？
 #   3. HyDE 失败的情况有哪些（短查询对模型不熟悉的话题）？
 
+import os
+
+DEFAULT_OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6")
+OPENAI_REASONING_KWARGS = (
+    {"reasoning_effort": "none"} if DEFAULT_OPENAI_MODEL.startswith("gpt-5.6") else {}
+)
+
+
 # Query Rewriting 策略
 
 # 1. 同义词扩展
@@ -63,9 +71,10 @@ class HyDERewriter:
         prompt = REWRITE_TEMPLATE_HYDE.format(query=query)
         if self.llm is not None:
             response = self.llm.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model=DEFAULT_OPENAI_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
+                **OPENAI_REASONING_KWARGS,
             )
             hypothetical_doc = response.choices[0].message.content
         else:
@@ -89,3 +98,4 @@ if __name__ == "__main__":
     emb = hyde.rewrite(q)
     print(f"查询: {q}")
     print(f"假想文档 embedding shape: {emb.shape}, norm: {float((emb**2).sum()):.3f}")
+    print("OK")

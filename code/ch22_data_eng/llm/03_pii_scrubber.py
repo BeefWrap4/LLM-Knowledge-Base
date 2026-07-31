@@ -71,6 +71,7 @@ def main():
     # 脱敏后: 联系邮箱 [EMAIL]，电话 [PHONE_CN]，IP地址 [IPV4]
     print(f"是否 PII-free: {PIIScrubber.check_pii_free(sample)}")
     print(f"脱敏后是否 PII-free: {PIIScrubber.check_pii_free(cleaned)}")
+    print("OK")
 
 
 if __name__ == "__main__":

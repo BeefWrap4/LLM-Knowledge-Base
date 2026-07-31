@@ -1,7 +1,7 @@
 # ---
 # chapter: 22
 # topic: 大模型数据工程
-# section: 22.5.6 推理模型数据：R1-Distill 与 s1 长 CoT 策划
+# section: 22.6.6 推理模型数据：R1-Distill 与 s1 长 CoT 策划
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: stdlib only
@@ -82,6 +82,7 @@ def main():
 
     print("\n完整推理样本 JSON（前 200 字符）:")
     print(json.dumps(reasoning_data_sample, ensure_ascii=False)[:200] + "...")
+    print("OK")
 
 
 if __name__ == "__main__":

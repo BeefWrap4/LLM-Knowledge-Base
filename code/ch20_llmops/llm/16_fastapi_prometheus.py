@@ -7,7 +7,7 @@
 # deps: fastapi, prometheus_client, uvicorn (optional, for live serve)
 # run: python 16_fastapi_prometheus.py
 # expected_runtime: < 1s (builds FastAPI app; can be served with uvicorn)
-# expected_output: Built FastAPI app with /metrics and /chat endpoints
+# expected_output: Built FastAPI app with /metrics and /chat endpoints, without external calls
 # ---
 # See: ../tutorial/20_LLMOps与模型可观测性.md#2064-prometheus--grafana-集成-⭐⭐⭐
 # Interview hooks:
@@ -15,9 +15,17 @@
 #  - 延迟分桶 (buckets) 为什么对 LLM 推理尤其重要（0.1s ~ 30s）？
 #  - /metrics 端点如何避免被业务流量耗尽？
 
+import os
+
 try:
     from fastapi import FastAPI
-    from prometheus_client import Counter, Gauge, Histogram, generate_latest
+    from prometheus_client import (
+        CONTENT_TYPE_LATEST,
+        CollectorRegistry,
+        Counter,
+        Histogram,
+        generate_latest,
+    )
     from starlette.responses import Response
 
     _HAS_DEPS = True
@@ -25,7 +33,8 @@ except ImportError:
     FastAPI = None  # type: ignore
     Counter = None  # type: ignore
     Histogram = None  # type: ignore
-    Gauge = None  # type: ignore
+    CollectorRegistry = None  # type: ignore
+    CONTENT_TYPE_LATEST = None  # type: ignore
     generate_latest = None  # type: ignore
     Response = None  # type: ignore
     _HAS_DEPS = False
@@ -37,24 +46,40 @@ def build_app():
         raise RuntimeError("fastapi + prometheus_client not installed")
 
     app = FastAPI()
+    default_model = os.environ.get("OPENAI_MODEL", "gpt-5.6")
+    registry = CollectorRegistry()
+    app.state.prometheus_registry = registry
 
-    llm_requests_total = Counter("llm_requests_total", "Total LLM requests", ["model", "status"])
+    llm_requests_total = Counter(
+        "llm_requests_total",
+        "Total LLM requests",
+        ["model", "status"],
+        registry=registry,
+    )
     llm_request_duration = Histogram(
         "llm_request_duration_seconds",
         "LLM request duration in seconds",
         ["model"],
         buckets=[0.1, 0.5, 1.0, 2.0, 3.0, 5.0, 10.0, 30.0],
+        registry=registry,
     )
-    llm_token_usage = Counter("llm_token_usage_total", "Total tokens used", ["model", "type"])
-    llm_token_cost = Gauge("llm_token_cost_daily_total", "Daily token cost in USD")
+    llm_token_usage = Counter(
+        "llm_token_usage_total",
+        "Total tokens used",
+        ["model", "type"],
+        registry=registry,
+    )
 
     @app.get("/metrics")
     async def metrics():
-        return Response(content=generate_latest(), media_type="text/plain")
+        return Response(
+            content=generate_latest(registry),
+            headers={"Content-Type": CONTENT_TYPE_LATEST},
+        )
 
     @app.post("/chat")
     async def chat(request: dict):
-        model = request.get("model", "gpt-4o-mini")
+        model = request.get("model", default_model)
         with llm_request_duration.labels(model=model).time():
             try:
                 # 模拟 LLM 调用
@@ -81,3 +106,4 @@ if __name__ == "__main__":
         for r in app.routes:
             if hasattr(r, "path"):
                 print(f"  {getattr(r, 'methods', '-')} {r.path}")
+    print("OK")

@@ -32,12 +32,6 @@ class SingletonNew:
         self.name = name  # 注意: 多次实例化会覆盖 name
 
 
-s1 = SingletonNew("first")
-s2 = SingletonNew("second")
-print(f"__new__ 方式: s1 is s2 = {s1 is s2}")
-print(f"  s1.name = {s1.name}, s2.name = {s2.name}  # 都是 'second' 因为共享 __init__")
-
-
 # ─────────────────────────────────────────────
 # 方式2: 装饰器
 # ─────────────────────────────────────────────
@@ -60,12 +54,6 @@ class SingletonDec:
         self.value = value
 
 
-d1 = SingletonDec(42)
-d2 = SingletonDec(100)
-print(f"\n装饰器方式: d1 is d2 = {d1 is d2}")
-print(f"  d1.value = {d1.value}, d2.value = {d2.value}  # 共享第一个实例")
-
-
 # ─────────────────────────────────────────────
 # 方式3: 元类 (最强大但复杂)
 # ─────────────────────────────────────────────
@@ -85,19 +73,27 @@ class SingletonMeta_(metaclass=SingletonMeta):
         self.name = name
 
 
-m1 = SingletonMeta_("alpha")
-m2 = SingletonMeta_("beta")
-print(f"\n元类方式: m1 is m2 = {m1 is m2}")
-print(f"  m1.name = {m1.name}")
+def main() -> None:
+    s1 = SingletonNew("first")
+    s2 = SingletonNew("second")
+    print(f"__new__ 方式: s1 is s2 = {s1 is s2}")
+    print(f"  s1.name = {s1.name}, s2.name = {s2.name}  # __init__ 会再次执行")
+
+    d1 = SingletonDec(42)
+    d2 = SingletonDec(100)
+    print(f"\n装饰器方式: d1 is d2 = {d1 is d2}")
+    print(f"  d1.value = {d1.value}, d2.value = {d2.value}  # 共享第一个实例")
+
+    m1 = SingletonMeta_("alpha")
+    m2 = SingletonMeta_("beta")
+    print(f"\n元类方式: m1 is m2 = {m1 is m2}")
+    print(f"  m1.name = {m1.name}")
+
+    assert s1 is s2, "__new__ 单例失败"
+    assert d1 is d2, "装饰器单例失败"
+    assert m1 is m2, "元类单例失败"
+    print("OK")
 
 
-# ─────────────────────────────────────────────
-# 验证
-# ─────────────────────────────────────────────
-assert s1 is s2, "__new__ 单例失败"
-assert d1 is d2, "装饰器单例失败"
-assert m1 is m2, "元类单例失败"
-
-print("\nOK")
-
-print("OK")
+if __name__ == "__main__":
+    main()

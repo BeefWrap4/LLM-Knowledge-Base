@@ -16,6 +16,14 @@
 #   3. 如何设计 RAG Prompt 让模型"基于上下文回答"且不知道时说不知道？
 
 
+import os
+
+DEFAULT_OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6")
+OPENAI_REASONING_KWARGS = (
+    {"reasoning_effort": "none"} if DEFAULT_OPENAI_MODEL.startswith("gpt-5.6") else {}
+)
+
+
 class RAGPipeline:
     """RAG 检索生成 Pipeline - 完整实现（mock LLM 演示版）"""
 
@@ -62,9 +70,10 @@ class RAGPipeline:
         prompt = self.rag_prompt_template.format(context=context, question=query)
         if self.llm is not None:
             response = self.llm.chat.completions.create(
-                model="gpt-4",
+                model=DEFAULT_OPENAI_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
+                **OPENAI_REASONING_KWARGS,
             )
             return response.choices[0].message.content
         # Mock 回答
@@ -87,3 +96,4 @@ if __name__ == "__main__":
     print(f"问题: {result['question']}")
     print(f"回答: {result['answer']}")
     print(f"检索到 {len(result['sources'])} 条来源")
+    print("OK")

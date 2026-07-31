@@ -67,3 +67,4 @@ if __name__ == "__main__":
     setup_venv("./my_project")
     print()
     setup_conda("data_science", "3.12")
+    print("OK")

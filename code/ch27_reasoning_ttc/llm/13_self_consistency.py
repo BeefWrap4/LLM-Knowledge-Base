@@ -79,10 +79,11 @@ def main() -> None:
     print("  • 长 CoT 重复采样成本 = N × 单次成本")
 
     # 与 BoN 关系
-    print("\n=== SC + BoN 组合策略 (Snell 2024) ===")
-    print("  step 1: N=64 SC → top-k=8")
-    print("  step 2: PRM 给 8 个候选打分 → 选最优")
-    print("  比纯 BoN(N=64) 准 + 比纯 SC 鲁棒")
+    print("\n=== SC + PRM/BoN 组合示例（参数需按评估集调优）===")
+    print("  step 1: 多次采样并按答案聚类")
+    print("  step 2: 对高频候选使用 PRM/verifier 再排序")
+    print("  是否优于单独 SC 或 BoN，必须在同等计算预算下实验验证")
+    print("OK")
 
 
 if __name__ == "__main__":

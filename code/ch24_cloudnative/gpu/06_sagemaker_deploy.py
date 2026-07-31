@@ -4,119 +4,263 @@
 # section: 24.7.1 公有云 AI 服务对比 / AWS SageMaker 部署
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
-# deps: sagemaker (>=2.0)
+# deps: boto3, sagemaker
 # run: python 06_sagemaker_deploy.py
-# expected_runtime: 1-3s (mock) or 5-15min (real deploy)
-# expected_output: prints the configured model / deploy config, with mock fallback
+# expected_runtime: <1s for the default dry-run; real deployment depends on AWS
+# expected_output: dry-run plan by default; real endpoint only after all explicit cost gates
 # ---
 # See: ../tutorial/24_云原生部署与工程化.md §24.7.1
 # Interview hooks:
 #   1. SageMaker SDK 与直接 EC2 + Docker 部署相比，代价/收益比？
-#   2. HuggingFaceModel 镜像里运行 vLLM 的话与 sagemaker-huggingface-inference-toolkit 的差异？
-#   3. container_startup_health_check_timeout=600 的意义？为什么默认 60s 不够？
+#   2. HuggingFaceModel 与自定义 vLLM 容器的运行时边界是什么？
+#   3. container_startup_health_check_timeout 应如何用真实启动数据确定？
 """
-使用 SageMaker SDK 部署大模型推理端点
+SageMaker Hugging Face endpoint 的安全部署骨架。
+
+默认只打印计划，不导入 AWS SDK、不读取凭证、不联网。真实部署同时要求：
+
+1. ``--deploy``；
+2. 环境变量 ``SAGEMAKER_DEPLOY=1``；
+3. ``--confirm-deploy CREATE_PAID_ENDPOINT``；
+4. 显式选择 ``--delete-after-create`` 或 ``--keep-endpoint``。
+
+模型、DLC 版本、实例、区域、IAM role 与 endpoint name 都必须显式提供。SageMaker
+支持的 DLC 组合和模型许可证会变化，部署前须按当前官方文档再次核验。
 """
 
-# Mock 模式兼容：当 sagemaker 未安装时使用 mock
-try:
-    import sagemaker
-    from sagemaker.huggingface import HuggingFaceModel
+from __future__ import annotations
 
-    HAS_SAGEMAKER = True
-except ImportError:
-    HAS_SAGEMAKER = False
+import argparse
+import json
+import os
+import re
+import sys
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any
 
-    class _MockRole:
-        def __init__(self, name="MockRole"):
-            self.name = name
+_code_root = Path(__file__).resolve().parent.parent.parent
+if str(_code_root) not in sys.path:
+    sys.path.insert(0, str(_code_root))
 
-        def __repr__(self):
-            return f"<MockRole {self.name}>"
+from shared.gpu_guard import skip_if_mock
 
-    class _MockPredictor:
-        def __init__(self, endpoint_name, instance_type):
-            self.endpoint_name = endpoint_name
-            self.instance_type = instance_type
-
-        def predict(self, data):
-            return {"generated_text": "[MOCK prediction]", "input": data}
-
-    class _MockHuggingFaceModel:
-        def __init__(self, env, role, transformers_version, pytorch_version, py_version, model_data):
-            self.env = env
-            self.role = role
-            self.transformers_version = transformers_version
-            self.pytorch_version = pytorch_version
-            self.py_version = py_version
-            self.model_data = model_data
-            print(f"[MockHFM] initialized: env={env}")
-
-        def deploy(self, initial_instance_count, instance_type, container_startup_health_check_timeout):
-            print(
-                f"[MockHFM] deploy: {initial_instance_count}x {instance_type}, "
-                f"startup_health_check_timeout={container_startup_health_check_timeout}s"
-            )
-            return _MockPredictor(
-                endpoint_name=f"mock-endpoint-{id(self)}",
-                instance_type=instance_type,
-            )
-
-    class _MockSagemaker:
-        def get_execution_role(self):
-            return _MockRole("arn:aws:iam::000000000000:role/MockRole")
-
-        HuggingFaceModel = _MockHuggingFaceModel
-
-    sagemaker = _MockSagemaker()
-    HuggingFaceModel = _MockHuggingFaceModel
-    print("[WARN] sagemaker not installed, using mock SDK (no real deploy)")
+CONFIRM_PHRASE = "CREATE_PAID_ENDPOINT"
 
 
-# 1. 创建 HuggingFace Model
-hub = {
-    "HF_MODEL_ID": "Qwen/Qwen2.5-72B-Instruct-AWQ",
-    "HF_TASK": "text-generation",
-    "SM_NUM_GPUS": "4",
-    "MAX_INPUT_LENGTH": "32768",
-    "MAX_TOTAL_TOKENS": "4096",
-}
+@dataclass(frozen=True)
+class DeploymentConfig:
+    model_id: str
+    role_arn: str
+    region: str
+    endpoint_name: str
+    instance_type: str
+    initial_instance_count: int
+    num_gpus: int
+    transformers_version: str
+    pytorch_version: str
+    py_version: str
+    startup_timeout_seconds: int
+    max_input_length: int
+    max_total_tokens: int
 
-huggingface_model = HuggingFaceModel(
-    env=hub,
-    role=sagemaker.get_execution_role(),
-    transformers_version="4.46",
-    pytorch_version="2.5",
-    py_version="py311",
-    model_data=None,  # 从 HuggingFace Hub 直接加载
-)
 
-# 2. 部署到 GPU 端点
-if HAS_SAGEMAKER:
-    predictor = huggingface_model.deploy(
-        initial_instance_count=2,  # 2 个 GPU 实例
-        instance_type="ml.p4d.24xlarge",  # A100 x8
-        container_startup_health_check_timeout=600,  # 模型加载需要时间
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Safe-by-default SageMaker deployment scaffold")
+    parser.add_argument("--deploy", action="store_true", help="请求进入真实部署路径")
+    parser.add_argument("--confirm-deploy", default="", metavar=CONFIRM_PHRASE)
+    parser.add_argument("--model-id", default=os.environ.get("SAGEMAKER_MODEL_ID", ""))
+    parser.add_argument("--role-arn", default=os.environ.get("SAGEMAKER_ROLE_ARN", ""))
+    parser.add_argument("--region", default=os.environ.get("AWS_REGION", ""))
+    parser.add_argument("--endpoint-name", default=os.environ.get("SAGEMAKER_ENDPOINT_NAME", ""))
+    parser.add_argument("--instance-type", default=os.environ.get("SAGEMAKER_INSTANCE_TYPE", ""))
+    parser.add_argument("--initial-instance-count", type=int, default=1)
+    parser.add_argument("--num-gpus", type=int, default=1)
+    parser.add_argument("--transformers-version", default="")
+    parser.add_argument("--pytorch-version", default="")
+    parser.add_argument("--py-version", default="")
+    parser.add_argument("--startup-timeout-seconds", type=int, default=600)
+    parser.add_argument("--max-input-length", type=int, default=32768)
+    parser.add_argument("--max-total-tokens", type=int, default=4096)
+    lifecycle = parser.add_mutually_exclusive_group()
+    lifecycle.add_argument(
+        "--delete-after-create",
+        action="store_true",
+        help="endpoint 创建成功后立即删除，用于生命周期门禁演练",
     )
-else:
-    predictor = huggingface_model.deploy(
-        initial_instance_count=2,
-        instance_type="ml.p4d.24xlarge",
-        container_startup_health_check_timeout=600,
+    lifecycle.add_argument(
+        "--keep-endpoint",
+        action="store_true",
+        help="明确保留持续计费的 endpoint；完成后必须手动删除",
+    )
+    return parser
+
+
+def _config(args: argparse.Namespace) -> DeploymentConfig:
+    return DeploymentConfig(
+        model_id=args.model_id.strip(),
+        role_arn=args.role_arn.strip(),
+        region=args.region.strip(),
+        endpoint_name=args.endpoint_name.strip(),
+        instance_type=args.instance_type.strip(),
+        initial_instance_count=args.initial_instance_count,
+        num_gpus=args.num_gpus,
+        transformers_version=args.transformers_version.strip(),
+        pytorch_version=args.pytorch_version.strip(),
+        py_version=args.py_version.strip(),
+        startup_timeout_seconds=args.startup_timeout_seconds,
+        max_input_length=args.max_input_length,
+        max_total_tokens=args.max_total_tokens,
     )
 
 
-# 3. 推理示例
+def _public_plan(config: DeploymentConfig, args: argparse.Namespace) -> dict[str, Any]:
+    plan = asdict(config)
+    for key, value in tuple(plan.items()):
+        if value == "":
+            plan[key] = "<required for --deploy>"
+    plan.update(
+        {
+            "mode": "REAL DEPLOY" if args.deploy else "DRY RUN ONLY",
+            "lifecycle": (
+                "delete-after-create"
+                if args.delete_after_create
+                else ("keep-endpoint" if args.keep_endpoint else "<required for --deploy>")
+            ),
+            "cloud_side_effect": bool(args.deploy),
+        }
+    )
+    return plan
+
+
+def _deployment_errors(config: DeploymentConfig, args: argparse.Namespace) -> list[str]:
+    errors: list[str] = []
+    if os.environ.get("SAGEMAKER_DEPLOY") != "1":
+        errors.append("需要精确设置 SAGEMAKER_DEPLOY=1")
+    if args.confirm_deploy != CONFIRM_PHRASE:
+        errors.append(f"需要 --confirm-deploy {CONFIRM_PHRASE}")
+    if not (args.delete_after_create or args.keep_endpoint):
+        errors.append("需要显式选择 --delete-after-create 或 --keep-endpoint")
+
+    required = {
+        "--model-id": config.model_id,
+        "--role-arn": config.role_arn,
+        "--region": config.region,
+        "--endpoint-name": config.endpoint_name,
+        "--instance-type": config.instance_type,
+        "--transformers-version": config.transformers_version,
+        "--pytorch-version": config.pytorch_version,
+        "--py-version": config.py_version,
+    }
+    missing = [flag for flag, value in required.items() if not value]
+    if missing:
+        errors.append(f"缺少真实部署参数: {', '.join(missing)}")
+
+    if config.role_arn and not re.fullmatch(
+        r"arn:(aws|aws-cn|aws-us-gov):iam::\d{12}:role/.+",
+        config.role_arn,
+    ):
+        errors.append("--role-arn 不是可识别的 IAM role ARN")
+    if config.endpoint_name and not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?", config.endpoint_name):
+        errors.append("--endpoint-name 必须是 1..63 位字母、数字或连字符")
+    if config.initial_instance_count < 1:
+        errors.append("--initial-instance-count 必须 >= 1")
+    if config.num_gpus < 1:
+        errors.append("--num-gpus 必须 >= 1")
+    if config.startup_timeout_seconds < 60:
+        errors.append("--startup-timeout-seconds 必须 >= 60")
+    if config.max_input_length < 1 or config.max_total_tokens < 1:
+        errors.append("token 长度必须为正数")
+    return errors
+
+
+def _load_aws_runtime() -> tuple[Any, Any, Any]:
+    try:
+        import boto3
+        import sagemaker
+        from sagemaker.huggingface import HuggingFaceModel
+    except ImportError as exc:
+        raise RuntimeError("缺少 boto3/sagemaker；真实部署依赖必须显式安装。") from exc
+    return boto3, sagemaker, HuggingFaceModel
+
+
+def deploy(config: DeploymentConfig, *, delete_after_create: bool) -> str:
+    """执行已通过门禁的真实部署；异常直接向上传播。"""
+    boto3, sagemaker, huggingface_model_class = _load_aws_runtime()
+    boto_session = boto3.Session(region_name=config.region)
+    sagemaker_session = sagemaker.Session(boto_session=boto_session)
+
+    model = huggingface_model_class(
+        env={
+            "HF_MODEL_ID": config.model_id,
+            "HF_TASK": "text-generation",
+            "SM_NUM_GPUS": str(config.num_gpus),
+            "MAX_INPUT_LENGTH": str(config.max_input_length),
+            "MAX_TOTAL_TOKENS": str(config.max_total_tokens),
+        },
+        role=config.role_arn,
+        transformers_version=config.transformers_version,
+        pytorch_version=config.pytorch_version,
+        py_version=config.py_version,
+        sagemaker_session=sagemaker_session,
+    )
+    predictor = model.deploy(
+        initial_instance_count=config.initial_instance_count,
+        instance_type=config.instance_type,
+        endpoint_name=config.endpoint_name,
+        container_startup_health_check_timeout=config.startup_timeout_seconds,
+    )
+
+    if delete_after_create:
+        predictor.delete_endpoint(delete_endpoint_config=True)
+        print(f"[CLEANUP] endpoint 与 endpoint config 已请求删除: {config.endpoint_name}")
+        return "deleted"
+
+    print(f"[BILLING ACTIVE] endpoint 已创建并保留: {config.endpoint_name}")
+    print("完成实验后立即执行：")
+    print(
+        f"  aws sagemaker delete-endpoint --region {config.region} "
+        f"--endpoint-name {config.endpoint_name}"
+    )
+    print("并在 SageMaker 控制台核对 endpoint config / model 等残留资源。")
+    return "active"
+
+
+def main() -> int:
+    if skip_if_mock("explicit SageMaker cost gates, AWS credentials, IAM permission, and a validated DLC"):
+        return 0
+
+    args = _parser().parse_args()
+    config = _config(args)
+    print(json.dumps(_public_plan(config, args), ensure_ascii=False, indent=2))
+
+    if not args.deploy:
+        print("DRY RUN ONLY: 未导入 AWS SDK、未读取凭证、未发请求、未创建资源。")
+        print("OK")
+        return 0
+
+    errors = _deployment_errors(config, args)
+    if errors:
+        for error in errors:
+            print(f"[REFUSE] {error}", file=sys.stderr)
+        return 2
+
+    try:
+        status = deploy(config, delete_after_create=args.delete_after_create)
+    except Exception as exc:
+        print(
+            f"[ERROR] SageMaker deploy failed: {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
+        print(
+            "[ACTION] 到 SageMaker 控制台按 endpoint name 检查并清理可能已创建的部分资源。",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(f"OK: deployment lifecycle status={status}")
+    return 0
+
+
 if __name__ == "__main__":
-    print("\n=== SageMaker Deployment Configuration ===")
-    print(f"Model ID: {hub['HF_MODEL_ID']}")
-    print(f"Task: {hub['HF_TASK']}")
-    print(f"GPUs per instance: {hub['SM_NUM_GPUS']}")
-    print(f"Max input length: {hub['MAX_INPUT_LENGTH']}")
-    print("Instance type: ml.p4d.24xlarge (A100 x8)")
-    print("Initial instance count: 2")
-    print("Startup health check timeout: 600s")
-    print()
-    print("To call the endpoint:")
-    print('  predictor.predict({"inputs": "Hello, how are you?"})')
-    print()
+    raise SystemExit(main())

@@ -13,5 +13,3 @@ __all__ = [
     "require_cuda",
     "gpu_summary",
 ]
-
-print("OK")

@@ -13,11 +13,19 @@
 # Interview hooks:
 #   1. LangGraph 的 StateGraph 与普通 Chain 的本质区别是什么？
 #   2. add_messages 与 operator.add 在 Annotated 中有什么区别？
+import sys
+from pathlib import Path
 from typing import Annotated, Literal, TypedDict
+
+_CODE_ROOT = Path(__file__).resolve().parents[2]
+if str(_CODE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_CODE_ROOT))
 
 from langchain_core.tools import tool
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
+
+from shared.safe_math import UnsafeExpression, evaluate_arithmetic
 
 
 # ===== 1. 定义 State（状态）- 在节点间传递的共享数据 =====
@@ -40,8 +48,11 @@ def search_tool(q: str) -> str:
 
 @tool
 def calculator_tool(expr: str) -> str:
-    """计算器"""
-    return str(eval(expr, {"__builtins__": {}}, {}))
+    """解析受限算术语法，不执行 Python 代码。"""
+    try:
+        return str(evaluate_arithmetic(expr))
+    except (UnsafeExpression, ArithmeticError) as exc:
+        return f"计算错误：{exc}"
 
 
 # 工具列表

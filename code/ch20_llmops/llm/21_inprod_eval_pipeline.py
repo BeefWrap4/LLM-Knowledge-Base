@@ -11,10 +11,11 @@
 # ---
 # See: ../tutorial/20_LLMOps与模型可观测性.md#20105-in-prod-eval-pipeline-模式
 # Interview hooks:
-#  - 为什么 in-prod eval 比离线评估更值得做？成本/样本偏差如何权衡？
-#  - 1% 采样跑 Judge 的成本估算公式？
+#  - in-prod eval 为什么要与离线回归和人工复核互补？成本/样本偏差如何权衡？
+#  - 如何按预算、风险与标注能力选择线上 Judge 采样率？
 #  - bad case 自动入训练集的反馈回路有哪些工程陷阱（标签噪声、时序）？
 
+import os
 import queue
 import random
 
@@ -29,7 +30,6 @@ exporter = InMemorySpanExporter()
 provider.add_span_processor(SimpleSpanProcessor(exporter))
 trace.set_tracer_provider(provider)
 
-JUDGE_PROBABILITY = 0.01  # 1% 流量跑 Judge
 tracer = trace.get_tracer("in-prod-eval")
 bad_case_queue: "queue.Queue" = queue.Queue()
 
@@ -46,9 +46,20 @@ def judge_helpfulness(query, response):
     return random.uniform(0.5, 0.95)
 
 
-def with_judge(llm_call_span, response_text: str, query: str, ground_truth=None):
-    """在线上 Span 上挂载 Judge 评估（mocked 1% 采样）"""
-    if random.random() > JUDGE_PROBABILITY:
+def with_judge(
+    llm_call_span,
+    response_text: str,
+    query: str,
+    ground_truth=None,
+    *,
+    sampling_probability: float,
+    judge_model: str,
+    bad_case_threshold: float,
+):
+    """按注入的采样率挂载离线 Judge 分数；比例和阈值需由预算/标注集校准。"""
+    if not 0 <= sampling_probability <= 1:
+        raise ValueError("sampling_probability must be in [0, 1]")
+    if random.random() > sampling_probability:
         return None  # 采样外，跳过
 
     scores = {
@@ -57,16 +68,16 @@ def with_judge(llm_call_span, response_text: str, query: str, ground_truth=None)
         "helpfulness": judge_helpfulness(query, response_text),
     }
     for name, score in scores.items():
-        llm_call_span.set_attribute(f"gen_ai.evaluation.{name}", score)
+        llm_call_span.set_attribute(f"app.evaluation.{name}", score)
         llm_call_span.add_event(
             f"judge.{name}",
             attributes={
-                "gen_ai.evaluation.name": name,
-                "gen_ai.evaluation.score": score,
-                "gen_ai.evaluation.judge_model": "gpt-4o",
+                "app.evaluation.name": name,
+                "app.evaluation.score": score,
+                "app.evaluation.judge_model": judge_model,
             },
         )
-    if scores["hallucination"] < 0.3:
+    if scores["hallucination"] > bad_case_threshold:
         bad_case_queue.put(
             {
                 "trace_id": format(llm_call_span.get_span_context().trace_id, "032x"),
@@ -79,16 +90,31 @@ def with_judge(llm_call_span, response_text: str, query: str, ground_truth=None)
 
 
 if __name__ == "__main__":
-    # 演示：让 1% 采样能命中（这里循环足够多次）
+    model = os.environ.get("OPENAI_MODEL", "gpt-5.6")
+    judge_model = os.environ.get("LLM_JUDGE_MODEL", model)
+    sampling_probability = float(os.environ.get("LLM_JUDGE_SAMPLE_RATIO", "0.01"))
+    bad_case_threshold = float(os.environ.get("LLM_BAD_CASE_THRESHOLD", "0.7"))
+    # 这里的默认采样率/阈值只是教学策略参数，不是行业基准。
     random.seed(0)
     sampled = 0
     for i in range(500):
-        with tracer.start_as_current_span(f"chat.gpt-4o.{i}") as span:
+        with tracer.start_as_current_span(f"chat {model}") as span:
+            span.set_attribute("gen_ai.operation.name", "chat")
+            span.set_attribute("gen_ai.provider.name", "openai")
+            span.set_attribute("gen_ai.request.model", model)
             response = f"answer {i}"
-            scores = with_judge(span, response, f"q{i}")
+            scores = with_judge(
+                span,
+                response,
+                f"q{i}",
+                sampling_probability=sampling_probability,
+                judge_model=judge_model,
+                bad_case_threshold=bad_case_threshold,
+            )
             if scores is not None:
                 sampled += 1
     print(f"sampled_judges: {sampled}, bad_cases_in_queue: {bad_case_queue.qsize()}")
     spans = exporter.get_finished_spans()
     judge_event_count = sum(1 for s in spans for e in s.events if e.name.startswith("judge."))
     print(f"judge events on spans: {judge_event_count}")
+    print("OK")

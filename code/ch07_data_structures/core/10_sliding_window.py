@@ -123,3 +123,4 @@ if __name__ == "__main__":
     assert find_anagrams("cbaebabacd", "abc") == [0, 6]
     assert find_anagrams("abab", "ab") == [0, 1, 2]
     assert find_anagrams("a", "ab") == []
+    print("OK")

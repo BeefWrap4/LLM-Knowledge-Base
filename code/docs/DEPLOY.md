@@ -1,7 +1,8 @@
-# Docker 部署指南 (Wave 14-C)
+# Docker 本地环境指南
 
-> 5 分钟在 Docker 中跑通整个教程环境, 包含所有依赖 + 中间件 + 真实 LLM 调用.
-> 镜像已配置国内源 (清华 pip / 阿里云 Docker Registry / HF 镜像), 国内访问速度 5-10 MB/s.
+> Docker profile 只负责声明本地容器与依赖边界，不保证固定构建时间、网络速度、GPU 兼容或
+> 真实 LLM 可用。默认先运行离线验收；真实 API、Redis、pgvector 与 GPU 路径分别验证。
+> 使用第三方镜像/包/模型镜像前应核对来源、完整性与组织安全策略。
 
 ## 1. 快速开始 (3 步)
 
@@ -17,11 +18,11 @@ cp .env.dockerexample .env
 ### Step 2: 构建并启动
 
 ```bash
-# 仅核心 (无中间件, ~3 min 构建)
+# 仅核心（无中间件；构建时间取决于缓存与网络）
 make -C code docker-build
 make -C code docker-up
 
-# 包含 Redis (LangGraph checkpoint 用, ~3 min)
+# 包含 Redis（LangGraph checkpoint 等条件性集成）
 make -C code docker-llm
 
 # GPU 模式 (需 NVIDIA GPU + nvidia-container-toolkit)
@@ -37,7 +38,7 @@ make -C code docker-bash
 # 容器内:
 cd /app/code
 make ci-quick           # 验证 5 项检查
-make llm-doctor         # 诊断 API Key
+make llm-doctor         # 只读查看 provider 配置，不联网
 python ch12_*/core/01_*.py    # 跑例子
 ```
 
@@ -64,7 +65,7 @@ docker compose --profile llm up -d
 - 额外: Redis 7 (用于 LangGraph checkpoint / Langfuse cache)
 - 适用: 想用持久化 agent state, 或跑 Ch20 LLMOps 例子
 
-### `gpu` (生产)
+### `gpu`（本地条件性 GPU 环境）
 
 ```bash
 docker compose --profile gpu up -d
@@ -73,11 +74,12 @@ docker compose --profile gpu up -d
 - 3 个容器: `app` + `redis` + `postgres (pgvector)`
 - 额外: pgvector 扩展 (RAG 向量存储)
 - 前提: 主机有 NVIDIA GPU + 安装 `nvidia-container-toolkit`
-- 适用: 跑 Ch16/19/25/26 的 GPU 例子
+- 适用: 在兼容的本地 NVIDIA 容器栈中逐项验证 Ch16/19/25/26 的条件路径
+- 不代表生产安全、容量、持久化、可观测性或故障恢复已经验收
 
 ## 3. 国内源加速 (推荐国内用户)
 
-Docker 默认配置已优化:
+仓库可能配置下列镜像/索引候选；实际生效值以 Dockerfile、Compose 与当前环境为准：
 
 | 资源 | 国内源 |
 |------|--------|
@@ -86,7 +88,7 @@ Docker 默认配置已优化:
 | HuggingFace | `https://hf-mirror.com` |
 | ModelScope | 内置 (无需镜像) |
 
-如需切换阿里云 Docker Registry (更快):
+如组织允许使用阿里云 Docker Registry，可显式切换；速度不作保证：
 
 ```bash
 # .env
@@ -136,7 +138,7 @@ docker compose --profile core run --rm app python scripts/llm_doctor.py
 docker compose --profile core run --rm app make -C code ci-quick
 
 # 下模型
-docker compose --profile core run --rm app python scripts/download_models.py --all
+docker compose --profile core run --rm app python scripts/download_models.py --required-only
 ```
 
 ### 清理
@@ -241,7 +243,7 @@ docker pull ghcr.io/beefwrap4/llm-kb:latest
 
 | Profile | 镜像 | 运行时内存 | 磁盘 |
 |---------|------|----------|------|
-| core | ~1.5GB | ~1GB | +700MB (模型) |
+| core | 取决于基础镜像与依赖 revision | 取决于运行时 | 模型按当前清单另计 |
 | llm | + Redis ~50MB | +50MB | +1GB (Redis) |
 | gpu | + pgvector ~300MB | +200MB | +1GB (Postgres) |
 

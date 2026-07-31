@@ -1,7 +1,7 @@
 # ---
 # chapter: 22
 # topic: 大模型数据工程
-# section: 22.5.1 RLHF/RLAIF 数据构建
+# section: 22.6.1 RLHF/RLAIF 数据构建
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: stdlib only
@@ -52,7 +52,7 @@ def _parse_judgment(judgment_str: str) -> dict:
 
 
 def mock_judge_llm(prompt: str) -> dict:
-    """Mock 一个 LLM Judge - 实际可使用 GPT-4 / Claude / Prometheus"""
+    """Mock 一个 LLM Judge；生产环境应注入已锁定版本并用人工金标集校准。"""
     # 在真实场景下，调用 LLM 后用 json.loads 解析
     return _parse_judgment(prompt)
 
@@ -88,6 +88,7 @@ def main():
 
     pair = generate_preference_pair(prompt, response_a, response_b, mock_judge_llm)
     print(json.dumps(pair, ensure_ascii=False, indent=2))
+    print("OK")
 
 
 if __name__ == "__main__":

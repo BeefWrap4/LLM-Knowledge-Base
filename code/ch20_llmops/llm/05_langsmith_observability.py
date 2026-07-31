@@ -19,13 +19,17 @@ import os
 import uuid
 from typing import Any
 
+_LIVE_OBSERVABILITY = (
+    os.environ.get("LLM_REAL_API") == "1" and os.environ.get("LLM_MOCK") == "0"
+)
 try:
-    from langsmith import Client, traceable
+    if not _LIVE_OBSERVABILITY:
+        raise ImportError
+    from langsmith import traceable
 
-    _HAS_LANGSMITH = bool(os.getenv("LANGCHAIN_API_KEY"))
+    _HAS_LANGSMITH = True
 except ImportError:
     traceable = None  # type: ignore
-    Client = None  # type: ignore
     _HAS_LANGSMITH = False
 
 
@@ -68,9 +72,9 @@ def build_prompt(question: str, docs: list[str]) -> str:
 回答："""
 
 
-@traceable(run_type="llm", name="GPT-4o Call")
+@traceable(run_type="llm", name="LLM Call")
 def call_llm(prompt: str) -> str:
-    """LLM 调用（自动记录 Token 用量和延迟）—— 离线 mock"""
+    """离线 stub；真实 SDK 集成需显式上报 Provider usage，不能假定自动得到 Token。"""
     return f"[mocked answer] {prompt[:80]}"
 
 
@@ -97,11 +101,13 @@ def manual_trace_example():
 
 def main():
     if not _HAS_LANGSMITH:
-        print("LangSmith env not set — running offline mock to demonstrate data flow")
+        print("LangSmith live tracing disabled — running offline data flow")
     result = qa_pipeline("什么是 MCP 协议？", ["MCP (Model Context Protocol) 是 Anthropic 推出的..."])
     print(f"Answer: {result['answer'][:100]}...")
-    print("🔗 在 LangSmith UI 查看完整 Trace")
+    if _HAS_LANGSMITH:
+        print("🔗 在 LangSmith UI 查看完整 Trace")
     manual_trace_example()
+    print("OK")
 
 
 if __name__ == "__main__":

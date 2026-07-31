@@ -189,3 +189,4 @@ if __name__ == "__main__":
     print("  0.30 ≤ score < 0.60 → MODIFY（自动修改）")
     print("  0.60 ≤ score < 0.85 → REVIEW（转人工）")
     print("  score ≥ 0.85 → BLOCK（直接拦截）")
+    print("OK")

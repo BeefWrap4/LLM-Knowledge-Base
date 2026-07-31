@@ -11,32 +11,28 @@
 # ---
 # See: ../tutorial/01_Python编程基础.md (lines 140-162)
 # Interview hooks:
-#   1. PEP 695 引入的 type 语句是什么?
-#   2. Python 3.12+ 泛型类型别名的写法?
-#   3. TypedDict 与 dataclass 的互操作改进?
+#   1. PEP 649/749 的延迟求值注解解决什么问题?
+#   2. PEP 695 的泛型类型别名从哪个版本引入?
+#   3. 读取运行时注解时为什么应使用 annotationlib?
 """
 🆕 Python 3.14 类型注解改进
 """
 
-# 1. 泛型类型别名语法 — 使用 type 语句（PEP 695 的延伸）
+# 1. Python 3.14 默认延迟求值注解（PEP 649 / PEP 749）。
 from typing import TypeVar
 
 T = TypeVar("T")
 
-# Python 3.12+ 方式
-# Point = tuple[float, float]
+# 2. `type Point[T] = tuple[T, T]` 是 Python 3.12 引入的 PEP 695 语法，
+#    不是 Python 3.14 新语法。为保持本示例可在 Python 3.10+ 运行，此处不直接执行。
 
-# 3.14 支持的更清晰语法
-# type Point[T] = tuple[T, T]  # 泛型类型别名
 
-# 2. 更完善的 TypedDict 和 dataclass 互操作
-
-# 3. 类型收窄（Type Narrowing）行为改进
-#    isinstance()  narrowing 在更多场景下生效
-
-# 4. 更好的错误信息 — 类型相关报错信息更精确
+def repeat(value: "T", count: int) -> list["T"]:
+    """字符串形式也能演示注解不会阻止旧版本解析本文件。"""
+    return [value] * count
 
 print("TypeVar 演示:", T)
+print("repeat 演示:", repeat("A", 2))
 print("Python 3.14 类型系统改进说明（注释文档）")
 
 if __name__ == "__main__":

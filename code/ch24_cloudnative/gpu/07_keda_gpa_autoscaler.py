@@ -4,6 +4,7 @@
 # section: 24.7.3 成本优化策略 / KEDA ScaledObject
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: (stdlib only; YAML as embedded string)
 # run: python 07_keda_gpa_autoscaler.py
 # expected_runtime: <1s
@@ -37,7 +38,7 @@ spec:
   maxReplicaCount: 8
   cooldownPeriod: 300   # 缩容冷却 5 分钟
   triggers:
-    # 🆕 2026: 基于 GPU 利用率的触发
+    # 教学阈值：生产中必须基于负载测试、队列与冷启动成本调参
     - type: prometheus
       metadata:
         serverAddress: http://prometheus.monitoring:9090
@@ -96,7 +97,11 @@ def parse_keda_yaml(yaml_text: str) -> dict:
     )
     for trig_type, meta_block in trigger_blocks:
         metric_name = re.search(r"metricName:\s*(\S+)", meta_block)
-        threshold = re.search(r"threshold:\s*\"?(\S+?)\"?\s*(?:\n|$)", meta_block)
+        threshold = re.search(
+            r"^\s*threshold:\s*[\"']?([^\"'\s#]+)",
+            meta_block,
+            flags=re.MULTILINE,
+        )
         server = re.search(r"serverAddress:\s*(\S+)", meta_block)
         result["triggers"].append(
             {
@@ -125,4 +130,6 @@ if __name__ == "__main__":
     # 校验：min < max、cooldown > 0
     assert parsed["minReplicaCount"] < parsed["maxReplicaCount"], "min must be < max"
     assert parsed["cooldownPeriod"] > 0, "cooldown must be > 0"
+    assert all(trigger["threshold"] is not None for trigger in parsed["triggers"])
     print("\nValidation PASSED")
+    print("OK")

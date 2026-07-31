@@ -250,3 +250,4 @@ def demo_mcp_registry():
 
 if __name__ == "__main__":
     demo_mcp_registry()
+    print("OK")

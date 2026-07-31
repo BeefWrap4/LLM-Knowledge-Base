@@ -16,7 +16,7 @@ tags:
 
 > **面试频率**：极高（几乎 100% 必考）| **难度**：⭐⭐⭐⭐⭐ | **理论权重**：最高
 >
-> **🆕 2026年更新**：本章已全面更新，新增 12.8 节"2026年大模型格局演进"，涵盖 GPT-5.5、Claude 4.7、DeepSeek-R1、Gemini 3.0 最新架构，以及 6 道 🎯🆕 标记的 2026 年面试高频题。
+> **时效说明（截至 2026-07-31）**：12.8 节按厂商官方发布页/API 文档维护模型能力与发布日期。闭源模型未公开的参数量、MoE 结构、训练 GPU 数和内部“神经符号”模块均标为“未披露”，不采用媒体传闻反推架构。
 
 Transformer 是大语言模型的核心技术基石。从 2017 年 "Attention Is All You Need" 论文发表至今，Transformer 架构统治了 NLP、计算机视觉、多模态等几乎所有深度学习领域。本章是全教程最重要的一章，每个知识点都可能直接决定面试成败。
 
@@ -694,7 +694,8 @@ $$L = -\sum_{t=1}^{T} \log P(w_t | w_1, ..., w_{t-1}; \Theta)$$
 
 4. **训练效率**：
    - 不需要复杂的 Mask 策略（BERT 的 MLM 只有 15% 位置参与预测）
-   - 每个位置都参与损失计算，数据利用率 100%
+   - 除 padding、边界和显式忽略的位置外，每个有效 token 都可作为下一 token 预测目标；
+     “参与目标的位置更多”不等于端到端数据利用率固定为 100%
 
 5. **Attention 计算的简洁性**：
    - Decoder-only 的 Self-Attention 是**下三角矩阵**，天然适合缓存（KV Cache）
@@ -882,7 +883,7 @@ for batch in dataloader:
 
 ### 12.7.1 涌现能力（Emergent Abilities）⭐⭐⭐⭐
 
-涌现能力是指模型在参数量/训练量达到某个阈值后**突然展现**的能力，在较小规模模型上完全不存在。
+“涌现能力”通常指某项能力随模型规模或训练计算增加而出现明显、非线性的测量提升。是否真有相变取决于任务和指标：离散评分可能把平滑改进显示成“突然出现”，因此不应断言小模型上能力完全不存在。
 
 典型涌现能力：
 - **In-Context Learning（上下文学习）**：通过 prompt 中的示例学习新任务
@@ -909,10 +910,7 @@ graph LR
     style B fill:#4A6FA5,stroke:#2E4A62,color:#fff
 ```
 
-这一范式的代表：
-- **GPT-5.2（深度思维链）**：OpenAI 的 Test-Time Compute 专用版本
-- **DeepSeek-R1**：通过强化学习让模型自主学会"停下来思考"
-- **Claude 4.6（四档推理）**：`thinking_level: low/medium/high/max` 让用户控制推理深度
+这一范式可见于支持 reasoning/thinking/effort 控制的闭源 API，也可见于 DeepSeek-R1 等公开报告。不同厂商、不同 model ID 的参数名和允许值并不通用，应按对应版本文档调用。
 
 这意味着：**模型能力 = f(参数规模, 推理时计算)**，两个维度都可以独立优化。
 
@@ -978,23 +976,10 @@ graph TB
 
 **代表模型**：
 - Mixtral 8×7B / 8×22B：Mistral AI 的 MoE 模型
-- **GPT-4（MoE 架构，1.8T 总量，每次激活约 280B）**：2024年发布时证实了 MoE 路线
-- **GPT-5 系列（2025-2026）**：万亿参数级 MoE + 神经符号混合架构，20万张 H200 GPU 训练 🆕
-- **DeepSeek-V2/V3**：创新的 MLA + MoE 架构，训练成本仅为同类模型的 1/10 🆕
-- **Claude 4 系列（2025-2026）**：Anthropic 的神经符号系统突破，Agent Teams 架构 🆕
+- **DeepSeek-V2/V3**：论文公开了 MLA 与 DeepSeekMoE，可据原始报告讨论
+- 闭源 GPT、Claude、Gemini 系列的底层参数量和专家结构未公开；不能把行业传闻写成已证实的 MoE 案例
 
-**🆕 MoE 在 2026 年的演进 — 从纯 MoE 到 MoE + 神经符号混合**：
-
-2026年，顶级大模型已超越纯 MoE 架构，采用**混合架构**：
-
-| 架构层次 | 功能 | 代表实现 |
-|---------|------|---------|
-| **MoE 基底** | 通用语言理解与生成的参数底座 | GPT-5 万亿参数 MoE 底座 |
-| **推理专用层** | 数学/代码/逻辑的深度思考链 | DeepSeek-R1 推理层、GPT-5.2 Test-Time Compute |
-| **神经符号模块** | 精确计算、公式推导、符号推理 | Claude 4 神经符号系统 |
-| **Agent 协作层** | 多实例并行协作、任务分解 | Claude 4.7 Agent Teams |
-
-这种分层架构使得大模型同时具备**直觉性语言理解**（神经网络）和**精确逻辑推理**（符号系统）能力。
+> **证据边界**：API 的“推理模式”“工具调用”或“多智能体产品能力”不等于厂商公开了底层神经网络结构。面试时应明确区分模型架构、训练方法、推理策略和应用层编排。
 
 **MoE 的优势**：
 - **参数量大，激活参数量小**：总参数量可达千亿级，但每个 token 只激活部分参数
@@ -1011,212 +996,90 @@ graph TB
 
 | 技术 | 原理 | 效果 | 代表模型 |
 |------|------|------|---------|
-| **思维链（CoT）** | 生成中间推理步骤 | 数学/逻辑能力提升 3-5 倍 | 所有 2026 年大模型 |
-| **多数投票** | 采样多条路径，选最多答案 | 简单有效，计算换准确率 | Self-Consistency |
-| **树状搜索** | 在推理空间中进行 Beam Search | 编程竞赛级能力提升 | GPT-5.2, Claude 4.6 max |
-| **验证器引导** | 训练验证模型评估中间步骤 | 错误回溯、自我修正 | DeepSeek-R1 |
+| **增加推理预算** | 允许模型使用更多内部推理 token/步骤 | 质量、延迟和成本一起变化，收益需按任务评测 | 支持 reasoning/thinking 控制的 API |
+| **多样本聚合** | 采样多条独立路径，再按答案或验证器聚合 | 用额外调用换取稳健性；不是所有任务都受益 | Self-Consistency |
+| **搜索与回溯** | 在候选计划/解空间中扩展并剪枝 | 适合有可验证状态的任务，成本可能快速增长 | Agent/规划系统 |
+| **验证器引导** | 用规则、测试或学习到的验证器筛选结果 | 可减少部分错误，但验证器自身也需评估 | 代码测试、数学验证 |
 
 > **💡 面试要点**：理解 Test-Time Compute 的范式转移 —— 它意味着模型能力可以在不增加参数的情况下通过"思考更久"来提升，这是 2026 年大模型工程的核心优化方向。
 
 ---
 
-## 12.8 2026年大模型格局演进 🆕
+## 12.8 截至 2026-07-31 的官方模型信息与选型 🆕
 
-> **2026年更新**：大模型格局已从 GPT-4 时代进入 GPT-5 / Claude 4 / DeepSeek-R1 / Gemini 3 多强争霸时代。了解各模型的架构特点和选型差异，是面试和工程实践中的核心知识。
+模型版本变化快，本节采用两个规则：
 
-### 12.8.1 GPT-5 系列架构演进（OpenAI）
+1. **只写厂商发布页、API 文档或模型论文明确披露的事实**；闭源架构未知就写“未披露”。
+2. **把产品名、API 模型 ID 和快照版本分开**；上线前在供应商模型目录重新确认上下文、价格、地区可用性与弃用日期。
 
-GPT-5 系列是 OpenAI 在 2025-2026 年推出的旗舰模型家族，代表了当前大模型的最高水平。
+### 12.8.1 官方发布快照
 
-```mermaid
-timeline
-    title GPT-5 系列演进时间线（2025-2026）
-    2025 Q1 : GPT-5 发布
-             : 万亿参数 MoE
-             : 神经符号混合架构
-             : 20万张 H200 GPU 训练
-    2025 Q2 : GPT-5.2 深度思维链
-             : Test-Time Compute 专用版
-             : 推理时计算范式
-    2025 Q3 : GPT-5.3-Codex
-             : 编程专用模型
-             : Terminal-Bench 领先
-    2026 Q1 : GPT-5.4 百万上下文
-             : 272K → 1M token
-             : 原生 Computer Use
-    2026 Q2 : GPT-5.5（最新）
-             : 完全重新训练（非微调）
-             : Terminal-Bench 82.7%
-             : 幻觉率降低 60%
-```
+| 厂商 | 截至日期可确认的公开产品线 | 官方可确认信息 | 不应推断 |
+|------|----------------------------|----------------|----------|
+| **OpenAI** | GPT-5 于 2025-08-07 发布；GPT-5.5 于 2026-04-23 发布；GPT-5.6 于 2026-07-09 发布 | 官方发布页与模型目录说明其 API 能力、工具和版本 | 参数量、是否 MoE、激活参数、训练 GPU 数均未披露 |
+| **Anthropic** | Claude Opus 4.7、Opus 4.8；当前型号以官方 Models Overview 为准 | 以 Models Overview、Extended Thinking 和 Effort 文档为准 | 不把“Agent Teams”产品功能等同于已公开的神经符号底层架构，也不把虚构评测场景中的名称当作已发布产品 |
+| **Google** | Gemini 3 于 2025-11-18 发布；I/O 2026 又公布 Gemini 3.5 / Gemini Omni 等进展 | 具体可调用型号、模态、上下文和 thinking 参数以 Gemini API 模型页为准 | 不从产品多模态/端侧能力反推未披露参数量与内部模块 |
+| **DeepSeek** | DeepSeek-V2、V3 与 R1 有论文或开放权重 | 可引用论文中的参数规模、MLA/MoE、训练阶段和公开 benchmark | 不能把 V3 预训练成本直接写成 R1 全流程成本 |
 
-**GPT-5.5（2026年5月）— 当前最强版本**：
+这张表不是永久排名。工程选型必须用自己的代表性任务集评测质量、延迟、吞吐、工具成功率、结构化输出合规率与总成本。
 
-| 特性 | 详情 |
-|------|------|
-| **训练方式** | 完全重新训练（非基于前版本的微调） |
-| **参数规模** | 万亿级 MoE，每次激活约 300B |
-| **上下文窗口** | 1M token（约 150 万汉字） |
-| **Terminal-Bench** | 82.7%（代码终端任务基准） |
-| **幻觉率** | 相比 GPT-4 降低 60% |
-| **核心架构** | MoE + 推理专用层 + 多模态原生统一 |
+### 12.8.2 闭源模型如何做专业比较
 
-### 12.8.2 Claude 4 系列 — 神经符号系统突破（Anthropic）
+不要制作“架构竞猜表”。闭源模型更适合比较可验证的接口合同：
 
-Claude 4 系列是 Anthropic 在 2025-2026 年的旗舰产品，以**神经符号混合架构**和**Agent Teams**为核心创新。
+- **模型与快照**：记录精确 API model ID、发布日期、弃用策略和区域可用性
+- **输入输出能力**：文本/图像/音频、结构化输出、工具调用、上下文限制
+- **推理控制**：厂商支持的 reasoning/thinking/effort 参数及其版本约束
+- **工程指标**：首 token 延迟、完成延迟、并发吞吐、超时率、工具任务成功率
+- **风险指标**：拒答、幻觉、提示注入、数据保留、内容合规与可观测性
 
-**Claude 4 架构演进**：
+模型名称相近不代表请求参数兼容。例如 Anthropic 新型号可能要求 adaptive thinking 与 effort，而旧型号仍使用手动 token budget；必须按选定 model ID 查对应文档。
 
-| 版本 | 发布时间 | 核心突破 |
-|------|---------|---------|
-| **Claude 4** | 2025年 | 神经符号系统突破，数学能力达 IMO 金牌水平 |
-| **Claude 4.6** | 2026年初 | 四档推理（`thinking_level: low/medium/high/max`），Agent Teams 引入 |
-| **Claude 4.7** | 2026年5月 | 100万 token 上下文，Agent Teams 成熟 |
+### 12.8.3 DeepSeek-R1：只引用报告明确给出的口径
 
-**🆕 Agent Teams — 持久性独立 Claude 实例并行协作**：
+DeepSeek-R1 基于 DeepSeek-V3-Base 进行多阶段后训练，并公开了 R1 与蒸馏模型权重。可确认的口径包括：
 
-```mermaid
-graph TB
-    subgraph "Claude 4.7 Agent Teams 架构"
-        direction TB
-        Coordinator["协调器 Claude<br/>任务分解与调度"]
-
-        Coordinator --> A["Claude 实例 A<br/>代码分析与生成<br/>持久状态"]
-        Coordinator --> B["Claude 实例 B<br/>文档检索与总结<br/>持久状态"]
-        Coordinator --> C["Claude 实例 C<br/>测试与验证<br/>持久状态"]
-        Coordinator --> D["Claude 实例 D<br/>架构设计<br/>持久状态"]
-
-        A --> Sync["状态同步与知识共享"]
-        B --> Sync
-        C --> Sync
-        D --> Sync
-
-        Sync --> Coordinator
-    end
-
-    style Coordinator fill:#4A6FA5,stroke:#2E4A62,color:#fff
-    style A fill:#6B8CBB,stroke:#2E4A62,color:#fff
-    style B fill:#6B8CBB,stroke:#2E4A62,color:#fff
-    style C fill:#6B8CBB,stroke:#2E4A62,color:#fff
-    style D fill:#6B8CBB,stroke:#2E4A62,color:#fff
-    style Sync fill:#2E4A62,stroke:#1a2d3d,color:#fff
-```
-
-**Agent Teams 的核心特点**：
-1. **持久性**：每个 Agent 实例有独立的长期记忆和状态
-2. **并行协作**：多个 Agent 同时处理不同子任务
-3. **自主协调**：不需要人类干预，Agent 之间自主分配工作
-4. **四档推理**：用户可根据任务复杂度选择思考深度
-
-### 12.8.3 DeepSeek-R1 — 推理效率的革命
-
-DeepSeek-R1 是中国 DeepSeek 团队发布的推理专用模型，以**极低的训练成本**和**极高的推理性能**震惊业界。
-
-**核心架构创新**：
-
-```mermaid
-graph LR
-    subgraph "DeepSeek-R1 混合架构"
-        A["MoE 基底<br/>通用语言理解"] --> B["推理专用层<br/>强化学习训练"]
-        B --> C["思维链生成<br/>CoT 蒸馏"]
-        C --> D["答案验证<br/>自洽性检查"]
-
-        E["训练成本: ~$600万<br/>仅为 GPT-5 的 1/20"] --> F["MATH 数据集: 94.2%<br/>超越 GPT-5"]
-    end
-
-    style A fill:#6B8CBB,stroke:#2E4A62,color:#fff
-    style B fill:#4A6FA5,stroke:#2E4A62,color:#fff
-    style C fill:#5C7A99,stroke:#2E4A62,color:#fff
-    style D fill:#2E4A62,stroke:#1a2d3d,color:#fff
-    style E fill:#E8D5B7,stroke:#2E4A62,color:#2E4A62
-    style F fill:#E8D5B7,stroke:#2E4A62,color:#2E4A62
-```
-
-**DeepSeek-R1 的技术突破**：
-
-| 维度 | DeepSeek-R1 | 业界对比 |
-|------|------------|---------|
-| **训练成本** | ~600万美元 | GPT-5 估计 1-2 亿美元 |
-| **MATH 数据集** | 94.2% | 超越 GPT-5 的 ~92% |
-| **架构** | MoE + 推理专用层 + GRPO 强化学习 | 独特的推理层设计 |
-| **蒸馏能力** | 可将推理能力蒸馏到小模型 | 7B 模型达到 GPT-4 水平 |
-| **开源程度** | 模型权重开源 | 最顶级的开源推理模型 |
+| 维度 | 可引用事实 | 注意事项 |
+|------|------------|----------|
+| **基础模型规模** | DeepSeek-V3 / R1 为 671B 总参数、每 token 约 37B 激活参数 | DeepSeek-V2 是 236B 总参数、约 21B 激活参数，不能混写 |
+| **公开评测** | R1 仓库报告 MATH-500 pass@1 为 97.3，另列 AIME、Codeforces 等结果 | 必须写 benchmark 名称、版本、采样/评测设置与对比对象 |
+| **训练成本** | V3 技术报告给出其预训练约 2.788M H800 GPU-hours，按报告口径折算约 5.576M 美元 | 这不是 R1 的完整数据、预训练、SFT、RL、蒸馏和试验总成本 |
+| **后训练方法** | R1 报告描述 cold-start、GRPO、rejection sampling、SFT/RL 阶段 | 不应虚构一个额外的“推理专用层” |
+| **开放程度** | 权重可获取，仓库列出许可与派生模型 | “开放权重”不自动等于训练数据、训练代码全部开源 |
 
 **DeepSeek-R1 的核心方法 — 强化学习 + 思维链蒸馏**：
 
-1. **GRPO 强化学习**：通过组内相对比较训练模型学会"停下来思考"
+1. **GRPO 强化学习**：通过同一问题的组内相对奖励估计优势，避免单独训练价值模型
 2. **冷启动数据**：少量高质量 CoT 数据启动训练
-3. **自蒸馏**：大模型的推理能力蒸馏给更小更高效的模型
+3. **蒸馏**：用 R1 生成的数据微调更小的 Qwen/Llama 基座模型
 4. **拒绝采样**：过滤低质量推理路径，保留高质量 CoT
 
-### 12.8.4 Gemini 3.0 — 端云协同新范式（Google）
+### 12.8.4 可复现的模型选型表
 
-2026年5月 Google I/O 发布的 Gemini 3.0 代表了另一条技术路线：**端云协同架构**。
+与其写“综合最强/Agent 最强”，不如维护下面的实测表。每一行都应绑定模型快照和评测日期：
 
-| 特性 | 详情 |
-|------|------|
-| **端云协同** | 小模型在端侧处理简单任务，大模型在云端处理复杂任务，无缝切换 |
-| **Spark 智能体平台** | Google 的原生 Agent 平台，与 Android 深度集成 |
-| **多模态原生** | 文本、图像、音频、视频统一处理，非拼接架构 |
-| **上下文窗口** | 2M+ token，支持整本书/整代码库一次性处理 |
+| 指标 | 定义示例 | 为什么重要 |
+|------|----------|------------|
+| **任务质量** | Golden Set 准确率、人工盲评、代码测试通过率 | 公开榜单不一定代表自己的流量 |
+| **工具可靠性** | 正确选工具率、参数 schema 合规率、端到端任务成功率 | Agent 失败通常发生在模型外部状态与工具边界 |
+| **延迟/吞吐** | TTFT、P50/P95 完成延迟、tokens/s、并发下成功率 | 长上下文与高推理预算会改变尾延迟 |
+| **成本** | 输入、缓存输入、输出、工具/搜索与失败重试的单任务总成本 | 只比较标价会漏掉输出长度和重试 |
+| **安全合规** | 注入攻击成功率、越权工具调用率、数据驻留/保留策略 | 决定是否能进入生产环境 |
+| **可运维性** | 快照固定、限流、批处理、可观测字段、弃用窗口 | “当前最新”会快速变化 |
 
-### 12.8.5 2026年大模型选型对比表
+**参考资料（核对日期：2026-07-31）**：
 
-| 维度 | GPT-5.5 | Claude 4.7 | DeepSeek-R1 | Gemini 3.0 |
-|------|---------|-----------|-------------|-----------|
-| **发布方** | OpenAI | Anthropic | DeepSeek | Google |
-| **发布时间** | 2026.05 | 2026.05 | 2025.01 | 2026.05 |
-| **参数规模** | 万亿 MoE | 未公开（估计万亿级） | 671B MoE | 未公开 |
-| **上下文长度** | 1M tokens | 1M tokens | 128K → 256K | 2M+ tokens |
-| **核心优势** | 综合能力最强、代码能力 | Agent Teams、长文本 | 推理性价比、开源 | 端云协同、多模态 |
-| **神经符号** | 部分支持 | 深度集成 | 有限 | 部分支持 |
-| **Agent 能力** | Computer Use 原生 | Agent Teams（最强） | 基础 | Spark 平台 |
-| **推理档位** | 自动调节 | 4 档可调 | 单档（全力推理） | 自动调节 |
-| **开源** | ❌ 闭源 | ❌ 闭源 | ✅ 开源 | ❌ 闭源 |
-| **API 成本** | 高 | 中高 | 极低（开源可自托管） | 中 |
-| **适用场景** | 通用任务、代码生成 | 复杂多步骤任务、研究 | 数学推理、低成本部署 | 端侧应用、多模态 |
-
-### 12.8.6 架构演进趋势分析
-
-```mermaid
-graph TB
-    subgraph "2024-2026 架构演进路线图"
-        direction LR
-        A["2024: Dense/MoE<br/>GPT-4, Claude 3<br/>纯神经网络<br/>预训练为王"]
-        B["2025: 混合架构<br/>MoE + 推理层<br/>Test-Time Compute<br/>DeepSeek-R1"]
-        C["2026: 智能体架构<br/>MoE + 神经符号 + Agent<br/>推理时计算标配<br/>端云协同<br/>🆕 当前"]
-
-        A --> B --> C
-    end
-
-    style A fill:#7A8B99,stroke:#2E4A62,color:#fff
-    style B fill:#5C7A99,stroke:#2E4A62,color:#fff
-    style C fill:#4A6FA5,stroke:#2E4A62,color:#fff
-```
-
-**五大架构趋势（2026年）**：
-
-1. **从纯 Dense 到 MoE + 神经符号混合**
-   - 纯神经网络 → 神经网络处理直觉 + 符号系统处理精确逻辑
-   - Claude 4 的神经符号系统是最深度的集成
-
-2. **推理时计算（Test-Time Compute）成为标配**
-   - 2024年只有简单 CoT → 2026年所有顶级模型都有可调的推理深度
-   - 关键洞察：推理时间也是一种可优化的资源
-
-3. **多模态原生统一架构**
-   - 2024年：文本模型 + 视觉适配器（拼接式）
-   - 2026年：文本/图像/音频/视频在底层统一表示（Gemini 3.0 代表）
-
-4. **端云协同部署**
-   - 简单任务本地处理（隐私 + 低延迟）
-   - 复杂任务云端处理（高性能）
-   - 模型自动判断任务复杂度并选择执行位置
-
-5. **Agent 架构从工具调用到自主协作**
-   - 2024年：Function Calling（被动调用工具）
-   - 2025年：AutoGPT / LangChain（编排式 Agent）
-   - 2026年：Agent Teams（自主多实例并行协作）
+- [OpenAI：Introducing GPT-5](https://openai.com/index/introducing-gpt-5/)
+- [OpenAI：Introducing GPT-5.5](https://openai.com/index/introducing-gpt-5-5/)
+- [OpenAI：GPT-5.6](https://openai.com/index/gpt-5-6/)
+- [OpenAI API Models](https://developers.openai.com/api/docs/models/all)
+- [Anthropic：Claude Opus 4.8](https://www.anthropic.com/news/claude-opus-4-8)
+- [Anthropic Models Overview](https://platform.claude.com/docs/en/about-claude/models/overview)
+- [Google：Gemini 3](https://blog.google/products-and-platforms/products/gemini/gemini-3/)
+- [Google I/O 2026 AI updates](https://blog.google/innovation-and-ai/technology/developers-tools/google-io-2026-collection/)
+- [DeepSeek-R1](https://github.com/deepseek-ai/DeepSeek-R1)
+- [DeepSeek-V3 Technical Report](https://arxiv.org/abs/2412.19437)
+- [DeepSeek-V2](https://github.com/deepseek-ai/DeepSeek-V2)
 
 ---
 
@@ -1385,7 +1248,7 @@ class Transformer(nn.Module):
 
 ### 🎯 面试题 8：什么是涌现能力？有哪些典型表现？
 
-**答案**：涌现能力是指大模型在参数量/训练量跨越某个阈值后突然展现的能力，较小模型完全不具备。典型表现：In-Context Learning（上下文学习，通过 prompt 示例学习新任务而不更新参数）、Chain-of-Thought 推理（逐步推理解决复杂问题）、指令遵循（理解和执行自然语言指令）。涌现的原因尚无定论，可能与模型容量足够学习到更高级抽象表示有关。
+**答案**：涌现能力是对某项能力随规模增加出现明显、非线性测量提升的描述。典型研究对象包括 In-Context Learning、复杂推理和指令遵循，但“突然出现”可能受离散指标影响；更严谨的回答应给出任务、指标和模型规模，而不是断言小模型完全没有该能力。
 
 ### 🎯 面试题 9：MoE 架构的核心思想是什么？
 
@@ -1393,7 +1256,7 @@ class Transformer(nn.Module):
 
 ### 🎯 面试题 10：GRPO 相比 PPO 的创新点？
 
-**答案**：GRPO（Group Relative Policy Optimization）的核心创新是**去 Critic 化**。传统 PPO 需要维护 Critic 网络估计优势函数，GRPO 通过对同一问题采样一组回答，用组内得分的相对偏差（个体得分 - 组平均分）替代优势函数估计。这减少了约一半的参数量和显存占用，特别适合推理任务（数学、编程等有明确答案的任务）。
+**答案**：GRPO（Group Relative Policy Optimization）的核心创新是**不单独训练价值模型**。它对同一问题采样一组回答，用组内标准化奖励估计相对优势，再结合重要性比率裁剪与 KL 正则更新策略。移除 Critic 能减少一部分模型参数与状态，但 reference model、rollout、激活和优化器仍占显存，不能笼统称“总显存减半”。
 
 ### 🎯🆕 面试题 11：Test-Time Compute 是什么？为什么它是2026年的关键技术范式？
 
@@ -1405,43 +1268,21 @@ class Transformer(nn.Module):
 3. **树状搜索**：在推理空间中进行系统性搜索
 4. **验证器引导**：训练验证模型评估和筛选中间步骤
 
-代表实现：GPT-5.2 深度思维链、Claude 4.6 四档推理（`thinking_level: low/medium/high/max`）、DeepSeek-R1 的强化学习推理。
+代表实现包括支持 reasoning/thinking/effort 控制的模型 API，以及 DeepSeek-R1 等公开报告。参数名、档位与预算限制随 model ID 变化。
 
-**为什么重要**：它意味着模型能力 = f(参数规模, 推理时计算)，两个维度可以独立优化。中小模型通过增加推理时计算可以达到大模型效果，大幅降低部署成本。
+**为什么重要**：推理预算成为质量、延迟和成本之间可调的工程变量。但收益不是单调保证；中小模型也不会仅凭“思考更久”就必然达到更大模型的能力，必须在目标任务上评测。
 
-### 🎯🆕 面试题 12：GPT-5.5 和 Claude 4.7 的核心差异是什么？如何选择？
+### 🎯🆕 面试题 12：闭源模型快速迭代时，如何做可靠选型？
 
-**答案**：
+**答案**：先固定候选的精确 model ID/快照和评测日期，再用同一 Golden Set 比较任务质量、工具调用成功率、结构化输出、TTFT/P95 延迟、单位任务总成本与安全指标。上下文、价格和参数能力从官方模型目录读取；厂商未披露的参数量和底层架构标为“未知”，不能用传闻补齐。
 
-| 维度 | GPT-5.5 | Claude 4.7 |
-|------|---------|-----------|
-| **架构** | 万亿 MoE + 推理层 + 多模态原生 | 神经符号系统 + Agent Teams |
-| **上下文** | 1M tokens | 1M tokens |
-| **最强能力** | 综合性能、代码生成 | 多步骤复杂任务、Agent 协作 |
-| **推理控制** | 自动调节 | 4 档可调（low/medium/high/max） |
-| **Agent** | Computer Use 原生 | Agent Teams（多实例并行协作） |
-| **开源** | 闭源 | 闭源 |
+### 🎯🆕 面试题 13：如何准确解释 DeepSeek-V3 的“约 557.6 万美元”？
 
-**选型建议**：
-- 通用对话、代码生成 → GPT-5.5
-- 复杂研究任务、需要多 Agent 协作 → Claude 4.7
-- 成本敏感、需要自托管 → DeepSeek-R1（开源）
-- 端侧应用、多模态 → Gemini 3.0
+**答案**：该数字来自 DeepSeek-V3 技术报告：约 2.788M H800 GPU-hours，按报告采用的每 GPU-hour 2 美元折算，描述的是 **V3 正式预训练**口径。它不包含此前研究、消融、数据构建，也不是 DeepSeek-R1 完整 SFT/RL/蒸馏流程的总成本，更不能拿未公开的 GPT-5 训练总成本计算“1/20”。
 
-### 🎯🆕 面试题 13：DeepSeek-R1 的训练成本为什么能做到 GPT-5 的 1/20？
+可进一步说明公开的效率来源包括 MoE 稀疏激活、MLA、FP8 混合精度和系统工程优化，但每项收益都应以原论文的具体口径陈述。
 
-**答案**：DeepSeek-R1 通过以下技术创新实现极低训练成本：
-
-1. **MoE 架构效率**：每次只激活部分专家（约 37B/671B），计算量远小于同等总参数量的 Dense 模型
-2. **MLA（Multi-head Latent Attention）**：将 KV Cache 压缩到极低维度，减少显存占用和计算量
-3. **GRPO 替代 PPO**：去 Critic 化，减少约 50% 训练参数量
-4. **强化学习为主，SFT 为辅**：用 RL 让模型自主学会推理，而非依赖大量昂贵的标注数据
-5. **高效的工程实现**：优化的并行训练策略、数据加载和通信优化
-6. **蒸馏而非从头训练**：大模型的推理能力通过蒸馏传递给小模型，避免重复训练
-
-核心洞察：**架构创新 + 训练方法创新 + 工程优化**三管齐下，而非单纯堆算力。
-
-### 🎯🆕 面试题 14：什么是神经符号系统（Neuro-Symbolic）？Claude 4 为什么采用这种架构？
+### 🎯🆕 面试题 14：什么是神经符号系统（Neuro-Symbolic）？能否据此判断闭源模型架构？
 
 **答案**：神经符号系统是将**神经网络**（擅长直觉、模式识别、模糊处理）与**符号推理**（擅长精确计算、逻辑推导、可验证结论）相结合的混合架构。
 
@@ -1450,43 +1291,38 @@ class Transformer(nn.Module):
 - 逻辑推理链条长时容易"走神"
 - 结论不可验证（黑盒）
 
-**Claude 4 的神经符号实现**：
-- 底层：神经网络处理自然语言理解和直觉判断
-- 中层：符号系统接管精确计算和逻辑推导
-- 顶层：混合验证层确保输出正确性
+但工具调用、代码执行或验证器编排并不能证明模型权重内部采用了神经符号结构。若厂商没有技术报告明确披露，就只能描述可观察的产品/API 行为，不能把 Claude、GPT 或 Gemini 的底层架构写成已证实的神经符号系统。
 
-**效果**：Claude 4 的数学能力达到 IMO（国际数学奥林匹克）金牌水平，逻辑推理错误率大幅降低。这种架构让模型同时具备"像人一样理解问题"和"像计算机一样精确计算"的能力。
-
-### 🎯🆕 面试题 15：Agent Teams 和传统 Function Calling 的区别？
+### 🎯🆕 面试题 15：应用层多智能体编排和单模型 Function Calling 有何区别？
 
 **答案**：
 
-| 维度 | Function Calling（2024） | Agent Teams（2026） |
-|------|------------------------|-------------------|
+| 维度 | 单模型 Function Calling | 应用层多智能体编排 |
+|------|-------------------------|--------------------|
 | **触发方式** | 模型判断需要时被动调用 | Agent 主动自主协调 |
 | **执行模式** | 单线程顺序执行 | 多实例并行协作 |
 | **状态管理** | 无状态，每次独立调用 | 持久状态，长期记忆 |
 | **任务分解** | 人类预设流程 | Agent 自主分解和分配 |
 | **协作能力** | 单个模型 + 工具 | 多个 Claude 实例互相协作 |
-| **代表实现** | GPT-4 Function Calling | Claude 4.7 Agent Teams |
+| **代表实现** | 单模型工具调用 API | 应用层 coordinator + workers 编排 |
 
-**Agent Teams 的核心架构**：
+**多智能体编排的核心组件**：
 1. **协调器（Coordinator）**：负责任务分解和调度
 2. **工作节点（Workers）**：多个独立的 Claude 实例，各有专精领域
 3. **状态同步**：节点间共享知识和中间结果
-4. **自主决策**：不需要人类干预，Agent 之间自主协调
+4. **控制边界**：高风险动作仍需确定性授权、预算限制、幂等和人工审批
 
-这意味着 AI 从**被动工具**（等待人类指令调用函数）进化为**自主协作者**（主动分解任务、并行执行、自主决策）。
+多智能体并不天然优于单智能体：它会增加成本、状态一致性和故障恢复复杂度，只有可并行、可验证的任务才值得采用。
 
 ### 🎯🆕 面试题 16：从 MoE 架构角度，为什么大模型可以实现"参数量大但推理成本低"？
 
 **答案**：MoE（Mixture of Experts）通过**条件计算**实现参数效率：
 
-1. **稀疏激活**：总参数量可达万亿级，但每个 token 只激活 Top-K 个专家（通常 K=1~2），实际计算量仅占总参数的一小部分（如 GPT-5 激活约 300B/总 1T+）
+1. **稀疏激活**：每个 token 只激活 Top-K 专家，前向计算不随总参数量线性增长；可用 Mixtral、DeepSeek 等公开结构举例，不使用未披露的 GPT 参数
 
 2. **专家特化**：不同专家学习不同领域的知识（如语法专家、数学专家、代码专家），路由网络将输入分配给最相关的专家，提升单 token 计算效率
 
-3. **负载均衡**：通过辅助损失函数确保 token 均匀分布在各专家上，避免计算热点
+3. **负载均衡**：可使用辅助损失，也可使用 DeepSeek-V3 报告的无辅助损失动态路由偏置；目标是减少专家过载和计算热点
 
 4. **通信优化**：2026年的工程实现通过专家并行（Expert Parallelism）和高效的 All-to-All 通信，将多设备间的通信开销降至最低
 
@@ -1494,7 +1330,320 @@ class Transformer(nn.Module):
 
 ---
 
-## 12.11 本章速查表
+## 12.11 DeepSeek 风格架构深化 🆕 ⭐⭐⭐⭐⭐
+
+> 本节依据 DeepSeek-V2/V3 与 R1 的论文、技术报告和公开配置，介绍 **MLA 多头潜注意力**、**auxiliary-loss-free 负载均衡**、**shared experts + fine-grained segmentation**、**Multi-Token Prediction (MTP)**、**FP8 混合精度训练**。示例用于解释机制，不把报告中的单项成本口径外推为“比某闭源模型便宜固定倍数”。
+
+### 12.11.1 MLA 多头潜注意力原理 ⭐⭐⭐⭐⭐
+
+**动机：KV Cache 显存增长**。自回归推理时，各层需要缓存历史 token 的 K/V。设层数 $N_\ell$、KV 头数 $n_{kv}$、每头维度 $d_h$、序列长度 $L$、batch $B$、每元素 $s$ 字节：
+
+$$\text{KVCache bytes} = 2_{\text{K,V}} \times N_\ell \times B \times L \times n_{kv} \times d_h \times s$$
+
+例如一个假设的 60 层 MHA 模型，若 $n_{kv}=128$、$d_h=128$、$L=128K$、$B=1$、使用 fp16，则传统完整 K/V 约为 **480 GiB**（每层约 8 GiB）。这个数字是说明公式的 MHA 基线，不是 DeepSeek-V2 的实际缓存：DeepSeek-V2 为 **236B 总参数、约 21B 激活参数**，并使用 MLA；DeepSeek-V3/R1 才是 **671B 总参数、约 37B 激活参数**。
+
+**MHA / GQA / MQA 对比**：
+
+| 方案 | KV 头数 | KV Cache 大小 | 表达力 | 代表模型 |
+|------|---------|--------------|--------|---------|
+| **MHA** | $n_h$ | $O(n_h \cdot d_h)$ | 最强 | GPT-3, BERT |
+| **MQA** | 1 | $O(d_h)$ | 最弱（质量下降明显） | PaLM, Falcon |
+| **GQA** | $g$（分组共享） | $O(g \cdot d_h)$ | 中等 | LLaMA-2/3, Mistral |
+| **MLA** | — | $O(d_c)$, $d_c \ll n_h d_h$ | **接近 MHA** | DeepSeek-V2/V3 |
+
+MLA 的核心创新：**不是减少 KV 头数，而是用低秩投影把 KV 压缩到一个低维潜变量 $c_t$ 中缓存**。
+
+**MLA 数学推导**：
+
+1. **下投影（压缩）**：将 hidden $h_t \in \mathbb{R}^{d}$ 压缩为潜向量 $c_t \in \mathbb{R}^{d_c}$
+
+$$c_t = W^{DKV} h_t, \quad d_c \ll n_h \cdot d_h$$
+
+2. **上投影（还原）**：从 $c_t$ 还原出每个头的 K 和 V
+
+$$k_t = W^{UK} c_t \in \mathbb{R}^{n_h \cdot d_h}, \quad v_t = W^{UV} c_t \in \mathbb{R}^{n_h \cdot d_h}$$
+
+3. **Q 侧也做低秩**（DeepSeek-V2 进一步优化）：
+
+$$q_t = W^{UQ}(W^{DQ} h_t)$$
+
+4. **推理时只缓存 $c_t$**（而非完整 K/V），上投影矩阵 $W^{UK}, W^{UV}$ 在推理时才作用，KV Cache 从 $O(n_h d_h)$ 降到 $O(d_c)$。
+
+**RoPE 兼容性 — 解耦维度**。RoPE 对 K 是位置相关的旋转，无法直接吸收进 $W^{UK}$。DeepSeek 的解法：把每个头拆成 **不旋转部分 $d_h^{nope}$**（走 MLA 低秩压缩）+ **旋转部分 $d_h^{rope}$**（单独保留小维度共享 RoPE）：
+
+$$k_t = [k_t^{nope}; \, k_t^{rope}], \quad k_t^{rope} = \text{RoPE}(W^{KR} h_t)$$
+
+**显存收益如何表述**：MLA 缓存低维 KV 潜变量以及位置相关部分，而不是每层每头的完整 K/V。具体字节数必须代入模型层数、`kv_lora_rank`、RoPE 维度、数据类型和运行时布局；不要用一个脱离配置的固定百分比代替计算。
+
+```python
+import torch
+import torch.nn as nn
+
+class MultiHeadLatentAttention(nn.Module):
+    """MLA 简化实现（省略 RoPE 解耦，展示低秩 KV 压缩核心）"""
+    def __init__(self, d_model, n_heads, d_head, d_c):
+        super().__init__()
+        self.n_heads, self.d_head = n_heads, d_head
+        self.d_c = d_c  # 压缩潜维度，d_c << n_heads * d_head
+        # Q 侧低秩
+        self.W_DQ = nn.Linear(d_model, d_c, bias=False)
+        self.W_UQ = nn.Linear(d_c, n_heads * d_head, bias=False)
+        # KV 侧低秩
+        self.W_DKV = nn.Linear(d_model, d_c, bias=False)
+        self.W_UK = nn.Linear(d_c, n_heads * d_head, bias=False)
+        self.W_UV = nn.Linear(d_c, n_heads * d_head, bias=False)
+        self.W_O = nn.Linear(n_heads * d_head, d_model, bias=False)
+
+    def forward(self, h, cache=None):
+        # h: (B, L, d_model); cache: 已缓存的 c_{<t} (B, L_prev, d_c)
+        c = self.W_DKV(h)                      # (B, L, d_c) ← 只缓存这个！
+        q = self.W_UQ(self.W_DQ(h)).view(*h.shape[:2], self.n_heads, self.d_head)
+        k = self.W_UK(c).view(*h.shape[:2], self.n_heads, self.d_head)
+        v = self.W_UV(c).view(*h.shape[:2], self.n_heads, self.d_head)
+        # Scaled dot-product attention（省略 mask/transpose 细节）
+        attn = torch.einsum('blhd,bshd->blhs', q, k) / (self.d_head ** 0.5)
+        attn = attn.softmax(dim=-1)
+        out = torch.einsum('blhs,bshd->blhd', attn, v).reshape(h.shape[0], h.shape[1], -1)
+        return self.W_O(out), c  # 返回 c 供后续缓存
+
+# 对比简化缓存量（未计 allocator 对齐、RoPE cache 与运行时元数据）
+B, L, n_layers, n_kv, d_h, d_c, bytes_per_elem = 1, 128*1024, 60, 128, 128, 512, 2
+mha_kv = 2 * n_layers * B * L * n_kv * d_h * bytes_per_elem / 1024**3
+mla_latent = n_layers * B * L * d_c * bytes_per_elem / 1024**3
+print(f"传统 MHA KV Cache 基线: {mha_kv:.2f} GiB")
+print(f"仅低维 latent（未计 RoPE 部分）: {mla_latent:.2f} GiB")
+```
+
+> **💡 面试要点**：MLA = 低秩 KV 压缩 + Q 也低秩 + RoPE 解耦维度。它把 KV Cache 从 $O(n_h d_h)$ 降到 $O(d_c)$，是 DeepSeek 能做长上下文 + 低成本推理的架构基石。
+
+### 12.11.2 auxiliary-loss-free 负载均衡 ⭐⭐⭐⭐
+
+**传统辅助损失（Switch/GShard）的问题**。早期 MoE 用辅助损失强制专家负载均衡：
+
+$$L_{aux} = \alpha \cdot N \sum_{i=1}^{N} f_i \cdot P_i$$
+
+其中 $f_i$ 是专家 $i$ 实际接收 token 的比例，$P_i$ 是 router 分配给专家 $i$ 的平均概率。该损失有三个副作用：(1) 与主任务损失相互干扰，**降低最终模型质量**；(2) 超参 $\alpha$ 难调；(3) 需在反向传播中维护额外的梯度路径。
+
+**DeepSeek 的 auxiliary-loss-free 方案 — bias 项动态调节**。为每个专家维护一个**非梯度学习的路由选择偏置** $b_i$：
+
+$$S_t = \operatorname{TopK}_i(s_{i,t} + b_i), \qquad
+g_{i,t} \propto s_{i,t}\;\; (i \in S_t)$$
+
+- $b_i$ 用于决定选中哪些专家；被选专家的门控权重仍由原始 affinity score $s_{i,t}$ 计算
+- $b_i$ 不由反向传播更新，而是根据近期负载统计做规则更新
+- 每个 step 统计各专家实际负载：若专家 $i$ 负载过高 → 增大 $b_i$ 的相反方向使其变小（被少选）；负载过低 → 调高 $b_i$（被多选）
+- 更新规则（符号化）：若 $\text{load}_i > \text{mean}$ 则 $b_i \mathrel{-}= \gamma$；若 $\text{load}_i < \text{mean}$ 则 $b_i \mathrel{+}= \gamma$
+
+**优势对比**：
+
+| 维度 | 辅助损失（Switch/GShard） | auxiliary-loss-free（DeepSeek） |
+|------|--------------------------|--------------------------------|
+| 与主损失干扰 | ✅ 有，降低质量 | ❌ 无，主损失纯净 |
+| 额外超参 | $\alpha$ 难调 | $\gamma$（步长）易调 |
+| 均衡效果 | 一般，易塌缩 | 更稳，接近完美均衡 |
+| 实现复杂度 | 反向传播改动 | 仅前向 + bias 增减 |
+
+```python
+class AuxLossFreeRouter(nn.Module):
+    def __init__(self, d_model, n_experts, top_k=1, gamma=0.001):
+        super().__init__()
+        self.W = nn.Linear(d_model, n_experts, bias=False)
+        self.bias = nn.Parameter(torch.zeros(n_experts), requires_grad=False)  # 不学梯度
+        self.top_k, self.gamma, self.n_experts = top_k, gamma, n_experts
+
+    def forward(self, h):
+        scores = self.W(h)                             # (B, L, N)
+        selection_scores = scores + self.bias
+        _, topk_idx = selection_scores.topk(self.top_k, dim=-1)
+        # bias 只影响选择；门控值来自未加 bias 的原始 score
+        topk_val = scores.gather(-1, topk_idx)
+        gate = topk_val.softmax(dim=-1)                # (B, L, K)
+        return gate, topk_idx
+
+    @torch.no_grad()
+    def update_bias(self, topk_idx):
+        """每 step 调用：根据实际负载动态调 bias"""
+        load = torch.bincount(topk_idx.reshape(-1), minlength=self.n_experts).float()
+        load = load / load.sum()
+        mean = 1.0 / self.n_experts
+        self.bias.add_((load < mean).float() * self.gamma)        # 欠载 → 增大
+        self.bias.sub_((load > mean).float() * self.gamma)        # 过载 → 减小
+```
+
+> **💡 面试要点**：auxiliary-loss-free 的本质是**把「均衡约束」从损失函数搬到前向偏置项**，用非梯度的动态调节替代辅助损失，避免干扰主任务、提升最终模型质量。
+
+### 12.11.3 shared experts 与 fine-grained segmentation ⭐⭐⭐⭐
+
+DeepSeek-V2 的 MoE 设计有两个关键创新，解决了传统 MoE 的知识碎片化问题。
+
+**(1) Fine-grained Segmentation（细粒度专家切分）**。传统 MoE（如 GShard、Mixtral）用 8~16 个大专家（每个 expert 是完整 FFN）。DeepSeek 把**单个大专家切成多个小专家**，专家总数大幅增加（如 64/160 个），但每个专家更小、每次激活更多个（如 6~8 个）：
+
+| 方案 | 专家数 | 单专家维度 | 每 token 激活 | 激活参数量 |
+|------|--------|-----------|--------------|-----------|
+| Mixtral 8×7B | 8 | 大 | 2 | ≈13B |
+| DeepSeek-V2 | 160 | 小（1/m 大小） | 6 | ≈可比 |
+
+**动机**：(a) 更细粒度的组合，知识组合更灵活；(b) 在相同激活参数下，专家组合空间更大，**专家特化更精细**；(c) 路由更平滑（激活多个小专家 ≈ 软组合）。
+
+**(2) Shared Experts（共享专家常驻）**。研究发现路由器会重复学习「通用知识」（语法、常见短语）到多个专家中，造成冗余。DeepSeek 设置 **K_s 个 shared expert**，**对所有 token 常驻激活**（不参与路由），专门承载通用知识：
+
+$$\text{FFN}_{MoE}(x) = \underbrace{\sum_{i \in S_{shared}} E_i(x)}_{\text{常驻 shared experts}} + \underbrace{\sum_{j \in \text{TopK}(g)} g_j E_j(x)}_{\text{路由 routed experts}}$$
+
+**优势**：(a) 通用知识只学一次到 shared experts，**消除冗余**；(b) routed experts 专注领域特化知识（数学、代码、多语言），**提升参数效率**；(c) 减少「路由抖动」——通用部分不依赖路由，更稳定。
+
+```python
+class DeepSeekMoELayer(nn.Module):
+    """Shared experts + fine-grained routed experts 简化实现"""
+    def __init__(self, d_model, d_ff, n_routed, n_shared, top_k):
+        super().__init__()
+        # 细粒度路由专家（数量多、单个体积小）
+        self.routed_experts = nn.ModuleList([
+            nn.Sequential(nn.Linear(d_model, d_ff), nn.SiLU(), nn.Linear(d_ff, d_model))
+            for _ in range(n_routed)])
+        # 共享专家（常驻，不路由）
+        self.shared_experts = nn.ModuleList([
+            nn.Sequential(nn.Linear(d_model, d_ff), nn.SiLU(), nn.Linear(d_ff, d_model))
+            for _ in range(n_shared)])
+        self.router = AuxLossFreeRouter(d_model, n_routed, top_k)
+        self.top_k, self.n_shared = top_k, n_shared
+
+    def forward(self, h):
+        # 1. shared experts 对所有 token 常驻激活
+        shared_out = sum(e(h) for e in self.shared_experts)  # (B, L, d)
+        # 2. routed experts 按路由 top-K 激活
+        gate, idx = self.router(h)             # gate: (B,L,K), idx: (B,L,K)
+        routed_out = torch.zeros_like(h)
+        for k in range(self.top_k):
+            for e in range(len(self.routed_experts)):
+                mask = (idx[..., k] == e)                     # (B, L)
+                if mask.any():
+                    routed_out += mask.unsqueeze(-1) * gate[..., k].unsqueeze(-1) * self.routed_experts[e](h)
+        return shared_out + routed_out
+```
+
+> **💡 面试要点**：fine-grained segmentation 把大专家切小、增加组合灵活性；shared experts 把通用知识常驻化、消除冗余。二者共同提升 MoE 的参数效率，是 DeepSeek 在同等参数量下质量更优的关键。
+
+### 12.11.4 Multi-Token Prediction (MTP) ⭐⭐⭐⭐⭐
+
+**动机：打破 next-token 预测的「数据效率天花板」**。传统 CLM 每个 token 只用「上一个 token 预测下一个」一个信号，长程规划能力弱。MTP 让模型在训练时**一次预测后续多个 token**，强制模型做更前瞻的规划。
+
+**MTP 模块结构**。主干仍执行标准 next-token prediction；在其后可串接 $M$ 个 MTP 模块，第 $m$ 个模块再预测更远一个未来 token。DeepSeek-V3 报告采用 **1 个 MTP 模块**，即除了主干的下一 token 目标，再增加一个未来 token 目标：
+
+$$\text{MTP}_m: \quad \hat{y}_{t+m} = \text{LMHead}_m(\text{MTPModule}_m(h_t^{(0)}, \hat{h}_{t+m-1}^{(m-1)}))$$
+
+每个 MTP Module 包含拼接投影与一个 Transformer Block，并复用主模型的 token embedding 和输出 head。这里“1 个 MTP 模块”不能写成“主干 + $M-1$ 个模块”，否则 $M=1$ 时会与“额外预测一个 token”自相矛盾。
+
+**训练 loss 公式**。每个预测深度 $m$ 有独立交叉熵损失，求和：
+
+$$L_{MTP} = \sum_{m=1}^{M} \lambda_m \cdot \mathbb{E}_t\left[ -\log P_{\theta_m}(y_{t+m} \mid y_{\leq t}; \text{MTP}_m) \right]$$
+
+其中 $\lambda_m$ 是各深度损失的权重（通常均等或递减）。**推理时可以丢弃 MTP 头**（仅保留主干），无推理开销；也可保留用于推测解码。
+
+**与推测解码（Speculative Decoding）的关系**：
+
+| 维度 | 标准 Speculative Decoding | MTP 头 |
+|------|--------------------------|--------|
+| **draft 模型** | 额外的小模型 | 与主模型共享主干，无独立模型 |
+| **训练对齐** | draft 与 target 训练目标不同，可能不一致 | MTP 头与主模型**联合训练**，分布天然对齐 |
+| **接受率** | 受 draft 质量限制 | 接受率高（同源分布） |
+| **额外参数** | 需维护 draft 模型 | 仅少量 MTP 模块，可丢弃 |
+
+推理时：MTP 头先生成 $M$ 个候选 token（一次前向），主模型并行验证，接受匹配前缀 → **单次前向产出多 token，显著提升吞吐**。
+
+```python
+import torch
+import torch.nn as nn
+
+class MTPModule(nn.Module):
+    """单层 MTP 模块：拼接主干隐状态 + 上一级隐状态 → Transformer Block → 隐状态"""
+    def __init__(self, d_model, n_heads, vocab_size):
+        super().__init__()
+        self.proj = nn.Linear(2 * d_model, d_model)   # 拼接投影
+        self.block = nn.TransformerEncoderLayer(
+            d_model=d_model, nhead=n_heads, dim_feedforward=4*d_model, batch_first=True)
+        # 教学简化：真实 DeepSeek-V3 MTP 与主模型共享输出 head。
+        self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
+
+    def forward(self, h_main, h_prev_embed):
+        # h_main: (B,L,d) 主干隐状态; h_prev_embed: 上一级预测 token 的嵌入
+        x = self.proj(torch.cat([h_main, h_prev_embed], dim=-1))
+        h_m = self.block(x)                            # (B, L, d)
+        logits_m = self.lm_head(h_m)                   # 预测第 t+m 个 token
+        return h_m, logits_m
+
+# 训练 loss（伪代码）
+# L = ce(logits_0, y_{1:T}) + sum_m lambda_m * ce(logits_m, y_{1+m : T+m})
+```
+
+> **💡 面试要点**：MTP 在训练时一次预测多个 token，提升数据效率与规划能力；推理时可丢弃（无开销）或用于同源推测解码（高接受率加速）。是 DeepSeek-V3 训练效率领先的关键技术之一。
+
+### 12.11.5 FP8 混合精度训练 ⭐⭐⭐⭐⭐
+
+**背景**。BF16/FP16 训练大模型时，激活和梯度动态范围大，低精度计算必须控制溢出与舍入误差。FP8 可以降低部分 GEMM 的数据搬运和计算成本，但不会自动让端到端显存或训练时间减半。DeepSeek-V3 是 **671B 总参数、约 37B 激活参数**的 MoE 模型，其报告公开了大规模 FP8 混合精度训练方案；它不是“万亿级模型”。
+
+**FP8 的两种格式**：
+
+| 格式 | 符号 | 指数 | 尾数 | 动态范围 | 适用 |
+|------|------|------|------|---------|------|
+| **E4M3** | 1 | 4 | 3 | 较小，精度较高 | 前向激活、权重 |
+| **E5M2** | 1 | 5 | 2 | 较大，精度较低 | 反向梯度（范围大） |
+
+**低精度 GEMM 与混合策略**。DeepSeek-V3 在主要矩阵乘法中将激活、权重或梯度按相应路径量化为 FP8 输入，同时让参数主存储、优化器状态、累加，以及 embedding、输出头、归一化、attention 和路由等敏感算子保留更高精度。不要把它简化成“所有权重永久以 E4M3 存储、所有梯度固定 E5M2”。
+
+**Block-wise Scaling（分块缩放）—— 数值稳定性的核心**。FP8 单一全局 scale 无法兼顾不同张量区域的动态范围。DeepSeek 采用 **1×128 分块缩放**（对激活按 128 元素分块，权重按 128×128 块），每块独立计算 scale factor：
+
+$$\hat{A}_{block} = \frac{A_{block}}{s_A}, \quad s_A = \max(|A_{block}|) / 448 \quad (\text{E4M3 最大值} \approx 448)$$
+
+**为什么分块？** 大张量不同区域数值范围差异巨大，全局 scale 会导致小数值区域精度丢失（被量化到 0）、大数值区域溢出。分块让每块用最适配的 scale，**显著降低量化误差**。
+
+**GEMM 计算流程**：
+
+```text
+FP8 输入 A, W → 反量化到 BF16 → BF16 累加 → FP8 输出
+            (硬件 Tensor Core 支持 FP8 输入直接 BF16 累加)
+```
+
+```python
+import torch
+
+def fp8_blockwise_quantize(x, block_size=128, fmt='e4m3'):
+    """分块缩放量化到 FP8（示意，实际在 H100 Tensor Core 上执行）"""
+    orig_shape = x.shape
+    # 把最后一维切成 block_size 一块
+    x = orig_view_as_blocks(x, block_size)              # (..., n_blocks, block_size)
+    s = x.abs().amax(dim=-1, keepdim=True) / 448.0      # 每块 scale
+    s = s.clamp(min=1e-12)
+    x_scaled = (x / s).clamp(-448, 448)                 # 防溢出
+    # 模拟 FP8 量化（4 位尾数 → 256 级）
+    x_fp8 = fake_fp8_round(x_scaled, fmt=fmt)
+    return x_fp8, s
+
+def fp8_gemm(A, W):
+    """W8A8 FP8 GEMM：分块量化 → 硬件累加"""
+    A_q, sA = fp8_blockwise_quantize(A, block_size=128)  # 激活 1x128 分块
+    W_q, sW = fp8_blockwise_quantize(W, block_size=128)  # 权重 128x128 分块
+    # Tensor Core: FP8 输入 → BF16 累加（伪代码）
+    out_bf16 = fp8_matmul_kernel(A_q, W_q)
+    # 反量化：乘回各块的 scale
+    out = out_bf16 * (sA * sW.T)
+    return out
+```
+
+**数值稳定性要点**：
+1. **累加过程使用高于 FP8 的精度**，并针对 Tensor Core 累加误差采取工程处理
+2. **关键层保持 BF16**：attention softmax、LayerNorm、router 的 logits 等敏感计算不降精度
+3. **参数、optimizer state 的具体存储精度按报告与实现核对**，不能由一张格式表推断
+4. **动态 scale 更新**：每隔若干步根据实际范围重算 scale，防止漂移
+
+**收益如何回答**：FP8 可显著降低受支持 GEMM 的带宽和算力开销，但端到端收益取决于 GPU、通信、算子覆盖率、序列长度、并行策略和稳定性开销。面试中应引用特定报告或自己的 benchmark，不承诺“显存减半、速度固定提升 1.5～2 倍”。
+
+> **💡 面试要点**：DeepSeek-V3 FP8 方案的重点是细粒度缩放、高精度累加与敏感算子保留高精度，而不是背诵一个覆盖所有张量的 E4M3/E5M2 固定映射。
+
+本节依据 [DeepSeek-V3 Technical Report](https://arxiv.org/abs/2412.19437)；核对日期：2026-07-31。
+
+---
+
+## 12.12 本章速查表
 
 | 概念 | 公式 / 关键点 |
 |------|-------------|
@@ -1514,13 +1663,11 @@ class Transformer(nn.Module):
 | **MoE** | 条件计算，Top-K 路由，负载均衡 |
 | **涌现能力** | 规模跨越阈值后突然展现的能力 |
 | **KV Cache** | 缓存已计算 K/V，加速自回归解码 |
-| **GPT-5.5（2026）** | 万亿 MoE，1M 上下文，Terminal-Bench 82.7% 🆕 |
-| **Claude 4.7（2026）** | 神经符号系统，Agent Teams，四档推理 🆕 |
-| **DeepSeek-R1（2026）** | 671B MoE + 推理层，MATH 94.2%，开源 🆕 |
-| **Gemini 3.0（2026）** | 端云协同，2M+ 上下文，Spark 智能体 🆕 |
-| **Test-Time Compute** | 推理时计算越多，结果越好 🆕 |
-| **Agent Teams** | 多 Claude 实例并行自主协作 🆕 |
-| **神经符号系统** | 神经网络 + 符号推理混合架构 🆕 |
+| **闭源模型事实边界** | 参数量、MoE/神经符号结构未披露时写“未知”；按精确 model ID 和官方目录选型 |
+| **DeepSeek-V2 / V3 / R1** | V2 为 236B/约 21B active；V3/R1 为 671B/约 37B active；成本与 benchmark 必须写清报告口径 |
+| **Test-Time Compute** | 推理预算是质量、延迟、成本的可调变量，收益需按任务评测 |
+| **多智能体编排** | coordinator + workers + 状态/幂等/授权；不天然优于单智能体 |
+| **神经符号系统** | 神经网络与显式符号表示/推理结合；工具调用本身不能证明闭源模型采用该内部架构 |
 
 ---
 
@@ -1530,3 +1677,7 @@ class Transformer(nn.Module):
 - [[13_Prompt_Engineering]] — 理解大模型原理后，学习如何驾驭大模型能力
 - [[14_RAG检索增强生成]] — 大模型落地的核心架构，解决知识过时与幻觉问题
 - [[16_模型微调与推理优化]] — LoRA 微调、RLHF/DPO/GRPO 对齐技术与推理加速
+- [[30_高效序列架构SSM与Mamba]] — 超越 Transformer 的线性复杂度序列建模，与 MLA/长上下文互补
+- [[32_DeepSeek风格MoE与MLA深度解析]] — 本章 12.11 节 MLA/auxiliary-loss-free/shared experts/MTP/FP8 的专题深化
+- [[33_训练稳定性与诊断]] — 本章 FP8 混合精度与 loss spike 的稳定性工程延伸
+- [[34_Tokenizer设计与词表工程]] — 词表与分词是 Transformer 输入侧的前置基础

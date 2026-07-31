@@ -4,16 +4,19 @@
 
 | Tier | Files | 主题 |
 |------|-------|------|
-| llm | 1+ | LangChain, LangGraph, Pydantic AI, Strands (pilot) |
+| llm | 37 | LangChain, LangGraph, LlamaIndex, Pydantic AI, Strands, OpenAI Agents 等 |
 
-## Pilot 示例 (Wave 0)
+## 离线验收
 
 ```bash
-# 需安装 llm tier
 make install-llm
-python ch18_llm_frameworks/llm/01_langchain_basic_chain.py
+LLM_MOCK=1 python scripts/run_all_examples.py --tier llm --chapter ch18
 ```
 
-## Wave 1+ 计划
+离线验收不会调用模型提供商或创建远端资源；依赖未安装的可选示例应输出 `[SKIP]`。
 
-将逐步添加: LangGraph, LlamaIndex, Pydantic AI, Strands, OpenAI Agents SDK 等。
+## 真实调用
+
+真实调用必须显式设置 `LLM_MOCK=0`，并配置对应提供商的 key。OpenAI 示例默认使用
+`OPENAI_MODEL=gpt-5.6`，可按当前模型目录与评测结果覆盖；Strands/Bedrock 示例必须从
+`BEDROCK_MODEL_ID` 读取部署区域中已获授权的模型 ID。

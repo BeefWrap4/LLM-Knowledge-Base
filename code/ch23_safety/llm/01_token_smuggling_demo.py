@@ -35,7 +35,7 @@ def detect_invisible_chars(text: str) -> dict:
     for i, ch in enumerate(text):
         # 零宽空格 (U+200B), 零宽非连接符 (U+200C), 零宽连接符 (U+200D)
         # 从左到右标记 (U+200E), 从右到左标记 (U+200F)
-        if ch in ("​", "‌", "‍", "‎", "‏"):
+        if ch in ("\u200b", "\u200c", "\u200d", "\u200e", "\u200f"):
             invisible.append(
                 {
                     "position": i,
@@ -52,22 +52,29 @@ def normalize_text(text: str) -> str:
     # NFKC 规范化（兼容性分解再重组）
     text = unicodedata.normalize("NFKC", text)
     # 移除零宽字符
-    text = re.sub(r"[​-‏‪-‮⁠-⁤]", "", text)
+    text = re.sub(r"[\u200b-\u200f\u202a-\u202e\u2060-\u2064]", "", text)
     return text
 
 
 if __name__ == "__main__":
     # 演示：正常文本 vs 包含零宽字符的注入文本
     normal = "请帮我翻译这段文字"
-    smuggled = "请帮我翻译这段文字"  # 中间包含零宽字符
+    smuggled = "请帮\u200b我翻译这段文字"  # “帮”和“我”之间是真实的 U+200B
 
     print("=== Token走私演示 ===")
     print(f"原始字符数: {len(normal)}")
     print(f"含零宽字符数: {len(smuggled)}")
-    print(f"视觉一致: {normal.replace(' ', '') == smuggled.replace(' ', '')}")
 
     result = detect_invisible_chars(smuggled)
     print(f"检测到 {result['count']} 个不可见字符")
+    for detail in result["details"]:
+        print(f"  位置 {detail['position']}: {detail['codepoint']} {detail['name']}")
 
     normalized = normalize_text(smuggled)
     print(f"规范化后字符数: {len(normalized)}")
+    print(f"规范化后与原文一致: {normalized == normal}")
+
+    assert result["count"] == 1
+    assert result["details"][0]["codepoint"] == "U+200B"
+    assert normalized == normal
+    print("OK")

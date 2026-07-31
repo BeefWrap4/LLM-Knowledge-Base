@@ -1,6 +1,6 @@
 # ---
 # chapter: 1
-# topic: Python 3.14 性能层面改进
+# topic: Python 3.14 运行时与标准库变化
 # section: 1.1.3
 # difficulty: ⭐⭐
 # tier: core
@@ -11,26 +11,24 @@
 # ---
 # See: ../tutorial/01_Python编程基础.md (lines 121-136)
 # Interview hooks:
-#   1. Python 3.14 在 f-string 解析上做了哪些优化?
-#   2. 什么是 comptime 编译期求值?
-#   3. __attribute__((noinline)) 在 CPython 中的作用?
+#   1. Python 3.14 的 JIT 为什么必须结合构建方式讨论?
+#   2. PEP 750 的模板字符串解决什么问题?
+#   3. 为什么不能承诺跨工作负载的固定性能提升?
 """
-🆕 Python 3.14 性能层面的改进
+Python 3.14 运行时与标准库变化
 """
 
-# 1. f-string 解析优化：PEP 701 引入的语法在 3.14 中进一步提速
-#    f"Hello {name}!" 的解析效率在嵌套场景下提升明显
+# 1. PEP 750 模板字符串为库提供结构化的插值输入。
+#    普通 f-string 仍按原有语义生成字符串。
 name = "World"
 result = f"Hello {name}!"
 print(f"f-string 测试: {result}")
 
-# 2. __attribute__((noinline)) 等编译器提示优化 CPython 性能
+# 2. 实验性 JIT 与 tail-call interpreter 依赖特定 CPython 构建。
 
-# 3. 字典和列表的内部实现微优化，减少内存碎片
+# 3. 标准库加入 interpreters 与 Zstandard 支持。
 
-# 4. comptime（编译期求值）— 实验性功能
-#    允许在编译时计算常量表达式，减少运行时开销
-#    from __future__ import comptime  # 可能的使用方式（待定）
+# Python 3.14 没有 `from __future__ import comptime`。
 
 if __name__ == "__main__":
     print("OK")

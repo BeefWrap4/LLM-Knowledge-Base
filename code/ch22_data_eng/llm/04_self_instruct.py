@@ -87,6 +87,7 @@ def mock_llm_call(prompt: str) -> str:
 def main():
     new_instructions = generate_instructions(SEED_INSTRUCTIONS, mock_llm_call)
     print("生成的指令:", json.dumps(new_instructions, ensure_ascii=False, indent=2))
+    print("OK")
 
 
 if __name__ == "__main__":

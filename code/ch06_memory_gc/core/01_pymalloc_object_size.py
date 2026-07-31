@@ -25,13 +25,16 @@ def main() -> None:
     print("[1,2,3]   :", sys.getsizeof([1, 2, 3]), "bytes")
     print("{'a':1}   :", sys.getsizeof({"a": 1}), "bytes")
 
-    # pymalloc 仅在 CPython 实现中存在, sys._pymem_in_use 是 3.13+ 的 API,
-    # 在更早版本上不暴露时直接跳过即可.
-    pymem = getattr(sys, "_pymem_in_use", None)
-    if callable(pymem):
-        print("pymalloc in use:", pymem())
-    else:
-        print("当前 Python 版本未暴露 sys._pymem_in_use (需要 3.13+)")
+    # Python 没有公开的 sys._pymem_in_use()。使用 tracemalloc 查看
+    # Python 分配器可追踪的分配；数字依平台、构建和运行时状态而异。
+    import tracemalloc
+
+    tracemalloc.start()
+    sample = [bytearray(64) for _ in range(100)]
+    current, peak = tracemalloc.get_traced_memory()
+    print(f"tracemalloc current={current} bytes, peak={peak} bytes")
+    assert len(sample) == 100
+    tracemalloc.stop()
 
 
 if __name__ == "__main__":

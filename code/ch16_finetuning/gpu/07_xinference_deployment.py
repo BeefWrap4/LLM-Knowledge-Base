@@ -36,6 +36,7 @@ if str(_code_root) not in sys.path:
 import httpx
 
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import skip_if_mock
 
 XINFERENCE_HOST = "http://localhost:9997"
 
@@ -55,6 +56,8 @@ def check_xinference_running() -> None:
 
 
 def main():
+    if skip_if_mock("运行中的 Xinference 服务和已部署模型"):
+        return
     check_xinference_running()
 
     print("=== Xinference 部署演示 (真实 REST API) ===\n")

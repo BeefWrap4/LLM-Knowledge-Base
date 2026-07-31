@@ -16,13 +16,15 @@
 """
 Haystack 2.x 实战：context-engineered RAG pipeline - 离线 mock 结构
 """
+import os
+
 # 真实环境:
 # from haystack import Pipeline, component, Document
 # from haystack.components.builders import ChatPromptBuilder
 # from haystack.components.generators.chat import OpenAIChatGenerator
 # from haystack.components.retrievers import InMemoryBM25Retriever
 # from haystack.document_stores.in_memory import InMemoryDocumentStore
-# from hayhooks import deploy
+# 生产部署使用 Hayhooks CLI + BasePipelineWrapper，不存在一行式 Python 部署快捷函数
 
 
 # ===== 1. 自定义 rerank 组件 =====
@@ -62,7 +64,7 @@ pipeline_components = {
     },
     "llm": {
         "type": "OpenAIChatGenerator",
-        "model": "gpt-4o",
+        "model": os.environ.get("OPENAI_MODEL", "gpt-5.6"),
     },
 }
 
@@ -88,7 +90,8 @@ print("输入: 3 篇文档（30/100/3000 字符）")
 print(f"输出: {len(result['documents'])} 篇文档（保留 50-2000 字符）")
 
 print("\n=== Hayhooks 部署（生产）===")
-print("deploy(pipe, name='my_rag', mcp_server=True)  # 暴露为 MCP 工具")
+print("hayhooks pipeline deploy-files -n my_rag ./my_rag")
+print("hayhooks mcp run  # 将已部署且带 PipelineWrapper 的 pipeline 暴露为 MCP 工具")
 
 if __name__ == "__main__":
     print("OK")

@@ -4,16 +4,20 @@ topic: 推理模型与Test-Time Compute
 difficulty: 极高
 interview_frequency: 5
 created: 2026-06-06T00:00:00.000Z
-tags: [推理模型, Test-Time Compute, o3, DeepSeek-R1, GRPO, PRM, s1, 推理时计算, 面试必考]
+tags: [推理模型, Test-Time Compute, GPT-5.6 Sol, Claude Fable 5, o3, DeepSeek-R1, GRPO, PRM, s1, 推理时计算, 面试必考]
 ---
 
 # 第 27 章 推理模型与 Test-Time Compute ⭐⭐⭐⭐⭐
 
 > **面试频率**：极高（2026年最热门方向）| **难度**：⭐⭐⭐⭐⭐ | **核心范式**：Scaling 在推理阶段
 >
-> **🆕 2026年新主题**：Test-Time Compute (TTC) 成为继预训练 Scaling Law 之后的第二增长曲线。代表：OpenAI o3/o4, DeepSeek-R1, Claude 4.5/4.6 Extended Thinking, Gemini 2.5 Deep Think。
+> **时效基线（2026-07-31）**：当前托管 API 示例采用 OpenAI GPT-5.6 Sol + Responses API，以及
+> Anthropic Claude Fable 5 + always-on adaptive thinking。o3/o4、Claude 4.5 的手动 Extended
+> Thinking 保留为历史演进，不再作为当前默认接口。
 
-推理模型 (Reasoning Model) 是 2025-2026 年大模型最重要的范式转变。核心思想：让模型在推理阶段"思考更久"来获得更高质量答案，与"训练阶段参数更大"形成互补。OpenAI o3、DeepSeek-R1、Claude 4.5 Extended Thinking 引领了这一浪潮。
+推理模型 (Reasoning Model) 的核心思想，是在推理阶段按任务分配额外计算，与训练阶段扩展参数、
+数据和算力形成互补。2024-2025 年的 o 系列、DeepSeek-R1 与早期 Extended Thinking 推动了范式形成；
+2026 年的托管接口进一步转向统一 Responses API、自适应推理和 effort 级别控制。
 
 ---
 
@@ -27,60 +31,74 @@ graph TB
     end
 ```
 
-**核心洞察** (OpenAI o1 论文 2024.09): 让模型在输出答案前生成大量内部思维链，复杂任务准确率提升 3-5×。
+**核心洞察**：推理时可以通过更长推理、采样/验证或搜索增加计算预算，但收益取决于任务难度、
+基础模型、采样策略和 verifier；不能把某个基准上的提升外推为通用倍数。
 
 ### 27.1.1 Reasoning vs Standard LLM
 
 | 维度 | Standard LLM | Reasoning Model |
 |------|-------------|----------------|
-| 输出 | 直接答案 | 长思维链 + 答案 |
-| 延迟 | 1-5s/查询 | 30s-5min/查询 |
+| 输出 | 直接答案 | 内部推理 + 最终答案；是否返回摘要由 API 决定 |
+| 延迟 | 通常较低，按模型与负载实测 | 通常更高，按预算、模型与负载实测 |
 | 适用 | 简单 QA / 对话 | 数学/代码/逻辑 |
-| 成本 | 低 | 高 (Token ×3-10) |
+| 成本 | 通常较低 | 通常更高，按实际 token/请求计费 |
 | 训练 | SFT | SFT + RL with verifier |
 
-### 27.1.2 2026 主流推理模型
+### 27.1.2 当前接口与历史节点
 
-| 模型 | 提供方 | 特点 |
-|------|--------|------|
-| **o3 / o4-mini** | OpenAI | reasoning_effort 参数 |
-| **DeepSeek-R1** | DeepSeek | GRPO + 开源 |
-| **Claude Opus 4.6** | Anthropic | Extended Thinking 4 档可调 |
-| **Gemini 2.5 Deep Think** | Google | 思维预算可调 |
-| **QwQ-32B** | 阿里 | 开源推理模型 |
-| **Kimi K2** | 月之暗面 | 思考+搜索融合 |
+| 定位 | 模型 / 系列 | 2026-07-31 接口要点 |
+|------|-------------|----------------------|
+| **当前推荐** | OpenAI GPT-5.6 Sol | Responses API；`reasoning={"effort": ...}` |
+| **当前推荐** | Anthropic Claude Fable 5 | Claude API 已 GA；adaptive thinking 始终开启；`output_config.effort` 控制深度 |
+| **当前可用** | DeepSeek-R1 系列 | 开放权重/托管版本需分别核验模型卡、许可证和 API |
+| **历史节点** | OpenAI o3 / o4-mini | 早期 reasoning effort 接口；不作为本章当前默认 |
+| **历史节点** | Claude 4.5 手动 Extended Thinking | `budget_tokens` 属旧式接口；Fable 5 不支持 |
 
 ---
 
 ## 27.2 Reasoning Effort API
 
 ```python
-import openai
+from openai import OpenAI
+from anthropic import Anthropic
 
-# OpenAI o3 API
-response = openai.chat.completions.create(
-    model="o3-mini",
-    messages=[{"role": "user", "content": "证明 √2 是无理数"}],
-    reasoning_effort="high",  # low / medium / high
-    max_completion_tokens=10000
+# OpenAI 当前推荐：GPT-5.6 Sol + Responses API
+openai_client = OpenAI()
+openai_response = openai_client.responses.create(
+    model="gpt-5.6-sol",
+    input="证明 √2 是无理数",
+    reasoning={"effort": "high"},
+    max_output_tokens=10_000,
 )
 
-# Claude 4.6 Extended Thinking
-response = anthropic.messages.create(
-    model="claude-opus-4-6",
-    thinking={
-        "type": "enabled",
-        "budget_tokens": 5000
-    },
+# Anthropic 当前接口：Fable 5 的 adaptive thinking 始终开启
+anthropic_client = Anthropic()
+claude_response = anthropic_client.messages.create(
+    model="claude-fable-5",
+    max_tokens=10_000,
+    thinking={"type": "adaptive", "display": "summarized"},
+    output_config={"effort": "high"},
     messages=[{"role": "user", "content": "..."}]
 )
 ```
 
-| 级别 | 思维链长度 | 准确率 | 成本 |
-|------|----------|--------|------|
-| **low** | 100-500 tokens | 基础 | 1× |
-| **medium** | 1K-5K tokens | 中等 | 3× |
-| **high** | 10K-50K tokens | 高 | 10× |
+| 提供方 | 当前 effort 档位 | 默认 / 语义 |
+|--------|-----------------|-------------|
+| OpenAI GPT-5.6 | `none/low/medium/high/xhigh/max` | 默认 `medium`；是行为控制，不是固定 token 数 |
+| Claude Fable 5 | `low/medium/high/xhigh/max` | 默认 `high`；影响整次响应及 adaptive thinking 深度 |
+
+`max_output_tokens` / `max_tokens` 是输出上限，不是对“思考 token”的硬预算。增加 effort 可能提升质量，
+也可能在特定任务上饱和或退化；生产选档必须同时评测任务成功率、总 token、P95/P99 延迟和成本。
+
+Claude Fable 5 不接受旧式 `thinking={"type": "enabled", "budget_tokens": ...}`；它始终启用 adaptive
+thinking。`thinking.display="summarized"` 返回的是可读**摘要**，`"omitted"`（默认）返回空 thinking
+文本但保留签名供多轮连续性使用；两种模式都不返回原始思维链。多轮对话应原样回传 thinking block。
+
+官方依据：
+[OpenAI GPT-5.6 模型指导](https://developers.openai.com/api/docs/guides/latest-model)、
+[GPT-5.6 Sol 模型页](https://developers.openai.com/api/docs/models/gpt-5.6-sol)、
+[Claude Fable 5 接口变化](https://platform.claude.com/docs/en/about-claude/models/introducing-claude-fable-5-and-claude-mythos-5)、
+[Claude effort](https://platform.claude.com/docs/en/build-with-claude/effort)。
 
 ---
 
@@ -105,7 +123,12 @@ Performance = f(模型参数, 训练数据, 推理计算)
             = f(P, D, C_test)
 ```
 
-**Snell et al. 2024** 证明: 在 math 任务上, 推理计算从 1× 提升到 256×, 准确率可从 50% 提升到 90%+ (类似预训练扩展定律)。
+**Snell et al. 2024** 研究了基于过程 verifier 的搜索和自适应调整模型分布两类方法。论文的关键
+发现是：方法效果随题目难度显著变化，按题目自适应分配预算的 compute-optimal 策略，在其设置下
+比 Best-of-N 基线的计算效率高 4 倍以上；在基础模型已有非零成功率的一部分题目上，固定 FLOPs
+比较中，小模型的推理时计算也可能超过更大模型。这是特定模型、MATH 子集、verifier 与预算口径下
+的结果，不能简化为固定采样数对应固定准确率提升的通用定律。来源：
+[Snell et al., 2024](https://arxiv.org/abs/2408.03314)。
 
 ### 27.3.3 s1: Simple Test-Time Scaling (Stanford 2025)
 
@@ -181,7 +204,7 @@ best = answers[argmax(scores)]
 
 ```mermaid
 graph LR
-    R1["强推理模型<br/>(如 o3)"] -->|"生成大量<br/>长 CoT 样本"| D["数据集<br/>(高质量 CoT)"]
+    R1["强推理模型<br/>(如历史 o3)"] -->|"生成大量<br/>长 CoT 样本"| D["数据集<br/>(高质量 CoT)"]
     D -->|"SFT"| S["学生模型<br/>(如 QwQ-32B)"]
 ```
 
@@ -208,7 +231,11 @@ graph TB
 
 ## 27.6.5 本章小结
 
-> **章节小结**：Test-Time Compute (TTC) Scaling 是 2026 年最热的范式转变，让模型在推理时"思考更久"获得更高质量答案。OpenAI o3、DeepSeek-R1、Claude 4.5 Extended Thinking 引领了这一浪潮。核心技术包括：Reasoning Effort (low/medium/high) API、GRPO 去 Critic 化训练、RLVR 用可验证奖励、s1 的 budget forcing、PRM 引导搜索。DeepSeek-R1 蒸馏 (R1-Zero → R1 → 蒸馏到 Qwen) 是 2026 年最成功的训练配方。面试考点：TTC 与预训练 Scaling Law 区别、GRPO 与 PPO 区别、Reasoning Effort 设置、PRM 训练。
+> **章节小结**：Test-Time Compute (TTC) 通过 effort、采样/验证或搜索在推理阶段分配更多计算。
+> o3、DeepSeek-R1 与早期 Extended Thinking 是重要历史节点；截至 2026-07-31，本章托管接口以
+> GPT-5.6 Sol Responses API 和 Claude Fable 5 adaptive thinking 为当前基线。核心训练与推理技术
+> 还包括 GRPO、RLVR、budget forcing 和 PRM 引导搜索。面试回答应区分历史接口、当前接口、
+> 可见摘要与不可见原始推理，并用任务级评测选择 effort。
 
 ---
 
@@ -216,10 +243,10 @@ graph TB
 
 | 挑战 | 原因 | 解决方案 |
 |------|------|---------|
-| **高 token 输出** | 思维链 10-50K | 流式输出、压缩 |
-| **延迟高** | 30s-5min | 异步处理、缓存 |
-| **成本高** | Token 成本 ×10 | 按难度分级、模型路由 |
-| **可解释性** | 思维链质量 | PRM 验证 |
+| **高 token 输出** | 输出随模型与预算增长 | 流式输出、上限、压缩 |
+| **延迟高** | 延迟随模型、预算和负载变化 | 异步处理、缓存、超时与取消 |
+| **成本高** | 更多推理/输出 token，幅度依模型和任务而变 | 按难度分级、模型路由、预算与超时 |
+| **可观测性有限** | 托管 API 通常不返回原始思维链 | 记录结果、工具轨迹、usage 与 verifier；谨慎处理摘要 |
 
 ---
 
@@ -227,7 +254,9 @@ graph TB
 
 ### 🎯 高频题1: 什么是 Test-Time Compute Scaling？和预训练 Scaling Law 区别？
 
-**答案**: 预训练 Scaling Law 关注训练时通过**更大参数/数据/算力**提升能力。Test-Time Compute Scaling 关注**推理时**通过更长思维链/采样/搜索提升能力。两者**正交**：小模型 + 大推理计算可达到大模型 + 小推理计算的效果。
+**答案**: 预训练 Scaling Law 关注训练时通过**更多参数/数据/算力**提升能力。Test-Time Compute
+Scaling 关注**推理时**通过额外内部推理、采样/验证或搜索提升能力。两者可组合，但不能笼统声称
+“小模型 + 大推理计算必然等于大模型”；这种比较只在特定任务、模型、verifier 和固定计算口径下成立。
 
 ### 🎯 高频题2: DeepSeek-R1 的训练流程是什么？
 
@@ -246,21 +275,20 @@ graph TB
 ### 🎯 高频题4: 推理时扩展有哪些方法？效果如何？
 
 **答案**:
-1. **CoT 扩展**: 长思维链 (s1: 4K tokens)
-2. **采样投票**: Self-Consistency (N=64+)
+1. **CoT 扩展**：在明确上限内增加推理预算
+2. **采样投票**：Self-Consistency，多次采样后聚合
 3. **树搜索**: MCTS + PRM (AlphaProof 风格)
 4. **Verifier 引导**: Best-of-N
 
-Snell et al. 2024: 256× 推理计算可在 MATH 上提升 50%→90%。
+Snell et al. 2024 的结论是方法效果依赖题目难度；应比较固定 FLOPs 下的 Best-of-N、搜索与
+自适应分配，报告模型、数据子集、verifier、采样和预算，而不是背一个固定提升数字。
 
 ### 🎯 高频题5: Reasoning Effort 等级如何设置？
 
-**答案**: 大多数 API 提供 low/medium/high 三档：
-- **low**: 100-500 tokens thought，延迟 <2s
-- **medium**: 1K-5K tokens，5-15s
-- **high**: 10K-50K tokens，30s-2min
-
-实际选择: 简单任务 low，数学/代码 high。
+**答案**：先核验所选模型的支持集合，再以任务分层建立质量、成本和 P95/P99 延迟曲线，按 SLO
+选择。GPT-5.6 支持 `none/low/medium/high/xhigh/max`，Fable 5 支持
+`low/medium/high/xhigh/max`；两者的 effort 都不是固定 token 数或固定延迟，增加预算也不保证质量
+单调提升。
 
 ### 🎯 高频题6: 什么是 Process Reward Model (PRM)？如何训练？
 
@@ -271,20 +299,24 @@ Snell et al. 2024: 256× 推理计算可在 MATH 上提升 50%→90%。
 
 代表数据: PRM800K, Math-Shepherd。
 
-### 🎯 高频题7: Claude Extended Thinking 与 OpenAI o3 的区别？
+### 🎯 高频题7: Claude Fable 5 与 OpenAI GPT-5.6 的当前推理接口有何区别？
 
 **答案**:
-- **o3**: reasoning_effort 参数；可隐藏或显示思维链
-- **Claude 4.6**: budget_tokens 参数；Extended Thinking 必显式
-- 关键区别: 两者都支持可调算力，但**Anthropic 的 Interleaved Thinking** 支持工具调用中保持推理状态
+- **OpenAI GPT-5.6**：推荐 Responses API，以 `reasoning={"effort": ...}` 控制推理强度；
+  应消费最终文本、usage 和需要的 reasoning summary，而不是假设能读取原始思维链。
+- **Claude Fable 5**：adaptive thinking 始终开启，以 `output_config={"effort": ...}` 控制深度；
+  `thinking.display` 只能选择 summarized 或 omitted，原始思维链从不返回。
+- **历史边界**：o3/o3-mini 与 Claude 4.5 的 `budget_tokens` 可作为演进背景，但不得写成 2026 当前默认。
+- **工具调用**：Fable 5 的 adaptive thinking 自动支持 interleaved thinking；多轮和工具循环中必须
+  原样回传 thinking block，不能自行改写摘要或签名。
 
 ### 🎯 高频题8: 推理模型的未来发展方向？
 
 **答案**:
 1. **自适应推理**: 根据问题难度自动分配算力
 2. **Verifier 增强**: 更强的 PRM
-3. **多模态推理**: 视觉推理 (o3 支持图像)
-4. **长链推理**: 1M+ tokens 思维链
+3. **多模态推理**: 视觉推理（GPT-5.6 支持图像输入）
+4. **长链推理**：在上下文、成本和超时边界内延长或压缩推理
 5. **推理蒸馏**: 小模型学会大模型推理
 
 ---
@@ -293,8 +325,8 @@ Snell et al. 2024: 256× 推理计算可在 MATH 上提升 50%→90%。
 
 | 概念 | 关键点 |
 |------|--------|
-| **Test-Time Compute** | 推理时计算越多，准确率越高 |
-| **Reasoning Effort** | low/medium/high 三档 |
+| **Test-Time Compute** | 增加预算可能提升、饱和或退化，必须按难度分桶评测 |
+| **Reasoning Effort** | 档位因模型而异；GPT-5.6 与 Fable 5 均不是固定 token 预算 |
 | **GRPO** | 去 Critic，组内相对优势 |
 | **RLVR** | Verifiable Rewards (数学/代码) |
 | **PRM** | 逐步奖励，训练 step-level 打分 |
@@ -302,14 +334,16 @@ Snell et al. 2024: 256× 推理计算可在 MATH 上提升 50%→90%。
 | **s1 / s1.1** | 简单 TTC scaling，budget forcing |
 | **R1-Zero → R1** | 纯 RL → SFT+RL |
 | **R1 蒸馏** | 800K CoT 数据到小模型 |
-| **CoT 思维链** | 10-50K tokens 内部推理 |
-| **配套代码（W6 真实化）** | 14 个 .py 真跑；`01` OpenAI o3 真 API（需 `OPENAI_API_KEY`）；`03` Claude 真 API（需 `ANTHROPIC_API_KEY`）；`04` DeepSeek-R1 真 API（需 `DEEPSEEK_API_KEY`）；`05/06/09/14` 纯 PyTorch 算法（CPU 跑）；`07/08` S1 budget forcing 真 R1 调用；`10/11/12/13` 纯算法/采样策略；无 GPU 需求。 |
+| **CoT 思维链** | 长度由模型、任务、预算与服务上限共同决定 |
+| **配套代码** | 14 个 `.py`；`01/02` GPT-5.6 Responses，`03` Fable 5，`04/07/08` DeepSeek，其他为本地算法。API 脚本默认 mock；真实调用必须显式 `LLM_MOCK=0` + 对应 key。 |
 
 ---
 
-## 27.10 配套代码真实化（Wave 6 完成）⭐⭐⭐⭐⭐
+## 27.10 配套代码与安全运行边界 ⭐⭐⭐⭐⭐
 
-> 本章在 W6 期间对 **14 个 `.py` 文件** 全部接入真实推理模型 API：OpenAI o3、Anthropic Claude 4.6 Extended Thinking、DeepSeek-R1。所有 API Key 通过环境变量读取，缺 Key 时 `raise_with_help` 友好抛错而非静默 mock。
+> 本章共 **14 个 `.py` 文件**。`01/02/03/04/07/08` 提供托管 API 路径，其余是本地算法演示。
+> 为避免误产生网络请求和费用，`01/02/03` 默认 `LLM_MOCK=1`；只有显式设置 `LLM_MOCK=0`
+> 并提供对应 key 才调用真实 API。文件名中的 `o3` 为兼容旧链接保留，代码默认已迁移到 GPT-5.6 Sol。
 
 ### 27.10.1 Test-Time Compute Scaling 阶梯（核心概念图）
 
@@ -320,56 +354,65 @@ graph LR
     L2 -->|+| L3["L3<br/>Best-of-N<br/>PRM/ORM 选最优"]
     L3 -->|+| L4["L4<br/>MCTS + PRM<br/>树搜索 + 验证器"]
     L4 -->|+| L5["L5<br/>Budget Forcing<br/>s1 Wait/截断"]
-    L5 -->|+| L6["L6<br/>Reasoning Effort<br/>o3/R1 high"]
-    L0 -.->|"accuracy 50%"| A1["AIME 准确率"]
-    L3 -.->|"~70%"| A1
-    L6 -.->|"~85%+"| A1
+    L5 -->|+| L6["L6<br/>Reasoning Effort<br/>GPT-5.6/R1 high"]
+    L0 -.->|"测量"| A1["目标集准确率"]
+    L3 -.->|"测量"| A1
+    L6 -.->|"测量"| A1
     style L0 fill:#fee
     style L6 fill:#efe
     style L2 fill:#ffd
     style L4 fill:#dff
 ```
 
-> 横轴是"推理时计算量"，纵轴是"准确率"。从 L0 到 L6，每升一级准确率提升 5-15 个百分点，但成本与延迟同步上升 2-10×。`ch27/14_ttc_scaling_law.py` 给出 Snell 2024 提出的数学形式：`acc(compute) ≈ a * (1 - exp(-b * compute))`。
+> 横轴是推理时计算量，纵轴是目标集准确率。层级增加不保证准确率单调提高，应同时画成本、
+> 延迟和方差，并按题目难度分桶。`ch27/14_ttc_scaling_law.py` 仅演示如何画一条假设的饱和曲线，
+> 不是 Snell 2024 给出的通用拟合公式，也不能替代真实 benchmark。
 
-### 27.10.2 文件 × 真实化状态速查表
+### 27.10.2 文件 × 验收边界速查表
 
-| # | 文件 | 真实化 | 主题 | 依赖 / 关键 API | 跑通时间 |
-|---|------|------|------|---------------|---------|
-| 01 | `o3_api_basic.py` | ✅ 真 OpenAI | o3 `reasoning_effort` 三档 | `OPENAI_API_KEY` | <60s |
-| 02 | `o3_streaming.py` | ✅ 真 OpenAI | o3 流式输出 | `OPENAI_API_KEY` | <90s |
-| 03 | `claude_extended_thinking.py` | ✅ 真 Anthropic | Claude Extended Thinking + Interleaved | `ANTHROPIC_API_KEY` | <60s |
-| 04 | `reasoning_effort_ladder.py` | ✅ 真 DeepSeek | R1 reasoning_effort + reasoning_content | `DEEPSEEK_API_KEY` | <90s |
-| 05 | `grpo_loss.py` | ✅ 纯 PyTorch | GRPO loss 公式 + 反向传播 | torch | <3s |
-| 06 | `grpo_advantage.py` | ✅ 纯 PyTorch | 组内相对优势 + G=1/16 对比 | torch | <2s |
-| 07 | `s1_budget_forcing.py` | ✅ 真 DeepSeek | s1 Wait token 强制续推 | `DEEPSEEK_API_KEY` | <120s |
-| 08 | `s1_wait_token.py` | ✅ 真 DeepSeek | "Wait" token 触发的训练时分布偏移 | `DEEPSEEK_API_KEY` | <90s |
-| 09 | `prm_step_scoring.py` | ✅ 纯 PyTorch | PRM 5 步评分 | torch | <2s |
-| 10 | `rlvr_rewards.py` | ✅ 纯算法 | RLVR reward 正则/数学/代码 | 无 | <1s |
-| 11 | `mcts_prm.py` | ✅ 纯算法 | MCTS + PRM 树搜索 | numpy | <2s |
-| 12 | `best_of_n.py` | ✅ 纯算法 | BoN 采样 + PRM 选择 | numpy | <2s |
-| 13 | `self_consistency.py` | ✅ 纯算法 | Self-Consistency 投票 | numpy | <2s |
-| 14 | `ttc_scaling_law.py` | ✅ 纯 numpy | Snell 2024 TTC scaling | numpy | <1s |
+| # | 文件 | 默认路径 | 主题 | 真实路径条件 |
+|---|------|------|------|---------------|
+| 01 | `o3_api_basic.py` | 离线 mock | GPT-5.6 Sol Responses `reasoning.effort` | `LLM_MOCK=0` + `OPENAI_API_KEY` |
+| 02 | `o3_streaming.py` | 离线 mock | GPT-5.6 Sol `response.output_text.delta` | `LLM_MOCK=0` + `OPENAI_API_KEY` |
+| 03 | `claude_extended_thinking.py` | 离线 mock | Fable 5 adaptive + summarized thinking | `LLM_MOCK=0` + `ANTHROPIC_API_KEY` |
+| 04 | `reasoning_effort_ladder.py` | 离线结构演示 | DeepSeek V4 high/max + `reasoning_content` | `LLM_MOCK=0` + `DEEPSEEK_API_KEY` |
+| 05 | `grpo_loss.py` | 本地 PyTorch | GRPO loss 公式 + 反向传播 | 安装 torch |
+| 06 | `grpo_advantage.py` | 本地 PyTorch | 组内相对优势与组大小边界 | 安装 torch |
+| 07 | `s1_budget_forcing.py` | 离线结构演示 | 托管 API 多轮复核；非严格 s1 复现 | `LLM_MOCK=0` + `DEEPSEEK_API_KEY` |
+| 08 | `s1_wait_token.py` | 离线结构演示 | follow-up 与 token 级 Wait 的差异 | `LLM_MOCK=0` + `DEEPSEEK_API_KEY` |
+| 09 | `prm_step_scoring.py` | 本地 PyTorch | PRM 分步评分 | 安装 torch |
+| 10 | `rlvr_rewards.py` | 本地算法 | RLVR 可验证 reward | 无外部 API |
+| 11 | `mcts_prm.py` | 本地算法 | MCTS + PRM 树搜索 | 安装 numpy |
+| 12 | `best_of_n.py` | 本地算法 | BoN 采样 + PRM 选择 | 安装 numpy |
+| 13 | `self_consistency.py` | 本地算法 | Self-Consistency 投票 | 安装 numpy |
+| 14 | `ttc_scaling_law.py` | 合成曲线 | 如何绘制假设的饱和曲线 | 安装 numpy；不代表论文拟合 |
 
-### 27.10.3 一键真跑（按 API Key 分档）
+### 27.10.3 离线验收与显式真跑
 
 ```bash
 cd code/
 
-# === 仅需 DEEPSEEK_API_KEY（推荐入门） ===
+# === 默认安全离线模式：不需要 key，不发网络请求 ===
+python ch27_reasoning_ttc/llm/01_o3_api_basic.py
+python ch27_reasoning_ttc/llm/02_o3_streaming.py
+python ch27_reasoning_ttc/llm/03_claude_extended_thinking.py
+
+# === OpenAI GPT-5.6 Sol 真实调用 ===
+LLM_MOCK=0 OPENAI_API_KEY=sk-xxx \
+  python ch27_reasoning_ttc/llm/01_o3_api_basic.py
+LLM_MOCK=0 OPENAI_API_KEY=sk-xxx \
+  python ch27_reasoning_ttc/llm/02_o3_streaming.py
+
+# === Anthropic Claude Fable 5 真实调用 ===
+LLM_MOCK=0 ANTHROPIC_API_KEY=sk-ant-xxx \
+  python ch27_reasoning_ttc/llm/03_claude_extended_thinking.py
+
+# === DeepSeek V4 条件性真实调用 ===
+export LLM_MOCK=0
 export DEEPSEEK_API_KEY=sk-xxx
 python ch27_reasoning_ttc/llm/04_reasoning_effort_ladder.py   # R1 reasoning_content
 python ch27_reasoning_ttc/llm/07_s1_budget_forcing.py          # S1 Wait/截断
 python ch27_reasoning_ttc/llm/08_s1_wait_token.py              # Wait 分布偏移
-
-# === OpenAI o3 ===
-export OPENAI_API_KEY=sk-xxx
-python ch27_reasoning_ttc/llm/01_o3_api_basic.py               # reasoning_effort 三档
-python ch27_reasoning_ttc/llm/02_o3_streaming.py               # 流式输出
-
-# === Anthropic Claude 4.6 Extended Thinking ===
-export ANTHROPIC_API_KEY=sk-ant-xxx
-python ch27_reasoning_ttc/llm/03_claude_extended_thinking.py    # thinking blocks
 
 # === 纯算法 / 纯 PyTorch（任何机器） ===
 python ch27_reasoning_ttc/llm/05_grpo_loss.py
@@ -378,18 +421,24 @@ python ch27_reasoning_ttc/llm/10_rlvr_rewards.py
 python ch27_reasoning_ttc/llm/14_ttc_scaling_law.py
 ```
 
-### 27.10.4 真实化前后对比
+PowerShell 可先设置 `$env:LLM_MOCK="0"` 与对应 key，再运行相同 Python 命令。真实 API 会产生费用，
+也可能因账号权限、区域、限流或模型访问状态失败；离线通过不等于真实 API 已验收。
 
-| 维度 | W5 之前 | W6 之后 |
-|------|---------|---------|
-| o3 调用 | 伪代码 + "TODO" | 真实 OpenAI SDK + reasoning_effort 三档对比 |
-| Claude Extended Thinking | 仅文档 | 真实 `<thinking>` 块解析 + tool_use 集成 |
-| DeepSeek R1 | 文字描述 | reasoning_content 与 final content 分离解析 |
-| S1 budget forcing | 概念描述 | 真实 "Wait" token 注入 + 强制截断 marker |
-| GRPO | 文字公式 | 真实 loss 反向 + advantage 标准化（CPU 跑） |
-| 失败行为 | 静默回退 mock | `raise_with_help` 指向 §QUICKSTART（无静默回退） |
+### 27.10.4 2026-07-31 接口迁移边界
 
-> **本地模型替代**：若不想配 API Key，可用 Ollama 启动 DeepSeek-R1-Distill-Qwen-1.5B（`ollama pull deepseek-r1:1.5b`），修改 `shared/llm_client.py` 的 base_url 即可。`models/Qwen2.5-0.5B-Instruct/` 已预置但非推理模型，仅作 fallback。
+| 旧写法 / 历史节点 | 当前写法 |
+|-------------------|----------|
+| o3-mini + Chat Completions `reasoning_effort=` | GPT-5.6 Sol + Responses `reasoning={"effort": ...}` |
+| Claude 4.5 `type="enabled"` + `budget_tokens` | Fable 5 `type="adaptive"` + `output_config.effort` |
+| 把 thinking block 称为原始思维链 | 明确 summarized 是摘要、omitted 是空文本；原始思维链不返回 |
+| 直接运行即发真实请求 | 默认 mock；仅 `LLM_MOCK=0` + key 进入真实调用 |
+
+生产迁移时应先在代表性任务上做回归评测，再按模型可用性、质量、总 token、延迟和成本决定是否升级；
+不要仅替换 model slug 后就宣称完成。
+
+> **本地模型替代**：可在核对 Ollama 模型标签、许可证、磁盘与内存后运行兼容的蒸馏模型。
+> 不要直接修改共享客户端来“伪装”提供商；应新增可配置 provider/base URL 并做协议兼容测试。
+> 工作区中的 Qwen2.5-0.5B-Instruct 不是推理模型，也不能替代上述真实 API 验收。
 
 ---
 
@@ -398,5 +447,5 @@ python ch27_reasoning_ttc/llm/14_ttc_scaling_law.py
 - [[12_Transformer与大模型原理]] — 模型架构基础：推理模型仍基于 Transformer 架构，Self-Attention 与 KV Cache 是长思维链推理的底层支撑。
 - [[15_Agent智能体开发]] — Agent 与推理融合：ReAct/Reflexion 等 Agent 范式将推理模型作为决策大脑，实现多步工具调用推理。
 - [[16_模型微调与推理优化]] — 训练技术详解：GRPO、RLVR、SFT 蒸馏等推理模型训练方法属于微调与对齐工程范畴。
-- [[17_大模型评估体系]] — 推理能力评估：AIME/MATH/HumanEval 等基准用于衡量推理模型在不同 reasoning_effort 下的准确率。
+- [[17_大模型评估体系]] — 推理能力评估：AIME/MATH/HumanEval 等基准用于衡量推理模型在不同 effort 配置下的准确率。
 - [[25_推理引擎与高性能服务]] — 部署关键：vLLM/SGLang/TensorRT-LLM 对长 CoT 输出做 KV Cache 复用、连续批处理与 speculative decoding 优化。

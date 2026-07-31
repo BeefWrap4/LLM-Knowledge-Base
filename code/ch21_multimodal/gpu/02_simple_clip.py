@@ -4,6 +4,7 @@
 # section: 21.2.4 简化版 CLIP 训练 - 双塔 + InfoNCE Loss
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: torch
 # run: python 02_simple_clip.py
 # expected_runtime: <5s
@@ -15,15 +16,6 @@
 #   2. 为什么温度参数 τ 需要可学习？
 #   3. 对比学习为什么需要大 batch size？
 
-
-# === Multi-GPU / heavy model guard (auto-added) ===
-import os as _os
-import sys as _sys
-
-_NGPU = _os.environ.get("WORLD_SIZE", "1")
-if _NGPU == "1" and not _os.environ.get("FORCE_GPU_RUN"):
-    print("[SKIP] {__file__}: 需多卡 (WORLD_SIZE>1) 或真实模型权重, 用 torchrun 或设置 FORCE_GPU_RUN=1")
-    _sys.exit(0)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

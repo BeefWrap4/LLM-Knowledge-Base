@@ -1,6 +1,6 @@
 # ---
 # chapter: 29
-# topic: Context Rot 现象演示 — 信息在长 context 中后段被"忽略"
+# topic: Lost in the Middle — U 型位置偏差的合成教学示意
 # section: 29.3.2
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
@@ -10,76 +10,75 @@
 # ---
 #
 # See: ../tutorial/29_Context_Engineering.md §29.3.2
-# Cross-refs:
-#   - Ch12 Transformer (注意力衰减机制)
-#   - Ch14 RAG (为何需要检索而非堆 context)
+# Evidence:
+#   - Lost in the Middle (TACL 2024): https://aclanthology.org/2024.tacl-1.9/
+#   - Chroma Context Rot (2025): https://www.trychroma.com/research/context-rot
 #
-# Interview hooks:
-#   - "200K context 是否真的能用?" →  有效长度远小于标称, 中后段质量显著下降
-#   - "Context Rot 是什么?"        →  即使模型支持 200K, 实际对中后段关注度仍下降
-#   - "如何缓解?"                  →  检索/压缩/Sub-Agent 隔离 context
+# Important:
+#   本文件不会调用模型，也不会生成实验数据。曲线仅用于解释部分长上下文评测中
+#   出现过的 U 型位置偏差；它不代表任何具体模型、上下文长度或准确率。
 
 from __future__ import annotations
 
-import random
+from dataclasses import dataclass
 
 
-# 模拟"事实召回"任务: 把 N 个事实塞进 context, 末尾提问其中一个
-class RotSimulator:
-    def __init__(self, seed: int = 42):
-        self.rng = random.Random(seed)
+@dataclass(frozen=True)
+class SyntheticPoint:
+    """合成教学曲线上的一个点；score 是无量纲示意值，不是召回率。"""
 
-    def make_facts(self, n: int) -> list[str]:
-        return [f"Fact#{i:04d}: variable_{i} = {self.rng.randint(1, 1000)}" for i in range(n)]
+    position_fraction: float
+    score: float
 
-    def attention_weight(self, position: int, total: int) -> float:
-        """模拟模型对 context 中第 position 个 token 的"关注度"。
-        - 头部 (前 10%): 1.0
-        - 中段 (10%-60%): 线性下降到 ~0.7
-        - 尾部 (60%-100%): 进一步下降到 ~0.4
-        """
-        pct = position / total
-        if pct < 0.10:
-            return 1.0
-        if pct < 0.60:
-            return 1.0 - (pct - 0.10) / 0.50 * 0.30
-        return 0.70 - (pct - 0.60) / 0.40 * 0.30
 
-    def recall_probability(self, position: int, total: int, baseline: float = 0.95) -> float:
-        """位置越靠后, 被正确召回的概率越低。"""
-        w = self.attention_weight(position, total)
-        return baseline * w + 0.05
+def synthetic_position_score(position_fraction: float) -> float:
+    """返回对称 U 型示意值。
 
-    def run_experiment(self, total_facts: int, trials: int = 200) -> dict:
-        facts = self.make_facts(total_facts)
-        # 抽样 4 个位置: 头部 5%, 25%, 75%, 95%
-        positions = [int(total_facts * p) for p in [0.05, 0.25, 0.75, 0.95]]
-        results = {}
-        for p in positions:
-            hits = 0
-            for _ in range(trials):
-                p_eff = self.recall_probability(p, total_facts)
-                if self.rng.random() < p_eff:
-                    hits += 1
-            results[p] = hits / trials
-        return results
+    公式和参数是人为选择的，只表达“边缘高、中间低”的形状，不拟合任何模型。
+    """
+
+    if not 0.0 <= position_fraction <= 1.0:
+        raise ValueError("position_fraction 必须在 [0, 1] 内")
+    distance_from_middle = abs(2.0 * position_fraction - 1.0)
+    return 0.45 + 0.50 * distance_from_middle**1.5
+
+
+def build_synthetic_curve() -> list[SyntheticPoint]:
+    """生成固定位置上的合成曲线，便于离线教学与回归测试。"""
+
+    positions = (0.05, 0.25, 0.50, 0.75, 0.95)
+    return [
+        SyntheticPoint(position_fraction=position, score=synthetic_position_score(position))
+        for position in positions
+    ]
+
+
+def real_benchmark_checklist() -> tuple[str, ...]:
+    """真实长上下文 benchmark 的最低设计要求。"""
+
+    return (
+        "固定模型 ID/快照、解码参数、系统提示和评测日期",
+        "交叉测试多个输入长度与首/中/尾多个证据位置",
+        "同时覆盖词面匹配、语义匹配、无干扰/多干扰和连贯/打乱文本",
+        "使用足量样本或随机种子，报告准确率、拒答率和置信区间",
+        "保存原始输入输出，并记录实际 token、延迟和费用",
+    )
 
 
 def run_demo() -> None:
-    sim = RotSimulator()
-    print("=== Context Rot 实验: 同一召回任务, 事实位于 context 不同位置 ===\n")
-    print(f"{'context 大小':<14s} | {'5%(头)':>8s} {'25%':>8s} {'75%':>8s} {'95%(尾)':>8s} | 头尾差")
-    print("-" * 60)
-    for n in [500, 2_000, 8_000, 32_000, 128_000]:
-        r = sim.run_experiment(n, trials=300)
-        head, mid, late, tail = (
-            r[int(n * 0.05)],
-            r[int(n * 0.25)],
-            r[int(n * 0.75)],
-            r[int(n * 0.95)],
-        )
-        print(f"{n:>10,d}   | {head:>8.2f} {mid:>8.2f} {late:>8.2f} {tail:>8.2f} | {head - tail:+.2f}")
-    print("\n观察: 头部召回率显著高于尾部, 体现 Context Rot。")
+    print("=== U 型位置偏差：合成教学曲线（不是模型实验） ===")
+    print("警告：下列 score 不是准确率，不代表任何具体模型或 token 长度。\n")
+    print(f"{'证据位置':>10s} | {'合成 score':>12s} | 示意")
+    print("-" * 48)
+    for point in build_synthetic_curve():
+        bar = "█" * round(point.score * 20)
+        print(f"{point.position_fraction:>9.0%} | {point.score:>12.3f} | {bar}")
+
+    print("\n真实 benchmark 最低要求：")
+    for index, item in enumerate(real_benchmark_checklist(), start=1):
+        print(f"  {index}. {item}")
+
+    print("\n结论：是否存在位置偏差、长度退化及其幅度，必须在目标模型和任务上实测。")
 
 
 if __name__ == "__main__":

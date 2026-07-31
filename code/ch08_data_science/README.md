@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch08_data_science/core/01_numpy_array_basics.py
+python ch08_data_science/core/01_ndarray_basics.py
 ```
 
 ## 关联章节

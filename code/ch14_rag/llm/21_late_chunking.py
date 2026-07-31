@@ -51,3 +51,4 @@ if __name__ == "__main__":
     chunks = late_chunking(doc, chunk_size=512, api_key=None)
     if isinstance(chunks, list):
         print(f"Late Chunking 产出 {len(chunks)} 个 chunk 向量, dim={len(chunks[0])}")
+    print("OK")

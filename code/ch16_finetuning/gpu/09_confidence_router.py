@@ -20,8 +20,8 @@
 核心思路:
   1. 让 Qwen2.5-0.5B 给出 prompt 后的 next-token 分布
   2. 取 top-5 logprob, 算平均 → confidence in [0, 1]
-  3. confidence > 0.7 → 直接用; > 0.3 → 中等 (标记 review)
-  4. < 0.3 → 回退到更大模型 (e.g. Qwen2.5-7B-Instruct)
+  3. 用示意阈值演示路由；生产阈值必须在带标签验证集上校准
+  4. 低置信度时回退到更强模型或人工复核
 """
 
 import math
@@ -35,7 +35,7 @@ if str(_code_root) not in sys.path:
 import torch
 
 from shared._error_helper import raise_with_help
-from shared.gpu_guard import require_nvidia_gpu
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock
 
 
 def check_hardware():
@@ -60,6 +60,8 @@ def route_decision(confidence: float) -> str:
 
 
 def main():
+    if skip_if_mock("an NVIDIA GPU, transformers, and local model weights"):
+        return
     check_hardware()
 
     model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")

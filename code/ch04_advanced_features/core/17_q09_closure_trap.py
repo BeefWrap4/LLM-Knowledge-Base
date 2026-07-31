@@ -44,3 +44,4 @@ def make_multipliers_fixed():
 if __name__ == "__main__":
     print("buggy :", [m(2) for m in make_multipliers_buggy()])  # [8, 8, 8, 8, 8]
     print("fixed :", [m(2) for m in make_multipliers_fixed()])  # [0, 2, 4, 6, 8]
+    print("OK")

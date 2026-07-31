@@ -39,3 +39,4 @@ if __name__ == "__main__":
     print(f"输出 shape: {output.shape}")
     print(f"hidden shape: {hidden.shape}")
     print(f"cell shape: {cell.shape}")
+    print("OK")

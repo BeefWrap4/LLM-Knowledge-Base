@@ -1,6 +1,6 @@
 # ---
 # chapter: 1
-# topic: Python 3.14 REPL 新特性
+# topic: Python 3.13+ 新 REPL
 # section: 1.1.3
 # difficulty: ⭐⭐
 # tier: core
@@ -11,11 +11,11 @@
 # ---
 # See: ../tutorial/01_Python编程基础.md (lines 89-109)
 # Interview hooks:
-#   1. Python 3.14 REPL 相比 3.13 有哪些改进?
+#   1. Python 3.13 新 REPL 带来了哪些改进?
 #   2. 什么是 bracketed paste 模式?
 #   3. 多行编辑中 Alt+Enter 和 Esc+Enter 的区别?
 """
-🆕 Python 3.14 REPL 新特性（无需任何第三方库）
+Python 3.13+ 新 REPL 特性（无需任何第三方库）
 """
 
 # 1. 默认语法高亮 — 关键字、字符串、注释等自动着色
@@ -34,7 +34,7 @@
 
 # 5. 帮助文档直接显示 — help() 输出支持分页和语法高亮
 
-print("Python 3.14 REPL 特性说明（注释文档）")
+print("Python 3.13+ 新 REPL 特性说明（注释文档）")
 
 if __name__ == "__main__":
     print("OK")

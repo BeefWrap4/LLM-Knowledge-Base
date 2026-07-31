@@ -73,6 +73,7 @@ def main():
         print(f"--- 演化类型: {etype} ---")
         print(result)
         print()
+    print("OK")
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch09_fastapi/core/01_pydantic_model_basics.py
+python ch09_fastapi/core/03_pydantic_validation.py
 ```
 
 ## 关联章节

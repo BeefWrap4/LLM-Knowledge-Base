@@ -36,7 +36,7 @@ if str(_code_root) not in sys.path:
 import torch
 import torch.nn.functional as F
 
-from shared.gpu_guard import require_nvidia_gpu
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock
 
 
 def check_hardware():
@@ -70,6 +70,8 @@ def benchmark(fn, q, k, v, n_warmup=3, n_runs=10):
 
 
 def main():
+    if skip_if_mock("an NVIDIA GPU with a supported PyTorch SDPA backend"):
+        return
     check_hardware()
 
     # 测试配置: batch=2, heads=8, seq=2048, head_dim=64

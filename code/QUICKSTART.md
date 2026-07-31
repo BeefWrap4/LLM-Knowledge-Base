@@ -62,7 +62,8 @@ export ANTHROPIC_API_KEY=sk-ant-...
 make test-llm
 ```
 
-注：llm tier 默认用 `shared.mock_llm` 跑测试（无需真实 API key）。如想跑真实 API：
+注：llm tier 使用显式 `LLM_MOCK=1` 和测试目录中的确定性 stub（无需真实 API key）。
+如想跑真实 API：
 ```bash
 export LIVE_LLM=1
 pytest tests/ -m "llm"
@@ -74,9 +75,13 @@ pytest tests/ -m "llm"
 make install-gpu
 nvidia-smi  # 确认有 GPU
 make test-gpu
+python scripts/run_all_examples.py --tier gpu  # 离线契约检查，条件项显示 SKIP
+python scripts/run_all_examples.py --tier gpu --chapter ch16 --real-gpu  # 真实 NVIDIA 子集
 ```
 
-如果你没 GPU（Mac/笔记本），gpu tier 会输出清晰报错，不影响其他 tier。
+`gpu/` 还包含 Apple MLX、Ollama 和 WebGPU 示例，不能在一台 NVIDIA runner 上真实验收
+全部 76 个。默认 runner 使用 mock/skip 契约，不访问 API、模型或本地服务；只有显式
+`--real-gpu` 才进入真实路径，并建议始终用 `--chapter` 限定到当前机器兼容的子集。
 
 ## 7. 探索章节目录
 

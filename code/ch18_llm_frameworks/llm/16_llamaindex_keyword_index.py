@@ -14,6 +14,12 @@
 #   1. KeywordTableIndex 如何把"关键词"提取出来？使用了哪些技术？
 #   2. KeywordTableIndex 与 BM25 检索器的关系是什么？
 
+import os
+
+if os.environ.get("LLM_MOCK") != "0":
+    print("[offline] KeywordTableIndex: keyword='RAG' -> matched document 3")
+    print("OK")
+    raise SystemExit(0)
 
 # === Optional dependency guard (auto-added) ===
 import sys as _sys

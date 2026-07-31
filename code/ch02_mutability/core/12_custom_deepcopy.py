@@ -20,17 +20,19 @@ deepcopy 的限制与自定义 —— 面试加分项
 """
 
 import copy
+import tempfile
 
 # ─────────────────────────────────────────────────────────────
 # 深拷贝的限制
 # ─────────────────────────────────────────────────────────────
 
-# 1. 不能拷贝文件对象、锁、数据库连接等资源
-try:
-    f = open("test.txt", "w")
-    # copy.deepcopy(f)   # TypeError: cannot pickle '_io.TextIOWrapper' object
-except:
-    pass
+def demonstrate_noncopyable_resource() -> None:
+    """用自动清理的临时文件演示资源句柄不能 deepcopy。"""
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as file_handle:
+        try:
+            copy.deepcopy(file_handle)
+        except TypeError as exc:
+            print(f"文件句柄 deepcopy 失败（符合预期）: {type(exc).__name__}")
 
 # 2. 不能拷贝函数、模块、类型本身
 # copy.deepcopy(lambda x: x)   # 通常可以但结果可能是同一个对象
@@ -81,4 +83,5 @@ print(f"next独立? {node1_copy.next is not node1.next}")  # True
 print(f"cache共享? {node1_copy.shared_cache is node1.shared_cache}")  # True — 故意共享
 
 if __name__ == "__main__":
+    demonstrate_noncopyable_resource()
     print("OK")

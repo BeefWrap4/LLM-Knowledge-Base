@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch26_world_models/gpu/01_genie3_architecture.py
+python ch26_world_models/gpu/01_genie3_world_model.py
 ```
 
 ## 关联章节

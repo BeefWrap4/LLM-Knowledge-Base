@@ -197,7 +197,20 @@ def build_rag_index(
 
 **检索+生成阶段（Retrieval + Generation）**：
 
+下文的简单生成片段保留 Chat Completions，便于聚焦
+`messages → choices` 的 RAG 主链路和采样参数；所有片段复用同一组可配置常量。
+OpenAI 对推理、工具调用和多轮工作流更推荐 Responses API，但迁移时必须同步改用
+`input`、`reasoning={"effort": ...}` 与 `response.output_text`，不能混用两个端点的参数和返回结构。
+
 ```python
+import os
+
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6")
+OPENAI_CHAT_KWARGS = (
+    {"reasoning_effort": "none"} if OPENAI_MODEL.startswith("gpt-5.6") else {}
+)
+
+
 class RAGPipeline:
     """RAG 检索生成 Pipeline - 完整实现"""
     
@@ -244,9 +257,10 @@ class RAGPipeline:
         
         # 调用 LLM
         response = self.llm.chat.completions.create(
-            model="gpt-4",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,  # RAG 需要低 temperature，保证事实性
+            **OPENAI_CHAT_KWARGS,
         )
         
         return response.choices[0].message.content
@@ -672,7 +686,7 @@ def create_ivfpq_index(vectors: np.ndarray, nlist: int = 100, m: int = 16, nbits
 ### 14.5.1 混合搜索（Hybrid Search）⭐⭐⭐⭐⭐
 
 纯向量检索在以下场景表现不佳：
-- **精确匹配需求**：ID、型号、人名、缩写（如"GPT-4"、"iPhone 15"）
+- **精确匹配需求**：ID、型号、人名、缩写（如 `"gpt-5.6"`、`"iPhone 15"`）
 - **罕见词/专业术语**：向量可能无法很好表示低频词
 - **数字/日期**：语义相似但数值不同（如"2023年"和"2024年"向量可能很近）
 
@@ -909,9 +923,10 @@ class AdvancedRAG:
 请给出准确、简洁的回答。"""
         
         response = self.llm.chat.completions.create(
-            model="gpt-4",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
+            **OPENAI_CHAT_KWARGS,
         )
         
         return {
@@ -972,9 +987,10 @@ class HyDERewriter:
         # 生成假想文档
         prompt = REWRITE_TEMPLATE_HYDE.format(query=query)
         response = self.llm.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
+            **OPENAI_CHAT_KWARGS,
         )
         hypothetical_doc = response.choices[0].message.content
         
@@ -1041,9 +1057,10 @@ class GraphRAG:
 格式：[{{"subject": "实体1", "relation": "关系", "object": "实体2"}}, ...]
 """
         response = self.llm.chat.completions.create(
-            model="gpt-4",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
+            **OPENAI_CHAT_KWARGS,
         )
         import json
         return json.loads(response.choices[0].message.content)
@@ -1167,9 +1184,10 @@ class AgenticRAG:
     "tools": ["工具名1", "工具名2"]  // 需要调用的额外工具
 }}"""
         response = self.llm.chat.completions.create(
-            model="gpt-4",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
+            **OPENAI_CHAT_KWARGS,
         )
         import json
         return json.loads(response.choices[0].message.content)
@@ -1213,9 +1231,10 @@ class AgenticRAG:
 如果回答中包含来源中没有的信息（可能是幻觉），输出 "INCONSISTENT: 具体原因"。
 """
         response = self.llm.chat.completions.create(
-            model="gpt-4",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
+            **OPENAI_CHAT_KWARGS,
         )
         result = response.choices[0].message.content
         return "CONSISTENT" in result, result
@@ -1242,9 +1261,10 @@ class AgenticRAG:
 请给出准确、简洁的回答。"""
             
             response = self.llm.chat.completions.create(
-                model="gpt-4",
+                model=OPENAI_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
+                **OPENAI_CHAT_KWARGS,
             )
             answer = response.choices[0].message.content
             
@@ -1458,7 +1478,7 @@ graph TB
         ME --> VS
 
         VS --> F["融合层<br/>跨模态重排序"]
-        F --> G["多模态 LLM<br/>GPT-5.5V / Qwen2.5-VL<br/>生成回答"]
+        F --> G["多模态 LLM<br/>GPT-5.6 Sol / Qwen3-VL<br/>基于证据生成回答"]
     end
 
     style VS fill:#e3f2fd,stroke:#1976d2
@@ -1625,18 +1645,25 @@ top_k_indices = scores[0].topk(3).indices.tolist()
 
 ### 14.9.2 Contextual Retrieval（Anthropic 2024）
 
-Anthropic 2024 年提出的 **Contextual Retrieval** 通过在 Embedding 前**为每个 chunk 注入上下文**，将检索失败率降低 **35%-49%**：
+Anthropic 2024 年提出的 **Contextual Retrieval** 通过在 Embedding 和 BM25 建索引前，
+**为每个 chunk 注入文档级上下文**。在 Anthropic 公布的语料与 top-20 配置中，
+Contextual Embeddings 将检索失败率从 5.7% 降到 3.7%（相对下降 35%），再结合
+Contextual BM25 后降到 2.9%（相对下降 49%）。这是特定实验结果，不是所有知识库的固定提升：
 
 - **传统问题**：chunk "年假 15 天"脱离上下文后，无法判断属于哪个公司、哪种员工
 - **解决方案**：用 LLM 给每个 chunk 生成 50-100 token 的上下文前缀，再合并 Embedding
-- **配合 BM25**：同时给稀疏检索也注入上下文，召回率再提升 5%
-- **代价**：索引阶段需要一次 LLM 调用（约 0.001$/chunk）
+- **配合 BM25**：同一上下文同时用于稠密向量与稀疏索引，是否增益须在自己的 Golden Dataset 上复测
+- **代价**：索引阶段增加 LLM 调用与 token 成本；价格随模型、缓存和文档长度变化，不写固定单价
+
+> 来源：[Anthropic — Introducing Contextual Retrieval](https://www.anthropic.com/engineering/contextual-retrieval)。
 
 ```python
-# Contextual Retrieval 实现（Anthropic 官方推荐写法）
+# Contextual Retrieval 简化实现（生产中需补充缓存、重试与评测）
+import os
 from anthropic import Anthropic
 
 client = Anthropic()
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
 
 
 def add_context_to_chunk(chunk: str, full_document: str) -> str:
@@ -1653,7 +1680,7 @@ def add_context_to_chunk(chunk: str, full_document: str) -> str:
     上下文描述（简洁，不要重复片段内容）："""
 
     response = client.messages.create(
-        model="claude-haiku-4-5",  # 用小模型即可
+        model=ANTHROPIC_MODEL,  # 当前低延迟基线；上线前按质量、延迟与成本评测
         max_tokens=200,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -1750,22 +1777,28 @@ scores = index.retrieve(queries_embeddings=query_embeddings, k=5)
 
 ### 14.9.6 Long-Context RAG vs 传统 RAG 权衡
 
-随着 Gemini 1.5（1M-2M tokens）、Claude 4.6（1M tokens）等长上下文模型成熟，"**把全文档塞进 Prompt**"成为 RAG 的替代方案。
+部分模型已经公布百万级上下文窗口，但**上下文上限只是可接收的 token 数**，不等于模型能在任意位置
+稳定找回全部证据，也不代表每个账号、区域和 API 端点都采用同一限制。模型窗口、长输入计价和端点支持
+应在上线前读取具体模型页；选型仍需用目标语料测引用正确率、答案完整性、P50/P95 延迟和单请求成本。
 
 | 维度 | 传统 RAG | Long-Context RAG |
 |------|---------|-----------------|
-| **检索准确率** | 受限于分块和检索 | 100%（原文完整保留） |
-| **Token 成本** | 低（1K-10K 上下文） | 高（100K-2M 上下文） |
-| **延迟** | 低（向量检索 ms 级） | 高（首 token 5-30s） |
-| **多文档交叉** | 需要重排序融合 | 原生支持 |
+| **证据覆盖** | 受分块、召回与重排影响，可直接评测 recall@k | 全量输入仍可能受位置偏置、注意力稀释和提示结构影响，不能声称 100% |
+| **Token 成本** | 通常只发送 Top-K 证据，但增加索引与检索成本 | 随实际输入长度、缓存命中和模型计价变化 |
+| **延迟** | 增加检索/重排链路；可并行、缓存和预取 | 增加长序列 prefill；实际值受硬件、服务层级、区域与并发影响 |
+| **多文档交叉** | 需要融合并保留文档 ID、页码等证据元数据 | 可直接联合阅读，但跨文档推理质量必须实测 |
 | **可解释性** | 高（可追溯来源） | 中（需引用标注） |
-| **适用规模** | 百万级文档 | 数十个文档（受限于 context window） |
+| **适用边界** | 大规模、频繁更新、需权限过滤或低单次输入预算的语料 | 能在 token/成本预算内完整输入且更新较少的材料 |
 
 **面试回答要点**：
 
-- **小规模（<100 文档）**：Long-Context 更优，避免分块误差
-- **大规模（>10K 文档）**：必须用 RAG，Long-Context 不可行
-- **折中方案**：先用 RAG 召回 Top-20 文档，再喂入 Long-Context 模型精读
+- **材料可完整输入**：把 Long-Context + prompt caching 作为候选基线，用评测决定是否优于 RAG
+- **语料大、更新快或有行级权限**：优先 RAG，以召回、重排和证据过滤控制输入
+- **混合方案**：先用 RAG 召回候选文档，再由长上下文模型精读；Top-K 由覆盖率与成本曲线确定
+
+> 例：[GPT-5.6 Sol 模型页](https://developers.openai.com/api/docs/models/gpt-5.6-sol)与
+> [Gemini 3.6 Flash 模型页](https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash)
+> 都给出各自的输入上限和约束；这些数字不能跨模型、跨端点套用。
 
 ### 14.9.7 MRL（Matryoshka Representation Learning）Embeddings
 
@@ -1827,21 +1860,22 @@ graph TD
     M -->|"PDF / 扫描件 / 图表"| V["ColPali/ColQwen<br/>Vision-RAG"]
     M -->|"多模态混合"| MM["多模态 RAG<br/>CLIP + 文本"]
 
-    T -->|"<100 文档"| LC{"需要多跳推理？"}
-    T -->|"100-10K"| STD["标准 RAG<br/>Hybrid + Rerank"]
-    T -->|">10K 文档"| BIG["分布式 RAG<br/>Milvus + 分片"]
+    T -->|"可在 token/成本预算内完整输入"| LC{"基线评测是否达标？"}
+    T -->|"超预算或频繁更新"| STD["标准 RAG<br/>Hybrid + Rerank"]
+    T -->|"需分片、权限过滤或高并发"| BIG["分布式 RAG<br/>分片 + 元数据过滤"]
 
-    LC -->|"否"| LC1["Long-Context RAG<br/>塞进 Gemini/Claude"]
-    LC -->|"是"| GR["Graph RAG<br/>知识图谱"]
+    LC -->|"是"| LC1["Long-Context 基线<br/>缓存 + 引用校验"]
+    LC -->|"否，且需要关系推理"| GR["Graph RAG<br/>知识图谱"]
+    LC -->|"否，主要是证据遗漏"| STD
 ```
 
 | 决策点 | 推荐方案 | 关键理由 |
 |--------|---------|---------|
 | **PDF 含复杂版式** | ColPali/ColQwen | OCR 会丢失图表信息 |
-| **大文档需要全局理解** | Long-Context RAG | 避免分块误差 |
-| **超大规模（>10K）** | Hybrid RAG + 分片索引 | 长上下文不可行 |
+| **材料可在预算内完整输入** | Long-Context 基线 | 避免分块误差，但仍需验证证据覆盖 |
+| **语料超出输入预算或频繁更新** | Hybrid RAG + 分片索引 | 控制单次输入并支持增量更新 |
 | **多跳关联查询** | Graph RAG | 向量检索无法做关系推理 |
-| **实时性要求高** | 传统 RAG（向量检索） | 延迟 < 100ms |
+| **对生成延迟敏感** | 精简 RAG 链路 + 缓存 | 用同环境压测 P50/P95，不能承诺固定毫秒数 |
 | **多语言混合** | bge-m3 + bge-reranker-v2-m3 | 单模型多语言支持 |
 
 ### 14.9.10 2026 年新 RAG 模式面试金句
@@ -1849,7 +1883,7 @@ graph TD
 1. **ColPali 的核心创新**："跳过 OCR，直接 Embedding 文档图像 —— 用 VLM 的多向量 + 延迟交互替代传统 OCR+文本检索 pipeline。"
 2. **Contextual Retrieval 的本质**："用 LLM 给每个 chunk 注入上下文，再做 Embedding —— 把 chunk 失去的上下文补回来。"
 3. **Late Chunking 的精髓**："先 Embedding 整篇文档，再按位置切分 —— 让每个 token 的 Embedding 都保留全局上下文。"
-4. **Long-Context vs RAG**："小规模选 Long-Context，大规模选 RAG；混合方案是 RAG 召回 + Long-Context 精读。"
+4. **Long-Context vs RAG**："能否完整输入只是第一道门槛；最终用证据覆盖、引用正确率、P95 延迟和成本选型。"
 5. **MRL 的价值**："一个 Embedding 多种维度，按需截断 —— 牺牲少量精度换 75% 存储节省。"
 6. **Reranker 选型**："闭源选 Cohere Rerank 3.5，开源中文选 bge-reranker-v2-m3，多语言选 Jina Reranker v2。"
 
@@ -1857,7 +1891,7 @@ graph TD
 
 ## 14.10 RAG 评估与优化 ⭐⭐⭐⭐
 
-### 14.9.1 RAG 评估指标体系
+### 14.10.1 RAG 评估指标体系
 
 ```mermaid
 graph TD
@@ -1877,15 +1911,18 @@ graph TD
     E --> E2["延迟与吞吐量"]
 ```
 
-| 指标 | 说明 | 计算方式 | 目标值 |
+| 指标 | 说明 | 计算方式 | 使用原则 |
 |------|------|---------|--------|
-| **Context Precision@K** | Top-K 结果中相关文档的比例 | $\frac{\text{相关文档数}}{K}$ | > 80% |
-| **Context Recall** | 答案所需信息在检索结果中的覆盖度 | LLM 判断 | > 70% |
-| **Faithfulness** | 回答中的陈述能否被上下文支撑 | LLM 逐句验证 | > 90% |
-| **Answer Relevance** | 回答是否直接回应问题（无跑题） | LLM 判断 | > 85% |
-| **Answer Correctness** | 回答的事实正确性 | 对比标准答案 | > 85% |
+| **Recall@K** | 相关文档是否进入 Top-K | 命中的相关文档数 / 全部相关文档数 | 先验证召回上限 |
+| **MRR / nDCG** | 正确证据是否排在前面 | 基于相关文档排名计算 | 比单看命中率更能反映排序 |
+| **Context Precision@K** | Top-K 结果中相关文档的比例 | 相关文档数 / K | 与 Recall@K 联合判断 |
+| **Faithfulness** | 回答中的陈述能否被上下文支撑 | 逐陈述验证 + 人工抽检 | 高风险场景需校准模型裁判 |
+| **Answer Correctness** | 回答的事实正确性 | 对比标准答案或专家标注 | 按问题类型分桶报告 |
+| **拒答正确率** | 无答案/越权问题是否正确拒答 | 正确拒答数 / 应拒答数 | 不能用“多回答”换取表面命中 |
 
-### 14.9.2 LLM-as-Judge 评估实现
+不存在跨业务通用的固定目标值。目标应由基线、错误成本、样本分布和人工验收共同确定，并同时报告样本量与版本。
+
+### 14.10.2 LLM-as-Judge 评估实现
 
 ```python
 class RAGEvaluator:
@@ -1918,9 +1955,10 @@ class RAGEvaluator:
 faithfulness_score = 有依据的陈述数 / 总陈述数"""
         
         response = self.llm.chat.completions.create(
-            model="gpt-4",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
+            **OPENAI_CHAT_KWARGS,
         )
         import json, re
         content = response.choices[0].message.content
@@ -1942,9 +1980,10 @@ faithfulness_score = 有依据的陈述数 / 总陈述数"""
 只输出一个 0-1 之间的数字。"""
         
         response = self.llm.chat.completions.create(
-            model="gpt-4",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
+            **OPENAI_CHAT_KWARGS,
         )
         try:
             return float(response.choices[0].message.content.strip())
@@ -1960,7 +1999,7 @@ faithfulness_score = 有依据的陈述数 / 总陈述数"""
         }
 ```
 
-### 14.9.3 RAG 优化检查清单
+### 14.10.3 RAG 优化检查清单
 
 ```markdown
 ## RAG 系统优化检查清单
@@ -1986,10 +2025,16 @@ faithfulness_score = 有依据的陈述数 / 总陈述数"""
 - [ ] Temperature：RAG 场景推荐 0.0-0.3
 
 ### 评估与迭代
-- [ ] 构建评估数据集：50-100 个标注问答对
+- [ ] 构建评估数据集：先用 50-100 条做 smoke，再扩展为按场景分层的代表性测试集
 - [ ] 监控关键指标：Faithfulness、Relevance、Latency
 - [ ] A/B 测试：分块策略、Embedding 模型、重排序模型对比
 ```
+
+### 14.10.4 Golden Dataset 与坏例回归（2026 国内面试高频）
+
+每条评测样本至少保存 `query`、相关文档/Chunk ID、参考答案、是否应拒答、权限范围和场景标签。将数据拆成调参集、冻结测试集、坏例回归集和对抗集；否则反复调 Prompt 会把测试集变成训练集。
+
+排查时按“解析 → 分块 → 查询理解 → 召回 → 排序 → 生成 → 拒答”定位**首次出错节点**。例如 Recall@K 正常但 Faithfulness 下降，应优先检查上下文冲突、引用绑定和生成约束，而不是盲目更换 Embedding。完整的项目追问与回答模板见 [[40_国内大模型岗位面试实战_2026]]。
 
 ---
 
@@ -2223,32 +2268,36 @@ graph TD
 
 | 概念 | 关键点 |
 |------|--------|
-| **文档分块（Chunking）** | 固定长度 / 递归字符 / 语义分块 / 结构感知 / Agentic；chunk_size 通用 512，overlap 取 10-20% |
-| **Embedding 选型** | 中文首选 BGE-M3（多粒度），英文首选 text-embedding-3-large 或 NV-Embed-v2 |
-| **向量索引（HNSW / IVF / PQ）** | HNSW O(log N) 千万级首选；IVF+PQ 亿级压缩；HNSW 召回率 >95%@Top10 |
-| **混合搜索（Hybrid Search）** | 稠密向量 + BM25 稀疏；RRF 融合公式 k=60；解决精确 ID / 专有名词召回 |
-| **Re-ranking（Cross-Encoder）** | 两阶段召回-精排：Bi-Encoder 召回 Top-100，Cross-Encoder 精排 Top-10；中文选 bge-reranker-v2-m3 |
+| **文档分块（Chunking）** | 固定长度 / 递归字符 / 语义分块 / 结构感知 / Agentic；chunk 与 overlap 通过目标语料和评估集调参，没有通用 512/10%-20% 配方 |
+| **Embedding 选型** | 按语言、领域、许可、维度、延迟和目标检索集选型；BGE-M3、托管 embedding 与领域模型都应先做对照评测 |
+| **向量索引（HNSW / IVF / PQ）** | HNSW、IVF/PQ 的召回、内存和延迟由数据分布与索引参数决定；先定义 recall@k/延迟 SLO 再压测 |
+| **混合搜索（Hybrid Search）** | 稠密向量 + BM25 稀疏；RRF 的 `k` 是可调参数，不是固定 60；适合补充精确 ID / 专有名词召回 |
+| **Re-ranking（Cross-Encoder）** | 两阶段召回-精排；候选数和最终 Top-k 由召回率、重排延迟与上下文预算共同确定 |
 | **Query Rewriting** | 同义词扩展 / HyDE 假想文档 / 子查询分解；提升短查询和模糊表达检索效果 |
 | **Graph RAG** | 实体-关系抽取 → 知识图谱 → 多跳遍历；解决跨文档关联推理（如"Alice 老板的公司"） |
 | **Agentic RAG / RAG-as-a-Tool** | 2026 范式升级：Agent 自主规划检索策略，RAG 降级为标准 Tool；支持多步检索 + 自我校验 |
 | **多模态 RAG** | CLIP/SigLIP/ColQwen 统一图文空间；Layout-aware chunking 保留版面；Vision-RAG 跳过 OCR |
-| **RAG 评估指标** | Context Precision/Recall、Faithfulness >90%、Answer Relevance、LLM-as-Judge 自动打分 |
-| **配套代码** | `ch14_rag/llm/*.py` 全部 W3 真实化, 真实本地 bge + DeepSeek | 需 `export DEEPSEEK_API_KEY=...` + `make download-models-default` |
+| **RAG 评估指标** | Context Precision/Recall、Faithfulness、Answer Relevance、任务成功率；阈值由业务风险和人工金标基线确定 |
+| **配套代码** | `ch14_rag/llm/*.py`；默认离线/本地路径，模型、向量库和托管生成分别做条件性集成验收 |
 
-## 14.x 配套代码真实化 (Wave 6 完成)
+## 14.x 配套代码与验收边界
 
-本章所有 `.py` 例子已 W3 真实化: 真实 bge-small-zh-v1.5 embedding + 真实 ChromaDB + 真实 DeepSeek 生成.
+本章 runner 默认 `LLM_MOCK=1`，可验证分块、检索、融合、评估和客户端契约而不发送 API 请求。
+本地 embedding/ChromaDB、模型权重和真实生成服务是相互独立的条件；`[SKIP]` 表示条件未满足，
+不等于对应集成已经通过。
 
 ```bash
-# 跑本章例子
-export DEEPSEEK_API_KEY=sk-xxx
-make download-models-default  # bge-small-zh-v1.5 + bge-reranker-base (1.7GB)
-python ch14_rag/llm/01_basic_rag.py
-python ch14_rag/llm/05_hybrid_search.py
-python ch14_rag/llm/10_reranking.py
+# 默认离线验收
+cd code
+LLM_MOCK=1 python scripts/run_all_examples.py --tier llm --chapter ch14
+
+# 需要真实提供商时逐个脚本显式启用，并先阅读其依赖/费用说明
+LLM_MOCK=0 ANTHROPIC_API_KEY=your-key ANTHROPIC_MODEL=claude-haiku-4-5 \
+  python ch14_rag/llm/20_contextual_retrieval.py
 ```
 
-无 Key 缺权重: 友好 `RuntimeError` + `make llm-doctor-setup` 提示.
+真实模式还需单独验证模型下载、向量库持久化、超时/重试、配额与账单；本次默认验收不覆盖这些
+外部条件。
 
 ## 📚 相关章节
 

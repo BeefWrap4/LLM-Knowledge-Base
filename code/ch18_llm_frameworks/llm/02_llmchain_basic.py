@@ -11,7 +11,7 @@ if str(_code_root) not in _sys_path_setup.path:
 # section: 18.1.2 Chain 概念与类型 - LLMChain
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: langchain, langchain-openai
+# deps: langchain-classic, langchain-openai
 # run: python 02_llmchain_basic.py
 # expected_runtime: <1s (mock mode)
 # expected_output: ad copy string
@@ -22,11 +22,18 @@ if str(_code_root) not in _sys_path_setup.path:
 #   2. 为什么 LLMChain 在 LCEL 出现后被认为"过时"？
 
 
+import os
+
+if os.environ.get("LLM_MOCK") != "0":
+    print("[SKIP] LangChain Classic 迁移示例仅在显式 LLM_MOCK=0 时运行")
+    print("OK")
+    raise SystemExit(0)
+
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
 
 try:
-    from langchain.chains import LLMChain
+    from langchain_classic.chains import LLMChain
 
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:

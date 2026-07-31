@@ -4,7 +4,7 @@
 # section: 18.1.2 Chain 概念与类型 - RouterChain
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: langchain, langchain-openai
+# deps: langchain-classic
 # run: python 04_router_chain.py
 # expected_runtime: <1s (mock mode)
 # expected_output: routed expert answers
@@ -16,11 +16,18 @@
 # RouterChain 简化示例：本地模拟路由 + 多个专家 Prompt
 
 
+import os
+
+if os.environ.get("LLM_MOCK") != "0":
+    print("[SKIP] LangChain Classic 迁移示例仅在显式 LLM_MOCK=0 时运行")
+    print("OK")
+    raise SystemExit(0)
+
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
 
 try:
-    from langchain.chains import ConversationChain
+    from langchain_classic.chains.router import MultiPromptChain
 
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:
@@ -31,9 +38,6 @@ if _SKIP_REASON:
 print(
     "OK  [hint] pip install -r requirements-llm.txt 后此例子会自动使用真实 LLM (UnifiedClient/chatmodel_factory)"
 )
-from langchain.chains.router import MultiPromptChain
-
-
 class _MockChatModel:
     def invoke(self, msgs):
         last = msgs[-1].content if hasattr(msgs[-1], "content") else str(msgs[-1])

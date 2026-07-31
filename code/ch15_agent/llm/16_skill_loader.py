@@ -225,3 +225,4 @@ def demo_skill_loader():
 
 if __name__ == "__main__":
     demo_skill_loader()
+    print("OK")

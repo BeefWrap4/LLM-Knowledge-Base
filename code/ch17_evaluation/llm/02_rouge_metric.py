@@ -25,10 +25,7 @@ def compute_rouge_demo() -> None:
     try:
         from rouge_score import rouge_scorer
     except ImportError:
-        print("[mock] rouge_score 未安装。模拟 ROUGE 输出。")
-        print("rouge1: Precision=0.667, Recall=0.500, F1=0.571")
-        print("rouge2: Precision=0.250, Recall=0.182, F1=0.211")
-        print("rougeL: Precision=0.583, Recall=0.438, F1=0.500")
+        print("[SKIP] rouge_score 未安装，未生成伪 ROUGE 分数")
         return
 
     scorer = rouge_scorer.RougeScorer(
@@ -44,11 +41,8 @@ def compute_rouge_demo() -> None:
         print(
             f"{metric}: Precision={score.precision:.3f}, Recall={score.recall:.3f}, F1={score.fmeasure:.3f}"
         )
-    # 典型输出：
-    # rouge1: Precision=0.667, Recall=0.500, F1=0.571
-    # rouge2: Precision=0.250, Recall=0.182, F1=0.211
-    # rougeL: Precision=0.583, Recall=0.438, F1=0.500
 
 
 if __name__ == "__main__":
     compute_rouge_demo()
+    print("OK")

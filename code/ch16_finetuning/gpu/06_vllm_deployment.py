@@ -35,10 +35,8 @@ _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
-import torch
-
 from shared._error_helper import raise_with_help
-from shared.gpu_guard import require_nvidia_gpu
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock
 
 
 def check_hardware():
@@ -61,8 +59,12 @@ def check_vllm_engine():
 
 
 def main():
+    if skip_if_mock("Linux、NVIDIA GPU、vLLM 编译扩展和本地模型"):
+        return
     check_hardware()
     check_vllm_engine()
+
+    import torch
 
     model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")
     if not Path(model_path).exists():

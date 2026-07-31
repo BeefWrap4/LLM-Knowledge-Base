@@ -111,6 +111,7 @@ def main():
     result = scorer.score_instruction_data(sample)
     print(f"总分: {result['total_score']}")
     print(f"详细: {result['detail_scores']}")
+    print("OK")
 
 
 if __name__ == "__main__":

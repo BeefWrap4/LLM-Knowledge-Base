@@ -25,26 +25,23 @@ def compute_bleu_demo() -> None:
     try:
         from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
     except ImportError:
-        print("[mock] nltk 未安装。模拟 BLEU 输出。")
-        print("BLEU-1: 0.8000")
-        print("BLEU-4: 0.0000")
-        print("SacreBLEU: 23.45")
+        print("[SKIP] nltk 未安装，未生成伪 BLEU 分数")
         return
 
     # 参考文本和候选文本
-    reference = [["The cat is on the mat".split()]]
+    reference = ["The cat is on the mat".split()]
     candidate = "The cat sits on the mat".split()
 
     # NLTK BLEU（使用平滑处理避免零值）
     smooth = SmoothingFunction().method1
     bleu_1 = sentence_bleu(
-        reference[0],
+        reference,
         candidate,
         weights=(1, 0, 0, 0),
         smoothing_function=smooth,
     )
     bleu_4 = sentence_bleu(
-        reference[0],
+        reference,
         candidate,
         weights=(0.25, 0.25, 0.25, 0.25),
         smoothing_function=smooth,
@@ -52,8 +49,6 @@ def compute_bleu_demo() -> None:
 
     print(f"BLEU-1: {bleu_1:.4f}")
     print(f"BLEU-4: {bleu_4:.4f}")
-    # 输出：BLEU-1: 0.8000, BLEU-4: ~0.0000（n>2 时无匹配）
-
     try:
         from sacrebleu import corpus_bleu
 
@@ -63,8 +58,9 @@ def compute_bleu_demo() -> None:
         score = corpus_bleu(hyps, refs)
         print(f"SacreBLEU: {score.score:.2f}")
     except ImportError:
-        print("[mock] sacrebleu 未安装，跳过 SacreBLEU。")
+        print("[SKIP] sacrebleu 未安装，跳过 SacreBLEU")
 
 
 if __name__ == "__main__":
     compute_bleu_demo()
+    print("OK")

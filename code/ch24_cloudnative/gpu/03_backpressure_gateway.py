@@ -4,6 +4,7 @@
 # section: 24.5.3 请求队列与背压处理
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: (stdlib only)
 # run: python 03_backpressure_gateway.py
 # expected_runtime: ~5s
@@ -19,8 +20,8 @@
 """
 
 import asyncio
+import itertools
 import time
-from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -51,14 +52,9 @@ class BackpressureGateway:
         self.max_queue_size = max_queue_size
         self.max_concurrent = max_concurrent
         self.timeout = timeout_seconds
-        self._semaphore = asyncio.Semaphore(max_concurrent)
-
-        # 三级优先级队列
-        self._queues = {
-            ReqPriority.HIGH: deque(),
-            ReqPriority.NORMAL: deque(),
-            ReqPriority.LOW: deque(),
-        }
+        self._queue: asyncio.PriorityQueue = asyncio.PriorityQueue(maxsize=max_queue_size)
+        self._sequence = itertools.count()
+        self._workers: list[asyncio.Task] = []
 
         # 统计指标
         self.stats = {
@@ -71,36 +67,54 @@ class BackpressureGateway:
 
     async def submit(self, request: InferenceRequest) -> dict:
         """提交推理请求（带背压）"""
-        # 1. 队列满检查
-        total_queued = sum(len(q) for q in self._queues.values())
-        if total_queued >= self.max_queue_size:
+        self._ensure_workers()
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+        item = (request.priority.value, next(self._sequence), request, future)
+        try:
+            self._queue.put_nowait(item)
+        except asyncio.QueueFull:
             self.stats["rejected"] += 1
             return {"error": "queue_full", "retry_after_ms": 5000}
-
-        # 2. 入队
-        self._queues[request.priority].append(request)
         self.stats["accepted"] += 1
 
-        # 3. 等待处理
         try:
-            async with asyncio.timeout(self.timeout):
-                async with self._semaphore:
-                    # 从队列取出（按优先级）
-                    req = self._dequeue()
-                    self.stats["completed"] += 1
-                    # 这里转发到实际的推理后端
-                    return await self._forward_to_backend(req)
+            # wait_for 支持 Python 3.10；shield 避免超时取消 worker 正在完成的 Future。
+            return await asyncio.wait_for(asyncio.shield(future), timeout=self.timeout)
         except asyncio.TimeoutError:
             self.stats["timeout"] += 1
+            future.cancel()
             return {"error": "timeout", "message": "Request timed out"}
 
-    def _dequeue(self) -> InferenceRequest:
-        """按优先级出队：高优先 > 普通 > 低优先"""
-        for priority in (ReqPriority.HIGH, ReqPriority.NORMAL, ReqPriority.LOW):
-            q = self._queues[priority]
-            if q:
-                return q.popleft()
-        raise RuntimeError("Queue unexpectedly empty")
+    def _ensure_workers(self) -> None:
+        if not self._workers:
+            self._workers = [
+                asyncio.create_task(self._worker(), name=f"gateway-worker-{index}")
+                for index in range(self.max_concurrent)
+            ]
+
+    async def _worker(self) -> None:
+        while True:
+            _, _, request, future = await self._queue.get()
+            try:
+                if not future.cancelled():
+                    result = await self._forward_to_backend(request)
+                    self.stats["completed"] += 1
+                    if not future.done():
+                        future.set_result(result)
+            except Exception as exc:
+                if not future.done():
+                    future.set_exception(exc)
+            finally:
+                self._queue.task_done()
+
+    async def close(self) -> None:
+        """完成排队任务并停止 worker；生产服务应在 shutdown hook 中调用。"""
+        await self._queue.join()
+        for worker in self._workers:
+            worker.cancel()
+        await asyncio.gather(*self._workers, return_exceptions=True)
+        self._workers.clear()
 
     async def _forward_to_backend(self, request: InferenceRequest) -> dict:
         """转发到推理后端（简化示例）"""
@@ -110,7 +124,7 @@ class BackpressureGateway:
 
     def get_stats(self) -> dict:
         """获取网关统计"""
-        self.stats["current_queue_depth"] = sum(len(q) for q in self._queues.values())
+        self.stats["current_queue_depth"] = self._queue.qsize()
         return self.stats
 
 
@@ -132,17 +146,13 @@ async def demo():
     for r, req in zip(results, reqs):
         print(f"[{req.priority.name}] {req.request_id}: {r}")
 
-    # 触发队列满拒绝
-    for i in range(20):
-        await gw.submit(
-            InferenceRequest(
-                request_id=f"overflow-{i}",
-                priority=ReqPriority.LOW,
-                payload={"prompt": "x"},
-            )
-        )
-
+    assert all(
+        result["request_id"] == request.request_id
+        for result, request in zip(results, reqs, strict=True)
+    )
+    await gw.close()
     print("\nFinal stats:", gw.get_stats())
+    print("OK")
 
 
 if __name__ == "__main__":

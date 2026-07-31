@@ -1,223 +1,223 @@
-# 本地环境部署完整指南 (Wave 26)
+# 本地环境部署与验收
 
-> 5 步把教程从"能跑"升级到"真用": 真实模型 + 真实中间件 + 真实 LLM, 0 打桩代码.
-> 全部组件 ~3GB (含 1GB Qwen + 700MB embedding + 1GB Redis/pgvector), 适合笔记本.
+> 核验日期：2026-07-31。本指南覆盖 Python、离线回归、可选本地模型、中间件和真实 LLM API。
+> 各组件独立验收；“脚本能结束”不等于所有组件或真实 API 已通过。
 
-## 1. 系统要求
+## 1. 前置条件
 
-| 资源 | 最低 | 推荐 |
-|------|------|------|
-| 磁盘 | 5 GB | 10 GB (含更多模型) |
-| 内存 | 8 GB | 16 GB (含 7B 模型推理) |
-| GPU | 可选 (CPU 可跑 0.5B) | NVIDIA 8GB+ (跑 7B) |
-| 网络 | 国内源即可 (ModelScope / 清华) | — |
+- Python 3.10 或更高版本；
+- 安装依赖和下载模型所需的磁盘、内存与网络；
+- Docker（仅在需要 Redis/pgvector 时）；
+- GPU 是 GPU 示例和较大本地模型的可选条件，不是 core/离线 LLM 回归的前提。
 
-## 2. 5 步部署
-
-### Step 1: 安装 Python 依赖
+模型实际下载体积和运行内存会随文件修订、精度与缓存变化。先看清单，不使用固定“整套约 3 GB”
+作为容量承诺：
 
 ```bash
 cd code/
-make install-llm           # 30-60s, ~3GB
-pip install llama-index-llms-openai-like   # 0.5s, LlamaIndex 0.14+ 需要
+python scripts/download_models.py --help
 ```
 
-### Step 2: 配置 LLM API Key (至少 1 家)
+## 2. 安装 Python 环境
+
+从 `code/` 目录安装最小 core 依赖：
+
+```bash
+python -m pip install -r requirements-core.txt
+```
+
+需要 LLM/框架示例时：
+
+```bash
+python -m pip install -r requirements-llm.txt
+```
+
+先运行离线门禁；它不扫描或读取 `.env`，不返回或使用 LLM Key，也不联网调用厂商 API：
+
+```bash
+LLM_MOCK=1 make ci-quick
+LLM_MOCK=1 python -m pytest tests/ -m "not gpu" -q
+```
+
+PowerShell 可用：
+
+```powershell
+$env:LLM_MOCK="1"; make ci-quick
+```
+
+## 3. 配置真实 LLM
+
+复制模板并按需填写一家厂商：
 
 ```bash
 cp .env.example .env
-# 编辑 .env, 填入至少 1 个:
-#   DEEPSEEK_API_KEY=sk-xxx   (推荐, ¥1/百万 token)
-#   KIMI_API_KEY=sk-xxx
-#   SILICONFLOW_API_KEY=sk-xxx  (Qwen 7B 免费)
-#   MINIMAX_API_KEY=sk-cp-xxx  (Codin Plan)
 ```
 
-### Step 3: 启动中间件 (Redis + pgvector)
+PowerShell：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+当前 provider、模型、base URL、MiniMax 大小写限制与安全要求见 [API_KEYS.md](API_KEYS.md)。
+价格、赠送额度、账户权限和模型能力以运行时厂商控制台为准。
+
+真实探针必须显式关闭离线模式，并检查没有进入错误兜底：
 
 ```bash
-# 避免与系统已有 Redis 冲突, 用 16379/15432 端口
-docker run -d --name llm-kb-redis -p 16379:6379 --restart unless-stopped \
-  redis:7-alpine redis-server --save 60 1 --appendonly yes
-
-docker run -d --name llm-kb-postgres -p 15432:5432 \
-  -e POSTGRES_USER=llmkb -e POSTGRES_PASSWORD=llmkb_test -e POSTGRES_DB=vectordb \
-  pgvector/pgvector:pg16
+LLM_MOCK=0 LLM_PROVIDER=deepseek python -c "from shared.llm_client import UnifiedClient; r=UnifiedClient().chat(prompt='Reply only OK', max_tokens=16); assert not r.mock, repr(r.raw); print(r.provider, r.model, r.usage)"
 ```
 
-(或用 `docker compose --profile llm up -d`, 已在 compose.yml 配置)
+PowerShell：
 
-### Step 4: 下载真实模型 (国内源加速)
+```powershell
+$env:LLM_MOCK="0"; $env:LLM_PROVIDER="deepseek"; python -c "from shared.llm_client import UnifiedClient; r=UnifiedClient().chat(prompt='Reply only OK', max_tokens=16); assert not r.mock, repr(r.raw); print(r.provider, r.model, r.usage)"
+```
+
+## 4. 下载可选本地模型
+
+下载脚本当前默认选择三个 `required=True` 项，脚本元数据估算合计约 1.7 GB：
+
+- `BAAI/bge-small-zh-v1.5`；
+- `BAAI/bge-reranker-v2-m3`；
+- `Qwen/Qwen2.5-0.5B-Instruct`。
+
+执行：
 
 ```bash
-make download-models        # 默认: bge-small-zh + bge-reranker, ~700MB, 5 min
-# 或
-make download-models ARGS="--all"   # 含 Qwen 0.5B (~1.7GB)
+python scripts/download_models.py --required-only
 ```
 
-下载目录: `code/models/`
-- `bge-small-zh-v1.5/` (184MB) — RAG embedding
-- `bge-reranker-v2-m3/` (2.2GB) — RAG 二次排序  
-- `Qwen2.5-0.5B-Instruct/` (954MB) — 小型 LLM (本地推理)
-
-### Step 5: 验证集成
+只下载单类：
 
 ```bash
-# 4 项真实集成测试 (Embedding + Redis + pgvector + 4 厂商 LLM)
-python scripts/test_integration.py
-
-# 期望输出:
-#   [✓] embedding  (bge-small-zh-v1.5)
-#   [✓] redis      (localhost:16379)
-#   [✓] pgvector   (localhost:15432)
-#   [✓] llm        (4 厂商)
-#   🎉 全部通过!
+python scripts/download_models.py --embedding
+python scripts/download_models.py --reranker
+python scripts/download_models.py --llm
 ```
 
-## 3. 跑真实 LLM 例子
+模型写入 `code/models/`。下载器会依次尝试 ModelScope 与 Hugging Face 镜像；是否可下载、许可条件和
+文件大小仍应以模型仓库当前内容为准。
+
+## 5. 启动 Redis 与 pgvector
+
+下面的独立容器命令与 `scripts/test_integration.py` 当前硬编码的宿主端口和测试密码一致：
 
 ```bash
-# 13 个真实 LLM 例子一键跑 (~90s, 扣费 ~¥0.01)
-bash scripts/run_real_demos.sh
-
-# 切换厂商
-bash scripts/run_real_demos.sh MiniMax
-bash scripts/run_real_demos.sh deepseek
+docker run -d --name llm-kb-redis -p 16379:6379 redis:7-alpine redis-server --save 60 1 --appendonly yes
+docker run -d --name llm-kb-postgres -p 15432:5432 -e POSTGRES_USER=llmkb -e POSTGRES_PASSWORD=llmkb_test -e POSTGRES_DB=vectordb pgvector/pgvector:pg16
 ```
 
-## 4. 跑 RAG 例子 (用本地 bge 模型)
+只读健康检查：
 
 ```bash
-cd code/
-
-# 默认 mock 模式 (任何电脑可跑)
-python ch14_rag/llm/01_rag_indexing_pipeline.py
-
-# 真实模式 (需本地 bge 模型)
-# RAG 例子会自动检测 models/bge-small-zh-v1.5, 优先本地加载
-python ch14_rag/llm/01_rag_indexing_pipeline.py
+docker ps --filter name=llm-kb-redis --filter name=llm-kb-postgres
+docker exec llm-kb-redis redis-cli ping
+docker exec llm-kb-postgres pg_isready -U llmkb -d vectordb
 ```
 
-## 5. 跑 Reranker 例子
+### Compose 的当前边界
+
+仓库根目录 `docker-compose.yml` 中：
+
+- `llm` profile 启动 app + Redis，不含 pgvector；
+- `gpu` profile 才包含 pgvector；
+- postgres 没有映射宿主 `15432`，默认密码也不是集成脚本使用的 `llmkb_test`；
+- compose 没有传入 `MINIMAX_API_KEY`。
+
+因此，当前不能把 `docker compose --profile llm up -d` 写成宿主机四组件集成测试的等价替代。
+若修改 compose，请同步端口、密码、环境变量与测试脚本后再验收。
+
+## 6. 组件测试
+
+在 `bge-small-zh-v1.5` 和两个中间件均就绪后：
 
 ```bash
-python ch14_rag/llm/14_reranker_advanced_rag.py
-# 输出: top-3 重排结果 (cosine 分数排序)
+RUN_REAL_INTEGRATION=1 LLM_MOCK=0 LLM_PROVIDER=deepseek python scripts/test_integration.py
 ```
 
-## 6. 跑 Qwen 0.5B 本地推理
+当前 `test_integration.py` 会先要求 `RUN_REAL_INTEGRATION=1`、`LLM_MOCK=0`、显式 provider 与
+对应 Key，然后检查 embedding、自相似检索、Redis、pgvector 和一个真实 LLM 请求。缺 Key、
+`resp.mock is True`、空响应或任一组件异常都会使汇总失败。
+
+它的 0 退出码只能作为这四项和本次所选 provider 的条件性组件 smoke 证据，不覆盖其他模型、
+框架、GPU、Docker profile 或生产要求。业务上线仍需第 3 节的 provider 探针与业务输出断言。
+
+## 7. 运行示例
+
+离线 LLM tier：
 
 ```bash
-python -c "
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
-tok = AutoTokenizer.from_pretrained('code/models/Qwen2.5-0.5B-Instruct')
-m = AutoModelForCausalLM.from_pretrained('code/models/Qwen2.5-0.5B-Instruct')
-text = tok.apply_chat_template([{'role':'user','content':'你好'}], tokenize=False, add_generation_prompt=True)
-out = m.generate(**tok(text, return_tensors='pt'), max_new_tokens=80, do_sample=False)
-print(tok.decode(out[0][3:], skip_special_tokens=True))
-"
-# 输出: 你好, 我是 Qwen...
+LLM_MOCK=1 python scripts/run_all_examples.py --tier llm --parallel 4 --timeout 180
 ```
 
-## 7. pgvector 用法示例 (RAG 向量库)
-
-```python
-import psycopg2
-from sentence_transformers import SentenceTransformer
-
-m = SentenceTransformer('code/models/bge-small-zh-v1.5')
-
-c = psycopg2.connect(host='localhost', port=15432, user='llmkb',
-                     password='llmkb_test', dbname='vectordb')
-c.autocommit = True
-cur = c.cursor()
-cur.execute('CREATE EXTENSION IF NOT EXISTS vector')
-cur.execute('CREATE TABLE docs (id SERIAL PRIMARY KEY, content TEXT, embedding VECTOR(512))')
-
-# 插入
-emb = m.encode(['Python 教程'], normalize_embeddings=True)
-vec_str = '[' + ','.join('%.7f' % x.item() for x in emb.flatten()) + ']'
-cur.execute('INSERT INTO docs (content, embedding) VALUES (%s, %s)', ('Python 教程', vec_str))
-
-# 查询
-cur.execute("""
-    SELECT content, 1 - (embedding <=> %s::vector) AS cosine
-    FROM docs ORDER BY embedding <=> %s::vector LIMIT 1
-""", (vec_str, vec_str))
-print(cur.fetchone())  # ('Python 教程', ~1.0)
-```
-
-## 8. 故障排查
-
-### Redis 连不上
+真实 demo wrapper：
 
 ```bash
-# 检查容器运行状态
-docker ps | grep llm-kb-redis
+LLM_MOCK=0 bash scripts/run_real_demos.sh --confirm-real all deepseek
+```
+
+wrapper 会拒绝缺少确认标志或目标 Key 的运行，并区分可识别的 mock、skip 与失败；它仍不能读取
+每个示例的响应对象或账单。证据边界见 [REAL_DEMOS.md](REAL_DEMOS.md)。
+
+## 8. 故障定位
+
+### Python 依赖缺失
+
+```bash
+python -m pip install -r requirements-llm.txt
+```
+
+### Redis 或 pgvector 不可达
+
+先检查容器状态、端口映射和健康状态：
+
+```bash
+docker ps --filter name=llm-kb-redis --filter name=llm-kb-postgres
 docker logs llm-kb-redis
-
-# 重新启动
-docker restart llm-kb-redis
+docker logs llm-kb-postgres
 ```
 
-### pgvector type "vector" does not exist
+### 模型下载失败
+
+列出目标并单独重试，以便定位来源或权限问题：
 
 ```bash
-# 在数据库中启用扩展
-docker exec -it llm-kb-postgres psql -U llmkb -d vectordb -c "CREATE EXTENSION vector;"
+python scripts/download_models.py --help
+python scripts/download_models.py --embedding
 ```
 
-### 模型下载失败 (网络问题)
+### LLM 返回 401、403、404、429 或 fallback
+
+检查 Key 权限、实际模型列表、base URL、地区/网络与限流。`resp.mock is True` 一律按真实调用失败处理，
+不要改报为离线成功。
+
+## 9. 停止与清理
+
+停止容器不会删除数据：
 
 ```bash
-# 切换国内源
-export HF_ENDPOINT=https://hf-mirror.com
-python code/scripts/download_models.py --embedding
-```
-
-### LLM API 返回 401
-
-```bash
-# 检查 .env 文件名 (不是 .env.example) 和 Key 格式
-cat code/.env
-# 重新跑
-python code/scripts/llm_doctor.py
-```
-
-## 9. 卸载 (清理)
-
-```bash
-# 停中间件
 docker stop llm-kb-redis llm-kb-postgres
+```
+
+第 5 节的独立容器命令没有挂载持久化 volume，删除容器会同时删除其中的 Redis/PostgreSQL 数据。
+先确认不再需要数据；如果自行添加了命名 volume，volume、宿主模型目录和 `.env` 不会因删除容器
+自动消失：
+
+```bash
 docker rm llm-kb-redis llm-kb-postgres
-
-# 删模型 (~3GB 释放)
-rm -rf code/models/bge-* code/models/Qwen*
-
-# 删 .env (含 API Key)
-rm code/.env
 ```
 
-## 10. 完整组件清单
+模型目录和 `.env` 可能包含大量文件或密钥，应由使用者确认精确路径后另行删除，不在本指南提供递归
+删除命令。
 
-```
-本地部署栈 (Wave 26):
-├── Python 3.12 (miniconda py312)
-├── 真实模型 (~3GB)
-│   ├── bge-small-zh-v1.5 (184MB, embedding)
-│   ├── bge-reranker-v2-m3 (2.2GB, reranker)
-│   └── Qwen2.5-0.5B-Instruct (954MB, small LLM)
-├── 中间件
-│   ├── Redis 7 (localhost:16379, LangGraph checkpoint + cache)
-│   └── pgvector 0.8.2 (localhost:15432, RAG 向量库)
-├── LLM API (4 厂商任选)
-│   ├── DeepSeek (deepseek-chat V3)
-│   ├── Kimi (moonshot-v1-8k)
-│   ├── SiliconFlow (Qwen 2.5 7B)
-│   └── MiniMax (MiniMax-Text-01)
-└── code/ 伴侣 (439 .py, 100% 通过)
+## 10. 最终验收记录
 
-一键验证: python code/scripts/test_integration.py
-一键跑真实例子: bash code/scripts/run_real_demos.sh
-```
+分别记录：
+
+- 离线：`LLM_MOCK=1`、pytest/verify 命令、通过/跳过/失败数量；
+- 本地模型：模型 ID、来源、文件完整性与实际设备；
+- 中间件：镜像标签、健康检查、端口与持久化策略；
+- 真实 API：`LLM_MOCK=0`、provider/model、`resp.mock is False`、请求 ID、token、时延和业务断言。
+
+只有四类证据都存在时，才能声称对应的完整本地栈通过；不要用单个脚本的 0 退出码替代分项证据。

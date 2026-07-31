@@ -1,89 +1,61 @@
 # ---
 # chapter: 21
 # topic: 多模态大模型
-# section: 21.6.3 实时语音模型 - Moshi 全双工对话
+# section: 21.7.3 实时语音 - 全双工并发协议教学骨架
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
-# deps: asyncio (真实模式需 moshi + websockets)
+# mock_safe: true
+# deps: Python standard library
 # run: python 10_moshi_realtime.py
-# expected_runtime: <5s (mock)
-# expected_output: Moshi 全双工对话流式协议演示
+# expected_runtime: <1s
+# expected_output: 本地队列的并发发送/接收计数
 # ---
 # See: ../tutorial/21_多模态大模型.md#21-6-3-实时语音模型
 # Interview hooks:
-#   1. 全双工语音对话相比 ASR+LLM+TTS pipeline 延迟能降低多少？
-#   2. Mimi codec 为什么能做到 12.5Hz 超低码率？
-#   3. Inner Monologue 机制如何提升语音回复的语义连贯性？
+#   1. 全双工语音为何需要独立的上行、下行与取消控制？
+#   2. 音频 codec 的帧率、码率与端到端延迟如何共同评测？
+#   3. 真实客户端还需要哪些设备、鉴权、背压和重连机制？
 
 import asyncio
-import os
 
 
-async def main_async():
-    """演示 Moshi 全双工流式对话（mock）。"""
-    use_mock = os.environ.get("CH21_MOCK", "1") == "1"
+async def protocol_structure_demo(chunk_count: int = 5) -> tuple[int, int]:
+    """用本地队列演示并发方向；不连接 Moshi，也不处理真实音频。"""
+    upstream: asyncio.Queue[bytes | None] = asyncio.Queue()
+    downstream: asyncio.Queue[bytes | None] = asyncio.Queue()
 
-    if use_mock:
-        # 模拟全双工流：发送用户音频 + 接收模型音频
-        send_count = 0
-        recv_count = 0
-        max_chunks = 5  # 演示用，只跑 5 个 chunk
+    async def send_user_audio() -> int:
+        for index in range(chunk_count):
+            await upstream.put(f"user-{index}".encode())
+        await upstream.put(None)
+        return chunk_count
 
-        async def send_audio():
-            nonlocal send_count
-            for i in range(max_chunks):
-                chunk = f"user_audio_chunk_{i}"
-                send_count += 1
-                await asyncio.sleep(0.01)
-            return send_count
+    async def simulated_server() -> None:
+        while (chunk := await upstream.get()) is not None:
+            await downstream.put(b"model-" + chunk)
+        await downstream.put(None)
 
-        async def recv_audio():
-            nonlocal recv_count
-            for i in range(max_chunks):
-                chunk = f"model_audio_chunk_{i}"
-                recv_count += 1
-                await asyncio.sleep(0.01)
-            return recv_count
+    async def receive_model_audio() -> int:
+        received = 0
+        while await downstream.get() is not None:
+            received += 1
+        return received
 
-        # 真实场景下会使用 MoshiClient + 麦克风/扬声器
-        results = await asyncio.gather(send_audio(), recv_audio())
-        print(f"Sent chunks: {results[0]}, Received chunks: {results[1]}")
-        print("Moshi full-duplex demo OK")
-        return
-
-    # 真实模式
-    try:
-        from moshi import MoshiClient
-    except ImportError:
-        print("moshi package not installed. Skipping real mode.")
-        return
-
-    client = MoshiClient("ws://localhost:8998")
-
-    async def mic_stream():
-        """占位麦克风流: 真实部署时替换为 PyAudio/sounddevice 捕获"""
-        if False:
-            yield b""
-        return
-
-    async def speaker_play(chunk: bytes) -> None:
-        """占位扬声器播放: 真实部署时替换为 sounddevice 输出"""
-        _ = chunk
-
-    async def send_audio():
-        async for chunk in mic_stream():
-            await client.send_user_audio(chunk)
-
-    async def recv_audio():
-        async for chunk in client.recv_model_audio():
-            await speaker_play(chunk)
-
-    await asyncio.gather(send_audio(), recv_audio())
+    sent, _, received = await asyncio.gather(
+        send_user_audio(),
+        simulated_server(),
+        receive_model_audio(),
+    )
+    return sent, received
 
 
-def main():
-    asyncio.run(main_async())
+def main() -> None:
+    sent, received = asyncio.run(protocol_structure_demo())
+    assert sent == received == 5
+    print("[STRUCTURE ONLY] No Moshi server, codec, microphone, or speaker was used.")
+    print(f"sent={sent}, received={received}")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

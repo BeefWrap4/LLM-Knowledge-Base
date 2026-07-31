@@ -52,7 +52,9 @@ if __name__ == "__main__":
     # 注意: dim 必须能整除 m
     vectors = rng.normal(size=(2000, 64)).astype(np.float32)
     vectors /= np.linalg.norm(vectors, axis=1, keepdims=True)
-    index = create_ivfpq_index(vectors, nlist=32, m=8, nbits=8)
+    # 小样本 smoke 使用 4 bit（每个子空间 16 个质心），避免 8 bit 需要更多训练向量。
+    index = create_ivfpq_index(vectors, nlist=32, m=8, nbits=4)
     if index is not None:
         D, I = index.search(vectors[:1], 5)
         print(f"Top-5 邻居: {I[0].tolist()}, 距离: {D[0].tolist()}")
+    print("OK")

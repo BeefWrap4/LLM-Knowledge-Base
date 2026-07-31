@@ -4,7 +4,7 @@
 # section: 20.2.2 MLflow 核心概念
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: mlflow, openai (mocked fallback if unavailable)
+# deps: mlflow, openai (live requires LLM_MOCK=0 and LLM_REAL_API=1)
 # run: python 02_mlflow_llm_tracking.py
 # expected_runtime: < 1s (mocked) / depends on API (live)
 # expected_output: Three MLflow runs logged with metrics; print accuracy/latency summary
@@ -17,6 +17,8 @@
 
 import os
 import time
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 try:
     import mlflow
@@ -25,15 +27,12 @@ except ImportError:
 
 try:
     from openai import OpenAI
-
-    _HAS_OPENAI = bool(os.getenv("OPENAI_API_KEY"))
 except ImportError:
     OpenAI = None  # type: ignore
-    _HAS_OPENAI = False
 
 
-def _mock_client():
-    """返回一个 mock client 用于离线运行。"""
+def _offline_client():
+    """返回无网络的确定性客户端。"""
 
     class _Choice:
         def __init__(self, content):
@@ -52,7 +51,8 @@ def _mock_client():
         class chat:
             class completions:
                 @staticmethod
-                def create(model, messages, temperature=0.0, max_tokens=100):
+                def create(model, messages, **kwargs):
+                    del model, kwargs
                     user_msg = messages[-1]["content"].lower()
                     if "love" in user_msg:
                         ans = "positive"
@@ -66,12 +66,20 @@ def _mock_client():
 
 
 def main():
+    live_api = os.environ.get("LLM_REAL_API") == "1" and os.environ.get("LLM_MOCK") == "0"
     if mlflow is None:
         print("mlflow not installed — install via `pip install mlflow` to run for real")
+        print("OK")
         return
 
     # 1. 设置 MLflow Tracking URI
-    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
+    # 离线模式强制使用内存 SQLite，不读取外部 Tracking 配置。
+    tracking_uri = (
+        os.environ.get("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
+        if live_api
+        else "sqlite:///:memory:"
+    )
+    mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment("llm-sentiment-analysis")
 
     # 2. 定义实验参数
@@ -81,8 +89,14 @@ def main():
         "v3_expert": "You are a sentiment analysis expert. Analyze the following text and classify its sentiment as positive, negative, or neutral. Provide reasoning. Text: {text}",
     }
 
-    # 3. 执行实验
-    client = OpenAI() if _HAS_OPENAI and OpenAI is not None else _mock_client()
+    # 3. 默认离线；只有显式 opt-in 才构造真实客户端并由 SDK 读取凭据。
+    if live_api:
+        if OpenAI is None:
+            raise RuntimeError("LLM_REAL_API=1 requires the openai package")
+        client = OpenAI()
+    else:
+        client = _offline_client()
+    model = os.environ.get("OPENAI_MODEL", "gpt-5.6")
 
     for prompt_name, prompt_template in prompt_variants.items():
         with mlflow.start_run(run_name=prompt_name):
@@ -91,7 +105,7 @@ def main():
                 {
                     "prompt_name": prompt_name,
                     "prompt_template": prompt_template,
-                    "model": "gpt-4o-mini",
+                    "model": model,
                     "temperature": 0.1,
                     "max_tokens": 100,
                 }
@@ -115,10 +129,14 @@ def main():
                 prompt = prompt_template.format(text=text)
                 t0 = time.time()
                 response = client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model=model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.1,
-                    max_tokens=100,
+                    **(
+                        {"reasoning_effort": "none", "max_completion_tokens": 100}
+                        if model.startswith("gpt-5.6")
+                        else {"max_tokens": 100}
+                    ),
                 )
                 latency = time.time() - t0
 
@@ -146,13 +164,15 @@ def main():
             )
 
             # 保存 Prompt 模板为 Artifact
-            with open("current_prompt.txt", "w") as f:
-                f.write(prompt_template)
-            mlflow.log_artifact("current_prompt.txt")
+            with TemporaryDirectory(prefix="ch20-mlflow-") as temp_dir:
+                artifact = Path(temp_dir) / "current_prompt.txt"
+                artifact.write_text(prompt_template, encoding="utf-8")
+                mlflow.log_artifact(str(artifact), artifact_path="prompts")
 
             print(f"[{prompt_name}] Accuracy: {accuracy:.2%}, Latency: {avg_latency * 1000:.0f}ms")
 
     print("\n✅ 所有实验完成！运行 `mlflow ui` 查看结果")
+    print("OK")
 
 
 if __name__ == "__main__":

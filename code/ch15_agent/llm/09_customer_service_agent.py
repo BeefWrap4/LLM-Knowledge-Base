@@ -46,16 +46,24 @@ class CustomerServiceAgent:
     """
 
     api_key: str
-    model: str = "gpt-4"
+    model: str = field(default_factory=lambda: os.environ.get("OPENAI_MODEL", "gpt-5.6"))
     conversation: list = field(default_factory=list)
     escalation_threshold: float = 0.8  # 转人工阈值
     mock: bool = True  # 默认 mock 模式
 
     def __post_init__(self):
         # 是否进入 mock：缺 key 或显式开启 mock
-        self.mock = self.mock or not HAS_OPENAI or not (self.api_key or os.getenv("OPENAI_API_KEY"))
+        self.mock = (
+            self.mock
+            or os.environ.get("LLM_MOCK") != "0"
+            or not HAS_OPENAI
+            or not (self.api_key or os.getenv("OPENAI_API_KEY"))
+        )
         if not self.mock and HAS_OPENAI:
             self.client = openai.OpenAI(api_key=self.api_key)
+        self.model_kwargs = (
+            {"reasoning_effort": "none"} if self.model.startswith("gpt-5.6") else {}
+        )
         self.tools = self._define_tools()
         self.system_prompt = self._build_system_prompt()
 
@@ -179,6 +187,7 @@ class CustomerServiceAgent:
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
+                **self.model_kwargs,
             )
             result = json.loads(response.choices[0].message.content)
             return result
@@ -240,6 +249,7 @@ class CustomerServiceAgent:
                 messages=messages,
                 tools=self.tools,
                 tool_choice="auto",
+                **self.model_kwargs,
             )
 
             message = response.choices[0].message

@@ -1,148 +1,60 @@
 # ---
 # chapter: 28
-# topic: Snapdragon Hexagon NPU 推理 (设备不可得, 教学展示)
+# topic: llama.cpp Snapdragon Hexagon 后端（条件与命令展示）
 # section: 28.4 llama.cpp + Hexagon 后端
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
-# deps: (Qualcomm AI Engine SDK, 仅 Android 真机可跑, 本地无设备)
+# mock_safe: true
+# deps: 外部工具链（Snapdragon 设备、Android NDK、Hexagon SDK、llama.cpp）
 # run: python 09_snapdragon_hexagon_npu.py
-# expected_runtime: <1s (抛错 + 教学展示)
-# expected_output: 明确提示 "需要 Snapdragon NPU" + QNN SDK 安装/使用命令
+# expected_runtime: <1s (structural skip)
+# expected_output: current official prerequisites and build/run outline, then SKIP + OK
 # ---
 # See: ../tutorial/28_端侧与边缘LLM.md § 28.4.1, § 28.6 NPU 后端
+# Official source:
+# https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/snapdragon/README.md
 # Interview hooks:
-#   1. Hexagon NPU 相比 Adreno GPU 推理 LLM 有什么优势?
-#   2. 为什么端侧 LLM 量化到 INT4/INT8 很重要?
-#   3. Snapdragon 8 Gen 3 跑 7B Q4 模型实际能到多少 tokens/s?
-"""Snapdragon Hexagon NPU 端侧 LLM 推理 — 设备不可得, 教学展示.
+# 1. Hexagon 后端为何仍需 CPU 参与调度，不能把 NPU TOPS 直接换算为 token/s？
+# 2. prefill 与 decode 对算力、内存带宽和 KV cache 的瓶颈有何不同？
+# 3. 怎样证明一次推理确实把目标算子卸载到了 HTP，而不是回退到 CPU/OpenCL？
+"""Snapdragon Hexagon 后端的诚实边界与当前官方命令。
 
-本环境 (Windows + x86/x64 CPU + NVIDIA RTX 5090D) 无 Snapdragon NPU
-设备, 也无 QNN SDK. 文件主要功能:
-  1. 调用 check_hardware() 抛友好错 (明确说明需要 Snapdragon NPU)
-  2. except 块展示 QNN SDK 安装与使用命令 (教学保留)
-  3. 关键 NPU 硬件规格 / NPU vs GPU 权衡 / 量化推荐 (静态打印)
+本文件不含 QNN/Hexagon Python 绑定，也不会伪造 NPU 推理。真实验收必须在
+Snapdragon 设备上按 llama.cpp 当前 ``docs/backend/snapdragon`` 文档构建，
+并从运行日志确认 HTP 设备、offload 层数、算子回退和性能指标。
 """
 
-from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-_code_root = Path(__file__).resolve().parent.parent.parent
-if str(_code_root) not in sys.path:
-    sys.path.insert(0, str(_code_root))
-
-from shared._error_helper import raise_with_help  # noqa: E402
-
-# ============================================================
-# 1. Hexagon NPU 关键硬件特性 (Snapdragon 8 Gen 3 / X Elite)
-# ============================================================
-HEXAGON_SPECS = {
-    "峰值 TOPS (INT8)": "45 TOPS",
-    "内存带宽": "LPDDR5X 8533 MT/s, 77 GB/s",
-    "支持精度": "INT4 / INT8 / INT16 / FP16",
-    "最佳 batch": "batch_size=1 (实时推理)",
-    "上下文长度上限": "受限于 SRAM (约 16MB, ~4K tokens for 7B)",
-}
+def print_capability_boundary() -> None:
+    print("=== llama.cpp Snapdragon / Hexagon 后端 ===")
+    print("状态: 官方仓库中的 experimental backend，接口与算子覆盖仍可能变化")
+    print("平台: 文档覆盖 Snapdragon Android；另列 Windows on Snapdragon 原生构建条件")
+    print("设备: HTP0、HTP1 等 Hexagon session；模型/量化/算子支持以当前 README 为准")
+    print("性能: TOPS、CPU/GPU/NPU 利用率不能替代同模型同参数的 pp/tg 实测")
 
 
-def print_npu_specs() -> None:
-    print("--- Snapdragon 8 Gen 3 / X Elite Hexagon NPU ---")
-    for k, v in HEXAGON_SPECS.items():
-        print(f"  {k}: {v}")
-
-
-def npu_vs_gpu_tradeoff() -> None:
-    """NPU vs GPU 推理对比."""
-    print("\n--- NPU vs GPU 推理权衡 ---")
-    rows = [
-        ("算子覆盖", "专用矩阵加速 (INT8/INT4)", "通用 (FP16/FP32)"),
-        ("能效比", "⭐⭐⭐⭐⭐ (~5x GPU)", "⭐⭐⭐"),
-        ("性能峰值", "中等 (受 SRAM 限制)", "高 (DDR 高带宽)"),
-        ("适用精度", "INT4/INT8 (必须量化)", "FP16 (量化可选)"),
-        ("LLM 推理", "✅ 7B Q4 实时", "✅ 7B Q4 高吞吐"),
-        ("训练", "❌ 不支持反向传播", "✅ 通用训练"),
-    ]
-    print(f"{'维度':<12} {'NPU (Hexagon)':<35} {'GPU (Adreno)'}")
-    print("-" * 80)
-    for dim, npu, gpu in rows:
-        print(f"{dim:<12} {npu:<35} {gpu}")
-
-
-def quantization_recommendation() -> None:
-    """Hexagon NPU 上推荐的量化等级."""
-    print("\n--- 量化等级推荐 ---")
-    print("  INT4 权重量化 (Q4_K_M): 最佳能效比, 7B 模型 4GB → 1.8GB")
-    print("  INT8 权重量化 (Q8_0):   质量优先, 适合小模型 (1-3B)")
-    print("  FP16 权重:               仅基准测试, 不适合真机部署")
-    print("  AWQ/GPTQ INT4:           需要后量化校准, 适合自定义模型")
-
-
-# ============================================================
-# 2. QNN SDK 安装与使用 (教学保留)
-# ============================================================
-def show_qnn_sdk_install() -> None:
-    """展示 QNN SDK 安装与使用命令 (教学保留)."""
-    print("Snapdragon NPU 推理需要:")
-    print()
-    print("  1. Qualcomm AI Engine Direct SDK (QNN SDK)")
-    print("     https://developer.qualcomm.com/software/qualcomm-neural-processing-sdk")
-    print()
-    print("  2. Hexagon DSP 工具链")
-    print("     https://developer.qualcomm.com/hexagon-sdk")
-    print()
-    print("  3. ONNX → QNN 转换:")
-    print("     $ qnn-onnx-converter \\")
-    print("         --input_network model.onnx \\")
-    print("         --output_path model.qnn \\")
-    print("         --target_runtime hexagon")
-    print()
-    print("  4. 在 Snapdragon 设备上加载:")
-    print("     $ adb push model.qnn /data/local/tmp/")
-    print("     $ adb shell qnn-net-run \\")
-    print("         --model /data/local/tmp/model.qnn \\")
-    print("         --input /data/local/tmp/input.raw")
-    print()
-    print("  5. Python 端 SDK 不可用, 需 C++ 绑定.")
-    print()
-    print("替代方案: 用 llama.cpp 的 Hexagon backend 加载预编译模型")
-    print("  $ cmake -B build -DGGML_HEXAGON=ON")
-    print("  $ cmake --build build --config Release")
-    print('  $ ./build/bin/llama-cli -m model.Q4_K.hexagon.dlc -p "Hello"')
-
-
-# ============================================================
-# 3. 硬件检查
-# ============================================================
-def check_hardware() -> None:
-    """设备不可得 → 抛错 + 引导至教学展示."""
-    raise_with_help(
-        "此例子需要 Snapdragon NPU 设备 (Hexagon DSP).",
-        "QNN SDK 仅在 Qualcomm 设备上可用. "
-        "本机 (Windows + x86 CPU / NVIDIA GPU) 无 Hexagon NPU. "
-        "详见 README §硬件 × 章节矩阵 或 Ch28 §28.4 教程.",
+def show_current_build_outline() -> None:
+    print("\n--- 官方 Android 工具链路径（命令提纲）---")
+    print("1. 使用 llama.cpp 文档指定的 snapdragon-toolchain 容器与版本")
+    print("2. 在仓库根目录复制并使用官方 CMake preset:")
+    print("   cp docs/backend/snapdragon/CMakeUserPresets.json .")
+    print("   cmake --preset arm64-android-snapdragon-release -B build-snapdragon")
+    print("   cmake --build build-snapdragon")
+    print("3. 使用仓库 wrapper 设置运行库、ADB 与 HTP 设备，例如:")
+    print(
+        '   M=Llama-3.2-1B-Instruct-Q4_0.gguf D=HTP0 '
+        './scripts/snapdragon/adb/run-completion.sh -p "Hello"'
     )
+    print("4. 验收日志: Hexagon arch、HTP session、offloaded layers、回退算子、pp/tg token/s")
+    print("提示: 镜像版本、SDK 版本、preset 名和支持模型均应在执行当天复核官方 README")
 
 
-# ============================================================
-# 4. 主流程: 抛错 → 教学展示
-# ============================================================
 def main() -> None:
-    # 1) 打印 NPU 静态信息 (即使无设备也展示规格 + 决策依据)
-    print_npu_specs()
-    npu_vs_gpu_tradeoff()
-    quantization_recommendation()
-    print()
-    # 2) 检查硬件: 抛错
-    check_hardware()
-    # 实际不会到这里 (check_hardware 抛错)
+    print_capability_boundary()
+    show_current_build_outline()
+    print("\n[SKIP] 本 Python 文件仅做结构验收；真实 Hexagon 推理需 Snapdragon 设备和外部工具链")
+    print("OK")
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except RuntimeError as e:
-        print(str(e))
-        print()
-        print("--- 教学展示: QNN SDK 安装与使用 ---")
-        show_qnn_sdk_install()
+    main()

@@ -12,13 +12,13 @@ Usage:
     p = get_provider("deepseek")
     print(p.base_url, p.default_chat)
 
-支持厂商:
-  - deepseek      DeepSeek V3 / R1, 强推理, 国内访问快
-  - kimi          Moonshot 长上下文 128K, ¥15 体验金
-  - siliconflow   多模型路由 (Qwen / GLM / DeepSeek), 性价比高
-  - openai        GPT-4o / GPT-4o-mini (海外)
-  - anthropic     Claude Sonnet 4 / Opus 4 (海外, 用 anthropic SDK)
-  - mock          离线 mock, 无 API Key
+注册项（截至 2026-07-31）:
+  - deepseek / kimi / siliconflow / MiniMax: OpenAI-compatible API
+  - openai: OpenAI API
+  - anthropic: Anthropic Messages API（使用 anthropic SDK）
+  - mock: 仅在显式离线模式下使用，无 API Key
+
+模型名、价格、赠送权益和地区可用性会变化，以各厂商官方模型列表与账户页面为准。
 """
 
 import os
@@ -37,12 +37,17 @@ class Provider:
     api_style: str = "openai"  # openai | anthropic | mock
     env_key: str = ""  # 环境变量名
     region: str = "CN"  # CN | US
-    free_tier: str = ""  # 免费额度说明
+    free_tier: str = ""  # 历史字段名；内容是价格/可用性核验提示
 
     def has_key(self) -> bool:
         """Check if the API key is set in environment."""
-        if not self.env_key:
+        from shared.env import is_real_llm_mode
+
+        if not self.env_key or not is_real_llm_mode():
             return False
+        from shared.env import load_dotenv_if_real
+
+        load_dotenv_if_real()
         val = os.environ.get(self.env_key, "").strip()
         return bool(val) and val != "YOUR_API_KEY"
 
@@ -54,66 +59,66 @@ PROVIDERS: dict[str, Provider] = {
     "deepseek": Provider(
         name="deepseek",
         display_name="DeepSeek",
-        base_url="https://api.deepseek.com/v1",
-        default_chat="deepseek-chat",  # V3
-        default_reasoner="deepseek-reasoner",  # R1 推理
+        base_url="https://api.deepseek.com",
+        default_chat="deepseek-v4-flash",
+        default_reasoner="deepseek-v4-pro",
         api_style="openai",
         env_key="DEEPSEEK_API_KEY",
         region="CN",
-        free_tier="注册送 ¥10, ¥1/百万 token",
+        free_tier="价格与赠送额度以官方 Models & Pricing 页面为准",
     ),
     "kimi": Provider(
         name="kimi",
         display_name="Kimi (月之暗面)",
         base_url="https://api.moonshot.cn/v1",
-        default_chat="moonshot-v1-8k",
-        default_reasoner=None,
+        default_chat="kimi-k2.5",
+        default_reasoner="kimi-k2.5",
         api_style="openai",
         env_key="KIMI_API_KEY",
         region="CN",
-        free_tier="新用户 ¥15 体验金, 128K 上下文",
+        free_tier="模型、价格与赠送额度以 Moonshot 官方模型列表为准",
     ),
     "siliconflow": Provider(
         name="siliconflow",
         display_name="SiliconFlow (硅基流动)",
         base_url="https://api.siliconflow.cn/v1",
-        default_chat="Qwen/Qwen2.5-7B-Instruct",
-        default_reasoner="Qwen/QwQ-32B-Preview",
+        default_chat="Qwen/Qwen3.6-27B",
+        default_reasoner="deepseek-ai/DeepSeek-V4-Pro",
         api_style="openai",
         env_key="SILICONFLOW_API_KEY",
         region="CN",
-        free_tier="注册送 2000 万 tokens, 多模型路由",
+        free_tier="模型上下线、价格与赠送额度以 SiliconFlow /v1/models 与模型广场为准",
     ),
     "MiniMax": Provider(
         name="MiniMax",
-        display_name="MiniMax (MiniMax, Codin Plan)",
+        display_name="MiniMax (Coding Plan)",
         base_url="https://api.minimaxi.com/v1",  # 注意域名是 minimaxi (无 s)
-        default_chat="MiniMax-Text-01",
-        default_reasoner="MiniMax-Text-01",  # same model supports thinking via reasoning_effort param
+        default_chat="MiniMax-M2.7",
+        default_reasoner="MiniMax-M2.7",
         api_style="openai",
         env_key="MINIMAX_API_KEY",
         region="CN",
-        free_tier="Codin Plan (key prefix sk-cp-): 编码优化订阅, ¥X/年起",
+        free_tier="价格、Token Plan 与可用模型以 MiniMax 官方文档为准",
     ),
     "openai": Provider(
         name="openai",
         display_name="OpenAI",
         base_url="https://api.openai.com/v1",
-        default_chat="gpt-4o-mini",
+        default_chat="gpt-5.6",
         api_style="openai",
         env_key="OPENAI_API_KEY",
         region="US",
-        free_tier="需付费 / 信用卡",
+        free_tier="价格、地区与账户可用性以 OpenAI 官方页面为准",
     ),
     "anthropic": Provider(
         name="anthropic",
         display_name="Anthropic Claude",
         base_url="https://api.anthropic.com",
-        default_chat="claude-sonnet-4-5",
+        default_chat="claude-fable-5",
         api_style="anthropic",  # 用 anthropic SDK, 不是 openai
         env_key="ANTHROPIC_API_KEY",
         region="US",
-        free_tier="需付费",
+        free_tier="价格、地区与账户可用性以 Anthropic 官方页面为准",
     ),
     "mock": Provider(
         name="mock",
@@ -136,16 +141,26 @@ def list_providers() -> list[Provider]:
     )
 
 
+def _resolve_provider_key(name: str) -> str | None:
+    """Case-insensitive registry lookup while preserving canonical keys."""
+    normalized = name.strip().casefold()
+    return next((key for key in PROVIDERS if key.casefold() == normalized), None)
+
+
 def get_provider(name: str) -> Provider:
-    """按名称获取厂商配置; 找不到时返回 mock."""
-    return PROVIDERS.get(name) or PROVIDERS["mock"]
+    """按名称获取厂商配置（大小写不敏感）；未知名称 fail closed。"""
+    key = _resolve_provider_key(name)
+    if key is None:
+        choices = ", ".join(sorted(PROVIDERS, key=str.casefold))
+        raise ValueError(f"未知 LLM provider: {name!r}; 可选: {choices}")
+    return PROVIDERS[key]
 
 
 def get_default_provider() -> Provider:
     """从环境变量推断默认厂商.
 
     优先级:
-      1. LLM_MOCK=1 → mock (CI/离线 短路, 不需 Key)
+      1. LLM_MOCK 不是精确的 "0" → mock (默认/CI 离线短路, 不需 Key)
       2. LLM_PROVIDER 环境变量 (显式选 mock 也允许, 但其他厂商需有 Key)
       3. 第一个有 Key 的国内厂商 (deepseek → kimi → siliconflow)
       4. 第一个有 Key 的海外厂商 (openai → anthropic)
@@ -153,13 +168,20 @@ def get_default_provider() -> Provider:
     """
     from shared._error_helper import raise_with_help
 
-    # LLM_MOCK=1 是 CI 短路标志: 任何缺 Key 场景下返回 mock 而不抛错
-    if os.environ.get("LLM_MOCK") == "1":
+    # 只有精确 LLM_MOCK=0 才能进入真实 provider 解析。
+    if os.environ.get("LLM_MOCK") != "0":
         return PROVIDERS["mock"]
 
-    env_choice = os.environ.get("LLM_PROVIDER", "").strip().lower()
-    if env_choice and env_choice in PROVIDERS:
-        p = PROVIDERS[env_choice]
+    from shared.env import load_dotenv_if_real
+
+    load_dotenv_if_real()
+    env_choice = os.environ.get("LLM_PROVIDER", "").strip()
+    env_key = _resolve_provider_key(env_choice) if env_choice else None
+    if env_choice and env_key is None:
+        choices = ", ".join(sorted(PROVIDERS, key=str.casefold))
+        raise ValueError(f"LLM_PROVIDER={env_choice!r} 未注册; 可选: {choices}")
+    if env_key is not None:
+        p = PROVIDERS[env_key]
         if p.name == "mock":
             return p  # 用户显式选 mock
         if not p.has_key():

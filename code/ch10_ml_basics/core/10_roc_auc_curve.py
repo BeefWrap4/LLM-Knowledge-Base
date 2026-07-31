@@ -16,7 +16,8 @@
 # 2. 类别不均衡时为什么 PR-AUC 比 ROC-AUC 更合适?
 # 3. 如何根据业务场景选择分类阈值?
 
-import os
+import argparse
+from pathlib import Path
 
 import matplotlib
 
@@ -28,12 +29,13 @@ from sklearn.metrics import classification_report, confusion_matrix, roc_auc_sco
 from sklearn.model_selection import train_test_split
 
 
-def main():
+def main(output_path: Path | None = None):
     X, y = make_classification(n_samples=1000, n_features=10, n_informative=5, random_state=42)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # 逻辑回归 + 评估
-    clf = LogisticRegression(max_iter=1000)
+    # 二分类使用 liblinear，避免依赖 SciPy L-BFGS-B 的弃用参数链路。
+    clf = LogisticRegression(max_iter=1000, solver="liblinear")
     clf.fit(X_train, y_train)
     y_prob = clf.predict_proba(X_test)[:, 1]
     y_pred = clf.predict(X_test)
@@ -62,13 +64,18 @@ def main():
     plt.legend(loc="lower right")
     plt.tight_layout()
 
-    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, "roc_curve.png")
-    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    if output_path is not None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, dpi=150, bbox_inches="tight")
+        print(f"ROC 曲线已保存: {output_path}")
+    else:
+        print("ROC 曲线已在内存中生成；默认不落盘（使用 --output PATH 可显式保存）。")
     plt.close()
-    print(f"ROC 曲线已保存: {out_path}")
+    print("OK")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="训练分类器并绘制 ROC 曲线")
+    parser.add_argument("--output", type=Path, help="可选图片输出路径；默认不写文件")
+    args = parser.parse_args()
+    main(args.output)

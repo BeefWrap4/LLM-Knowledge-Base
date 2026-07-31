@@ -16,6 +16,7 @@
 #  - 如何用 MLflow Nested Run 表达"父实验 + 子样本"的层级关系？
 
 import itertools
+import os
 
 try:
     import mlflow
@@ -24,18 +25,34 @@ except ImportError:
 
 
 def main():
-    if mlflow is None:
-        print("mlflow not installed — install via `pip install mlflow` to run for real")
-        return
-
-    mlflow.set_experiment("hyperparam-search")
-
-    # 定义搜索空间
+    models = [
+        item.strip()
+        for item in os.environ.get("LLM_MODEL_CANDIDATES", "gpt-5.6-terra,gpt-5.6-sol").split(",")
+        if item.strip()
+    ]
     search_space = {
         "temperature": [0.0, 0.3, 0.7, 1.0],
-        "model": ["gpt-4o-mini", "gpt-4o"],
+        "model": models,
         "prompt_style": ["concise", "detailed", "chain_of_thought"],
     }
+
+    # 默认只展示计划，不触发任何外部 Tracking 服务。
+    if os.environ.get("LLM_MOCK") != "0" or os.environ.get("LLM_REAL_API") != "1":
+        combinations = list(
+            itertools.product(
+                search_space["temperature"],
+                search_space["model"],
+                search_space["prompt_style"],
+            )
+        )
+        print(f"[offline] planned_runs={len(combinations)}, models={models}")
+        print("OK")
+        return
+
+    if mlflow is None:
+        raise RuntimeError("LLM_REAL_API=1 requires mlflow")
+
+    mlflow.set_experiment("hyperparam-search")
 
     # 网格搜索
     for temp, model, style in itertools.product(
@@ -75,6 +92,7 @@ def main():
                     print(f"最佳准确率: {best_run.iloc[0]['metrics.accuracy']}")
     except Exception as e:
         print(f"查找最佳实验失败: {e}")
+    print("OK")
 
 
 if __name__ == "__main__":

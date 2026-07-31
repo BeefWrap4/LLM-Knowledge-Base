@@ -4,23 +4,25 @@
 -r requirements-llm.txt
 
 # PyTorch + Transformers
-torch>=2.4
-transformers>=4.45
-tokenizers>=0.20
-datasets>=3.0
-accelerate>=0.34
-peft>=0.12
-trl>=0.11
-bitsandbytes>=0.43
-optimum>=1.22
+torch>=2.4,<3
+transformers>=4.45,<5
+tokenizers>=0.20,<1
+sentence-transformers>=5.0,<6
+bert-score>=0.3,<1
+datasets>=3.0,<5
+accelerate>=0.34,<2
+peft>=0.12,<1
+trl>=0.11,<1
+bitsandbytes>=0.43,<1
+optimum>=1.22,<3
 
 # 推理引擎
-vllm>=0.6
+vllm>=0.6,<1; sys_platform == "linux"
 # sglang 单独装（依赖较重）
 # pip install sglang[all]>=0.3
 
 # 端侧 / Apple Silicon
-mlx-lm>=0.18
+mlx-lm>=0.18,<1; sys_platform == "darwin" and platform_machine == "arm64"
 
 # 强化学习
 # verl, AReaL, slime 单独装（按需）
@@ -29,8 +31,8 @@ mlx-lm>=0.18
 # lerobot>=0.1
 
 # 向量库 (L1/L2/Index 完整)
-faiss-cpu>=1.9
+faiss-cpu>=1.9,<2
 # faiss-gpu>=1.9  # GPU 版按需
 
 # 监控
-prometheus-client>=0.20
+prometheus-client>=0.20,<1

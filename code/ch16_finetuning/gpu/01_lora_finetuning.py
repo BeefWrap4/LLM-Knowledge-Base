@@ -19,8 +19,8 @@
 
 LoRA 冻结原模型权重, 只训练低秩 adapter:
   ΔW = A·B, A ∈ R^{d×r}, B ∈ R^{r×k}, r << min(d,k)
-- r=8: 参数量 < 0.1% 原模型
-- 显存节省: 训练只需存 optimizer 状态 (adapter 权重)
+- adapter 参数比例由 rank、目标模块与基座架构共同决定
+- 冻结基座后，优化器状态通常只覆盖 adapter；激活、临时工作区和基座权重仍占显存
 """
 
 import sys
@@ -33,7 +33,7 @@ if str(_code_root) not in sys.path:
 import torch
 
 from shared._error_helper import raise_with_help
-from shared.gpu_guard import require_nvidia_gpu
+from shared.gpu_guard import require_nvidia_gpu, skip_if_mock
 
 
 def check_hardware():
@@ -62,6 +62,8 @@ class SyntheticDataset(torch.utils.data.Dataset):
 
 
 def main():
+    if skip_if_mock("an NVIDIA GPU, local model weights, and a writable adapter output directory"):
+        return
     check_hardware()
 
     model_path = str(_code_root / "models" / "Qwen2.5-0.5B-Instruct")

@@ -12,7 +12,7 @@
 # See: ../tutorial/27_推理模型与Test-Time_Compute.md §27.6.2
 # Interview hooks:
 #   1. 什么是 RLVR？和 RLHF 的本质区别？
-#   2. 数学/代码/事实型任务如何构造"零成本 verifier"？
+#   2. 数学/代码/事实型任务如何构造无需模型 API 的 verifier？其计算成本如何计量？
 #   3. RLVR 局限：哪些任务无法 verifiable？(开放问答、创意写作)
 """RLVR (RL from Verifiable Rewards) Reward 函数.
 
@@ -99,6 +99,7 @@ def main():
     print("    - 不需要 learned reward model (节省训练)")
     print("    - 客观可验证, 避免 reward hacking")
     print("    - 适合 math / code / factual QA")
+    print("OK")
 
 
 if __name__ == "__main__":

@@ -138,3 +138,4 @@ if __name__ == "__main__":
     results = rag.retrieve("什么是 RAG", query_image=None, top_k=3)
     for item_type, idx, score in results:
         print(f"  type={item_type} idx={idx} score={score:.3f}")
+    print("OK")

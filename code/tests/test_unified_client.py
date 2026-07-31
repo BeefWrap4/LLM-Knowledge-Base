@@ -4,12 +4,13 @@
 # ---
 """
 覆盖 UnifiedClient.__init__ 的三种入口:
-  - 无 Key / 占位 key: 抛 RuntimeError (缺 API Key)
-  - 真实 Key: 走 OpenAI SDK, is_mock=False
-  - LLM_MOCK=1: 强制 mock, is_mock=True (不抛错)
+  - LLM_MOCK 未设或为 1: 默认离线，is_mock=True
+  - LLM_MOCK=0 且无 Key / 占位 key: 抛 RuntimeError
+  - LLM_MOCK=0 且有 Key: 构造目标 SDK client
 """
 
 import sys
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -26,7 +27,7 @@ def test_unified_client_no_key_raises(monkeypatch):
     monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
-    monkeypatch.delenv("LLM_MOCK", raising=False)
+    monkeypatch.setenv("LLM_MOCK", "0")
     with pytest.raises(RuntimeError, match="缺 API Key"):
         UnifiedClient()
 
@@ -34,15 +35,15 @@ def test_unified_client_no_key_raises(monkeypatch):
 def test_unified_client_dummy_key_raises(monkeypatch):
     """占位 key 'YOUR_API_KEY' 也要抛错."""
     monkeypatch.setenv("DEEPSEEK_API_KEY", "YOUR_API_KEY")
-    monkeypatch.delenv("LLM_MOCK", raising=False)
+    monkeypatch.setenv("LLM_MOCK", "0")
     with pytest.raises(RuntimeError, match="缺 API Key"):
-        UnifiedClient()
+        UnifiedClient(provider="deepseek")
 
 
 def test_unified_client_with_key_succeeds(monkeypatch):
     """有真实 Key 时不抛错."""
     monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-real-test-key")
-    monkeypatch.delenv("LLM_MOCK", raising=False)
+    monkeypatch.setenv("LLM_MOCK", "0")
     client = UnifiedClient(provider="deepseek")
     assert client.api_key == "sk-real-test-key"
     assert client.is_mock is False
@@ -54,6 +55,40 @@ def test_unified_client_mock_env_var(monkeypatch):
     monkeypatch.setenv("LLM_MOCK", "1")
     client = UnifiedClient(provider="deepseek")
     assert client.is_mock is True
+
+
+def test_unified_client_unset_mode_is_offline_even_with_key(monkeypatch):
+    """未设置 LLM_MOCK 时，即使进程已有 Key 也不能构造真实客户端。"""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test-must-not-be-used")
+    monkeypatch.delenv("LLM_MOCK", raising=False)
+    client = UnifiedClient(provider="deepseek")
+    assert client.is_mock is True
+    assert client.api_key == ""
+
+
+def test_unified_client_gpt56_chat_uses_compatible_parameters(monkeypatch):
+    """GPT-5.6 Chat Completions 应显式关闭推理并使用新 token 上限字段。"""
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key")
+    monkeypatch.setenv("LLM_MOCK", "0")
+    client = UnifiedClient(provider="openai", model="gpt-5.6")
+    create = MagicMock(
+        return_value=SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))],
+            usage=None,
+        )
+    )
+    client.client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+    )
+
+    result = client.chat(prompt="hello", max_tokens=64)
+
+    assert result.content == "ok"
+    request = create.call_args.kwargs
+    assert request["reasoning_effort"] == "none"
+    assert request["max_completion_tokens"] == 64
+    assert request["temperature"] == 0.7
+    assert "max_tokens" not in request
 
 
 def test_unified_client_anthropic_with_key_succeeds(monkeypatch):
@@ -68,7 +103,7 @@ def test_unified_client_anthropic_with_key_succeeds(monkeypatch):
     ]:
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-key")
-    monkeypatch.delenv("LLM_MOCK", raising=False)
+    monkeypatch.setenv("LLM_MOCK", "0")
 
     # Mock anthropic SDK
     fake_anthropic_module_cls = type("FakeAnthropicModule", (), {})
@@ -83,6 +118,59 @@ def test_unified_client_anthropic_with_key_succeeds(monkeypatch):
     fake_anthropic_class.assert_called_once()
 
 
+def test_unified_client_anthropic_chat_uses_messages_api(monkeypatch):
+    """Anthropic 必须走 messages.create，并正确拆分 system 与 token usage。"""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-key")
+    monkeypatch.setenv("LLM_MOCK", "0")
+    fake_anthropic_class = MagicMock(return_value=SimpleNamespace())
+    monkeypatch.setitem(
+        sys.modules,
+        "anthropic",
+        SimpleNamespace(Anthropic=fake_anthropic_class),
+    )
+    client = UnifiedClient(provider="anthropic", model="claude-fable-5")
+    create = MagicMock(
+        return_value=SimpleNamespace(
+            content=[
+                SimpleNamespace(type="text", text="hello"),
+                SimpleNamespace(type="thinking", thinking="hidden"),
+                SimpleNamespace(type="text", text=" world"),
+            ],
+            usage=SimpleNamespace(input_tokens=12, output_tokens=3),
+        )
+    )
+    client.client = SimpleNamespace(messages=SimpleNamespace(create=create))
+
+    result = client.chat(prompt="hi", system="be concise", max_tokens=64)
+
+    assert result.content == "hello world"
+    assert result.usage == {
+        "prompt_tokens": 12,
+        "completion_tokens": 3,
+        "total_tokens": 15,
+    }
+    assert result.mock is False
+    request = create.call_args.kwargs
+    assert request["model"] == "claude-fable-5"
+    assert request["system"] == "be concise"
+    assert request["messages"] == [{"role": "user", "content": "hi"}]
+    assert request["max_tokens"] == 64
+
+
+def test_unified_client_real_api_error_is_not_mocked(monkeypatch):
+    """真实 API 失败必须原样抛出，不能返回貌似成功的 mock。"""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test-key")
+    monkeypatch.setenv("LLM_MOCK", "0")
+    client = UnifiedClient(provider="deepseek")
+    create = MagicMock(side_effect=ConnectionError("fixture failure"))
+    client.client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+    )
+
+    with pytest.raises(ConnectionError, match="fixture failure"):
+        client.chat(prompt="hello")
+
+
 def test_unified_client_anthropic_missing_sdk_raises(monkeypatch):
     """anthropic provider + 无 anthropic SDK → 抛错."""
     for k in [
@@ -94,7 +182,7 @@ def test_unified_client_anthropic_missing_sdk_raises(monkeypatch):
     ]:
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-key")
-    monkeypatch.delenv("LLM_MOCK", raising=False)
+    monkeypatch.setenv("LLM_MOCK", "0")
 
     # 模拟 anthropic SDK 缺失 — 让 import 失败
     monkeypatch.delitem(sys.modules, "anthropic", raising=False)
@@ -133,7 +221,7 @@ def test_get_default_provider_no_key_raises(monkeypatch):
     ]:
         monkeypatch.delenv(k, raising=False)
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
-    monkeypatch.delenv("LLM_MOCK", raising=False)  # W1 修复: 不让全局 LLM_MOCK 短路抛错路径
+    monkeypatch.setenv("LLM_MOCK", "0")
     with pytest.raises(RuntimeError, match="缺 API Key"):
         get_default_provider()
 
@@ -171,7 +259,7 @@ def test_get_default_provider_explicit_provider_no_key_raises(monkeypatch):
     ]:
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("LLM_PROVIDER", "deepseek")
-    monkeypatch.delenv("LLM_MOCK", raising=False)  # W1 修复
+    monkeypatch.setenv("LLM_MOCK", "0")
     with pytest.raises(RuntimeError, match="缺 API Key"):
         get_default_provider()
 
@@ -190,6 +278,6 @@ def test_get_default_provider_with_key_succeeds(monkeypatch):
     ]:
         monkeypatch.delenv(k, raising=False)
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
-    monkeypatch.delenv("LLM_MOCK", raising=False)  # W1 修复
+    monkeypatch.setenv("LLM_MOCK", "0")
     p = get_default_provider()
     assert p.name == "deepseek"

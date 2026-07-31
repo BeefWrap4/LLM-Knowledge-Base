@@ -28,8 +28,8 @@ Python 的内存管理采用**分层架构**，根据对象大小使用不同的
 ```mermaid
 flowchart TD
     subgraph "Python 内存分配器层级"
-        A[Python 对象] -->|> 512 bytes| B[pymalloc<br/>对象分配器]
-        A -->|<= 512 bytes| C[C malloc<br/>系统分配器]
+        A[Python 对象] -->|<= 512 bytes| B[pymalloc<br/>小对象分配器]
+        A -->|> 512 bytes| C[原始内存分配器<br/>通常最终调用系统分配器]
         
         B --> D[内存池 Pool]<-->E[内存块 Block]
         
@@ -53,8 +53,8 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph "pymalloc 内存池结构"
-        A[arena<br/>256KB] --> B[pool 1<br/>4KB]
-        A --> C[pool 2<br/>4KB]
+        A["arena<br/>64位通常 1 MiB<br/>32位通常 256 KiB"] --> B["pool 1<br/>64位通常 16 KiB<br/>32位通常 4 KiB"]
+        A --> C["pool 2"]
         A --> D[pool N<br/>4KB]
         
         B --> B1[block 1<br/>64B]
@@ -70,9 +70,11 @@ flowchart LR
     style C fill:#6B8CBB,color:#fff
 ```
 
-- **Arena**：`256KB` 的大块内存，由 `malloc` 分配
-- **Pool**：`4KB`（1 个内存页），同一 Pool 中的 block 大小相同
-- **Block**：实际分配给对象的最小单元，大小为 `8, 16, 32, ..., 512` 字节
+- **Arena**：CPython 64 位构建通常为 `1 MiB`，32 位构建通常为 `256 KiB`
+- **Pool**：64 位构建通常为 `16 KiB`，32 位构建通常为 `4 KiB`；同一 Pool 服务同一 size class
+- **Block**：实际分配给对象的单元，按 size class 管理，最大为 `512` 字节
+
+以上是 **CPython 实现细节**，不是 Python 语言规范。默认带 GIL 的 CPython 使用 pymalloc 管理小对象；自由线程构建使用 mimalloc，因此不能把 pymalloc 图套用到所有 Python 实现和构建。
 
 ```python
 import sys
@@ -83,9 +85,20 @@ print(sys.getsizeof("hello"))      # 54 bytes (str)
 print(sys.getsizeof([1, 2, 3]))    # 88 bytes (list)
 print(sys.getsizeof({"a": 1}))     # 232 bytes (dict)
 
-# 查看 pymalloc 是否启用
-print(sys._pymem_in_use())  # 当前使用的内存（Python 3.13+）
+# sys 没有公开的 `_pymem_in_use()` API。
+# 排查 Python 分配可使用 tracemalloc；CPython 调试构建还可使用
+# sys._debugmallocstats()，但它是实现细节且直接写到 stderr。
+import tracemalloc
+
+tracemalloc.start()
+snapshot = tracemalloc.take_snapshot()
+print(f"tracemalloc 已跟踪块数: {len(snapshot.traces)}")
 ```
+
+**参考资料（核对日期：2026-07-31）**：
+
+- [Python/C API：Memory Management](https://docs.python.org/3/c-api/memory.html)
+- [Python 标准库：`tracemalloc`](https://docs.python.org/3/library/tracemalloc.html)
 
 ### 6.1.2 对象的内存布局（PyObject 头部）
 
@@ -214,7 +227,7 @@ flowchart LR
     A[对象创建] --> B[引用计数 = 1]
     B --> C{引用计数?}
     C -->|> 0| D[继续使用]
-    C -->|= 0| E["立即调用 __del__<br/>回收内存"]
+    C -->|= 0| E["执行对象析构流程<br/>释放对象内存"]
     
     D --> F["新引用 +1"] --> C
     D --> G["引用消失 -1"] --> C
@@ -229,7 +242,7 @@ flowchart LR
 
 **缺点**：
 - **无法处理循环引用**：两个对象相互引用时，引用计数永远不会归零
-- **线程安全开销**：每次修改引用计数都需要原子操作
+- **并发开销取决于构建**：传统 GIL 构建中的普通引用计数更新受 GIL 保护；自由线程构建使用 biased/deferred reference counting，并只在必要路径使用原子操作
 - **空间开销**：每个对象需要存储引用计数字段
 
 ### 6.2.2 循环引用问题与标记-清除
@@ -253,9 +266,11 @@ b.next = a  # B -> A （循环引用！）
 del a  # Node("A") 的引用计数 = 1（b.next 指向它）
 del b  # Node("B") 的引用计数 = 1（a.next 指向它）
 
-# 循环引用导致内存泄漏！
-# 引用计数无法回收这两个对象
+# 单靠引用计数无法回收这两个对象；
+# CPython 的循环垃圾回收器仍可发现并回收该循环。
 ```
+
+自 Python 3.4 的 PEP 442 起，包含 Python `__del__` 方法的循环通常也能被安全终结和回收。真正需要警惕的是对象复活、仍有外部引用、C 扩展的非标准遍历/终结逻辑，以及调试时启用 `gc.DEBUG_SAVEALL` 主动保留不可达对象。
 
 **循环引用内存布局**：
 
@@ -273,36 +288,31 @@ flowchart LR
     style B fill:#e74c3c,color:#fff
 ```
 
-### 6.2.3 标记-清除算法（Mark-and-Sweep）
+### 6.2.3 CPython 循环垃圾回收（常被概括为“标记-清除”）
 
-标记-清除算法专门用于解决**容器对象**之间的循环引用问题。
+CPython 只跟踪可能参与引用环的容器对象。其实现不是“从语言级根对象做一次普通 DFS”的经典 tracing GC：收集器会为候选对象建立临时引用计数，扣除候选集合内部的引用，以识别没有集合外引用的循环孤岛，再按安全终结、打破引用和释放等阶段处理。
 
 ```mermaid
 flowchart TD
     subgraph "标记-清除算法流程"
-        A[开始 GC 循环] --> B[阶段1：标记 Mark]
-        
-        B --> C["从根对象出发<br/>(全局变量、栈变量)"]
-        C --> D["DFS/BFS 遍历所有可达对象"]
-        D --> E["标记可达对象: gc_refs > 0"]
-        
-        E --> F[阶段2：清除 Sweep]
-        F --> G["遍历所有容器对象"]
-        G --> H{对象被标记?}
-        H -->|Yes| I[保留对象]
-        H -->|No| J["回收对象内存<br/>调用 __del__"]
-        
-        I & J --> K[结束 GC 循环]
+        A[选取被跟踪的候选容器] --> B[复制候选对象引用计数]
+        B --> C[扣除候选集合内部引用]
+        C --> D{仍有集合外引用?}
+        D -->|是| E[标记为可达并传播]
+        D -->|否| F[识别为循环孤岛]
+        F --> G[安全终结并打破引用]
+        G --> H[释放不可达对象]
     end
     
     style E fill:#2ecc71,color:#fff
-    style J fill:#e74c3c,color:#fff
+    style H fill:#e74c3c,color:#fff
 ```
 
 **算法步骤详解**：
 
-1. **标记阶段**：从根对象（全局命名空间、调用栈上的局部变量）出发，递归标记所有**外部可达**的对象
-2. **清除阶段**：遍历所有容器对象，未被标记的对象就是**仅被循环引用**的对象，可以被安全回收
+1. **候选与试减**：对某一代的被跟踪容器建立临时引用计数，并扣除候选集合内部引用
+2. **可达传播**：仍有集合外引用的对象及其可达对象保留
+3. **终结与清理**：对循环孤岛按 PEP 442 安全终结，随后打破引用并释放；对象若在终结阶段复活则本轮保留
 
 ```python
 import gc
@@ -456,8 +466,9 @@ print(f"引用 obj 的对象数: {len(referrers)}")
 referents = gc.get_referents(obj)
 print(f"obj 引用的对象: {referents}")  # MyClass 的属性字典等
 
-# 判断对象是否被某个代追踪
-print(f"obj 在几代中: {gc.get_generation(obj)}")  # 0, 1, 或 2
+# 公共 API 可判断对象是否被循环 GC 跟踪；
+# Python 没有 `gc.get_generation(obj)`。
+print(f"obj 是否被循环 GC 跟踪: {gc.is_tracked(obj)}")
 
 # ========== 弱引用（打破循环引用的设计模式）==========
 import weakref
@@ -501,7 +512,7 @@ print(f"parent 销毁后: {child.get_parent()}")  # 已销毁
 
 | 场景 | 原因 | 解决方案 |
 |------|------|---------|
-| **循环引用中的 `__del__`** | 有 `__del__` 的对象无法被标记-清除回收 | 使用 `weakref` 或重写 `__del__` |
+| **终结器复活对象或保留全局引用** | `__del__` 把对象重新挂到可达容器，或清理逻辑留下强引用 | 避免对象复活；资源释放优先使用上下文管理器或 `weakref.finalize` |
 | **全局缓存无上限** | 字典/列表无限增长 | 使用 LRUCache、定期清理 |
 | **事件监听器未注销** | 观察者模式中对象被持续引用 | 注销监听器或使用弱引用 |
 | **ORM 会话未关闭** | 数据库查询缓存累积 | 使用上下文管理器确保关闭 |
@@ -726,14 +737,14 @@ fibonacci.cache_clear()  # 手动清空缓存
 
 > **答案**：Python 采用**三层垃圾回收机制**：
 > 1. **引用计数（Reference Counting）**：主要机制，每个对象维护引用计数器，为 0 时立即回收。优点是即时回收，缺点是无法处理循环引用。
-> 2. **标记-清除（Mark-and-Sweep）**：辅助机制，专门解决容器对象间的循环引用问题。从根对象出发标记可达对象，清除未被标记的对象。
+> 2. **循环垃圾回收**：辅助机制，针对被跟踪容器的循环引用。CPython 通过临时引用计数扣除候选集合内部引用，识别没有集合外引用的循环孤岛；“标记-清除”是教学概括，不应描述成普通根扫描。
 > 3. **分代回收（Generational GC）**：优化机制，基于弱代假说，将对象分为三代（0/1/2），新生对象检查频率高，老对象检查频率低，减少 GC 开销。
 
 ### 题目 2：引用计数的优缺点？如何解决循环引用？
 
 > **答案**：
 > **优点**：即时回收、简单高效、局部性好
-> **缺点**：无法处理循环引用、线程安全开销、无法回收有 `__del__` 的循环引用
+> **缺点**：引用计数本身无法处理循环引用；不同构建还会承担不同的同步与簿记开销
 > 
 > **解决方案**：
 > - 标记-清除算法检测循环引用
@@ -742,11 +753,13 @@ fibonacci.cache_clear()  # 手动清空缓存
 
 ### 题目 3：`gc.collect()` 什么时候会无法回收对象？
 
-> **答案**：以下情况 `gc.collect()` 无法回收：
-> 1. 对象仍有外部引用（引用计数 > 0）
-> 2. 循环引用中的对象定义了 `__del__` 方法（CPython 不确定回收顺序，保守处理）
-> 3. 被 C 扩展模块持有引用
-> 4. 被调试工具持有引用（如 `gc.DEBUG_SAVEALL` 模式下会存到 `gc.garbage`）
+> **答案**：以下情况 `gc.collect()` 不会释放对象：
+> 1. 对象仍从 Python 根或其他活动对象可达
+> 2. `__del__` 在终结过程中使对象复活
+> 3. C 扩展持有引用，或扩展类型没有正确实现循环 GC 协议
+> 4. 启用 `gc.DEBUG_SAVEALL` 后，收集器会把不可达对象保存在 `gc.garbage` 供调试
+>
+> 仅仅“对象在环中且定义了 `__del__`”自 PEP 442 起通常不再阻止回收。
 
 ### 题目 4：什么是弱引用（weakref）？使用场景？
 
@@ -759,9 +772,9 @@ fibonacci.cache_clear()  # 手动清空缓存
 ### 题目 5：`__del__` 方法一定会在对象销毁时调用吗？
 
 > **答案**：**不一定**。`__del__` 的调用有以下限制：
-> 1. 如果对象存在循环引用且定义了 `__del__`，标记-清除可能无法确定回收顺序，`__del__` 不会被调用
-> 2. 解释器退出时，不保证所有对象的 `__del__` 都被调用
-> 3. 如果 `__del__` 内部引用了即将销毁的对象，行为未定义
+> 1. 解释器退出阶段，模块全局状态可能已部分清理，不应依赖调用顺序
+> 2. `__del__` 中抛出的异常只会写入标准错误，不能作为可靠错误处理机制
+> 3. `__del__` 可以使对象复活；这会延迟释放并令生命周期更难推理
 > 
 > **最佳实践**：使用上下文管理器（`__enter__`/`__exit__`）或 `weakref.finalize` 替代 `__del__` 进行资源清理。
 
@@ -772,15 +785,15 @@ fibonacci.cache_clear()  # 手动清空缓存
 ```
 内存管理与 GC
 ├── 内存分配器 (pymalloc)
-│   ├── arena 256KB → pool 4KB → block 可变
+│   ├── 64位通常 arena 1MiB → pool 16KiB → size-class block
 │   ├── 对象头部：ob_refcnt + ob_type
 │   └── 大对象(>512B)直接 malloc
 ├── 垃圾回收三层机制
 │   ├── 引用计数 — 立即回收，无法处理循环引用
-│   ├── 标记-清除 — DFS 标记可达对象，清除循环引用
+│   ├── 循环 GC — 临时引用计数试减，识别循环孤岛
 │   └── 分代回收 — 第0代(700)/第1代(10)/第2代(10)
 ├── 内存泄漏场景
-│   ├── 循环引用（__del__ 阻止回收）
+│   ├── 无界缓存、未注销监听器、终结器复活对象
 │   ├── 全局缓存无限增长
 │   ├── 未注销的事件监听器
 │   └── 解决：weakref 弱引用
@@ -808,16 +821,22 @@ fibonacci.cache_clear()  # 手动清空缓存
 
 | 概念 | 关键点 |
 |------|--------|
-| 引用计数（refcount） | 每个 PyObject 头部 8 字节计数器，归零即调用 `__del__` 并立即释放；`sys.getrefcount()` 需减 1 |
-| 标记-清除（Mark-Sweep） | 仅处理容器对象循环引用；DFS 标记根可达对象，未标记的循环对象在 Sweep 阶段回收 |
+| 引用计数（refcount） | CPython 对象含引用计数字段；归零进入对象析构流程，只有定义了终结器的对象才会执行 `__del__`；`sys.getrefcount()` 会包含调用产生的临时引用 |
+| 循环垃圾回收 | 跟踪可能成环的容器，通过候选集合内引用试减识别循环孤岛；并非普通的语言级根 DFS |
 | 分代回收阈值 | `gc.get_threshold()` 默认 `(700, 10, 10)`，分别对应第 0/1/2 代触发频率 |
 | 弱代假说 | 多数对象生命周期短，存活越久越可能继续存活，故老年代检查频率低 |
-| 循环引用破局 | 优先用 `weakref`/`WeakValueDictionary`；`__del__` 存在时 CPython 放弃回收 |
+| 循环引用破局 | 循环 GC 通常可回收包括 Python `__del__` 在内的环；弱引用仍适合表达非拥有关系并降低保留风险 |
 | `__slots__` 优化 | 类声明固定属性可省去 `__dict__`，单实例内存节省约 50%，大规模场景收益显著 |
 | 生成器替代列表 | `yield` 惰性求值，按需产出数据，百万级数据可避免一次性分配大块内存 |
 | `lru_cache` 控量 | `@lru_cache(maxsize=N)` 限制缓存条目；`cache_info()` 监控命中率，`cache_clear()` 手动清空 |
 | `tracemalloc` 排查 | `take_snapshot()` 对比定位泄漏点；`compare_to(snap, 'lineno')` 输出按行号排序的 TOP 分配 |
 | `gc` 手动控制 | `gc.disable()` 用于性能关键路径，`gc.collect(gen)` 按代回收，`gc.DEBUG_SAVEALL` 把不可达对象存到 `gc.garbage` |
+
+**参考资料（核对日期：2026-07-31）**：
+
+- [Python/C API：Memory Management](https://docs.python.org/3/c-api/memory.html)
+- [`gc` — Garbage Collector interface](https://docs.python.org/3/library/gc.html)
+- [PEP 442：Safe object finalization](https://peps.python.org/pep-0442/)
 
 ---
 

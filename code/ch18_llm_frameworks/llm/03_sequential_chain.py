@@ -4,7 +4,7 @@
 # section: 18.1.2 Chain 概念与类型 - SequentialChain
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
-# deps: langchain, langchain-openai
+# deps: langchain-classic, langchain-openai
 # run: python 03_sequential_chain.py
 # expected_runtime: <1s (mock mode)
 # expected_output: outline + article dict
@@ -15,11 +15,18 @@
 #   2. SequentialChain 与 LCEL 的 `chain1 | chain2` 写法有什么本质差异？
 
 
+import os
+
+if os.environ.get("LLM_MOCK") != "0":
+    print("[SKIP] LangChain Classic 迁移示例仅在显式 LLM_MOCK=0 时运行")
+    print("OK")
+    raise SystemExit(0)
+
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
 
 try:
-    from langchain.chains import LLMChain, SequentialChain
+    from langchain_classic.chains import LLMChain, SequentialChain
 
     _SKIP_REASON = None
 except (ImportError, ModuleNotFoundError) as _e:

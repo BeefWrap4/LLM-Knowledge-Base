@@ -27,6 +27,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import skip_if_mock
 
 # 浏览器侧 (供前端工程师复制) 的 JS 调用模板.
 # 真实运行时, 模型权重由浏览器在客户端下载 + 编译, 无需服务端.
@@ -150,6 +151,8 @@ def run_webllm_in_browser(
 
 
 def main() -> None:
+    if skip_if_mock("已安装 Chromium 的 Playwright、WebGPU 和模型下载网络"):
+        return
     print("=== WebLLM 浏览器内推理 (真实 playwright) ===\n")
     print("JS 模板 (供前端复制):")
     print(WEBLLM_JS_TEMPLATE)

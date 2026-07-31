@@ -31,6 +31,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help
+from shared.gpu_guard import skip_if_mock
 
 try:
     from prometheus_client import Counter, Histogram, start_http_server
@@ -81,6 +82,8 @@ def simulate_request(req_id: int, ttft_hist, tpot_hist, req_counter) -> dict:
 
 
 def main():
+    if skip_if_mock("a free localhost metrics port and the optional prometheus-client dependency"):
+        return
     if not HAS_PROMETHEUS:
         raise_with_help(
             "prometheus_client 未装",

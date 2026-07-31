@@ -141,9 +141,10 @@ def main() -> None:
     print(f"  visits={best.visits}  value={best.value:.3f}")
 
     print("\n--- 与 Best-of-N 对比 ---")
-    print(f"  MCTS+PRM  : {root.visits} 次模拟 → 通常 N=64 BoN 更准但代价高")
-    print("  Best-of-N : 独立采样 N 次，verifier 选最优")
-    print("  混合策略  : MCTS 指导 prefix → N 个完成 → verifier 选最优")
+    print(f"  MCTS+PRM  : 本次使用 {root.visits} 次模拟，按树结构复用前缀探索")
+    print("  Best-of-N : 独立采样 N 次，再由 verifier 选优")
+    print("  结论      : 谁更优取决于任务、生成器、verifier 与同等计算预算，需实测")
+    print("OK")
 
 
 if __name__ == "__main__":

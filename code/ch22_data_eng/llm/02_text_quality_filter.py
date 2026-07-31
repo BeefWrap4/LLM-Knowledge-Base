@@ -149,6 +149,7 @@ def main():
 
     print("Good text:", filter_obj.full_filter(good_text))
     print("Bad text:", filter_obj.full_filter(bad_text))
+    print("OK")
 
 
 if __name__ == "__main__":

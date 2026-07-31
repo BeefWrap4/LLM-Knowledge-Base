@@ -4,6 +4,7 @@
 # section: 25.1.2
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: none
 # run: python 05_kv_cache_memory_calculator.py
 # expected_runtime: <1s

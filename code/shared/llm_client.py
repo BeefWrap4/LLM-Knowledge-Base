@@ -1,15 +1,15 @@
 # ---
 # shared/llm_client.py
-# 统一 LLM 客户端 — OpenAI SDK + provider 路由
-# 自动注入 base_url + api_key, 缺 Key 时降级到 MockLLM
+# 统一 LLM 客户端 — OpenAI-compatible + Anthropic Messages 路由
+# 真实模式缺 Key 或调用失败时 fail closed；未设置或非 0 时才返回离线 mock
 # ---
 """
 统一 LLM 客户端 (drop-in 替代 openai.OpenAI).
 
 设计目标:
   - 用户无需直接 import openai / 配置 base_url
-  - 自动从 .env 加载 API Key (经 shared/env.py)
-  - 缺 Key 时降级到 MockLLM, 打印 [WARN]
+  - 仅在 LLM_MOCK=0 时按需从 .env 加载 API Key (经 shared/env.py)
+  - 缺 Key 或真实 API 失败时抛错，不伪装成成功的 mock
   - 支持 1 行切换厂商: UnifiedClient(provider="kimi")
 
 Usage:
@@ -19,8 +19,8 @@ Usage:
     print(resp.content)
 
     # 显式指定:
-    client = UnifiedClient(provider="kimi", model="moonshot-v1-128k")
-    resp = client.chat("分析这份 10 万字报告")
+    client = UnifiedClient(provider="kimi")
+    resp = client.chat("分析这份报告")
 """
 
 import os
@@ -55,13 +55,18 @@ class UnifiedClient:
     ):
         self.provider: Provider = get_provider(provider) if provider else get_default_provider()
         self.model: str = model or self.provider.default_chat
-        self.api_key: str = api_key or os.environ.get(self.provider.env_key, "")
         self.timeout = timeout
+        self.api_key = ""
 
-        # LLM_MOCK=1 环境变量 → 强制走 mock (CI/离线)
-        if os.environ.get("LLM_MOCK") == "1":
+        # fail closed: 只有精确 LLM_MOCK=0 才能创建真实客户端。
+        if os.environ.get("LLM_MOCK") != "0":
             self.client = None
             return
+
+        from shared.env import load_dotenv_if_real
+
+        load_dotenv_if_real()
+        self.api_key = api_key or os.environ.get(self.provider.env_key, "")
         if not self.api_key or self.api_key == "YOUR_API_KEY":
             from shared._error_helper import raise_with_help
 
@@ -116,7 +121,7 @@ class UnifiedClient:
             system: system prompt
             messages: 完整 messages 列表 (覆盖 prompt)
             model: 覆盖默认模型
-            temperature: 0-2
+            temperature: 具体范围与兼容性由所选 provider/model 决定
             max_tokens: 最大输出 token
 
         Returns:
@@ -145,14 +150,30 @@ class UnifiedClient:
                 mock=True,
             )
 
-        # Real call (OpenAI 协议)
+        if self.provider.api_style == "anthropic":
+            return self._chat_anthropic(
+                messages=messages,
+                used_model=used_model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                request_options=dict(kwargs),
+            )
+
+        # Real call (OpenAI-compatible protocol)
         try:
+            request_options = dict(kwargs)
+            if self.provider.name == "openai" and used_model.startswith("gpt-5.6"):
+                effort = request_options.setdefault("reasoning_effort", "none")
+                request_options.setdefault("max_completion_tokens", max_tokens)
+                if effort == "none":
+                    request_options.setdefault("temperature", temperature)
+            else:
+                request_options.setdefault("temperature", temperature)
+                request_options.setdefault("max_tokens", max_tokens)
             response = self.client.chat.completions.create(
                 model=used_model,
                 messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs,
+                **request_options,
             )
             content = response.choices[0].message.content or ""
             usage = {
@@ -170,15 +191,73 @@ class UnifiedClient:
             )
         except Exception as e:
             print(f"[ERROR] UnifiedClient: {type(e).__name__}: {e}", file=sys.stderr)
-            # 降级到 mock
-            return _LLMResponse(
-                content=f"[API ERROR, fallback to mock] {deterministic_response(messages[-1].get('content', ''))}",
-                usage={},
-                raw=e,
-                model=f"error/{used_model}",
-                provider=self.provider.name,
-                mock=True,
+            raise
+
+    def _chat_anthropic(
+        self,
+        *,
+        messages: list[dict],
+        used_model: str,
+        temperature: float,
+        max_tokens: int,
+        request_options: dict[str, Any],
+    ):
+        """调用 Anthropic Messages API，并转换为统一响应对象。"""
+        system_parts: list[str] = []
+        anthropic_messages: list[dict] = []
+        for message in messages:
+            role = message.get("role")
+            content = message.get("content", "")
+            if role == "system":
+                if not isinstance(content, str):
+                    raise ValueError("Anthropic system content 在本统一接口中必须是字符串")
+                system_parts.append(content)
+            elif role in {"user", "assistant"}:
+                anthropic_messages.append({"role": role, "content": content})
+            else:
+                raise ValueError(
+                    f"Anthropic 统一接口不接受 role={role!r}; 工具调用请直接使用官方 SDK 的 content blocks"
+                )
+
+        request_options.setdefault("max_tokens", max_tokens)
+        request_options.setdefault("temperature", temperature)
+        if system_parts:
+            request_options.setdefault("system", "\n\n".join(system_parts))
+
+        try:
+            response = self.client.messages.create(
+                model=used_model,
+                messages=anthropic_messages,
+                **request_options,
             )
+        except Exception as e:
+            print(f"[ERROR] UnifiedClient: {type(e).__name__}: {e}", file=sys.stderr)
+            raise
+
+        if isinstance(response.content, str):
+            content = response.content
+        else:
+            blocks = response.content if isinstance(response.content, list) else [response.content]
+            content = "".join(
+                block.text
+                for block in blocks
+                if getattr(block, "type", None) == "text" and getattr(block, "text", None)
+            )
+        usage_obj = getattr(response, "usage", None)
+        input_tokens = getattr(usage_obj, "input_tokens", 0) if usage_obj else 0
+        output_tokens = getattr(usage_obj, "output_tokens", 0) if usage_obj else 0
+        return _LLMResponse(
+            content=content,
+            usage={
+                "prompt_tokens": input_tokens,
+                "completion_tokens": output_tokens,
+                "total_tokens": input_tokens + output_tokens,
+            },
+            raw=response,
+            model=used_model,
+            provider=self.provider.name,
+            mock=False,
+        )
 
 
 class _LLMResponse:

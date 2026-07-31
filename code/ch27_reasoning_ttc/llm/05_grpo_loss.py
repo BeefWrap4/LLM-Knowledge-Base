@@ -26,7 +26,12 @@ GRPO = DeepSeek-R1 用的 RL 算法:
 import sys
 from pathlib import Path
 
-import torch
+try:
+    import torch
+except ImportError:
+    print("[SKIP] 需要 torch>=2.0；请安装 GPU tier 依赖")
+    print("OK")
+    raise SystemExit(0)
 
 _code_root = Path(__file__).resolve().parent.parent.parent
 if str(_code_root) not in sys.path:
@@ -62,7 +67,8 @@ def main():
     print("=== GRPO Loss (真实 PyTorch) ===\n")
 
     B, T = 8, 16  # 2 prompt × 4 回答
-    log_probs = torch.randn(B, T, requires_grad=True) * 0.1 - 1.0
+    # 算术运算后的 Tensor 默认不是叶子节点；显式 requires_grad_ 便于演示梯度。
+    log_probs = (torch.randn(B, T) * 0.1 - 1.0).requires_grad_()
     old_log_probs = log_probs.detach() + torch.randn_like(log_probs) * 0.01
     advantages = torch.tensor([1.0, 0.5, -0.5, -1.0, 0.8, 0.2, -0.2, -0.8])
     group_ids = torch.tensor([0, 0, 0, 0, 1, 1, 1, 1])  # 2 个 prompt 组
@@ -75,6 +81,7 @@ def main():
     print(f"  loss: {loss.item():.4f}")
     print(f"  loss requires_grad: {log_probs.grad is not None}")
     print("\n  ✅ GRPO loss 可微, 支持 group-relative advantage")
+    print("OK")
 
 
 if __name__ == "__main__":

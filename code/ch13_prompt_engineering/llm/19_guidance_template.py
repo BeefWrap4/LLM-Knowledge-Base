@@ -38,6 +38,19 @@ def build_template():
     return user_info
 
 
+def main() -> None:
+    try:
+        template = build_template()
+    except ModuleNotFoundError as exc:
+        if exc.name != "guidance":
+            raise
+        print("[SKIP] optional dependency 'guidance' is not installed; run: pip install guidance")
+        print("OK")
+        return
+
+    print(f"[Template Created] {template}")
+    print("OK")
+
+
 if __name__ == "__main__":
-    tpl = build_template()
-    print(f"[Template Created] {tpl}")
+    main()

@@ -11,7 +11,7 @@
 # ---
 # See: ../tutorial/18_LLM工程框架实战.md § 18.8.1
 # Interview hooks:
-#   1. Pydantic AI 相比 LangChain 的核心优势是什么？为什么 2026 年被认为是首选？
+#   1. Pydantic AI 的类型化接口适合哪些场景，与图编排框架如何分工？
 #   2. Pydantic AI 的"结构化输出"如何在工程上保证类型安全？
 """
 Pydantic AI 实战：类型安全的研究助手 - 离线 mock 模式
@@ -43,9 +43,9 @@ class Deps:
 # ===== 3. 定义 Agent（mock 模式：仅展示 API）=====
 # 真实代码:
 # research_agent = Agent(
-#     model="openai:gpt-4o",
-#     result_type=ResearchReport,  # 强制结构化输出
-#     system_prompt="你是一个严谨的研究助手，输出必须可验证。",
+#     model=f"openai:{os.environ.get('OPENAI_MODEL', 'gpt-5.6')}",
+#     output_type=ResearchReport,  # Pydantic AI 当前结构化输出参数
+#     instructions="你是一个严谨的研究助手，输出必须可验证。",
 #     deps_type=Deps,
 # )
 #
@@ -59,20 +59,20 @@ class Deps:
 def mock_run(query: str, deps: Deps) -> ResearchReport:
     """模拟 Pydantic AI 的运行结果"""
     return ResearchReport(
-        summary=f"基于用户 {deps.user_id} 的查询 '{query}' 的研究总结。",
+        summary=f"[MOCK] 用户 {deps.user_id} 的查询 '{query}'，未执行真实研究。",
         key_points=[
             "LangChain 已转向编排与集成层",
             "LangGraph 主导复杂 Agent 工作流",
-            "Pydantic AI 在类型安全上领先",
+            "Pydantic AI 强调 Python 类型与结构化校验",
         ],
-        sources=["官方文档", "GitHub 仓库", "社区博客"],
-        confidence=0.85,
+        sources=["[MOCK] 未访问外部来源"],
+        confidence=0.0,
     )
 
 
 # 演示
-deps = Deps(user_id="alice", api_key="sk-...")
-report = mock_run("请调研 2026 年 LangChain 的市场份额变化", deps)
+deps = Deps(user_id="alice", api_key="<not-read-in-offline-demo>")
+report = mock_run("对比当前 Agent 框架的接口边界", deps)
 print("类型安全：IDE 自动补全、运行时校验")
 print(f"summary: {report.summary}")
 print(f"key_points: {report.key_points}")

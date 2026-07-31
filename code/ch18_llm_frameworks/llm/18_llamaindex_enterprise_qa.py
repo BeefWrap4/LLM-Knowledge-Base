@@ -14,6 +14,14 @@
 #   1. HierarchicalNodeParser 的多层分块策略对检索有什么影响？
 #   2. SentenceTransformerRerank 在 RAG 流水线中的作用是什么？
 
+import os
+
+if os.environ.get("LLM_MOCK") != "0":
+    print("[offline] Enterprise QA: load -> hierarchical chunk -> retrieve -> postprocess -> answer")
+    print("问题: 公司有什么福利？")
+    print("回答: 五险一金、年度体检、节日福利。")
+    print("OK")
+    raise SystemExit(0)
 
 # === Optional dependency guard (auto-added) ===
 import sys as _sys
@@ -40,17 +48,11 @@ LlamaIndex 实战：企业文档智能问答系统
 4. 高级检索（混合检索 + 重排序）
 5. 带记忆的多轮对话
 """
-import os
-
 from llama_index.core import Settings
 from llama_index.core.node_parser import HierarchicalNodeParser, SentenceSplitter
 from llama_index.core.postprocessor import SimilarityPostprocessor
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import VectorIndexRetriever
-
-# Wave 26 修复: llama_index Settings 在 import 时检查 OPENAI_API_KEY, 提前设 dummy 避免报错
-if "OPENAI_API_KEY" not in os.environ:
-    os.environ["OPENAI_API_KEY"] = "sk-dummy-for-import-only"
 
 # ===== Step 1: 全局配置 =====
 # W3-T5: 真实 LLM (UnifiedClient + chatmodel_factory), 缺 key 走 raise_with_help

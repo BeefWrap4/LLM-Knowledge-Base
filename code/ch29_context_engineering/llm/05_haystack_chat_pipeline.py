@@ -94,6 +94,7 @@ def run_demo() -> None:
     # 估算 token
     total = sum(len(m.content) // 2 for m in result["messages"])
     print(f"[估] 总 tokens ≈ {total}")
+    print("OK")
 
 
 if __name__ == "__main__":

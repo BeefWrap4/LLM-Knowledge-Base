@@ -12,7 +12,7 @@
 
 ```bash
 cd code/
-python ch22_data_eng/llm/01_data_quality_filter.py
+python ch22_data_eng/llm/02_text_quality_filter.py
 ```
 
 ## 关联章节

@@ -42,6 +42,18 @@ tags:
 
 ## 18.1 LangChain 核心 ⭐⭐⭐⭐⭐
 
+> **版本边界（2026-07）**：本仓库面向 LangChain 1.x。LCEL、`create_agent` 和 LangGraph 是当前路径；
+> `LLMChain`、`ConversationChain` 及旧 Memory 类已迁入 `langchain-classic`，下文保留这些内容只用于
+> 阅读存量项目和迁移面试题，不能继续从 `langchain` 主命名空间导入。模型示例默认读取
+> `OPENAI_MODEL`，未设置时使用当前通用别名 `gpt-5.6`：
+>
+> ```python
+> import os
+> OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6")
+> ```
+>
+> 低成本批处理应根据运行时的当前模型目录和本地评测另选模型，不把历史的 `mini` ID 固化到代码中。
+
 ### 18.1.1 LangChain 设计哲学
 
 LangChain 的核心理念是 **"Composability"（可组合性）** —— 将 LLM 应用拆解为可复用的组件，通过链式调用来构建复杂应用。
@@ -78,7 +90,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
 
 prompt = ChatPromptTemplate.from_template("讲一个关于{topic}的笑话")
-model = ChatOpenAI(model="gpt-4o")
+model = ChatOpenAI(model=OPENAI_MODEL)
 output_parser = StrOutputParser()
 
 # 管道式组合：prompt | model | parser
@@ -93,14 +105,16 @@ print(result)
 
 Chain 是 LangChain 的核心抽象 —— 将多个组件"链接"成一个可执行流程。
 
-#### LLMChain：最基础的链
+#### LLMChain：最基础的链（存量迁移参考）
+
+> LangChain 1.x 新项目优先使用上面的 LCEL；运行这一存量写法需额外安装 `langchain-classic`。
 
 ```python
-from langchain.chains import LLMChain
+from langchain_classic.chains import LLMChain
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+llm = ChatOpenAI(model=OPENAI_MODEL)
 
 prompt = PromptTemplate(
     input_variables=["product", "audience"],
@@ -115,11 +129,11 @@ print(result["text"])
 #### SequentialChain：顺序执行链
 
 ```python
-from langchain.chains import SequentialChain, LLMChain
+from langchain_classic.chains import LLMChain, SequentialChain
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(model="gpt-4o")
+llm = ChatOpenAI(model=OPENAI_MODEL)
 
 # 第一链：生成大纲
 chain1 = LLMChain(
@@ -158,11 +172,11 @@ print(result["article"])
 RouterChain 根据输入内容动态选择下游处理链：
 
 ```python
-from langchain.chains.router import MultiPromptChain
-from langchain.chains import ConversationChain
+from langchain_classic.chains import ConversationChain
+from langchain_classic.chains.router import MultiPromptChain
 from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(model="gpt-4o")
+llm = ChatOpenAI(model=OPENAI_MODEL)
 
 # 定义不同专业的提示词模板
 physics_template = """你是一位物理学专家。请专业地回答以下问题：
@@ -210,11 +224,11 @@ Memory 是对话系统的核心。LangChain 提供了多种 Memory 实现来管�
 #### ConversationBufferMemory：完整缓冲记忆
 
 ```python
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationChain
+from langchain_classic.chains import ConversationChain
+from langchain_classic.memory import ConversationBufferMemory
 from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(model="gpt-4o")
+llm = ChatOpenAI(model=OPENAI_MODEL)
 memory = ConversationBufferMemory(return_messages=True)
 
 conversation = ConversationChain(
@@ -246,10 +260,10 @@ print(memory.load_memory_variables({}))
 #### ConversationSummaryMemory：摘要记忆
 
 ```python
-from langchain.memory import ConversationSummaryMemory
+from langchain_classic.memory import ConversationSummaryMemory
 from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(model="gpt-4o")
+llm = ChatOpenAI(model=OPENAI_MODEL)
 memory = ConversationSummaryMemory(
     llm=llm,
     return_messages=True,
@@ -273,11 +287,11 @@ print(memory.load_memory_variables({})["history"])
 #### 自定义 Memory 实战：带 Token 管理的记忆
 
 ```python
-from langchain.memory import ConversationSummaryBufferMemory
+from langchain_classic.memory import ConversationSummaryBufferMemory
 from langchain_openai import ChatOpenAI
-from langchain.chains import ConversationChain
+from langchain_classic.chains import ConversationChain
 
-llm = ChatOpenAI(model="gpt-4o")
+llm = ChatOpenAI(model=OPENAI_MODEL)
 
 # SummaryBufferMemory = 摘要 + 最近 K 轮原始对话
 memory = ConversationSummaryBufferMemory(
@@ -316,11 +330,8 @@ Tool（工具）是 Agent 与外部世界交互的桥梁。LangChain 支持多�
 
 ```python
 from langchain_core.tools import tool
-from langchain.agents import AgentExecutor, create_openai_functions_agent
+from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-import requests
-from typing import Optional
 
 # ===== 方式1: 使用 @tool 装饰器 =====
 @tool
@@ -350,7 +361,7 @@ def search_database(query: str, limit: int = 5) -> str:
     mock_db = {
         "langchain": "LangChain 是一个用于构建 LLM 应用的框架...",
         "python": "Python 3.14 预计于 2025 年发布...",
-        "gpt": "GPT-4o 是 OpenAI 的多模态模型...",
+        "gpt": "GPT-5.6 是 OpenAI 当前的通用模型系列...",
     }
     results = []
     for k, v in mock_db.items():
@@ -362,28 +373,21 @@ def search_database(query: str, limit: int = 5) -> str:
 tools = [get_weather, calculate, search_database]
 
 # ===== 创建 Agent =====
-llm = ChatOpenAI(model="gpt-4o", temperature=0)
-
-prompt = ChatPromptTemplate.from_messages([
-    ("system", "你是一个有用的助手，可以使用工具来帮助用户。"),
-    ("human", "{input}"),
-    MessagesPlaceholder(variable_name="agent_scratchpad"),
-])
-
-agent = create_openai_functions_agent(llm, tools, prompt)
-agent_executor = AgentExecutor(
-    agent=agent,
+llm = ChatOpenAI(model=OPENAI_MODEL)
+agent = create_agent(
+    model=llm,
     tools=tools,
-    verbose=True,
-    max_iterations=5,
-    handle_parsing_errors=True,
+    system_prompt="你是一个有用的助手，可以使用工具来帮助用户。",
 )
 
 # 测试
-result = agent_executor.invoke({
-    "input": "北京今天天气怎样？然后帮我算一下 123 * 456 等于多少？"
+result = agent.invoke({
+    "messages": [{
+        "role": "user",
+        "content": "北京今天天气怎样？然后帮我算一下 123 * 456 等于多少？",
+    }]
 })
-print(result["output"])
+print(result["messages"][-1].content)
 ```
 
 ### 18.1.5 完整实战：构建带记忆的对话系统 ⭐⭐⭐⭐⭐
@@ -397,9 +401,9 @@ print(result["output"])
 3. 自动工具选择与调用
 4. 流式输出支持
 """
-from langchain.agents import AgentExecutor, create_openai_functions_agent
+from langchain_classic.agents import AgentExecutor, create_openai_functions_agent
 from langchain_openai import ChatOpenAI
-from langchain.memory import ConversationSummaryBufferMemory
+from langchain_classic.memory import ConversationSummaryBufferMemory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import tool
 from langchain_core.messages import AIMessage, HumanMessage
@@ -429,7 +433,7 @@ def knowledge_search(query: str) -> str:
     return results[0] if results else "未找到相关知识。"
 
 # ===== Step 2: 配置记忆 =====
-llm = ChatOpenAI(model="gpt-4o", temperature=0, streaming=True)
+llm = ChatOpenAI(model=OPENAI_MODEL, streaming=True)
 
 memory = ConversationSummaryBufferMemory(
     llm=llm,
@@ -547,7 +551,7 @@ def agent_node(state: AgentState) -> dict:
     Agent 节点：调用 LLM 决定下一步行动
     绑定工具后 LLM 可以返回 function_call
     """
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model=OPENAI_MODEL)
     tools = [search_tool, calculator_tool]
     llm_with_tools = llm.bind_tools(tools)
     
@@ -618,7 +622,7 @@ class ResearchState(TypedDict):
     analysis_complete: bool
 
 # ===== 定义 Nodes =====
-llm = ChatOpenAI(model="gpt-4o", temperature=0)
+llm = ChatOpenAI(model=OPENAI_MODEL)
 tools = [web_search, analyze_data]
 llm_with_tools = llm.bind_tools(tools)
 
@@ -842,9 +846,10 @@ from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
 from llama_index.core import Settings
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
+import os
 
 # 全局配置
-Settings.llm = OpenAI(model="gpt-4o", temperature=0)
+Settings.llm = OpenAI(model=os.environ.get("OPENAI_MODEL", "gpt-5.6"))
 Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
 
 # 加载文档
@@ -1002,7 +1007,7 @@ from llama_index.core.extractors import (
 import os
 
 # ===== Step 1: 全局配置 =====
-Settings.llm = OpenAI(model="gpt-4o", temperature=0)
+Settings.llm = OpenAI(model=os.environ.get("OPENAI_MODEL", "gpt-5.6"))
 Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
 Settings.chunk_size = 512
 Settings.chunk_overlap = 50
@@ -1539,24 +1544,27 @@ graph LR
 
 AutoGen（Microsoft）的核心理念是**以对话为中心的多 Agent 编程**。
 
+> 下例展示 AutoGen 0.2 / AG2 风格的存量 `GroupChat` 配置，用于迁移阅读；Microsoft AutoGen
+> 当前项目应以 `autogen_agentchat` 文档为准。
+
 ```python
 """
 AutoGen 实战：多 Agent 代码审查系统
 """
 import autogen
 from autogen import AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager
+import os
 
 # ===== 配置 LLM =====
 config_list = [
     {
-        "model": "gpt-4o",
-        "api_key": "your-api-key",
+        "model": os.environ.get("OPENAI_MODEL", "gpt-5.6"),
+        "api_key": os.environ["OPENAI_API_KEY"],
     }
 ]
 
 llm_config = {
     "config_list": config_list,
-    "temperature": 0,
     "timeout": 120,
 }
 
@@ -1778,11 +1786,16 @@ def choose_multi_agent_framework(scenario: str) -> str:
 
 ## 18.8 2026年新框架 ⭐⭐⭐⭐⭐
 
-> **重要趋势**：2026年，**LangChain 已不再是 Agent 框架的中心**。随着专用 agent 框架的崛起，LangChain 团队自身也已将核心迁移到 LangGraph，LangChain v1 主要回归 LCEL 编排与基础集成层。新一代 agent 框架更强调**类型安全、协议标准化（MCP / A2A）、持久化执行、托管部署**。**LangGraph + Pydantic AI + Strands + OpenAI Agents** 已成为 2026 年 Agent 工程的"**四大新支柱**"。
+> **重要趋势**：Agent 框架正在按约束分化：有的强调模型与工具集成，有的强调状态图和持久化，
+> 有的强调 Python 类型校验，也有的与特定云或模型 API 深度集成。LangChain、LangGraph、
+> Pydantic AI、Strands、OpenAI Agents 等都仍有适用场景；选型应基于状态恢复、类型边界、
+> 提供商、部署环境、可观测性和团队经验，而不是按“新旧”或流行度一票否决。
 
 ### 18.8.1 Pydantic AI — 类型安全的 Pythonic Agent 框架
 
-Pydantic AI 是 Pydantic 团队（与 `pydantic` v2 同源）推出的 agent 框架，主打"**Pythonic、类型安全、生产可用**"。它在 2025-2026 年快速崛起，成为 FastAPI / SQLModel 用户迁移 LLM 应用的首选。
+Pydantic AI 是 Pydantic 团队推出的 Python Agent 框架，强调 Pydantic 模型、依赖注入和结构化输出。
+当团队已经使用 Pydantic/FastAPI、希望把输入输出契约纳入类型检查与运行时校验时，它是值得优先验证的候选；
+若系统更依赖可视化状态图、JavaScript 生态或特定云托管能力，则应与相应框架做同任务 PoC。
 
 **核心特性**：
 - **类型安全 agents**：依赖注入、结果校验全部使用 Pydantic v2 模型，无需手写 `JSON Schema`
@@ -1799,6 +1812,7 @@ from pydantic_ai import Agent, RunContext
 from pydantic import BaseModel, Field
 from dataclasses import dataclass
 import asyncio
+import os
 
 # ===== 1. 用 Pydantic 模型声明 Agent 输出 =====
 class ResearchReport(BaseModel):
@@ -1816,9 +1830,9 @@ class Deps:
 
 # ===== 3. 定义 Agent =====
 research_agent = Agent(
-    model="openai:gpt-4o",
-    result_type=ResearchReport,  # 强制结构化输出
-    system_prompt="你是一个严谨的研究助手，输出必须可验证。",
+    model=f"openai:{os.environ.get('OPENAI_MODEL', 'gpt-5.6')}",
+    output_type=ResearchReport,  # 当前结构化输出参数
+    instructions="你是一个严谨的研究助手，输出必须可验证。",
     deps_type=Deps,
 )
 
@@ -1830,36 +1844,45 @@ async def web_search(ctx: RunContext[Deps], query: str) -> str:
 
 # ===== 4. 运行 =====
 async def main():
-    deps = Deps(user_id="alice", api_key="sk-...")
-    report: ResearchReport = await research_agent.run(
+    deps = Deps(user_id="alice", api_key=os.environ["SEARCH_API_KEY"])
+    result = await research_agent.run(
         "请调研 2026 年 LangChain 的市场份额变化",
         deps=deps,
     )
     # 类型安全：IDE 自动补全、运行时校验
+    report: ResearchReport = result.output
     print(report.summary, report.confidence, report.key_points)
 
 asyncio.run(main())
 ```
 
-### 18.8.2 Strands Agents SDK — AWS 主推的多模型 Agent 框架
+### 18.8.2 Strands Agents SDK — AWS 开源的 model-driven Agent SDK
 
-Strands Agents SDK 是 AWS 2025 年开源的 agent 框架，定位"**多模型、生产级、模型无关**"。**Anthropic 官方推荐** Strands 作为 Claude Agent SDK 的 Python 实现范式，Bedrock AgentCore 也基于 Strands 思想构建。
+Strands Agents SDK 由 AWS 于 2025 年开源，采用 model-driven 设计：开发者提供模型、系统提示和工具，
+SDK 负责 Agent loop。它与 Bedrock/AWS 部署集成较深，同时通过 provider 抽象支持 Anthropic、Google、
+OpenAI、OpenAI Responses API 等后端。它是 AWS/Bedrock 团队的自然候选，但不是 Anthropic 指定的
+Claude Python 实现，也不意味着所有提供商的能力完全等价。
 
 **核心特性**：
-- **AWS / Bedrock 深度集成**：原生支持 Claude 3.5/3.7、Nova、Llama 3、DeepSeek 等
-- **BidiAgent（双向流式 Agent）**：支持文本 + 工具调用的真正双向流（区别于传统 stream）
-- **Anthropic 推荐范式**：与 Anthropic 官方"Building Effective Agents"白皮书理念一致
+- **AWS / Bedrock 深度集成**：默认 provider 与部署参考面向 AWS，同时可替换其他模型 provider
+- **模型驱动 Agent loop**：模型在工具、提示与运行时边界内决定下一步操作
+- **多提供商抽象**：Python SDK 可选 Bedrock、Anthropic、Google、OpenAI、SageMaker 等后端
 - **多协议支持**：内置 MCP、A2A 适配器
 - **Strands Tools 生态**：丰富的官方 / 社区工具集
 
+> 来源：[AWS — Introducing Strands Agents](https://aws.amazon.com/blogs/opensource/introducing-strands-agents-an-open-source-ai-agents-sdk/)；
+> 当前 provider 支持矩阵以
+> [Strands 官方文档](https://strandsagents.com/docs/user-guide/concepts/model-providers/)为准。
+
 ```python
 """
-Strands Agents SDK 实战：双向流式研究 Agent
+Strands Agents SDK 实战：研究 Agent
 """
 from strands import Agent, tool
 from strands.models import BedrockModel
 from strands.tools.mcp import MCPClient
 from mcp import stdio_client, StdioServerParameters
+import os
 
 # ===== 1. 定义工具 =====
 @tool
@@ -1875,13 +1898,13 @@ mcp_client = MCPClient(lambda: stdio_client(
 with mcp_client:
     tools = [get_weather] + mcp_client.list_tools_sync()
 
-    # ===== 3. 选用 Bedrock 上的 Claude 3.7 =====
+    # ===== 3. 从部署配置读取已获授权的 Bedrock model ID =====
     model = BedrockModel(
-        model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        model_id=os.environ["BEDROCK_MODEL_ID"],
         temperature=0.7,
     )
 
-    # ===== 4. 创建 BidiAgent（双向流式）=====
+    # ===== 4. 创建 Agent =====
     agent = Agent(
         model=model,
         tools=tools,
@@ -1899,12 +1922,14 @@ with mcp_client:
 
 ### 18.8.3 OpenAI Agents SDK — 官方出品的轻量级 Agent 运行时
 
-OpenAI Agents SDK（前身 OpenAI Swarm）是 OpenAI 2025 年开源的轻量级 agent 运行时，强调**多 agent handoff（交接）、会话管理、可观测 tracing**。2026 年发布的 v0.14.0 引入了 `SandboxAgent`、Realtime、持久化 sessions。
+OpenAI Agents SDK（前身 OpenAI Swarm）是 OpenAI 2025 年开源的轻量级 agent 运行时，强调**多 agent handoff（交接）、会话管理、可观测 tracing**。v0.14.0 加入了仍处于 beta 的 Sandbox Agents；其入口是 `agents.sandbox`，sandbox client 和会话来源放在 `SandboxRunConfig`，不要沿用旧扩展路径。
 
 **核心特性**：
 - **Multi-Agent Handoffs**：agent 之间无缝交接，类似客服转接
-- **SandboxAgent v0.14.0**：内置沙箱执行环境，agent 可安全运行不可信代码
-- **Realtime**：原生支持 Realtime API（gpt-realtime），处理语音流
+- **Sandbox Agents（beta）**：用 `Manifest` 定义工作区、`SandboxAgent` 定义角色、`SandboxRunConfig` 选择 Docker/本地/托管 client；安全性取决于 backend 与部署策略
+- **Realtime**：`agents.realtime` 提供服务端 WebSocket 会话；新项目从
+  `gpt-realtime-2.1` 与嵌套 `audio.input` / `audio.output` 配置起步。浏览器
+  WebRTC 不属于 Python Agents SDK 的传输边界
 - **Sessions**：内置 SQLite / Redis session 持久化，断线可恢复
 - **Tracing**：深度集成 OpenAI Traces，可视化每步决策
 
@@ -1912,9 +1937,12 @@ OpenAI Agents SDK（前身 OpenAI Swarm）是 OpenAI 2025 年开源的轻量级 
 """
 OpenAI Agents SDK 实战：多 agent 客服系统
 """
-from agents import Agent, Runner, function_tool, handoff
-from agents.extensions.sandbox import SandboxAgent
+from agents import Agent, Runner, SQLiteSession, function_tool, handoff
+from agents.sandbox import Manifest, SandboxAgent, SandboxRunConfig
 import asyncio
+import os
+
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6")
 
 # ===== 1. 定义工具 =====
 @function_tool
@@ -1926,13 +1954,13 @@ def check_order(order_id: str) -> str:
 billing_agent = Agent(
     name="Billing",
     instructions="处理账单、退款、发票问题。如不确定请转交。",
-    model="gpt-4o",
+    model=OPENAI_MODEL,
 )
 
 tech_agent = Agent(
     name="TechSupport",
     instructions="处理技术问题：登录错误、功能 bug。",
-    model="gpt-4o",
+    model=OPENAI_MODEL,
     tools=[check_order],
 )
 
@@ -1940,7 +1968,7 @@ tech_agent = Agent(
 triage_agent = Agent(
     name="Triage",
     instructions="根据用户问题分诊到 Billing 或 TechSupport。",
-    model="gpt-4o",
+    model=OPENAI_MODEL,
     handoffs=[
         handoff(billing_agent, tool_description_override="转账单客服"),
         handoff(tech_agent,  tool_description_override="转技术支持"),
@@ -1949,13 +1977,14 @@ triage_agent = Agent(
 
 # ===== 4. 运行（自动持久化 session）=====
 async def main():
+    session = SQLiteSession("user-001")
     result = await Runner.run(
         triage_agent,
         input="我的订单 #12345 一直没收到，我想退款。",
-        session_id="user-001",  # 持久化
+        session=session,
     )
     print(f"最终回复: {result.final_output}")
-    print(f"执行轨迹: {result.trace.url}")  # OpenAI Traces 链接
+    print("执行轨迹可在 OpenAI Dashboard 的 Traces 页面查看")
 
 asyncio.run(main())
 ```
@@ -1975,9 +2004,13 @@ AG2 是 AutoGen 核心团队（Chi Wang 等）在 2025 年底启动的 **AutoGen
 AG2 实战：现代化多 Agent 协作
 """
 from ag2 import AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager
+import os
 
 # 配置 LLM
-llm_config = {"model": "gpt-4o", "api_key": "sk-..."}
+llm_config = {
+    "model": os.environ.get("OPENAI_MODEL", "gpt-5.6"),
+    "api_key": os.environ["OPENAI_API_KEY"],
+}
 
 # ===== 定义 Agents =====
 planner = AssistantAgent(
@@ -2034,7 +2067,7 @@ from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from hayhooks import deploy
+import os
 
 # ===== 1. 自定义 rerank 组件 =====
 @component
@@ -2054,14 +2087,19 @@ Given context and answer the question.
 Context: {% for d in documents %}{{ d.content }}\n{% endfor %}
 Question: {{query}}
 """))
-pipe.add_component("llm", OpenAIChatGenerator(model="gpt-4o"))
+pipe.add_component(
+    "llm",
+    OpenAIChatGenerator(model=os.environ.get("OPENAI_MODEL", "gpt-5.6")),
+)
 
 pipe.connect("retriever.documents", "compressor.documents")
 pipe.connect("compressor.documents", "prompt_builder.documents")
 pipe.connect("prompt_builder.prompt", "llm.messages")
 
-# ===== 3. 一键部署为 MCP Server =====
-deploy(pipe, name="my_rag", mcp_server=True)  # 暴露为 MCP 工具
+# ===== 3. 部署 =====
+# 先实现 BasePipelineWrapper 并将 pipeline 序列化到部署目录，然后执行：
+# hayhooks pipeline deploy-files -n my_rag ./my_rag
+# hayhooks mcp run
 ```
 
 ### 18.8.6 Smolagents — HuggingFace 极简 code-agents
@@ -2078,15 +2116,19 @@ Smolagents 是 HuggingFace 2025 年推出的"**极简主义**"agent 框架。整
 """
 Smolagents 实战：极简 code-agent
 """
-from smolagents import CodeAgent, HfApiModel, tool
+from smolagents import CodeAgent, InferenceClientModel, tool
+import os
 
 @tool
 def get_weather(city: str) -> str:
     """获取天气"""
     return f"{city}: 晴 25°C"
 
-# HuggingFace Inference API 上的 Qwen2.5
-model = HfApiModel(model_id="Qwen/Qwen2.5-72B-Instruct")
+# 从 Hub 当前可用且已获授权的模型中选择，不把历史模型 ID 固化在教程中。
+model = InferenceClientModel(
+    model_id=os.environ["HF_MODEL_ID"],
+    token=os.environ.get("HF_TOKEN"),
+)
 
 agent = CodeAgent(
     tools=[get_weather],
@@ -2119,6 +2161,7 @@ from agno.tools.duckduckgo import DuckDuckGoTools
 from agno.knowledge.pdf import PDFKnowledgeBase
 from agno.vectordb.pgvector import PgVector
 from agno.storage.sqlite import SqliteStorage
+import os
 
 # 知识库 + 长期记忆
 knowledge = PDFKnowledgeBase(
@@ -2129,7 +2172,7 @@ storage = SqliteStorage(table_name="agent_sessions", db_file="sessions.db")
 
 agent = Agent(
     name="Researcher",
-    model=OpenAIChat(id="gpt-4o"),
+    model=OpenAIChat(id=os.environ.get("OPENAI_MODEL", "gpt-5.6")),
     tools=[DuckDuckGoTools()],
     knowledge=knowledge,
     storage=storage,
@@ -2166,7 +2209,7 @@ const ReportSchema = z.object({
 // 2. 定义 agent
 const researcher = new Agent({
   name: "Researcher",
-  model: openai("gpt-4o"),
+  model: openai(process.env.OPENAI_MODEL ?? "gpt-5.6"),
   instructions: "你是研究助手。",
   outputSchema: ReportSchema,
 });
@@ -2184,11 +2227,13 @@ const result = await researcher.generate(
 console.log(result.object.summary); // 类型安全
 ```
 
-### 18.8.9 四大新支柱：2026 选型决策
+### 18.8.9 2026 框架约束矩阵
 
-> **核心结论**：2026 年不要再选 LangChain 作为"agent framework"——它已成为**编排与集成层**。真正构建 agent 时，从四大新支柱中按需选取：
+> **核心结论**：不存在跨团队通用的“最佳 Agent 框架”。LangChain 适合复用其模型、工具和检索集成，
+> LangGraph 适合显式状态图与恢复，Pydantic AI 适合强类型 Python 边界，Strands 适合 AWS/Bedrock
+> 与 model-driven Agent，OpenAI Agents 适合 OpenAI API 生态。先列硬约束，再用同一任务验证。
 
-| 框架 | 类型安全 | MCP | A2A | Durable | 最适合 |
+| 框架 | 类型安全 | MCP | A2A | Durable | 优先考虑条件 |
 |------|---------|-----|-----|---------|-------|
 | **LangGraph** | ⚠️ TypedDict | ✅ | ⚠️ 需适配 | ✅ Checkpoint | 复杂多步 agent / 人机协同 |
 | **Pydantic AI** | ✅✅ Pydantic v2 | ✅ 原生 | ✅ 原生 | ✅ pydantic-graph | 追求类型安全的 Python 团队 |
@@ -2378,9 +2423,11 @@ QLoRA 的核心原理是：**4-bit 量化基座模型 + LoRA 训练适配器**�
 |------|---------|-------|
 | 模型权重 | 7B × 4 bytes (FP32) = 28 GB | 7B × 0.5 bytes (4-bit) = 3.5 GB |
 | 梯度 | 7B × 4 bytes = 28 GB | 可训练参数 × 4 bytes ≈ 100 MB |
-| 优化器状态 | 7B × 8 bytes × 2 = 112 GB | ≈ 200 MB |
+| 优化器状态 | Adam 的 m/v：7B × (4+4) bytes = 56 GB | ≈ 200 MB |
 | 激活值 | ~4 GB | ~2 GB（梯度检查点） |
-| **总计** | **~172 GB** | **~6 GB** |
+| **总计** | **~116 GB** | **~6 GB** |
+
+这里采用“FP32 权重 + FP32 梯度 + 两份 FP32 Adam 状态”的简化口径。混合精度训练还可能包含 BF16/FP16 计算权重、FP32 master weights、临时 buffer 和显存分配器碎片；实际峰值必须用同一精度口径并结合 sequence length、micro-batch 与 activation checkpointing 实测。
 
 **QLoRA 关键参数**：
 - `lora_rank=16, lora_alpha=32`（适中配置）
@@ -2432,8 +2479,11 @@ QLoRA 的核心原理是：**4-bit 量化基座模型 + LoRA 训练适配器**�
 
 ```python
 # 推荐配置：Summary + Buffer 混合策略
+import os
+
 memory = ConversationSummaryBufferMemory(
-    llm=ChatOpenAI(model="gpt-4o-mini"),  # 摘要用便宜模型
+    # 当前低成本档只是起点；上线前仍需按质量、延迟和成本评测，可用环境变量覆盖。
+    llm=ChatOpenAI(model=os.environ.get("OPENAI_SUMMARY_MODEL", "gpt-5.6-luna")),
     max_token_limit=2000,    # 总预算
     return_messages=True,
 )
@@ -2496,82 +2546,52 @@ states = list(graph.get_state_history(config))
 
 ---
 
-## 18.9 配套代码真实化（Wave 3-Wave 6 完成）⭐⭐⭐⭐⭐
+## 18.9 配套代码的运行与验收边界 ⭐⭐⭐⭐⭐
 
-> 本章在 W3-W6 期间对 **36 个 `.py` 主流程文件** + **1 个 mock demo** 进行了系统性真实化：所有 LLM 调用改为 DeepSeek / OpenAI / Anthropic 直连；`mock` 路径与主流程物理隔离；环境变量统一从 `DEEPSEEK_API_KEY` 读取。下面给出"可立刻跑通"的最小命令与每个文件的真实化状态。
+本章共有 **37 个** Python 示例，包含可连接真实提供商的路径、纯本地算法演示、离线结构示意和
+可选依赖探测。它们不是“配置一个 Key 即全部真跑”的同一种程序。
 
-### 18.9.1 一键真跑（5 行命令）
+### 18.9.1 默认离线验收
 
 ```bash
 cd code/
-
-# 1) 安装 LLM 依赖（5 分钟）
 make install-llm
-
-# 2) 配置 API Key（仅本 shell 有效；不写进 .md）
-export DEEPSEEK_API_KEY=sk-xxx
-
-# 3) 真跑 LangChain 最简 Chain（30-60s）
-python ch18_llm_frameworks/llm/01_langchain_basic_chain.py
-
-# 4) 真跑 LangGraph 研究 Agent（需 60-90s，长链路）
-python ch18_llm_frameworks/llm/11_langgraph_research_agent.py
-
-# 5) 离线教学 demo（无 API Key 也跑：FakeListChatModel）
-LLM_MOCK=1 python tests/_mocks/demo_langchain_basic_chain.py
+LLM_MOCK=1 python scripts/run_all_examples.py --tier llm --chapter ch18
 ```
 
-### 18.9.2 36 个主流程文件真实化状态
+离线验收只证明导入、配置结构和本地控制流可执行。输出 `[SKIP]` 表示缺少可选依赖或主动避开远端
+服务，不等价于真实 API、Dify 实例、Bedrock、模型下载或训练已通过。
 
-| 区间 | 框架 | 文件数 | 真跑 | 备注 |
-|------|------|------|------|------|
-| `01-09` | LangChain 基础 | 9 | ✅ | `01` + `01_lcel_style` 双实现；`05-07` 三种 Memory 对比；`08` Tool Agent；`09` Chatbot |
-| `10-12, 34, 36` | LangGraph | 5 | ✅ | State 设计、Research Agent、HITL（`interrupt`）、Checkpoint 持久化 |
-| `13-18` | LlamaIndex 索引与检索 | 6 | ✅ | Vector / Summary / Tree / Keyword / ChatEngine / Enterprise QA |
-| `19-20` | LLaMA-Factory | 2 | ✅ | 数据集准备 + 配置预设（CLI 驱动） |
-| `21-22` | Dify SDK | 2 | ⚠️ | 需 `DIFY_API_KEY` + 在线 Dify 实例；无 Key 时打印 CLI 替代方案 |
-| `23-24` | AutoGen / CrewAI | 2 | ⚠️ | 需在线 LLM 端点；离线时退化为"模式说明 + 启动脚本" |
-| `25-33` | 2026 新框架 | 9 | ✅ | Pydantic AI / Strands / OpenAI Agents / AG2 / Haystack / Smolagents / Agno / 框架组合 / Memory Token |
-| `tests/_mocks/` | CI 教学 demo | 1 | ✅ | `LLM_MOCK=1` 触发 `FakeListChatModel`，零成本验证链式语法 |
+### 18.9.2 真实调用必须显式开启
 
-> ✅ = 配置好 `DEEPSEEK_API_KEY` 后 `python xx.py` 直接跑通；⚠️ = 需对应平台账号或在线服务（CLI 回退可用）
+以 OpenAI LCEL 示例为例：
 
-### 18.9.3 mock 路径已物理隔离
-
-W3 之前，`shared/mock_llm.py` 混入主流程；W3 之后：
-- **主流程**（`ch18/.../01_langchain_basic_chain.py` 等）直接调用 `shared/llm_client.py`，无任何 mock 分支
-- **mock 工具**（`tests/_mocks/mock_llm.py`）仅在 pytest conftest 加载；CI 跑 `pytest tests/ -m "not gpu"` 时可见
-- **mock demo**（`tests/_mocks/demo_langchain_basic_chain.py`）是**教学专用**——教链式语法时不希望学生配 API Key；通过 `LLM_MOCK=1` 环境变量显式开启
-
-```python
-# tests/_mocks/demo_langchain_basic_chain.py 关键片段
-from langchain_core.language_models.fake_chat_models import FakeListChatModel
-fake = FakeListChatModel(responses=["LangChain 是 LLM 编排框架..."])
-chain = prompt | fake | parser
-print(chain.invoke({"q": "什么是 LangChain"}))
+```bash
+LLM_MOCK=0 OPENAI_API_KEY=... OPENAI_MODEL=gpt-5.6 \
+  python ch18_llm_frameworks/llm/01_langchain_basic_chain.py
 ```
 
-### 18.9.4 真实化前后对比
+- OpenAI 模型由 `OPENAI_MODEL` 覆盖；选择低成本档时先查看当前模型目录，再做质量、延迟和成本评测。
+- Strands/Bedrock 必须设置目标区域中已获授权的 `BEDROCK_MODEL_ID`，不能复用教程中的历史 Claude ID。
+- Dify、AutoGen/AG2、CrewAI、Hayhooks、Hugging Face 等示例分别需要对应服务、凭据和安全边界。
+- 不要在同一次验收中批量开启所有真实外部调用；逐个示例验证并检查费用、远端资源和清理策略。
 
-| 维度 | W2 之前 | W3-W6 之后 |
-|------|---------|------------|
-| 默认 LLM | `MockLLM`（不真实） | `UnifiedClient` 真实调用 DeepSeek-R1 / GPT-4o / Claude |
-| API Key | 代码内 `os.environ.get(..., "sk-mock")` | 严格 `os.environ["DEEPSEEK_API_KEY"]`，缺失即 `raise_with_help` |
-| 失败行为 | 静默回退 mock | `raise_with_help` 友好抛错（指向 §QUICKSTART） |
-| Mock 位置 | `shared/mock_llm.py` 混入主流程 | `tests/_mocks/` 物理隔离；主流程零 mock 分支 |
-| CI 成本 | 全 mock 跑得快但不真实 | 30s install + 真跑 36 文件 + 离线教学 demo |
+### 18.9.3 示例分组
 
-### 18.9.5 硬件 / 依赖速览
+| 区间 | 数量 | 默认验收含义 |
+|------|-----:|--------------|
+| `01-09`（含两个 `01`） | 10 | LCEL 与 LangChain Classic 迁移示例；Classic 缺失时允许 `[SKIP]` |
+| `10-12, 34, 36` | 5 | LangGraph 状态、HITL 与 checkpoint 的本地控制流 |
+| `13-18` | 6 | LlamaIndex 离线索引/检索契约；真实 embedding/LLM 另验 |
+| `19-20` | 2 | LLaMA-Factory 数据和配置生成；训练不在离线 runner 范围内 |
+| `21-24` | 4 | Dify、AutoGen、CrewAI 的 SDK/配置示意 |
+| `25-33, 35` | 10 | Pydantic AI、Strands、OpenAI Agents、AG2、Haystack、Smolagents、Agno 等结构示例 |
 
-| 资源 | 需求 |
-|------|------|
-| GPU | ❌ 整章纯框架 + API 调用，无需 GPU |
-| 内存 | 2GB+ 即可 |
-| 磁盘 | 1GB（`make install-llm` 拉取 langchain / langgraph / llama-index） |
-| API Key | `DEEPSEEK_API_KEY` 必填；OpenAI / Anthropic 可选 |
-| 网络 | 需访问 `api.deepseek.com`（或自建代理） |
+### 18.9.4 资源边界
 
-> **本地模型替代**：若不想配 API Key，可启动本地 Ollama（`ollama serve` + `ollama pull qwen2.5:0.5b`），修改 `shared/llm_client.py` 的 base_url 即可。`models/Qwen2.5-0.5B-Instruct/` 已预置。
+框架结构和云 API 示例通常不需要本地 GPU；LLaMA-Factory 真训练、本地大模型推理和首次模型下载则
+需要独立评估 GPU/内存/磁盘。仓库中的小模型或适配器只能用于对应的本地示例，不代表与当前云模型
+等价，也不能作为整章真实验收的替代。
 
 ---
 
@@ -2579,17 +2599,17 @@ print(chain.invoke({"q": "什么是 LangChain"}))
 
 | 概念 | 关键点 |
 |------|--------|
-| **LangChain (v1)** | LCEL 链式编排（`\| prompt \| llm \| parser`），回归基础集成层；`Chain / Tool / Memory / Retriever` 四大核心抽象；不再主导 Agent 框架。 |
-| **LangGraph** | 状态图（State + Node + Edge）驱动的 Agent 框架；支持循环、持久化（checkpoint）、人机协同（`interrupt`）；2026 年 v1.0 稳定，是复杂多步推理首选。 |
+| **LangChain (v1)** | 提供模型、工具、检索与 Agent 集成；适合需要其生态组件或较轻编排的团队，复杂状态恢复可结合 LangGraph。 |
+| **LangGraph** | 状态图（State + Node + Edge）驱动的 Agent 框架；支持循环、checkpoint 与人机协同；适合需要显式状态机和可恢复执行的流程。 |
 | **LlamaIndex** | 围绕 `Document / Node / Index / QueryEngine` 的数据索引与检索框架；`Workflow` 事件驱动 API 适合构建 RAG 与企业知识库。 |
-| **Pydantic AI** | Pydantic v2 同源的 Pythonic 类型安全 Agent 框架；`pydantic-graph` 提供图编排；输出校验、依赖注入原生支持，推荐 FastAPI/SQLModel 团队首选。 |
+| **Pydantic AI** | Pydantic 团队的 Python Agent 框架；输出校验与依赖注入适合已有 Pydantic/FastAPI 技术栈、重视类型契约的团队。 |
 | **LLaMA-Factory** | 一体化模型微调工厂；支持 LoRA / QLoRA / 全参数微调，覆盖 100+ 模型；多模态微调与 vLLM 推理导出，CLI + WebUI 双模式。 |
 | **Dify** | 低代码 LLM 应用平台（BaaS+Y）；`DSL` 工作流引擎 + 内置知识库 + 工具节点 + RAG 管线；适合快速搭建生产级 AI 应用原型与中小团队落地。 |
 | **AutoGen** | 微软开源多 Agent 对话框架（v0.4 重写为 Actor Model）；`AssistantAgent / UserProxyAgent / GroupChat` 支持代码执行、人机协同与分布式部署。 |
 | **CrewAI** | 角色分工式多 Agent 框架；`Agent / Task / Crew / Process` 四要素；`Flow` 模式（2026）支持企业级状态持久化与生产部署。 |
-| **框架选型决策** | 编排基础能力 → LangChain；复杂 Agent / 状态流 → LangGraph；类型安全 Pythonic → Pydantic AI；数据检索为主 → LlamaIndex；微调 → LLaMA-Factory；低代码 → Dify；多 Agent 协作 → AutoGen / CrewAI。 |
-| **2026 新趋势** | LangGraph + Pydantic AI + Strands + OpenAI Agents 构成 Agent 四大新支柱；MCP（工具协议）/ A2A（Agent 通信协议）走向标准化；可观测性首选 LangSmith / Phoenix / LangFuse。 |
-| **配套代码（W3-W6 真实化）** | 36 个 .py 真跑 + 1 个 mock demo；LangChain 6 文件、LangGraph 5 文件、LlamaIndex 6 文件、Llama-Factory/Dify/AutoGen/CrewAI/2026 新框架共 19 文件；`tests/_mocks/demo_langchain_basic_chain.py` 仅 CI/教学用；真跑需 `DEEPSEEK_API_KEY`（其它提供商可选），无需 GPU。 |
+| **框架选型决策** | 生态集成 → LangChain；显式状态与恢复 → LangGraph；强类型 Python → Pydantic AI；AWS/Bedrock → Strands；数据检索 → LlamaIndex；低代码 → Dify；多 Agent 协作 → 先比较 AutoGen / CrewAI 等候选。 |
+| **2026 新趋势** | MCP/A2A 等协议降低框架耦合；持久化执行、审批边界、评测与可观测性成为共同要求。可观测后端按现有平台、数据治理和成本选择。 |
+| **配套代码** | `code/ch18_llm_frameworks/` 包含离线可执行、可选依赖 `[SKIP]` 与显式真实 API 三类路径；默认 `LLM_MOCK=1` 不读 key、不联网，真实框架/服务必须逐项验收。 |
 
 ---
 

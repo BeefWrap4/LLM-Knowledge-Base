@@ -4,6 +4,7 @@
 # section: 26.5 具身数据工程 — 仿真 + 真实 + 视频预训练
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
+# mock_safe: true
 # deps: (无强依赖 — lerobot 可选, 缺则用简化实现)
 # run: python 10_embodied_data_pipeline.py
 # expected_runtime: 5-10s (合成数据生成 + LeRobot 格式示例)
@@ -147,29 +148,21 @@ def main() -> None:
     print(f"  meta: {json.dumps({k: v for k, v in meta.items() if k != 'features'}, indent=2)}")
 
     # 演示: 归一化所需 stats
-    print("\n步骤 3: 归一化 stats (生产存于 meta/stats.safetensors)")
-    print("  生产: stats = compute_episode_stats(dataset)")
+    print("\n步骤 3: 归一化统计（文件名与 schema 以当前数据格式为准）")
+    print("  概念: stats = compute_episode_stats(dataset)")
     print("    normalized_state = (state - mean) / std")
     print("    normalized_action = (action - mean) / std")
     print("  作用: 训练时把 state/action 标准化到 N(0, 1), 提升优化稳定性")
 
     print()
     print("=" * 60)
-    print("生产 LeRobot 加载 (需 lerobot 库):")
-    print("  from lerobot.common.datasets.lerobot_dataset import LeRobotDataset")
-    print("  dataset = LeRobotDataset(")
-    print("      repo_id='lerobot/pusht',")
-    print("      root='./data',")
-    print("  )")
-    print()
-    print("HF Datasets 兼容加载:")
-    print("  from datasets import load_dataset")
-    print("  ds = load_dataset('lerobot/pusht', split='train')")
-    print()
-    print("Isaac Lab 仿真数据生成:")
-    print("  python -m isaaclab --task=Aloha-Transfer --num_envs=64 --headless")
-    print("  输出 HDF5 → 转 LeRobot parquet 格式")
+    print("真实数据管线接入边界:")
+    print("  - LeRobotDataset import 路径、feature schema 与 repo_id 按当前发行版文档核对")
+    print("  - 仿真任务名、启动器和导出格式按当前 Isaac Lab 任务注册表核对")
+    print("  - 转换后校验时间戳、episode 边界、观测/动作单位、缺帧与数据 revision")
+    print("  - 本脚本只处理内存中的合成 episode，未下载或转换外部数据")
 
 
 if __name__ == "__main__":
     main()
+    print("OK")

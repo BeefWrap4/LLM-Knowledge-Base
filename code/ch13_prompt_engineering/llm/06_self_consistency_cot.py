@@ -68,3 +68,4 @@ if __name__ == "__main__":
     answer, confidence = self_consistency_cot(prompt, n_samples=5, temperature=0.8)
     print(f"[多数投票答案] {answer}")
     print(f"[置信度] {confidence:.2%}")
+    print("OK")

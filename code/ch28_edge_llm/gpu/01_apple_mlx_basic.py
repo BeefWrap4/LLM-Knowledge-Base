@@ -26,7 +26,7 @@ if str(_code_root) not in sys.path:
     sys.path.insert(0, str(_code_root))
 
 from shared._error_helper import raise_with_help
-from shared.gpu_guard import require_apple_silicon
+from shared.gpu_guard import require_apple_silicon, skip_if_mock
 
 
 # === 硬件检查函数 (供测试用) ===
@@ -37,6 +37,8 @@ def check_hardware() -> None:
 
 # === 主代码 ===
 def main() -> None:
+    if skip_if_mock("Apple Silicon、MLX 依赖和本地模型权重"):
+        return
     check_hardware()
 
     # 1. 真实 MLX 调用: 加载 4-bit 量化模型并生成

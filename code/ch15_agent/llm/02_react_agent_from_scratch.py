@@ -29,6 +29,8 @@ import os
 import re
 from collections.abc import Callable
 
+from shared.safe_math import UnsafeExpression, evaluate_arithmetic
+
 
 class Tool:
     """工具基类"""
@@ -69,7 +71,11 @@ class ReActAgent:
         self.tools: dict[str, Tool] = {}
         self.memory: list[dict] = []  # 历史记录
         self.max_iterations = 10  # 最大迭代次数，防止无限循环
-        self.llm_api_key = llm_api_key or os.getenv("OPENAI_API_KEY")
+        self.llm_api_key = (
+            llm_api_key or os.getenv("OPENAI_API_KEY")
+            if os.environ.get("LLM_MOCK") == "0"
+            else None
+        )
 
         # ReAct Prompt 模板
         self.react_prompt_template = """你是一个智能助手，可以通过调用工具来完成任务。
@@ -267,16 +273,12 @@ def weather_api(city: str, date: str = "今天") -> str:
 
 
 def calculator(expression: str) -> str:
-    """安全计算器"""
-    # 只允许数字和基本运算符
-    allowed_chars = set("0123456789+-*/.() ")
-    if not all(c in allowed_chars for c in expression):
-        return "错误：表达式包含非法字符"
+    """只解析受限算术语法，不执行模型生成的 Python 代码。"""
     try:
-        result = eval(expression)
+        result = evaluate_arithmetic(expression)
         return f"{expression} = {result}"
-    except Exception as e:
-        return f"计算错误：{str(e)}"
+    except (UnsafeExpression, ArithmeticError) as exc:
+        return f"计算错误：{exc}"
 
 
 def search(query: str) -> str:
