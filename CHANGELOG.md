@@ -23,6 +23,7 @@
 - RTX 5090 D：76 个 GPU 示例按章串行，47 PASS、29 条件 SKIP、0 FAIL。
 - DeepSeek 最小真实冒烟与 bge/Redis/pgvector/DeepSeek 四组件集成通过。
 - Docker 改用官方 PyPI 默认源，镜像包含完整教程验收输入；容器内十阶段门禁通过。
+- Docker Actions 升级到 Node.js 24 运行时主版本，消除 GitHub Runner 的 Node.js 20 弃用告警。
 - Compose 支持隔离项目名，补齐 pgvector `15432` 映射及可配置 Redis/Postgres 连接。
 - 修复 Flash Attention naive/SDPA causal 语义不一致及多个示例缺失 `OK` 契约。
 
