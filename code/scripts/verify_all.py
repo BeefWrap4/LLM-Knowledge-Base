@@ -449,7 +449,7 @@ def inspect_markdown_rendering() -> tuple[int, list[str]]:
 
     The gate intentionally avoids subjective style checks. It validates all maintained Markdown
     pages for balanced fences, display-math/frontmatter/comment delimiters, well-formed WikiLinks
-    and callouts, consistent table columns, and balanced block HTML containers.
+    and callouts, consistent table columns/cell-local math, and balanced block HTML containers.
     """
     documents = markdown_documents()
     failures: list[str] = []
@@ -623,6 +623,24 @@ def inspect_markdown_rendering() -> tuple[int, list[str]]:
                             f"{relative}:{line_no} table header has {len(header_cells)} cells; "
                             f"separator has {expected}"
                         )
+                    empty_header_columns = [
+                        str(index) for index, cell in enumerate(header_cells, start=1) if not cell
+                    ]
+                    if len(empty_header_columns) > 1:
+                        failures.append(
+                            f"{relative}:{line_no} table header has multiple empty cells at columns "
+                            f"{', '.join(empty_header_columns)}; remove accidental columns"
+                        )
+                    odd_math_columns = [
+                        str(index)
+                        for index, cell in enumerate(header_cells, start=1)
+                        if _count_inline_math_markers(cell) % 2
+                    ]
+                    if odd_math_columns:
+                        failures.append(
+                            f"{relative}:{line_no} inline math crosses table cell boundaries at "
+                            f"columns {', '.join(odd_math_columns)}"
+                        )
                     row_index = line_index + 2
                     while row_index < len(lines):
                         row = _mask_inline_code(lines[row_index])
@@ -633,6 +651,16 @@ def inspect_markdown_rendering() -> tuple[int, list[str]]:
                             failures.append(
                                 f"{relative}:{row_index + 1} table row has {len(cells)} cells; "
                                 f"expected {expected}"
+                            )
+                        odd_math_columns = [
+                            str(index)
+                            for index, cell in enumerate(cells, start=1)
+                            if _count_inline_math_markers(cell) % 2
+                        ]
+                        if odd_math_columns:
+                            failures.append(
+                                f"{relative}:{row_index + 1} inline math crosses table cell "
+                                f"boundaries at columns {', '.join(odd_math_columns)}"
                             )
                         row_index += 1
                     line_index = row_index

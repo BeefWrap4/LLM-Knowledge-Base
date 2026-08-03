@@ -196,6 +196,41 @@ def test_markdown_render_gate_rejects_table_column_mismatch(monkeypatch, tmp_pat
     )
 
 
+def test_markdown_render_gate_rejects_math_crossing_table_cells(
+    monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "bad.md").write_text(
+        "| Kernel | Formula start | Midpoint | Formula end | Use |\n"
+        "|---|---|---|---|---|\n"
+        "| RBF | $K(x,y)=\\exp(-\\gamma | x-y | ^2)$ | general |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    _, failures = verify_all.inspect_markdown_rendering()
+
+    assert failures == [
+        "bad.md:3 inline math crosses table cell boundaries at columns 2, 4"
+    ]
+
+
+def test_markdown_render_gate_rejects_multiple_empty_table_headers(
+    monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "bad.md").write_text(
+        "| Kernel | Formula | | | Use |\n"
+        "|---|---|---|---|---|\n"
+        "| RBF | expression | x | y | general |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    assert verify_all.inspect_markdown_rendering() == (
+        1,
+        ["bad.md:1 table header has multiple empty cells at columns 3, 4; remove accidental columns"],
+    )
+
+
 def test_markdown_render_gate_rejects_nested_triple_fence_in_markdown_example(
     monkeypatch, tmp_path: Path
 ) -> None:
@@ -258,6 +293,9 @@ def test_markdown_render_gate_accepts_supported_obsidian_syntax(monkeypatch, tmp
         "|---|---|\n"
         r"| `a | b` | logical or \| pipe |"
         "\n\n"
+        "| Metric | Formula |\n"
+        "|---|---|\n"
+        "| Norm | $\\lVert x \\rVert_2$ |\n\n"
         "[[target#Target|alias]] and [target](target.md#target)\n"
         "<details><summary>More</summary>Text</details>\n"
         "$$\nx + y\n$$\n",
