@@ -28,8 +28,8 @@ Python 的内存管理采用**分层架构**，根据对象大小使用不同的
 ```mermaid
 flowchart TD
     subgraph "Python 内存分配器层级"
-        A[Python 对象] -->|<= 512 bytes| B[pymalloc<br/>小对象分配器]
-        A -->|> 512 bytes| C[原始内存分配器<br/>通常最终调用系统分配器]
+        A[Python 对象] -->|不超过 512 bytes| B[pymalloc<br/>小对象分配器]
+        A -->|大于 512 bytes| C[原始内存分配器<br/>通常最终调用系统分配器]
         
         B --> D[内存池 Pool]<-->E[内存块 Block]
         
@@ -226,7 +226,7 @@ Python 采用**引用计数为主、标记-清除为辅、分代回收为优化*
 flowchart LR
     A[对象创建] --> B[引用计数 = 1]
     B --> C{引用计数?}
-    C -->|> 0| D[继续使用]
+    C -->|大于 0| D[继续使用]
     C -->|= 0| E["执行对象析构流程<br/>释放对象内存"]
     
     D --> F["新引用 +1"] --> C

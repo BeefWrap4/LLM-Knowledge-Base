@@ -438,7 +438,7 @@ graph TD
     LN --> GATE["× SiLU(z_branch)"]
     ZB --> GATE
     GATE --> OUT["y"]
-    X --> RES["+ 残差"]
+    X --> RES["残差相加"]
     OUT --> RES
     RES --> Y["输出"]
 

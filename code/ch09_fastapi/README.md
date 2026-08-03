@@ -1,6 +1,6 @@
 # Ch09 — Web 开发与 FastAPI
 
-> 教程: [`../tutorial/09_Web开发与FastAPI.md`](../tutorial/09_Web开发与FastAPI.md)
+> 教程: [`../../09_Web开发与FastAPI.md`](../../09_Web开发与FastAPI.md)
 
 ## 例子
 

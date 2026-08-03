@@ -1,6 +1,6 @@
 # Ch03 — Python 面向对象编程
 
-> 教程: [`../tutorial/Ch03_Python面向对象编程.md`](../tutorial/Ch03_Python面向对象编程.md)
+> 教程: [`../../03_Python面向对象编程.md`](../../03_Python面向对象编程.md)
 
 | Tier | Files | 主题 |
 |------|-------|------|

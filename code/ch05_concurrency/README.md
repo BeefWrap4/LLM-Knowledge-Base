@@ -1,6 +1,6 @@
 # Ch05 — Python 并发编程
 
-> 教程: [`../tutorial/05_Python并发编程.md`](../tutorial/05_Python并发编程.md)
+> 教程: [`../../05_Python并发编程.md`](../../05_Python并发编程.md)
 
 ## 例子
 

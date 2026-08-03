@@ -1,6 +1,6 @@
 # Ch08 — Python 数据科学核心库
 
-> 教程: [`../tutorial/08_Python数据科学核心库.md`](../tutorial/08_Python数据科学核心库.md)
+> 教程: [`../../08_Python数据科学核心库.md`](../../08_Python数据科学核心库.md)
 
 ## 例子
 

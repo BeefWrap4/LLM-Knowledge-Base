@@ -143,6 +143,276 @@ def test_current_repository_snapshot() -> None:
         assert (verify_all.CODE / f"requirements-{tier}.ci.lock").is_file()
 
 
+def test_current_mermaid_blocks_are_obsidian_safe() -> None:
+    total, failures = verify_all.inspect_mermaid_blocks()
+
+    assert total == 261
+    assert failures == []
+
+
+def test_current_markdown_documents_are_obsidian_safe() -> None:
+    total, failures = verify_all.inspect_markdown_rendering()
+
+    assert total == 99
+    assert failures == []
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        ("# Title\n```python\nprint('x')\n", "unclosed Markdown fence"),
+        ("# Title\n$$\nx + y\n", "unclosed display-math block"),
+        ("---\ntitle: Test\n", "unclosed YAML frontmatter"),
+        ("# Title\n<!-- hidden\n", "unclosed HTML comment"),
+        ("# Title\n<div>\n", "unclosed <div> block"),
+        ("# Title\n[[missing\n", "unbalanced Obsidian WikiLink delimiters"),
+        ("# Title\n> [!NOTE\n", "malformed Obsidian callout header"),
+        ("# Title\nAn unclosed $x expression\n", "unbalanced inline-math '$' delimiter"),
+        ("# Title\n### Skipped level\n", "heading level jumps from H1 to H3"),
+    ],
+)
+def test_markdown_render_gate_rejects_unclosed_structures(
+    monkeypatch, tmp_path: Path, body: str, message: str
+) -> None:
+    (tmp_path / "bad.md").write_text(body, encoding="utf-8")
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_markdown_rendering()
+
+    assert total == 1
+    assert any(message in failure for failure in failures)
+
+
+def test_markdown_render_gate_rejects_table_column_mismatch(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "bad.md").write_text(
+        "| A | B |\n|---|---|\n| one | two | three |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    assert verify_all.inspect_markdown_rendering() == (
+        1,
+        ["bad.md:3 table row has 3 cells; expected 2"],
+    )
+
+
+def test_markdown_render_gate_rejects_math_crossing_table_cells(
+    monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "bad.md").write_text(
+        "| Kernel | Formula start | Midpoint | Formula end | Use |\n"
+        "|---|---|---|---|---|\n"
+        "| RBF | $K(x,y)=\\exp(-\\gamma | x-y | ^2)$ | general |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    _, failures = verify_all.inspect_markdown_rendering()
+
+    assert failures == [
+        "bad.md:3 inline math crosses table cell boundaries at columns 2, 4"
+    ]
+
+
+def test_markdown_render_gate_rejects_multiple_empty_table_headers(
+    monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "bad.md").write_text(
+        "| Kernel | Formula | | | Use |\n"
+        "|---|---|---|---|---|\n"
+        "| RBF | expression | x | y | general |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    assert verify_all.inspect_markdown_rendering() == (
+        1,
+        ["bad.md:1 table header has multiple empty cells at columns 3, 4; remove accidental columns"],
+    )
+
+
+def test_markdown_render_gate_rejects_nested_triple_fence_in_markdown_example(
+    monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "bad.md").write_text(
+        "```markdown\n# Example\n```python\nprint('x')\n```\n```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    _, failures = verify_all.inspect_markdown_rendering()
+
+    assert any("nested fence can terminate Markdown example" in failure for failure in failures)
+
+
+@pytest.mark.parametrize(
+    ("link", "message"),
+    [
+        ("[missing](missing.md)", "unresolved local Markdown target: missing.md"),
+        ("[[missing]]", "unresolved Obsidian WikiLink target: missing"),
+    ],
+)
+def test_markdown_render_gate_rejects_broken_local_links(
+    monkeypatch, tmp_path: Path, link: str, message: str
+) -> None:
+    (tmp_path / "bad.md").write_text(f"# Title\n{link}\n", encoding="utf-8")
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_markdown_rendering()
+
+    assert total == 1
+    assert failures == [f"bad.md:2 {message}"]
+
+
+def test_markdown_render_gate_rejects_symlink_dependent_link(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "bad.md").write_text("[chapter](alias/chapter.md)\n", encoding="utf-8")
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+    original_is_symlink = Path.is_symlink
+    monkeypatch.setattr(
+        Path,
+        "is_symlink",
+        lambda path: path.name == "alias" or original_is_symlink(path),
+    )
+
+    _, failures = verify_all.inspect_markdown_rendering()
+
+    assert len(failures) == 1
+    assert "local Markdown target traverses symlink" in failures[0]
+
+
+def test_markdown_render_gate_accepts_supported_obsidian_syntax(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "target.md").write_text("# Target\n", encoding="utf-8")
+    (tmp_path / "good.md").write_text(
+        "---\n"
+        "title: Good\n"
+        "---\n"
+        "# Good\n"
+        "> [!NOTE]+ Expanded\n"
+        "> Body\n\n"
+        "| Syntax | Meaning |\n"
+        "|---|---|\n"
+        r"| `a | b` | logical or \| pipe |"
+        "\n\n"
+        "| Metric | Formula |\n"
+        "|---|---|\n"
+        "| Norm | $\\lVert x \\rVert_2$ |\n\n"
+        "[[target#Target|alias]] and [target](target.md#target)\n"
+        "<details><summary>More</summary>Text</details>\n"
+        "$$\nx + y\n$$\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    assert verify_all.inspect_markdown_rendering() == (2, [])
+
+
+def test_mermaid_gate_rejects_unclosed_fence(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "bad.md").write_text("```mermaid\ntree\nroot --> leaf\n", encoding="utf-8")
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_mermaid_blocks()
+
+    assert total == 0
+    assert failures == ["bad.md:1 unclosed Mermaid fence"]
+
+
+def test_mermaid_gate_rejects_unknown_diagram(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "bad.md").write_text(
+        "```mermaid\ntree\nroot --> leaf\n```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_mermaid_blocks()
+
+    assert total == 1
+    assert failures == ["bad.md:2 unsupported Mermaid diagram: tree"]
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "NODE[全[MASK]序列]",
+        "NODE[Z ∈ R^{N×d}]",
+        "NODE[epsilon(z_t, t)]",
+        'NODE["块1 [16]")',
+    ],
+)
+def test_mermaid_gate_rejects_parser_sensitive_unquoted_labels(
+    monkeypatch, tmp_path: Path, label: str
+) -> None:
+    (tmp_path / "bad.md").write_text(
+        f"```mermaid\nflowchart TD\n{label}\n```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_mermaid_blocks()
+
+    assert total == 1
+    assert len(failures) == 1
+    assert "quote the label" in failures[0]
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        'NODE["1. first step"]',
+        'A -->|"2. call"| B',
+        'NODE["+"]',
+        "A -->|+| B",
+        "A -->|> 0| B",
+    ],
+)
+def test_mermaid_gate_rejects_unsupported_markdown_at_label_start(
+    monkeypatch, tmp_path: Path, label: str
+) -> None:
+    (tmp_path / "bad.md").write_text(
+        f"```mermaid\nflowchart TD\n{label}\n```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_mermaid_blocks()
+
+    assert total == 1
+    assert len(failures) == 1
+    assert "unsupported Mermaid Markdown" in failures[0]
+
+
+def test_mermaid_gate_accepts_quoted_labels_and_cylinder_shape(
+    monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "good.md").write_text(
+        "```mermaid\n"
+        "flowchart TD\n"
+        'MASK["全 [MASK] 序列"] --> MATH["epsilon(z_t, t) ∈ R^{N×d}"]\n'
+        "MATH --> CACHE[(Redis Cache)]\n"
+        'CACHE --> STEP["步骤 1：读取"]\n'
+        'STEP --> ADD["相加（+）"]\n'
+        "ADD -->|大于 0| DONE\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    assert verify_all.inspect_mermaid_blocks() == (1, [])
+
+
+def test_mermaid_gate_accepts_state_diagram_terminal_nodes(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "state.md").write_text(
+        "```mermaid\n"
+        "stateDiagram-v2\n"
+        "[*] --> Plan\n"
+        "Plan --> [*]\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    assert verify_all.inspect_mermaid_blocks() == (1, [])
+
+
 def test_python_reference_gate_detects_missing_file(monkeypatch, tmp_path: Path) -> None:
     code = tmp_path / "code"
     code.mkdir()

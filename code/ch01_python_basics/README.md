@@ -1,6 +1,6 @@
 # Ch01 — Python 编程基础
 
-> 教程: [`../tutorial/Ch01_Python编程基础.md`](../tutorial/Ch01_Python编程基础.md)
+> 教程: [`../../01_Python编程基础.md`](../../01_Python编程基础.md)
 
 ## 例子
 

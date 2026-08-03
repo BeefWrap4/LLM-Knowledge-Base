@@ -1004,8 +1004,8 @@ flowchart TD
     E -->|asyncio 中的 CPU 任务| H["loop.run_in_executor<br/>ProcessPoolExecutor"]
     
     D --> I{并发连接数?}
-    I -->|> 1000 高并发| J["asyncio + aiohttp<br/>协程方案"]
-    I -->|< 100 低并发| K["threading<br/>ThreadPoolExecutor"]
+    I -->|超过 1000：高并发| J["asyncio + aiohttp<br/>协程方案"]
+    I -->|不超过 100：低并发| K["threading<br/>ThreadPoolExecutor"]
     I -->|混合类型| L["asyncio +<br/>ThreadPoolExecutor/ProcessPoolExecutor"]
     
     style C2 fill:#2E8B57,color:#fff

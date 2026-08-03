@@ -1,6 +1,6 @@
 # Ch04 — Python 高级特性与函数式编程
 
-> 教程: [`../tutorial/04_Python高级特性与函数式编程.md`](../tutorial/04_Python高级特性与函数式编程.md)
+> 教程: [`../../04_Python高级特性与函数式编程.md`](../../04_Python高级特性与函数式编程.md)
 
 ## 例子
 

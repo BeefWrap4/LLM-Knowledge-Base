@@ -1210,13 +1210,13 @@ RBAC"]
         Audit["审计日志
 全链路追踪"]
 
-        Client -->|"1. 查询可用 Server"| Registry
-        Client -->|"2. JSON-RPC 调用"| Auth
+        Client -->|"步骤 1：查询可用 Server"| Registry
+        Client -->|"步骤 2：JSON-RPC 调用"| Auth
         Auth -->|"鉴权通过"| S1
         Auth -->|"鉴权通过"| S2
         Auth -->|"鉴权通过"| S3
-        S1 -->|"3. 返回结果"| Audit
-        Audit -->|"4. 记录日志"| Client
+        S1 -->|"步骤 3：返回结果"| Audit
+        Audit -->|"步骤 4：记录日志"| Client
         HC -->|"心跳检测"| S1
         HC -->|"心跳检测"| S2
         HC -->|"心跳检测"| S3
@@ -1697,10 +1697,10 @@ A2A（Agent-to-Agent）是 Google 于 2025 年推出的**开放 Agent 间通信�
 ```mermaid
 graph LR
     subgraph "A2A 协议架构"
-        A1[Agent A<br/>客户Agent] -->|"1. 发现"| D[Agent Card<br/>能力描述]
-        A1 -->|"2. 任务下发"| A2[Agent B<br/>远程Agent]
-        A2 -->|"3. 状态更新"| A1
-        A2 -->|"4. 结果返回"| A1
+        A1[Agent A<br/>客户Agent] -->|"步骤 1：发现"| D[Agent Card<br/>能力描述]
+        A1 -->|"步骤 2：任务下发"| A2[Agent B<br/>远程Agent]
+        A2 -->|"步骤 3：状态更新"| A1
+        A2 -->|"步骤 4：结果返回"| A1
     end
     
     style D fill:#ffe6cc,stroke:#d79b00
@@ -1727,7 +1727,7 @@ graph LR
 
 ---
 
-## 15.6.4 Agent Teams 架构 🆕（2026年更新）
+### 15.6.4 Agent Teams 架构 🆕（2026年更新）
 
 > Anthropic 在 2026 年 2 月发布 Claude Opus 4.6 时，为 **Claude Code** 引入了
 > Agent Teams 研究预览。它是产品编排能力，不是某个模型天然具备的通用 API
@@ -1768,19 +1768,19 @@ graph TB
         STL["📝 Shared Task List
 共享任务状态板"]
 
-        TL -->|"1. 分解任务"| STL
-        TL -->|"2. 分配"| M1
-        TL -->|"2. 分配"| M2
-        TL -->|"2. 分配"| M3
-        M1 -->|"3. 读取"| T1
-        M2 -->|"3. 读取"| T2
-        M3 -->|"3. 读取"| T3
-        T1 -->|"4. 更新状态"| STL
-        T2 -->|"4. 更新状态"| STL
-        T3 -->|"4. 更新状态"| STL
-        T1 -->|"5. 异步消息"| M2
-        T2 -->|"5. 异步消息"| M3
-        STL -->|"6. 监控进度"| TL
+        TL -->|"步骤 1：分解任务"| STL
+        TL -->|"步骤 2：分配"| M1
+        TL -->|"步骤 2：分配"| M2
+        TL -->|"步骤 2：分配"| M3
+        M1 -->|"步骤 3：读取"| T1
+        M2 -->|"步骤 3：读取"| T2
+        M3 -->|"步骤 3：读取"| T3
+        T1 -->|"步骤 4：更新状态"| STL
+        T2 -->|"步骤 4：更新状态"| STL
+        T3 -->|"步骤 4：更新状态"| STL
+        T1 -->|"步骤 5：异步消息"| M2
+        T2 -->|"步骤 5：异步消息"| M3
+        STL -->|"步骤 6：监控进度"| TL
     end
 
     style TL fill:#fff3e0,stroke:#ff9800
@@ -3197,7 +3197,7 @@ graph LR
 
 Anthropic 提出的开放标准 `SKILL.md`，使用 YAML Frontmatter 描述元信息，正文是 Markdown 文档：
 
-```markdown
+````markdown
 ---
 name: code-review
 description: 对 Git diff 进行多维度代码审查，包括安全、性能、可读性
@@ -3268,7 +3268,7 @@ outputs:
 - diff 格式无法解析 → 报告错误并跳过审查
 - 语言不支持 → 仅做通用检查
 - 工具调用失败 → 重试 1 次 → 仍失败则返回降级报告
-```
+````
 
 #### 2. Skills 加载器实现
 
@@ -4288,7 +4288,7 @@ def hybrid_search(query_vec: np.ndarray,
 | A2A 协议 | Google 2025 推出；Agent ↔ Agent 通信；Agent Card 能力描述；Push Notification 异步状态更新；与 MCP 互补 |
 | Agent Teams | Claude Code 研究预览；Team Lead + Teammates 并行协作；Shared Task List + Mailbox 异步通信；适合可独立拆分的任务 |
 | Agent 安全防线 | 死循环防范（max_steps + 动作去重）+ 工具幻觉（Schema 校验 + 白名单）+ 上下文污染（截断重置）+ Token 爆炸（输出分页）+ Prompt Injection（输入过滤 + 权限隔离） |
-| 配套代码 | `code/ch15_agent/llm/*.py`；默认离线 mock，可由章节 runner 批量验收 | 真实 API/框架示例需显式 `LLM_MOCK=0`、对应依赖与 Provider Key |
+| 配套代码 | `code/ch15_agent/llm/*.py`；默认离线 mock，可由章节 runner 批量验收；真实 API/框架示例需显式 `LLM_MOCK=0`、对应依赖与 Provider Key |
 
 ## 15.x 配套代码运行与验收
 

@@ -34,10 +34,10 @@ tags:
 ```mermaid
 graph TD
     subgraph "四层记忆架构"
-        SubGraph1["1. Session Memory<br/>短期（当前对话）"]
-        SubGraph2["2. User Profile Memory<br/>长期（用户画像）"]
-        SubGraph3["3. Episodic Memory<br/>情景记忆（事件序列）"]
-        SubGraph4["4. Semantic Memory<br/>语义记忆（事实/知识）"]
+        SubGraph1["层 1：Session Memory<br/>短期（当前对话）"]
+        SubGraph2["层 2：User Profile Memory<br/>长期（用户画像）"]
+        SubGraph3["层 3：Episodic Memory<br/>情景记忆（事件序列）"]
+        SubGraph4["层 4：Semantic Memory<br/>语义记忆（事实/知识）"]
     end
 
     style SubGraph1 fill:#ccffcc,stroke:#228b22

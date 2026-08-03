@@ -1,6 +1,6 @@
 # Ch11 — 深度学习与 PyTorch
 
-> 教程: [`../tutorial/11_深度学习与PyTorch.md`](../tutorial/11_深度学习与PyTorch.md)
+> 教程: [`../../11_深度学习与PyTorch.md`](../../11_深度学习与PyTorch.md)
 
 ## 例子
 
