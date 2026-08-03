@@ -121,6 +121,74 @@ MERMAID_RISK_PATTERNS = (
         re.compile(r'\b[A-Za-z_][A-Za-z0-9_-]*\["[^"\r\n]*"\)'),
     ),
 )
+MERMAID_SEQUENCE_PARTICIPANT_RE = re.compile(
+    r"^\s*participant\s+(?P<identifier>[A-Za-z_][A-Za-z0-9_-]*)\s+as\s+(?P<label>.+?)\s*$",
+    re.IGNORECASE,
+)
+MERMAID_SEQUENCE_MESSAGE_RE = re.compile(
+    r"^\s*(?P<source>[A-Za-z_][A-Za-z0-9_-]*)\s*"
+    r"(?:-->>|->>|-->|->)\s*"
+    r"(?P<target>[A-Za-z_][A-Za-z0-9_-]*)\s*:\s*(?P<label>.+?)\s*$"
+)
+
+
+def _sequence_participant_role(identifier: str, participants: dict[str, str]) -> str | None:
+    """Classify the small set of roles needed for ReAct routing checks."""
+    value = f"{identifier} {participants.get(identifier, '')}".casefold()
+    if "user" in value or "用户" in value:
+        return "user"
+    if "tool" in value or "工具" in value or "environment" in value or "环境" in value:
+        return "tool"
+    if "agent" in value or "llm" in value or "模型" in value:
+        return "agent"
+    return None
+
+
+def _inspect_sequence_semantics(markdown_name: str, body: list[tuple[int, str]]) -> list[str]:
+    """Reject ReAct messages that make the end user act as the tool runtime."""
+    failures: list[str] = []
+    participants: dict[str, str] = {}
+    for _, line in body:
+        participant_match = MERMAID_SEQUENCE_PARTICIPANT_RE.match(line)
+        if participant_match:
+            participants[participant_match.group("identifier")] = participant_match.group("label")
+
+    participant_roles = {
+        _sequence_participant_role(identifier, participants) for identifier in participants
+    }
+    has_agent_and_tool = {"agent", "tool"}.issubset(participant_roles)
+
+    for line_no, line in body:
+        message_match = MERMAID_SEQUENCE_MESSAGE_RE.match(line)
+        if not message_match:
+            continue
+        source_role = _sequence_participant_role(message_match.group("source"), participants)
+        target_role = _sequence_participant_role(message_match.group("target"), participants)
+        label = message_match.group("label").strip()
+        normalized_label = label.casefold()
+
+        if normalized_label.startswith("action:") and target_role == "user":
+            failures.append(
+                f"{markdown_name}:{line_no} ReAct Action is routed to the user; "
+                "route it to the tool/runtime"
+            )
+        if normalized_label.startswith("observation:") and target_role == "user":
+            failures.append(
+                f"{markdown_name}:{line_no} ReAct Observation is routed to the user; "
+                "route it to the agent/runtime"
+            )
+        if (
+            has_agent_and_tool
+            and source_role == "user"
+            and target_role == "tool"
+            and (label.startswith("执行") or label.startswith("调用"))
+        ):
+            failures.append(
+                f"{markdown_name}:{line_no} user is acting as the tool executor; "
+                "route the call through the agent/runtime"
+            )
+
+    return failures
 
 
 def canonical_chapters() -> list[Path]:
@@ -250,8 +318,9 @@ def inspect_mermaid_blocks() -> tuple[int, list[str]]:
     """Fail closed on Mermaid constructs known to break Obsidian's parser.
 
     This lightweight CI gate covers fence integrity, diagram declarations, malformed quoted
-    square nodes, and parser-sensitive characters in unquoted square labels. Exact release
-    acceptance still uses the Mermaid version bundled with the target Obsidian installation.
+    square nodes, parser-sensitive characters in unquoted square labels, and ReAct message
+    routing. Exact release acceptance still uses the Mermaid version bundled with the target
+    Obsidian installation.
     """
     total = 0
     failures: list[str] = []
@@ -291,6 +360,8 @@ def inspect_mermaid_blocks() -> tuple[int, list[str]]:
                                 failures.append(
                                     f"{markdown.name}:{body_line_no} {description}; {recommendation}"
                                 )
+                if diagram == "sequenceDiagram":
+                    failures.extend(_inspect_sequence_semantics(markdown.name, body))
                 inside = False
                 body = []
                 continue

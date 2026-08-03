@@ -20,6 +20,9 @@
   WikiLinks、本地链接、Callout、YAML Frontmatter、HTML 注释/容器和符号链接路径。
 - 修复 SVM 核函数表被范数竖线误拆为 7 列的问题，并将 5 行表格中的范数统一改为
   `\lVert ... \rVert`；门禁新增逐单元格数学定界符与多空表头检查，防止同类回归。
+- 全量语义与布局审计 261 个 Mermaid 图，修复 14 个角色、数据流或超宽布局问题，覆盖 ReAct 工具调用、
+  MCP Host/Client/Server、审计链路、Prometheus 抓取、Kubernetes 控制面、OpenTelemetry
+  导出链路、模型网关和 Context Builder；新增 ReAct Action/Observation 路由门禁。
 
 ## v1.1.0 (2026-07-31) — 40 章审校与 fail-closed 验收
 

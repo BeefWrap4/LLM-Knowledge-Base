@@ -329,6 +329,52 @@ def test_mermaid_gate_rejects_unknown_diagram(monkeypatch, tmp_path: Path) -> No
     assert failures == ["bad.md:2 unsupported Mermaid diagram: tree"]
 
 
+def test_mermaid_gate_rejects_react_messages_routed_through_user(
+    monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "bad.md").write_text(
+        "```mermaid\n"
+        "sequenceDiagram\n"
+        "participant U as User\n"
+        "participant A as LLM Agent\n"
+        "participant T as External Tool\n"
+        "A-->>U: Action: search(query)\n"
+        "U->>T: 执行搜索\n"
+        "T-->>U: Observation: result\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_mermaid_blocks()
+
+    assert total == 1
+    assert failures == [
+        "bad.md:6 ReAct Action is routed to the user; route it to the tool/runtime",
+        "bad.md:7 user is acting as the tool executor; route the call through the agent/runtime",
+        "bad.md:8 ReAct Observation is routed to the user; route it to the agent/runtime",
+    ]
+
+
+def test_mermaid_gate_accepts_react_agent_tool_routing(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "good.md").write_text(
+        "```mermaid\n"
+        "sequenceDiagram\n"
+        "participant U as 用户\n"
+        "participant A as Agent (LLM)\n"
+        "participant T as 工具/API\n"
+        "U->>A: 提问\n"
+        "A->>T: Action: search(query)\n"
+        "T-->>A: Observation: result\n"
+        "A-->>U: Final Answer: answer\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    assert verify_all.inspect_mermaid_blocks() == (1, [])
+
+
 @pytest.mark.parametrize(
     "label",
     [

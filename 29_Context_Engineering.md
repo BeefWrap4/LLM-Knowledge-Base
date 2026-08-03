@@ -33,17 +33,18 @@ Context Engineering 是 Prompt Engineering 的自然演进。它解决的问题�
 
 ```mermaid
 graph TB
-    subgraph "Prompt Engineering (2023)"
-        A["精心设计的 System Prompt"] --> B["用户问题"] --> C["LLM"]
-    end
+    Prompt["Prompt Engineering（2023）<br/>System Prompt + 用户问题 → Messages → LLM"]
+    Evolution["演进：动态组装上下文"]
     subgraph "Context Engineering (2026)"
-        D["System Instructions<br/>(few-shot examples)"] --> E["Conversation History<br/>(short-term memory)"]
-        E --> F["Tools / MCP Servers<br/>(current tool state)"]
-        F --> G["RAG Retrieved Docs<br/>(filtered)"]
-        G --> H["Long-term Memory<br/>(vector store)"]
-        H --> I["Structured State<br/>(LangGraph state)"]
-        I --> J["LLM"]
+        D["指令与历史<br/>few-shot · 短期记忆"] --> X["Context Builder<br/>筛选 · 排序 · 压缩"]
+        E["工具与检索<br/>工具状态 · 过滤文档"] --> X
+        F["记忆与状态<br/>向量库 · 工作流状态"] --> X
+        X --> J["LLM"]
     end
+    Prompt --> Evolution
+    Evolution --> D
+    Evolution --> E
+    Evolution --> F
 ```
 
 **核心洞察**: Context = Prompt + History + Tools + RAG + Memory + State。

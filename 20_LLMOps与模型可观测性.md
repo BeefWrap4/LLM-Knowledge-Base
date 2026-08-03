@@ -563,24 +563,30 @@ def evaluate_response_quality(trace_id: str, score: float) -> None:
 ```mermaid
 sequenceDiagram
     participant Dev as 开发者
-    participant Trace as Trace Viewer
-    participant LLM as LLM API
+    participant App as 应用
+    participant LLM as 模型 API
+    participant Trace as Trace
     
-    Dev->>LLM: 发送 Prompts（含问题上下文）
-    LLM-->>Trace: 自动记录 Request/Response
-    Trace-->>Dev: 查看完整调用链
+    Dev->>App: 运行 Prompt 测试
+    App->>LLM: Prompt + 上下文
+    LLM-->>App: 模型响应
+    App-->>Trace: SDK 记录 Span
+    Trace-->>Dev: 查看调用链
     
     Note over Dev,Trace: 分析阶段
     
-    Dev->>Trace: 检查输入 Token 数量
-    Dev->>Trace: 检查 Prompt 模板渲染结果
-    Dev->>Trace: 检查 LLM 原始输出
-    Dev->>Trace: 检查后处理逻辑
+    Dev->>Trace: 检查 Token
+    Dev->>Trace: 检查模板渲染
+    Dev->>Trace: 检查原始输出
+    Dev->>Trace: 检查后处理
     
     Note over Dev,Trace: 定位问题后
     
     Dev->>Dev: 修改 Prompt
-    Dev->>LLM: 重新测试
+    Dev->>App: 重新运行测试
+    App->>LLM: 发送新 Prompt
+    LLM-->>App: 新响应
+    App-->>Trace: 记录新 Span
     Trace-->>Dev: 对比新旧 Trace
 ```
 
@@ -2546,39 +2552,24 @@ graph TD
     end
     
     subgraph "Instrumentation 层"
-        OTI["OTel GenAI<br/>Instrumentation<br/>(opentelemetry-instrumentation-openai)"]
-        OIF["OpenInference<br/>Instrumentor"]
-        MANUAL["Manual @trace<br/>gen_ai.* 属性"]
+        INST["OTel GenAI · OpenInference · Manual Span<br/>Instrumentation"]
     end
     
     subgraph "OTel SDK"
+        RES["Resource + Span 属性<br/>service.name；gen_ai.* 放在调用 Span"]
         EXP["OTLP Exporter<br/>gRPC / HTTP"]
-        RES["Resource<br/>service.name=llm-app<br/>provider 放在调用 Span"]
     end
     
     subgraph "后端 (任选)"
-        TEMPO["Grafana Tempo"]
-        HONEY["Honeycomb"]
-        DD["Datadog"]
-        LF["Langfuse（兼容范围按版本核验）"]
-        JAEGER["Jaeger"]
+        BACKENDS["Tempo · Honeycomb · Datadog · Jaeger<br/>Langfuse（兼容范围按版本核验）"]
     end
     
-    APP --> OTI
-    APP --> OIF
-    APP --> MANUAL
-    OTI --> EXP
-    OIF --> EXP
-    MANUAL --> EXP
-    EXP --> RES
-    EXP --> TEMPO
-    EXP --> HONEY
-    EXP --> DD
-    EXP --> LF
-    EXP --> JAEGER
-    
-    style OTI fill:#c8e6c9,stroke:#4caf50
-    style OIF fill:#fff3e0,stroke:#ff9800
+    APP --> INST
+    INST --> RES
+    RES --> EXP
+    EXP --> BACKENDS
+
+    style INST fill:#c8e6c9,stroke:#4caf50
     style RES fill:#e3f2fd,stroke:#1976d2
 ```
 

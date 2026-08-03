@@ -359,21 +359,18 @@ ReAct 将**推理（Reasoning）**与**行动（Acting）**结合，让模型不
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant LLM as LLM Agent
-    participant Tool as External Tool
+    participant U as 用户
+    participant LLM as Agent
+    participant Tool as 工具
 
-    U->>LLM: 提问："2024年诺贝尔文学奖得主是谁？"
+    U->>LLM: 问：2024 文学奖得主？
     
-    LLM->>LLM: Thought: 我需要查询最新的诺贝尔文学奖信息
-    LLM-->>U: Action: search("2024年诺贝尔文学奖得主")
+    LLM->>LLM: Thought: 需要检索外部信息
+    LLM->>Tool: Action: search(query)
+    Tool-->>LLM: Observation: 韩江
     
-    U->>Tool: 执行搜索
-    Tool-->>U: Observation: "2024年诺贝尔文学奖授予韩国作家韩江"
-    U->>LLM: 返回观察结果
-    
-    LLM->>LLM: Thought: 搜索结果明确给出了答案
-    LLM-->>U: Action: finish("2024年诺贝尔文学奖得主是韩江")
+    LLM->>LLM: Thought: 信息足以作答
+    LLM-->>U: Final Answer: 韩江
 ```
 
 ```python

@@ -198,26 +198,21 @@ ReAct（Reasoning + Acting）是 Agent 领域最具影响力的框架，核心�
 ```mermaid
 sequenceDiagram
     participant U as 用户
-    participant A as Agent<br/>(LLM)
-    participant T as 工具/API
-    participant E as 环境
+    participant A as Agent
+    participant T as 工具
 
-    U->>A: 目标：查北京明天天气并算体温平均值
+    U->>A: 目标：查天气并计算平均体温
     
     loop ReAct 循环
-        A->>A: Thought: 我需要先查天气，需要调用天气API
-        A-->>U: Action: weather_api(city="北京", date="明天")
-        U->>T: 执行工具调用
-        T-->>U: Observation: {"temp": "22°C", "condition": "晴"}
-        U->>A: 返回观察结果
+        A->>A: Thought: 先查询天气
+        A->>T: Action: weather_api(...)
+        T-->>A: Observation: 晴，22°C
         
-        A->>A: Thought: 已获取天气，温度是22°C，<br/>现在需要计算体温平均值<br/>（36.5, 37.0, 36.8）
-        A-->>U: Action: calculator(expression="(36.5+37.0+36.8)/3")
-        U->>T: 执行计算
-        T-->>U: Observation: 36.7666666667
-        U->>A: 返回计算结果
+        A->>A: Thought: 继续计算体温平均值
+        A->>T: Action: calculator(...)
+        T-->>A: Observation: 36.77°C
         
-        A->>A: Thought: 所有信息已获取，可以给出最终答案
+        A->>A: Thought: 信息足以作答
         A-->>U: Final Answer: 北京明天晴，22°C。<br/>体温平均值 36.77°C。
     end
 ```
@@ -564,28 +559,29 @@ if __name__ == "__main__":
 Function Calling（函数调用）是大模型的一项核心能力，让模型能够**理解工具定义**、**判断何时调用**、**生成正确参数**，从而实现与外部世界的交互。
 
 ```mermaid
+%%{init: {"sequence": {"actorMargin": 25, "width": 120}}}%%
 sequenceDiagram
     participant U as 用户
-    participant LLM as 大模型
-    participant App as 应用程序
-    participant API as 外部 API
+    participant App as 应用
+    participant LLM as 模型
+    participant API as API
 
     U->>App: "帮我查北京天气"
-    App->>LLM: 消息 + 工具定义（weather_api）
+    App->>LLM: 消息 + 工具定义
     
-    Note over LLM: 模型内部决策：<br/>需要调用 weather_api<br/>参数：city="北京"
+    Note over LLM: 决定调用 weather_api<br/>city="北京"
     
-    LLM-->>App: function_call: {"name": "weather_api", "arguments": "{\"city\": \"北京\"}"}
+    LLM-->>App: 调用 weather_api(...)
     
-    App->>App: 解析参数，执行函数
-    App->>API: 调用天气 API(city="北京")
-    API-->>App: {"temp": 25, "condition": "晴"}
+    App->>App: 解析参数
+    App->>API: weather_api(...)
+    API-->>App: 晴，25°C
     
-    App->>LLM: function_result: 北京晴 25°C
+    App->>LLM: 工具结果：晴，25°C
     
-    Note over LLM: 模型生成自然语言回答
+    Note over LLM: 生成自然语言回答
     
-    LLM-->>App: "北京今天天气晴朗，气温 25°C。"
+    LLM-->>App: 北京晴，25°C
     App-->>U: 展示结果
 ```
 
@@ -836,23 +832,26 @@ graph TB
     subgraph "MCP 架构"
         direction TB
         
-        Client["MCP Client<br/>（LLM 应用）"]
+        Host["MCP Host<br/>（LLM 应用）"]
+        Client1["MCP Client A"]
+        Client2["MCP Client B"]
+        Client3["MCP Client C"]
         Server1["MCP Server A<br/>（GitHub 工具集）"]
         Server2["MCP Server B<br/>（数据库工具集）"]
         Server3["MCP Server C<br/>（文件系统工具集）"]
-        Server4["MCP Server D<br/>（Slack/邮件工具集）"]
         
-        Client <-->|"JSON-RPC 2.0<br/>stdio / SSE"| Server1
-        Client <-->|"JSON-RPC 2.0"| Server2
-        Client <-->|"JSON-RPC 2.0"| Server3
-        Client <-->|"JSON-RPC 2.0"| Server4
+        Host -->|"创建与管理"| Client1
+        Host -->|"创建与管理"| Client2
+        Host -->|"创建与管理"| Client3
+        Client1 <-->|"JSON-RPC 2.0<br/>stdio / Streamable HTTP"| Server1
+        Client2 <-->|"JSON-RPC 2.0"| Server2
+        Client3 <-->|"JSON-RPC 2.0"| Server3
     end
     
-    style Client fill:#e3f2fd,stroke:#1976d2
+    style Host fill:#e3f2fd,stroke:#1976d2
     style Server1 fill:#e8f5e9,stroke:#388e3c
     style Server2 fill:#e8f5e9,stroke:#388e3c
     style Server3 fill:#e8f5e9,stroke:#388e3c
-    style Server4 fill:#e8f5e9,stroke:#388e3c
 ```
 
 **MCP 的核心设计**：
@@ -995,11 +994,12 @@ graph LR
     end
     
     subgraph "MCP"
-        D[MCP Client] <-->|"JSON-RPC"| E[MCP Server]
-        E -->|"暴露工具"| F[GitHub API]
-        E -->|"暴露工具"| G[数据库]
-        E -->|"暴露工具"| H[文件系统]
-        D -->|"调用"| I[LLM]
+        I[LLM] -->|"输出工具调用意图"| Host[MCP Host / 应用]
+        Host -->|"路由请求"| D[MCP Client]
+        D <-->|"JSON-RPC"| E[MCP Server]
+        E -->|"调用"| F[GitHub API]
+        E -->|"查询"| G[数据库]
+        E -->|"访问"| H[文件系统]
     end
 ```
 
@@ -1191,42 +1191,24 @@ graph TB
     subgraph "MCP 工程化管理架构"
         direction TB
 
-        Client["MCP Client
-（LLM 应用）"]
-        Registry["MCP Registry
-（注册中心）"]
-        HC["Health Checker
-（健康检查）"]
+        Host["MCP Host<br/>（LLM 应用）"]
+        ClientPool["MCP Client Pool<br/>（每个 Server 一条连接）"]
+        Servers["MCP Server Pool<br/>A · B · C · ..."]
+        Auth["权限控制层<br/>RBAC"]
+        Ops["管理面<br/>Registry · Health · Audit"]
 
-        subgraph "MCP Server Pool"
-            S1["Server A v1.2"]
-            S2["Server B v2.0"]
-            S3["Server C v1.5"]
-            SN["... Server N"]
-        end
-
-        Auth["权限控制层
-RBAC"]
-        Audit["审计日志
-全链路追踪"]
-
-        Client -->|"步骤 1：查询可用 Server"| Registry
-        Client -->|"步骤 2：JSON-RPC 调用"| Auth
-        Auth -->|"鉴权通过"| S1
-        Auth -->|"鉴权通过"| S2
-        Auth -->|"鉴权通过"| S3
-        S1 -->|"步骤 3：返回结果"| Audit
-        Audit -->|"步骤 4：记录日志"| Client
-        HC -->|"心跳检测"| S1
-        HC -->|"心跳检测"| S2
-        HC -->|"心跳检测"| S3
-        HC -->|"更新状态"| Registry
+        Host <-->|"步骤 1：发现 / 可用清单"| Ops
+        Host <-->|"步骤 2、4：工具请求 / 结果"| Auth
+        Auth <-->|"鉴权通过 / 结果"| ClientPool
+        ClientPool <-->|"步骤 3：JSON-RPC<br/>每个 Server 独立连接"| Servers
+        Ops -->|"健康检查"| Servers
+        Auth -.->|"记录鉴权决策"| Ops
+        ClientPool -.->|"记录调用与结果"| Ops
     end
 
-    style Client fill:#e3f2fd,stroke:#1976d2
-    style Registry fill:#fff3e0,stroke:#ff9800
+    style Host fill:#e3f2fd,stroke:#1976d2
+    style Ops fill:#fff3e0,stroke:#ff9800
     style Auth fill:#ffebee,stroke:#c62828
-    style Audit fill:#f3e5f5,stroke:#7b1fa2
 ```
 
 #### 3. 动态加载与权限控制代码示例
@@ -3397,16 +3379,17 @@ graph TB
 
         Dev["Skill 开发者<br/>编写 SKILL.md"]
         Registry["Skills Registry<br/>marketplace.example.com<br/>搜索 版本管理 评分"]
-        CLI["Claude Code 与 Cursor<br/>CLI 工具"]
+        Host["Agent Host<br/>Claude Code / Cursor"]
         Agent["Agent 运行时"]
         User["最终用户"]
 
         Dev -->|"发布"| Registry
-        CLI -->|"搜索与安装"| Registry
-        Registry -->|"下载 SKILL.md"| CLI
-        CLI -->|"加载到"| Agent
-        User -->|"使用"| Agent
-        Agent -->|"调用"| CLI
+        Host -->|"搜索与安装"| Registry
+        Registry -->|"下载 SKILL.md"| Host
+        User -->|"发起任务"| Host
+        Host -->|"加载 Skill 并启动"| Agent
+        Agent -->|"返回执行结果"| Host
+        Host -->|"展示结果"| User
     end
 
     style Registry fill:#fff3e0,stroke:#ff9800
