@@ -96,8 +96,9 @@ python scripts/download_models.py --reranker
 python scripts/download_models.py --llm
 ```
 
-模型写入 `code/models/`。下载器会依次尝试 ModelScope 与 Hugging Face 镜像；是否可下载、许可条件和
-文件大小仍应以模型仓库当前内容为准。
+模型写入仓库外的 `TUTORIAL_MODELS_DIR`（Windows 当前默认是
+`E:\AI_Models\Projects\MyDocument\Python到大模型应用_面试教程_2026版\models`）。下载器会依次
+尝试 ModelScope 与 Hugging Face 镜像；是否可下载、许可条件和文件大小仍应以模型仓库当前内容为准。
 
 ## 5. 启动 Redis 与 pgvector
 

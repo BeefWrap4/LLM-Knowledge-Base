@@ -7,7 +7,7 @@
 # deps: ollama (CLI)
 # run: python 06_ollama_modelfile.py
 # expected_runtime: <5s (生成 Modelfile) + ~30-120s (ollama create)
-# expected_output: 真实写入 code/models/Modelfile + 调用 `ollama create` 创建模型
+# expected_output: 真实写入 TUTORIAL_MODELS_DIR/Modelfile + 调用 `ollama create` 创建模型
 # ---
 # See: ../tutorial/28_端侧与边缘LLM.md § 28.4.2
 # Interview hooks:
@@ -29,11 +29,12 @@ if str(_code_root) not in sys.path:
 
 from shared._error_helper import raise_with_help
 from shared.gpu_guard import skip_if_mock, skip_unless_enabled
+from shared.model_paths import tutorial_models_dir
 
 
 def _default_modelfile_path() -> str:
-    """默认 Modelfile 路径: <repo>/code/models/Modelfile (相对脚本计算, 与 cwd 无关)."""
-    return str(_code_root / "models" / "Modelfile")
+    """默认写入仓库外的集中模型目录。"""
+    return str(tutorial_models_dir() / "Modelfile")
 
 
 def generate_modelfile(
@@ -46,7 +47,7 @@ def generate_modelfile(
 
     Args:
         base_model: 基础模型名 (e.g. "llama3.2:3b").
-        output_path: 写入路径, 默认 <repo>/code/models/Modelfile.
+        output_path: 写入路径, 默认 TUTORIAL_MODELS_DIR/Modelfile.
     """
     if not output_path:
         output_path = _default_modelfile_path()

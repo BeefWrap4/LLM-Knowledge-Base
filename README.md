@@ -267,13 +267,19 @@ LLM_MOCK=0 bash scripts/run_real_demos.sh --confirm-real all deepseek --parallel
 
 ### 下载教程所需模型 (Wave 14-B)
 
-```bash
-cd code/
+模型权重统一保存在仓库外。当前 Windows 工作区的默认目录为
+`E:\AI_Models\Projects\MyDocument\Python到大模型应用_面试教程_2026版\models`；其他位置可通过
+`TUTORIAL_MODELS_DIR` 覆盖：
+
+```powershell
+$env:TUTORIAL_MODELS_DIR = 'E:\AI_Models\Projects\MyDocument\Python到大模型应用_面试教程_2026版\models'
+Set-Location code
 make download-models-list     # 只读查看当前模型、门禁与规划体积
 make download-models-default  # 按注册表下载 required 集合
 ```
 
-详见 [`code/models/README.md`](code/models/README.md) 和 [`code/docs/MODELS.md`](code/docs/MODELS.md).
+macOS/Linux 未设置该变量时使用 `~/.cache/llm-interview-tutorial/models`。详见
+[`code/docs/MODELS.md`](code/docs/MODELS.md)。
 
 ### Docker 化部署 (Wave 14-C)
 
@@ -291,12 +297,16 @@ make -C code docker-bash     # 进容器
 # GitHub Container Registry (自动 build, push by .github/workflows/docker-build.yml)
 docker pull ghcr.io/beefwrap4/llm-knowledge-base:latest
 
+# Windows Git Bash 示例；其他系统替换为实际的仓库外模型目录
+export TUTORIAL_MODELS_DIR='E:/AI_Models/Projects/MyDocument/Python到大模型应用_面试教程_2026版/models'
+
 # 跑
 docker run --rm -it \
   -e DEEPSEEK_API_KEY="sk-xxx" \
   -e KIMI_API_KEY="sk-xxx" \
   -e MINIMAX_API_KEY="sk-cp-xxx" \
-  -v ${PWD}/code/models:/app/code/models \
+  -e TUTORIAL_MODELS_DIR=/app/code/models \
+  -v "${TUTORIAL_MODELS_DIR}:/app/code/models" \
   ghcr.io/beefwrap4/llm-knowledge-base:latest bash
 
 # 容器内:

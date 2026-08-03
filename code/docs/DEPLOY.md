@@ -104,7 +104,7 @@ make -C code docker-build
 
 | 数据 | 路径 | 持久化方式 |
 |------|------|----------|
-| 用户下载的模型 | `code/models/` | host volume (./code/models) |
+| 用户下载的模型 | 宿主机 `TUTORIAL_MODELS_DIR` | bind mount (`/app/code/models`) |
 | HuggingFace 缓存 | `~/.cache/huggingface/` | Docker volume `app-cache` |
 | Redis 数据 | `/data` (容器内) | Docker volume `redis-data` |
 | Postgres 数据 | `/var/lib/postgresql/data` | Docker volume `pg-data` |

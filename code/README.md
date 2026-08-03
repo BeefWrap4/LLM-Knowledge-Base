@@ -123,14 +123,14 @@ make download-models-edge          # MLX / GGUF 端侧条件子集
 # 默认模型也需要先确认本地已下载/可访问；启动时间依机器与模型而异
 make vllm-server-start
 
-# 自定义模型 (e.g. Qwen2.5-7B 需先下: make download-models-llm)
-MODEL=Qwen/Qwen2.5-7B-Instruct PORT=8001 make vllm-server-start
+# 自定义本地模型（相对于 TUTORIAL_MODELS_DIR）
+MODEL=Qwen2.5-7B-Instruct PORT=8001 make vllm-server-start
 ```
 
 容器自动:
 - 用 `vllm/vllm-openai:latest` 镜像
 - GPU passthrough (`--gpus all`)
-- 挂载 `code/models/` 到 `/root/.cache/huggingface/` (免重下)
+- 只读挂载外置 `TUTORIAL_MODELS_DIR` 到容器 `/models/`（免重下）
 - 轮询健康端点并以 `/v1/models` 成功响应作为 ready 条件
 
 ### 2. 用 OpenAI 客户端连 server (绕开 vllm._C)

@@ -4,7 +4,7 @@
 # 启动 vLLM Docker 容器 (server 模式), 让本机 vLLM 例子可走 OpenAI 协议连
 # Usage:
 #   bash scripts/start_vllm_server.sh                    # 默认 Qwen2.5-0.5B
-#   MODEL=Qwen/Qwen2.5-7B-Instruct PORT=8001 bash scripts/start_vllm_server.sh
+#   MODEL=Qwen2.5-7B-Instruct PORT=8001 bash scripts/start_vllm_server.sh
 # ---
 # Git Bash on Windows 会自动把 /root/... 转成 D:/softwares/Git/root/...
 # 关掉 MSYS 路径转换以保留容器内绝对路径
@@ -13,27 +13,36 @@ export MSYS2_ARG_CONV_EXCL="*"
 
 set -e
 
-MODEL="${MODEL:-code/models/Qwen2.5-0.5B-Instruct}"
+MODEL="${MODEL:-Qwen2.5-0.5B-Instruct}"
 PORT="${PORT:-8000}"
 CONTAINER_NAME="${CONTAINER_NAME:-vllm-server}"
 GPU_MEM="${GPU_MEM:-0.5}"
 MAX_LEN="${MAX_LEN:-2048}"
 IMAGE="${IMAGE:-vllm/vllm-openai:latest}"
 
-# 计算绝对路径 (vLLM 容器内挂载需要绝对路径)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CODE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-MODELS_DIR="${CODE_ROOT}/models"
+# 模型权重保存在仓库外；Git Bash / Docker Desktop 建议使用 E:/... 形式。
+MODELS_DIR="${TUTORIAL_MODELS_DIR:-E:/AI_Models/Projects/MyDocument/Python到大模型应用_面试教程_2026版/models}"
 
-# 把 MODEL 解析成容器内路径 (HF cache 标准位置)
-# 本机原始路径 code/models/X 或绝对路径 都映射到 /root/.cache/huggingface/X
+# MODEL 可为 MODELS_DIR 下的相对路径，也可为绝对路径。
 case "${MODEL}" in
-    /*) MODEL_ABS="${MODEL}" ;;
-    *)  MODEL_ABS="${CODE_ROOT}/${MODEL}" ;;
+    /*|[A-Za-z]:/*)
+        MODEL_ABS="${MODEL}"
+        MODELS_DIR="$(dirname "${MODEL_ABS}")"
+        MODEL_REL="$(basename "${MODEL_ABS}")"
+        ;;
+    *)
+        MODEL_ABS="${MODELS_DIR}/${MODEL}"
+        MODEL_REL="${MODEL}"
+        ;;
 esac
-# 取模型目录名 (最后一段), 拼到容器内 HF cache 路径
-MODEL_DIR_NAME="$(basename "${MODEL}")"
-MODEL_IN_CONTAINER="/root/.cache/huggingface/${MODEL_DIR_NAME}"
+MODEL_DIR_NAME="$(basename "${MODEL_REL}")"
+MODEL_IN_CONTAINER="/models/${MODEL_REL}"
+
+if [[ ! -d "${MODEL_ABS}" ]]; then
+    echo "[ERROR] 找不到本地模型目录: ${MODEL_ABS}"
+    echo "        请设置 TUTORIAL_MODELS_DIR 或先运行 make download-models-default"
+    exit 1
+fi
 
 # 检查 docker
 if ! command -v docker &> /dev/null; then
@@ -67,7 +76,7 @@ docker run -d \
     --name "${CONTAINER_NAME}" \
     --gpus all \
     -p "${PORT}:8000" \
-    -v "${MODELS_DIR}:/root/.cache/huggingface" \
+    -v "${MODELS_DIR}:/models:ro" \
     -e HF_HUB_OFFLINE=0 \
     "${IMAGE}" \
     --model "${MODEL_IN_CONTAINER}" \

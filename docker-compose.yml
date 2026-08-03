@@ -19,6 +19,7 @@ x-app-env: &app-env
   SILICONFLOW_API_KEY: ${SILICONFLOW_API_KEY:-}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  TUTORIAL_MODELS_DIR: /app/code/models
 
 services:
   # ─────────────────────────────────────────────────────────
@@ -41,7 +42,7 @@ services:
       <<: *app-env
     volumes:
       - ./code:/app/code:ro                 # 代码只读挂载 (本地开发热更新)
-      - ./code/models:/app/code/models:rw   # 模型目录读写 (用户下载)
+      - "${TUTORIAL_MODELS_DIR:-E:/AI_Models/Projects/MyDocument/Python到大模型应用_面试教程_2026版/models}:/app/code/models:rw" # 外置模型目录
       - app-cache:/home/app/.cache          # HF / pip 缓存
     networks:
       - llm-net

@@ -16,6 +16,15 @@ python scripts/download_models.py --list
 
 ## 2. 安全默认与按需下载
 
+模型权重必须保存在仓库外。Windows 当前默认目录是
+`E:\AI_Models\Projects\MyDocument\Python到大模型应用_面试教程_2026版\models`；macOS/Linux
+默认使用 `~/.cache/llm-interview-tutorial/models`。要改用其他目录，先设置
+`TUTORIAL_MODELS_DIR`：
+
+```powershell
+$env:TUTORIAL_MODELS_DIR = 'E:\AI_Models\Projects\MyDocument\Python到大模型应用_面试教程_2026版\models'
+```
+
 ```bash
 # 默认集合：embedding、reranker、0.5B 教学模型
 python scripts/download_models.py --required-only
@@ -66,13 +75,17 @@ GGUF 仓库只走 Hugging Face 接口。镜像是否可用和实际速度取决�
 
 ## 4. 本地加载与验证
 
-脚本下载到 `code/models/<local_name>/`。使用本地权重时应传明确路径，避免库在文件缺失时
-自动联网：
+脚本下载到 `TUTORIAL_MODELS_DIR/<local_name>/`。使用本地权重时应传明确路径，避免库在文件
+缺失时自动联网：
 
 ```python
+import os
+from pathlib import Path
+
 from sentence_transformers import SentenceTransformer
 
-model = SentenceTransformer("models/bge-small-zh-v1.5")
+models_dir = Path(os.environ["TUTORIAL_MODELS_DIR"])
+model = SentenceTransformer(str(models_dir / "bge-small-zh-v1.5"))
 vectors = model.encode(["测试中文向量"])
 print(vectors.shape)
 ```
@@ -80,9 +93,13 @@ print(vectors.shape)
 Reranker 最小探针：
 
 ```python
+import os
+from pathlib import Path
+
 from sentence_transformers import CrossEncoder
 
-model = CrossEncoder("models/bge-reranker-v2-m3")
+models_dir = Path(os.environ["TUTORIAL_MODELS_DIR"])
+model = CrossEncoder(str(models_dir / "bge-reranker-v2-m3"))
 scores = model.predict([("什么是 RAG", "RAG 是检索增强生成")])
 print(scores)
 ```
@@ -99,7 +116,7 @@ print(scores)
 - 先阅读当前模型卡、仓库许可、用途限制和 gated access 条件。
 - Hugging Face token 只放环境变量或凭据存储，不写入仓库、日志或截图。
 - `size_gb` 是规划值；多组件仓库、revision、量化和筛选规则都会改变实际体积。
-- 不提交 `code/models/`、模型缓存或权重。
+- 模型目录位于仓库外；不提交模型缓存、权重或指向个人目录的符号链接。
 - 清理前先确认目录和硬链接关系，避免误删其他项目共用缓存。
 
 ## 6. 离线验收边界

@@ -1363,8 +1363,8 @@
 - `from openai import OpenAI(base_url="http://localhost:8000/v1", api_key="EMPTY")`
 
 ### 10.4 .dockerignore (37 行)
-- 排除: .git, .github, __pycache__, code/models/, .env*.local, *.png/jpg
-- 例外: code/docs/**/*.md, code/models/README.md
+- 排除: .git, .github, __pycache__, .env*.local, *.png/jpg（模型权重通过 TUTORIAL_MODELS_DIR 存放在仓库外）
+- 例外: code/docs/**/*.md
 
 ---
 

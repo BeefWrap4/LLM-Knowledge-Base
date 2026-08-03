@@ -27,6 +27,7 @@ if str(_code_root) not in sys.path:
 
 from shared._error_helper import raise_with_help
 from shared.gpu_guard import require_apple_silicon, skip_if_mock, skip_unless_apple_silicon
+from shared.model_paths import tutorial_models_dir
 
 
 # === 硬件检查函数 (供测试用) ===
@@ -52,13 +53,13 @@ def main() -> None:
             "在 Apple Silicon Mac 上运行 `pip install mlx mlx-lm` 安装.",
         )
 
-    model_path = str(_code_root / "models" / "Qwen2.5-7B-Instruct-4bit-mlx")
+    model_path = str(tutorial_models_dir() / "Qwen2.5-7B-Instruct-4bit-mlx")
     if not Path(model_path).exists():
         raise_with_help(
             f"找不到 MLX 模型 {model_path}",
             "运行 `make download-models-edge` 下载 MLX 4-bit 量化模型, "
             "或手动从 https://huggingface.co/mlx-community 下载 "
-            "Qwen2.5-7B-Instruct-4bit 子目录到 code/models/.",
+            "Qwen2.5-7B-Instruct-4bit 子目录到 TUTORIAL_MODELS_DIR.",
         )
 
     print(f"加载模型: {model_path}")

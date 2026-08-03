@@ -5,8 +5,9 @@
 # Usage: python code/scripts/download_models.py [--list | --required-only | ...]
 # ---
 """
-下载模型到 code/models/ 目录。默认模型使用 ModelScope → Hugging Face 镜像 →
-Hugging Face 官方端点的顺序；需要精确文件过滤的模型直接使用 Hugging Face。
+下载模型到仓库外的 ``TUTORIAL_MODELS_DIR``。默认模型使用 ModelScope →
+Hugging Face 镜像 → Hugging Face 官方端点的顺序；需要精确文件过滤的模型直接使用
+Hugging Face。
 
 注册模型（截至 2026-07-31；默认只下载 * 标记的 3 个）:
   * bge-small-zh-v1.5        (embedding)       [默认下载]
@@ -36,7 +37,12 @@ import sys
 from pathlib import Path
 
 CODE = Path(__file__).resolve().parent.parent
-MODELS = CODE / "models"
+if str(CODE) not in sys.path:
+    sys.path.insert(0, str(CODE))
+
+from shared.model_paths import tutorial_models_dir  # noqa: E402
+
+MODELS = tutorial_models_dir()
 
 
 MODELS_TO_DOWNLOAD = {

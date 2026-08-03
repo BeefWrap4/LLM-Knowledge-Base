@@ -27,6 +27,7 @@ if str(_code_root) not in sys.path:
 
 from shared._error_helper import raise_with_help
 from shared.gpu_guard import skip_if_mock, skip_unless_enabled
+from shared.model_paths import tutorial_models_dir
 
 # GGUF 量化类型: 精度 vs 模型大小 vs 适用场景
 QUANT_TABLE = [
@@ -88,13 +89,18 @@ def main() -> None:
             "`CMAKE_ARGS='-DGGML_METAL=ON' pip install` 编译 GPU 版.",
         )
 
-    model_path = str(_code_root / "models" / "llama-3.2-3b-instruct-q4_k_m.gguf")
+    model_path = str(
+        tutorial_models_dir()
+        / "Llama-3.2-3B-Instruct-GGUF"
+        / "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+    )
     if not Path(model_path).exists():
         raise_with_help(
             f"找不到 GGUF 模型 {model_path}",
             "运行 `make download-models-edge` 下载 GGUF 量化模型, "
             "或手动从 https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF "
-            "下载 llama-3.2-3b-instruct-q4_k_m.gguf 到 code/models/ 目录.",
+            "下载 Llama-3.2-3B-Instruct-Q4_K_M.gguf 到 TUTORIAL_MODELS_DIR 下的 "
+            "Llama-3.2-3B-Instruct-GGUF 子目录.",
         )
 
     print(f"加载 GGUF: {model_path}")

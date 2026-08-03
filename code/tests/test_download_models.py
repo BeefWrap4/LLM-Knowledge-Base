@@ -22,6 +22,14 @@ def test_required_defaults_are_small_explicit_set():
     assert required == {"bge-small-zh", "bge-reranker", "qwen0_5b"}
 
 
+def test_models_dir_honors_environment_override(monkeypatch, tmp_path):
+    """模型目录可迁移到仓库外，并由单一环境变量覆盖。"""
+    target = tmp_path / "external-models"
+    monkeypatch.setenv("TUTORIAL_MODELS_DIR", str(target))
+
+    assert download_models.tutorial_models_dir() == target
+
+
 def test_models_dict_keys():
     """每个模型必须有可定位的仓库、目录与 tier。"""
     required = ["model_id", "local_name", "tier"]
