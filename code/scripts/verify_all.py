@@ -54,6 +54,8 @@ MARKDOWN_BLOCK_HTML_TAG_RE = re.compile(
 )
 MARKDOWN_LINK_TARGET_RE = re.compile(r"!?\[[^\]\r\n]*\]\(\s*(<[^>\r\n]+>|[^\s)]+)")
 OBSIDIAN_WIKILINK_RE = re.compile(r"!?\[\[([^\]\r\n]+)\]\]")
+LATEX_TEXT_RE = re.compile(r"\\text\{([^{}\r\n]*)\}")
+LATEX_UNESCAPED_UNDERSCORE_RE = re.compile(r"(?<!\\)_")
 MERMAID_ALLOWED_DIAGRAMS = {
     "architecture-beta",
     "block-beta",
@@ -527,7 +529,8 @@ def inspect_markdown_rendering() -> tuple[int, list[str]]:
 
     The gate intentionally avoids subjective style checks. It validates all maintained Markdown
     pages for balanced fences, display-math/frontmatter/comment delimiters, well-formed WikiLinks
-    and callouts, consistent table columns/cell-local math, and balanced block HTML containers.
+    and callouts, MathJax-safe ``\\text{...}`` content, consistent table columns/cell-local math,
+    and balanced block HTML containers.
     """
     documents = markdown_documents()
     failures: list[str] = []
@@ -613,6 +616,13 @@ def inspect_markdown_rendering() -> tuple[int, list[str]]:
                 masked = before
                 if "-->" not in after:
                     html_comment_line = line_no
+
+            for latex_text_match in LATEX_TEXT_RE.finditer(masked):
+                if LATEX_UNESCAPED_UNDERSCORE_RE.search(latex_text_match.group(1)):
+                    failures.append(
+                        f"{relative}:{line_no} unescaped underscore inside LaTeX \\text{{...}}; "
+                        r"escape it as \_ or use symbolic subscripts"
+                    )
 
             display_math_markers = _count_unescaped_marker(masked, "$$")
             if display_math_markers:

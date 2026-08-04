@@ -214,6 +214,24 @@ def test_markdown_render_gate_rejects_math_crossing_table_cells(
     ]
 
 
+def test_markdown_render_gate_rejects_unescaped_underscore_inside_latex_text(
+    monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "bad.md").write_text(
+        "$$\n\\text{batch_size} = 1\n$$\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    assert verify_all.inspect_markdown_rendering() == (
+        1,
+        [
+            "bad.md:2 unescaped underscore inside LaTeX \\text{...}; "
+            r"escape it as \_ or use symbolic subscripts"
+        ],
+    )
+
+
 def test_markdown_render_gate_rejects_multiple_empty_table_headers(
     monkeypatch, tmp_path: Path
 ) -> None:
@@ -298,7 +316,7 @@ def test_markdown_render_gate_accepts_supported_obsidian_syntax(monkeypatch, tmp
         "| Norm | $\\lVert x \\rVert_2$ |\n\n"
         "[[target#Target|alias]] and [target](target.md#target)\n"
         "<details><summary>More</summary>Text</details>\n"
-        "$$\nx + y\n$$\n",
+        "$$\n\\text{batch\\_size} + y\n$$\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(verify_all, "REPO", tmp_path)
