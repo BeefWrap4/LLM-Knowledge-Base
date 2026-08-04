@@ -1,7 +1,7 @@
 # ---
 # chapter: 13
 # topic: Prompt Engineering
-# section: 13.7.4 OpenAI JSON Schema 严格模式
+# section: 13.5.4 OpenAI JSON Schema 严格模式
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: openai, pydantic

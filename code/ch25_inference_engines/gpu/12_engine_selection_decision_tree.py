@@ -1,7 +1,7 @@
 # ---
 # chapter: 25
 # topic: Inference Engine Selection Decision Tree
-# section: 25.7
+# section: 25.6
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
 # mock_safe: true

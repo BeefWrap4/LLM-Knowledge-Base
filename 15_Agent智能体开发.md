@@ -4,6 +4,7 @@ topic: Agent智能体开发
 difficulty: 中高
 interview_frequency: 5
 created: 2026-06-01T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - Agent
   - 智能体
@@ -11,13 +12,24 @@ tags:
   - Function-Calling
   - 大模型应用
 ---
-# 第15章 Agent 智能体开发 ⭐⭐⭐⭐⭐
+# 第 15 章 Agent 智能体开发 ⭐⭐⭐⭐⭐
 
-> **面试频率**：极高（2025-2026年持续最热方向，几乎必考）| **技术热度**：★★★★★
+> [!abstract] 本章导航
+> **定位**：把模型、工具和状态组织成可恢复任务系统，是应用工程主线的核心章节。
 >
-> Agent（智能体）是大模型应用开发的下一个范式。从 ReAct 框架到 Function Calling，从 MCP 协议到 Multi-Agent 协作，Agent 正在重塑人机交互的边界。本章深入解析 Agent 的四大核心模块、手写 ReAct Agent、多工具调用、MCP 协议、A2A 协议、Agent Teams 等 2025-2026 年持续最热考点，助你在面试中从容应对。
+> **先修**：[[13_Prompt_Engineering]]、[[14_RAG检索增强生成]]。
+>
+> **学习目标**：
+> - 解释 ReAct、工具调用、MCP 和多 Agent 的执行边界。
+> - 设计具备状态、幂等和恢复能力的 Agent 工作流。
+> - 用评测与可观测性定位工具、副作用和编排故障。
+>
+> **建议路径**：Agent 基础概念 → ReAct 框架 → Function Calling → … → 生产级记忆框架。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：`code/ch15_agent/`。
 
----
+> [!info] 阅读提示
+> Agent（智能体）是大模型应用开发的下一个范式。从 ReAct 框架到 Function Calling，从 MCP 协议到 Multi-Agent 协作，Agent 正在重塑人机交互的边界。本章深入解析 Agent 的四大核心模块、手写 ReAct Agent、多工具调用、MCP 协议、A2A 协议、Agent Teams 等 2025-2026 年持续最热考点，助你在面试中从容应对。
 
 ## 15.1 Agent 基础概念 ⭐⭐⭐⭐⭐
 
@@ -184,8 +196,6 @@ graph TD
     D --> D2["代码执行型<br/>Code Interpreter"]
     D --> D3["多模态型<br/>视觉+语言+动作"]
 ```
-
----
 
 ## 15.2 ReAct 框架 ⭐⭐⭐⭐⭐
 
@@ -550,8 +560,6 @@ if __name__ == "__main__":
     main()
 ```
 
----
-
 ## 15.3 Function Calling ⭐⭐⭐⭐⭐
 
 ### 15.3.1 Function Calling 核心流程
@@ -819,8 +827,6 @@ if __name__ == "__main__":
     main()
 ```
 
----
-
 ## 15.4 MCP 协议 ⭐⭐⭐⭐⭐
 
 ### 15.4.1 什么是 MCP
@@ -867,7 +873,7 @@ graph TB
 
 MCP Server 可以向 Client 暴露三类能力：
 
-#### 1. Tools（工具）⭐⭐⭐⭐⭐
+#### Tools（工具）⭐⭐⭐⭐⭐
 
 模型可调用的函数，类似于 Function Calling 中的函数定义：
 
@@ -901,7 +907,7 @@ MCP Server 可以向 Client 暴露三类能力：
 }
 ```
 
-#### 2. Resources（资源）
+#### Resources（资源）
 
 只读的数据资源，模型可以读取但不可修改：
 
@@ -922,7 +928,7 @@ MCP Server 可以向 Client 暴露三类能力：
 }
 ```
 
-#### 3. Prompts（提示模板）
+#### Prompts（提示模板）
 
 预定义的提示词模板，Server 可以向 Client 提供标准化的交互模式：
 
@@ -1167,11 +1173,11 @@ if __name__ == "__main__":
 
 ---
 
-### 15.4.6 MCP 工程化管理 🆕（2026年更新）
+### 15.4.6 MCP 工程化管理 （2026年更新）
 
 > 2026年，MCP 已从"新协议介绍"进入"工程化管理"阶段。面试中不再只问"什么是 MCP"，而是追问"你们怎么管理几百个 MCP Server？"
 
-#### 1. 大量 MCP Server 的管理挑战
+#### 大量 MCP Server 的管理挑战
 
 当生产环境中的 MCP Server 从 3-5 个增长到 50+ 甚至 100+ 时，面临以下挑战：
 
@@ -1184,7 +1190,7 @@ if __name__ == "__main__":
 | **版本管理** | Server 升级不影响 Client | 语义化版本 + 灰度发布 |
 | **性能监控** | 哪些工具慢、失败率高 | 指标采集 + 告警 |
 
-#### 2. MCP Server 动态加载架构
+#### MCP Server 动态加载架构
 
 ```mermaid
 graph TB
@@ -1211,7 +1217,7 @@ graph TB
     style Auth fill:#ffebee,stroke:#c62828
 ```
 
-#### 3. 动态加载与权限控制代码示例
+#### 动态加载与权限控制代码示例
 
 ```python
 """
@@ -1450,6 +1456,7 @@ if __name__ == "__main__":
 ```
 
 **面试追问**："MCP Server 多了之后，一个工具的调用链怎么追踪？" → 引入**调用链追踪（Trace ID）**，每个 Agent 任务生成唯一 Trace ID，贯穿所有 MCP 工具调用，便于故障排查和性能分析。
+
 ## 15.5 Agent 记忆管理 ⭐⭐⭐⭐
 
 ### 15.5.1 记忆分层架构
@@ -1624,8 +1631,6 @@ class AgentMemory:
         return messages
 ```
 
----
-
 ## 15.6 多 Agent 协作系统 ⭐⭐⭐⭐
 
 ### 15.6.1 多 Agent 架构模式
@@ -1709,14 +1714,14 @@ graph LR
 
 ---
 
-### 15.6.4 Agent Teams 架构 🆕（2026年更新）
+### 15.6.4 Agent Teams 架构 （2026年更新）
 
 > Anthropic 在 2026 年 2 月发布 Claude Opus 4.6 时，为 **Claude Code** 引入了
 > Agent Teams 研究预览。它是产品编排能力，不是某个模型天然具备的通用 API
 > “架构”；适合可拆成独立、偏读取子任务的并行协作，功能状态与限制应以上线时的
 > Claude Code 文档为准。
 
-#### 1. Agent Teams 核心概念
+#### Agent Teams 核心概念
 
 传统 Multi-Agent 是**串行**的：Manager 分配任务 → Worker 执行 → Manager 汇总。Agent Teams 是**并行协作**的：Team Lead 统筹，Teammates 各自有独立上下文，通过共享任务列表和邮箱系统通信。
 
@@ -1772,7 +1777,7 @@ graph TB
     style M3 fill:#f3e5f5,stroke:#7b1fa2
 ```
 
-#### 2. Agent Teams vs 传统 Multi-Agent vs 子代理
+#### Agent Teams vs 传统 Multi-Agent vs 子代理
 
 | 维度 | 传统 Multi-Agent | Claude Code Agent Teams | 子代理 (Sub-agent) |
 |------|-----------------|-------------------------|-------------------|
@@ -1786,7 +1791,7 @@ graph TB
 **核心区别**：Agent Teams 的 Teammates 在团队运行期间拥有各自的上下文和状态，
 通过共享任务与消息协作；这不等于跨运行永久存在，也不代表所有 Multi-Agent 框架都采用同一实现。
 
-#### 3. Agent Teams 关键组件
+#### Agent Teams 关键组件
 
 | 组件 | 作用 | 类比 |
 |------|------|------|
@@ -1796,7 +1801,7 @@ graph TB
 | **Mailbox System** | 异步消息通信，Teammates 之间通过邮箱交换信息 | 企业邮箱 |
 | **Handoff Protocol** | 任务交接协议，确保任务在不同 Agent 间平滑转移 | 工作交接单 |
 
-#### 4. Agent Teams 工作流程示例
+#### Agent Teams 工作流程示例
 
 ```python
 """
@@ -2052,7 +2057,7 @@ if __name__ == "__main__":
     demo_agent_teams()
 ```
 
-#### 5. Agent Teams 与 A2A 的协同
+#### Agent Teams 与 A2A 的协同
 
 ```mermaid
 graph TB
@@ -2081,8 +2086,6 @@ Agent 间通信"]
 ```
 
 **关键理解**：Agent Teams 解决**团队内部**协作问题，A2A 解决**跨团队/跨组织**协作问题。两者可以叠加使用。
-
----
 
 ## 15.7 Agent 开发实战 ⭐⭐⭐⭐
 
@@ -2431,9 +2434,7 @@ graph TD
 
 **面试建议**：能清晰描述 ReAct 循环并手写简化版 Agent，面试印象分极高。框架只是工具，原理才是核心。
 
----
-
-## 15.8 2026年 Agent 面试新增考点 🆕
+## 15.8 2026年 Agent 面试新增考点
 
 > 2026年 Agent 面试已从"概念理解"深入为"工程化设计"。面试官不再满足于"知道是什么"，而是追问"怎么设计、怎么管控风险"。本节覆盖2026年最高频的新增考点。
 
@@ -2517,7 +2518,7 @@ JSON Schema 描述工具
 
 ### 15.8.2 Agent 工程化安全五道防线
 
-生产环境部署 Agent 必须考虑的五大安全问题，2026年面试必问。
+生产环境部署 Agent 时，应从以下五类安全问题建立威胁模型和验收门禁。
 
 ```mermaid
 graph TB
@@ -2850,7 +2851,7 @@ Skills 是 2026 年的重要概念，面试中经常要求"设计一个 Skill"�
 
 系统化项目深挖、故障矩阵与写操作幂等示例见 [[40_国内大模型岗位面试实战_2026]]。
 
-### 🎯 高频题1：AI Agent 和普通 LLM 调用的本质区别是什么？
+### 高频题1：AI Agent 和普通 LLM 调用的本质区别是什么？
 
 **参考答案**：
 
@@ -2863,7 +2864,7 @@ Agent 和 LLM 调用的本质区别是**自主性（Autonomy）**：
 
 ---
 
-### 🎯 高频题2：ReAct 框架中 Thought、Action、Observation 的作用分别是什么？
+### 高频题2：ReAct 框架中 Thought、Action、Observation 的作用分别是什么？
 
 **参考答案**：
 
@@ -2875,7 +2876,7 @@ Agent 和 LLM 调用的本质区别是**自主性（Autonomy）**：
 
 ---
 
-### 🎯 高频题3：MCP 和 Function Calling 的本质区别？
+### 高频题3：MCP 和 Function Calling 的本质区别？
 
 **参考答案**（重点中的重点）：
 
@@ -2891,7 +2892,7 @@ Agent 和 LLM 调用的本质区别是**自主性（Autonomy）**：
 
 ---
 
-### 🎯 高频题4：Agent 的记忆管理是怎么做的？
+### 高频题4：Agent 的记忆管理是怎么做的？
 
 **参考答案**：
 
@@ -2903,7 +2904,7 @@ Agent 记忆通常分三层：
 
 ---
 
-### 🎯 高频题5：手搓 Agent 和使用 LangChain 等框架，如何选择？
+### 高频题5：手搓 Agent 和使用 LangChain 等框架，如何选择？
 
 **参考答案**：
 
@@ -2916,7 +2917,7 @@ Agent 记忆通常分三层：
 
 ---
 
-### 🎯 高频题6：A2A 协议和 MCP 协议的区别？
+### 高频题6：A2A 协议和 MCP 协议的区别？
 
 **参考答案**：
 
@@ -2925,9 +2926,7 @@ Agent 记忆通常分三层：
 
 类比：MCP 像 USB-C（连接设备与配件），A2A 像蓝牙（设备之间互相通信）。
 
----
-
-## 15.9 A2A协议与Skills生态 🆕
+## 15.9 A2A协议与Skills生态
 
 > Agent 生态正在进入协议化阶段。本节按 **2026-07-31** 可核验的公开规范介绍 A2A、Skills、实时语音、沙箱与持久化执行；协议示例必须标明版本，避免把旧草案 API 当成当前标准。
 
@@ -2937,7 +2936,7 @@ Agent 记忆通常分三层：
 
 A2A（Agent-to-Agent）由 Google 于 2025 年 4 月公开，并于 **2025 年 6 月**捐赠给 Linux Foundation。按 2026-07-31 的 A2A v1.0 规范，协议定义等价的 **JSON-RPC、HTTP+JSON/REST、gRPC** 绑定，而不是只绑定 HTTP+SSE。官方规范见 [A2A v1.0](https://a2a-protocol.org/latest/whats-new-v1/)。
 
-#### 1. Agent Card：Agent 的"身份证"
+#### Agent Card：Agent 的"身份证"
 
 Agent Card 是描述 Agent 能力、认证方式和协议端点的标准 JSON 文档，标准发现路径是 `/.well-known/agent-card.json`：
 
@@ -2996,7 +2995,7 @@ Agent Card 是描述 Agent 能力、认证方式和协议端点的标准 JSON �
 `httpAuthSecurityScheme`、`oauth2SecurityScheme` 等 oneof 字段包装；
 `securityRequirements` 则通过 `schemes` 映射到 scope 的 `list`。
 
-#### 2. JSON-RPC v1.0 通信
+#### JSON-RPC v1.0 通信
 
 下面仅演示 JSON-RPC 绑定：普通调用使用 `SendMessage`，流式调用使用 `SendStreamingMessage` 并接收 SSE。生产代码应优先使用官方 SDK，并根据 Agent Card 的 `supportedInterfaces` 选择绑定。成功的 `SendMessageResponse` 不是裸 `Task`：JSON-RPC 的 `result` 内必须且只能出现 `{"task": {...}}` 或 `{"message": {...}}`。
 
@@ -3143,7 +3142,7 @@ async def main():
 asyncio.run(main())
 ```
 
-#### 3. Linux Foundation 治理演进
+#### Linux Foundation 治理演进
 
 ```mermaid
 graph LR
@@ -3175,7 +3174,7 @@ graph LR
 
 2026 年 Skills 从 Anthropic 内部概念（Claude Skills）走向**开放市场和生态标准**。
 
-#### 1. SKILL.md 文件结构
+#### SKILL.md 文件结构
 
 Anthropic 提出的开放标准 `SKILL.md`，使用 YAML Frontmatter 描述元信息，正文是 Markdown 文档：
 
@@ -3252,7 +3251,7 @@ outputs:
 - 工具调用失败 → 重试 1 次 → 仍失败则返回降级报告
 ````
 
-#### 2. Skills 加载器实现
+#### Skills 加载器实现
 
 ```python
 """
@@ -3370,7 +3369,7 @@ def demo_skill_loader():
 demo_skill_loader()
 ```
 
-#### 3. Skills 生态与 Marketplace 流程
+#### Skills 生态与 Marketplace 流程
 
 ```mermaid
 graph TB
@@ -3411,7 +3410,7 @@ graph TB
 
 2026 年 Voice Agent 从"电话机器人"升级为"双向实时对话 Agent"（Bidi 即 Bidirectional，双向）。
 
-#### 1. Strands BidiAgent
+#### Strands BidiAgent
 
 Strands Agents SDK 的 `BidiAgent` 支持持久连接、双向音频/文本、打断和并发工具调用。
 截至 2026-07-31，它仍位于 `experimental` 命名空间，provider 依赖需安装
@@ -3453,7 +3452,7 @@ asyncio.run(voice_assistant())
 `code/ch15_agent/llm/17_bidi_agent.py` 默认运行框架无关 mock，不会把虚构模型名、
 `voice`、`AudioConfig` 或 `start_session` 伪装成 Strands API。
 
-#### 2. OpenAI Realtime API
+#### OpenAI Realtime API
 
 OpenAI Realtime API（GA）支持低延迟语音对话。服务端到服务端可使用 WebSocket；
 浏览器和移动端通常应优先使用 WebRTC。下例按 2026-07-31 的官方协议使用
@@ -3530,7 +3529,7 @@ async def stream(audio_chunks):
 [VAD](https://developers.openai.com/api/docs/guides/realtime-vad)、
 [GPT-Realtime-2.1](https://developers.openai.com/api/docs/models/gpt-realtime-2.1)。
 
-#### 3. BidiAgent 与传统 Voice Bot 对比
+#### BidiAgent 与传统 Voice Bot 对比
 
 | 维度 | 典型流水线 Voice Bot / IVR | Realtime 原生语音 Agent |
 |------|-----------------------------|--------------------------|
@@ -3768,7 +3767,7 @@ asyncio.run(resume_interrupted_task("task-001"))
 
 ACI（Agent-Computer Interface）是 Anthropic 在 2026 年提出的设计哲学，类比 HCI（人机交互）：**如何为 Agent 设计好的"工具接口"**。参考其论文《Building Effective Agents》。
 
-#### 1. 核心原则（五条）
+#### 核心原则（五条）
 
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -3796,7 +3795,7 @@ ACI（Agent-Computer Interface）是 Anthropic 在 2026 年提出的设计哲学
 └────────────────────────────────────────────────────────┘
 ```
 
-#### 2. 反模式与正模式对比
+#### 反模式与正模式对比
 
 ```python
 # ============ 反模式 1：工具描述模糊 ============
@@ -3895,7 +3894,7 @@ good_tools = [
 ]
 ```
 
-#### 3. ACI 设计 checklist
+#### ACI 设计 checklist
 
 ```
 工具名称是否动词加名词，清晰表达功能
@@ -3983,196 +3982,9 @@ Agent 调用此工具的 token 消耗是否合理
 
 **类比**：飞机有黑匣子、备用引擎、应急降落伞，缺一不可。SandboxAgent 也需要多层防御才能在生产环境放心使用。
 
----
+## 15.10 生产级记忆框架 ⭐⭐⭐⭐⭐
 
-## 15.10 面试题精讲 🎯
-
-### 🎯🆕 高频题7（2026年新题）：Function Calling、MCP、Skills、A2A 四者的关系是什么？怎么区分？
-
-**参考答案**：
-
-四层模型从上到下：
-
-1. **A2A（协作层）**：解决 Agent 之间如何通信协作，类比"蓝牙"（设备间通信）
-2. **Skills（能力层）**：封装完整功能的可复用单元（代码+配置+推理逻辑），类比"App 应用"（完整功能）
-3. **MCP（连接层）**：标准化连接模型与工具生态的协议，类比"USB-C"（设备连接标准）
-4. **Function Calling（基础层）**：模型输出函数调用指令的能力，类比"电流"（底层能力）
-
-**四者关系**：Function Calling 是能力，MCP 是连接协议，Skills 是功能单元，A2A 是协作协议。四层叠加，缺一不可。一个 Skill 内部可能通过 MCP 调用多个工具，多个 Agent 通过 A2A 协作时交换 Skills。
-
----
-
-### 🎯🆕 高频题8（2026年新题）：生产环境部署 Agent，你会考虑哪些安全风险？怎么防范？
-
-**参考答案**：
-
-五大安全防线：
-
-| 防线 | 风险 | 防范方案 |
-|------|------|---------|
-| **死循环** | Agent 反复尝试同一动作 | 最大步数限制 + 相同动作检测 + 震荡模式检测 |
-| **工具幻觉** | 模型编造不存在的工具 | 工具名白名单 + Schema 严格校验 + 必填参数检查 |
-| **上下文污染** | 历史记录干扰当前任务 | 滑动窗口 + 任务分隔符 + 历史摘要替代 |
-| **Token 爆炸** | 输出超长导致成本失控 | 输出截断 + Token 预算 + 分页机制 |
-| **Prompt Injection** | 用户输入覆盖系统指令 | 输入过滤（危险模式检测）+ 权限隔离 + 长度限制 |
-
-**面试加分**：提到"全链路审计日志"——每个工具调用记录 who/what/when/result，便于事后追溯。
-
----
-
-### 🎯🆕 高频题9（2026年新题）：如果让你设计一个电商客服 Agent，你会怎么设计？
-
-**参考答案**（开放题，考察架构思维）：
-
-```
-1. 能力拆解（Skills 设计）
-   - 订单查询 Skill：query_order + 状态解释
-   - 政策咨询 Skill：query_policy + 多轮澄清
-   - 退款处理 Skill：校验条件 + refund_request + 结果通知
-   - 情感安抚 Skill：analyze_sentiment + 安抚话术 + 转人工判断
-
-2. 工具层（MCP 接入）
-   - order-mcp-server：订单相关工具
-   - policy-mcp-server：政策相关工具
-   - payment-mcp-server：退款相关工具
-
-3. 安全机制
-   - 死循环：最大 5 轮工具调用
-   - 转人工：情感强度 > 0.8 或问题超出范围
-   - 敏感操作：退款需二次确认 + 金额上限
-
-4. 记忆设计
-   - 短期：当前对话（最近 6 轮）
-   - 工作：用户当前意图 + 订单号缓存
-   - 长期：用户偏好 + 常见问题模式
-
-5. 监控
-   - 解决率、平均轮次、转人工率、用户满意度
-```
-
----
-
-### 🎯🆕 高频题10（2026年新题）：MCP Server 从 5 个增长到 100 个，怎么管理？
-
-**参考答案**：
-
-工程化管理五要素：
-
-1. **注册中心（Registry）**：Server 启动时注册，Client 运行时查询
-2. **健康检查（Health Check）**：心跳检测，自动剔除不可用 Server
-3. **权限控制（RBAC）**：不同角色访问不同工具集（客服只读，管理员可写）
-4. **版本管理**：语义化版本，灰度升级（先 10% 流量切到新版本）
-5. **审计追踪**：每个工具调用记录 Trace ID、调用者、参数、结果、耗时
-
-**代码要点**：动态加载（热插拔不停机）、工具发现（运行时拉取 tools/list）、权限过滤（根据用户角色过滤可见工具）。
-
----
-
-### 🎯🆕 高频题11（2026年新题）：Claude Code Agent Teams 和传统 Multi-Agent 有什么区别？
-
-**参考答案**：
-
-| 维度 | 传统 Multi-Agent | Claude Code Agent Teams（研究预览） |
-|------|-----------------|-------------------------|
-| **执行模式** | 串行（Manager→Worker→Manager） | 并行（Team Lead + 多 Teammate 同时执行） |
-| **上下文** | 共享/透传 | 每个 Teammate 独立上下文 |
-| **生命周期** | 随任务创建销毁 | 团队运行期间的独立会话 |
-| **通信** | 直接函数调用 | Mailbox + Shared Task List |
-| **类比** | 工厂流水线 | 敏捷开发团队 |
-
-**核心区别**：Agent Teams 的 Teammates 在一次团队运行中保持独立上下文，通过
-Shared Task List 同步状态、通过 Mailbox 异步通信；这是 Claude Code 的研究预览能力，
-不应泛化成任意模型或框架的固定语义。
-
----
-
-### 🎯🆕 高频题12（2026年新题）：Skills 和 Few-shot Prompting 有什么区别？什么时候用 Skills？
-
-**参考答案**：
-
-| 维度 | Few-shot Prompting | Skills |
-|------|-------------------|--------|
-| **本质** | 教模型"格式" | 教模型"方法论" |
-| **内容** | 输入输出示例对 | 完整推理逻辑 + 工具编排 + 验证闭环 |
-| **复用性** | 低（每次都要带示例） | 高（封装后可复用） |
-| **类比** | 照着例题做题 | 掌握解题方法论 |
-
-**什么时候用 Skills**：任务需要多步推理、涉及工具调用链、需要错误处理和回退策略时。简单的格式模仿用 Few-shot，复杂的业务功能用 Skills。
-
----
-
-### 🎯🆕 高频题13（2026年新题）：Agent 调用工具时模型"幻觉"了怎么办？（编造工具名或参数）
-
-**参考答案**：
-
-三层防护：
-
-1. **Schema 校验**：工具调用前严格校验参数类型、必填字段、取值范围
-2. **白名单机制**：工具名必须在预定义列表中，拒绝任何未知工具调用
-3. **重试+降级**：校验失败时返回明确错误 + 让模型重试；连续失败则人工接管
-
-```python
-# 伪代码
-def validate_tool_call(tool_name, args):
-    if tool_name not in ALLOWED_TOOLS:
-        return False, f"工具 '{tool_name}' 不存在"
-    schema = TOOL_SCHEMAS[tool_name]
-    for param in schema["required"]:
-        if param not in args:
-            return False, f"缺少必填参数 '{param}'"
-    return True, "校验通过"
-```
-
----
-
-### 🎯🆕 高频题14（2026年新题）：AGENTS.md 是什么？为什么要制定这个开放标准？
-
-**参考答案**：
-
-**AGENTS.md** 是 2026 年提出的**开放标准**，用于描述 Agent 的能力、工具依赖、执行流程和回退策略，类比：
-- `README.md` → 描述项目
-- `API.md` → 描述接口  
-- `AGENTS.md` → 描述 Agent 的能力和行为规范
-
-**内容结构**：
-1. **Skill 定义**：名称、描述、适用场景
-2. **工具依赖**：需要的 MCP Server 和工具列表
-3. **执行流程**：任务处理的工作流
-4. **回退策略**：异常情况的处理方式
-
-**为什么要制定**：不同团队开发的 Agent 需要互操作时，AGENTS.md 提供了统一的能力描述格式，降低集成成本。类似于 OpenAPI 对 API 文档标准化的作用。
-
-```mermaid
-graph TD
-    subgraph "Agent 技术栈总结"
-        A["Agent 基础"] --> B["ReAct 框架<br/>Thought-Action-Observation"]
-        B --> C["Function Calling<br/>结构化工具调用"]
-        C --> D["MCP 协议<br/>标准化工具接入"]
-        D --> E["记忆管理<br/>STM + LTM"]
-        E --> F["多 Agent 协作<br/>AutoGen / A2A"]
-    end
-```
-
-| 知识点 | 面试频率 | 关键要点 |
-|--------|---------|---------|
-| Agent 四大模块 | ⭐⭐⭐⭐⭐ | 感知、规划、执行、反思 |
-| ReAct 框架 | ⭐⭐⭐⭐⭐ | Thought→Action→Observation 循环 |
-| Function Calling | ⭐⭐⭐⭐⭐ | 工具定义→模型判断→生成调用→执行 |
-| MCP 协议 | ⭐⭐⭐⭐⭐ | Client-Server、Tools/Resources/Prompts |
-| MCP vs Function Calling | ⭐⭐⭐⭐⭐ | 协议 vs 能力 |
-| Agent 记忆管理 | ⭐⭐⭐⭐ | 短期+长期+工作记忆 |
-| 多 Agent 协作 | ⭐⭐⭐⭐ | AutoGen、CrewAI、A2A、Agent Teams |
-| Skills 设计 | ⭐⭐⭐⭐⭐ | 能力拆解、工具编排、验证闭环 |
-| MCP 工程化管理 | ⭐⭐⭐⭐⭐ | Registry、RBAC、审计追踪、健康检查 |
-| Agent 安全防护 | ⭐⭐⭐⭐⭐ | 死循环+幻觉+污染+Token+注入 五道防线 |
-
-**下一步**：Agent 赋予了大模型"行动能力"，但要在生产环境高效运行，还需要掌握模型微调、推理优化和部署技术。
-
----
-
-## 15.11 生产级记忆框架 ⭐⭐⭐⭐⭐
-
-### 15.11.1 四层记忆架构设计
+### 15.10.1 四层记忆架构设计
 
 生产级 Agent 需要四层记忆，而非简单的"短期+长期"二分：
 
@@ -4183,7 +3995,7 @@ graph TD
 | **情景记忆（Episodic）** | 事件序列（何时何地做了什么） | 时序数据库 | 永久 |
 | **语义记忆（Semantic）** | 事实知识、业务规则 | 向量数据库 | 永久 |
 
-### 15.11.2 三因子检索：相关性+重要性+时间衰减
+### 15.10.2 三因子检索：相关性+重要性+时间衰减
 
 单纯向量搜索不够，需要三因子加权：
 
@@ -4227,7 +4039,7 @@ def hybrid_search(query_vec: np.ndarray,
     return [mem for (score, mem) in scored]
 ```
 
-### 15.11.3 记忆框架选型：Mem0 vs Zep vs Letta
+### 15.10.3 记忆框架选型：Mem0 vs Zep vs Letta
 
 | 维度 | Mem0 | Zep | Letta（原 MemGPT） |
 |-----|-----|-----|-----|
@@ -4242,7 +4054,7 @@ def hybrid_search(query_vec: np.ndarray,
 - 需要时序知识图谱：选 **Zep**
 - 需要长上下文分页机制：选 **Letta**
 
-### 15.11.4 记忆写入冲突与一致性（多 Agent）
+### 15.10.4 记忆写入冲突与一致性（多 Agent）
 
 多 Agent 共享记忆时的冲突解决策略：
 
@@ -4253,27 +4065,27 @@ def hybrid_search(query_vec: np.ndarray,
 | **Versioned** | 保留所有版本，检索时带时间戳 | 历史回溯 |
 | **User Vote** | 用户确认正确版本 | 高价值场景 |
 
-### 15.11.5 与 [[35_生产级Agent记忆框架]] 的关联
+### 15.10.5 与 [[35_生产级Agent记忆框架]] 的关联
 
 本章是基础概念，详细的框架集成代码、Mem0/Zep/Letta 完整教程、时序知识图谱 Graphiti 实现、记忆检索优化请参考新章节 [[35_生产级Agent记忆框架]]。
 
----
+## 🧭 本章小结
 
-## 📋 本章速查表
+本章应形成以下可复述结论：
 
-| 概念 | 关键点 |
-|------|--------|
-| ReAct 框架 | Thought → Action → Observation 循环；推理与行动交织；通过 Prompt 模板让 LLM 输出可解析的 Action 指令 |
-| Function Calling | 模型原生能力；输出结构化函数调用；通常比文本正则解析可靠，但仍需 Schema 校验、权限控制与错误处理（如 GPT-5.6、Claude、Qwen） |
-| MCP 协议 | Anthropic 开放标准；Client-Server 架构；JSON-RPC 2.0 over stdio/SSE；动态工具发现（tools/list）；三大能力 Tools/Resources/Prompts |
-| Agent 记忆系统 | 短期记忆（Sliding Window 滑动窗口）+ 工作记忆（任务关键信息）+ 长期记忆（向量数据库 + 知识图谱） |
-| 多 Agent 协作模式 | 层级协作（Manager-Worker）+ 流水线（Pipeline）+ 去中心化（Hub 消息总线）；主流框架 AutoGen / MetaGPT / CrewAI |
-| A2A 协议 | Google 2025 推出；Agent ↔ Agent 通信；Agent Card 能力描述；Push Notification 异步状态更新；与 MCP 互补 |
-| Agent Teams | Claude Code 研究预览；Team Lead + Teammates 并行协作；Shared Task List + Mailbox 异步通信；适合可独立拆分的任务 |
-| Agent 安全防线 | 死循环防范（max_steps + 动作去重）+ 工具幻觉（Schema 校验 + 白名单）+ 上下文污染（截断重置）+ Token 爆炸（输出分页）+ Prompt Injection（输入过滤 + 权限隔离） |
-| 配套代码 | `code/ch15_agent/llm/*.py`；默认离线 mock，可由章节 runner 批量验收；真实 API/框架示例需显式 `LLM_MOCK=0`、对应依赖与 Provider Key |
+- 解释 ReAct、工具调用、MCP 和多 Agent 的执行边界。
+- 设计具备状态、幂等和恢复能力的 Agent 工作流。
+- 用评测与可观测性定位工具、副作用和编排故障。
 
-## 15.x 配套代码运行与验收
+## ✅ 自测与练习
+
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
+
+1. 你能否解释 ReAct、工具调用、MCP 和多 Agent 的执行边界？
+2. 你能否设计具备状态、幂等和恢复能力的 Agent 工作流？
+3. 你能否用评测与可观测性定位工具、副作用和编排故障？
+
+## 🧪 配套代码与验收
 
 仓库验收默认使用离线 mock：不读取 API Key、不访问网络、不产生费用。它验证入口、
 控制流、协议形状和友好跳过逻辑，不等价于已经验证某个真实 Provider、账号权限、
@@ -4289,9 +4101,204 @@ python scripts/run_all_examples.py --tier llm --chapter ch15
 依赖；先运行 `make llm-doctor` 检查环境，并在受控预算下验证真实返回、工具副作用、
 超时、重试和成本。真实调用不是默认 CI 验收条件。
 
+## 🎯 面试题精讲
+
+### 高频题7（2026年新题）：Function Calling、MCP、Skills、A2A 四者的关系是什么？怎么区分？
+
+**参考答案**：
+
+四层模型从上到下：
+
+1. **A2A（协作层）**：解决 Agent 之间如何通信协作，类比"蓝牙"（设备间通信）
+2. **Skills（能力层）**：封装完整功能的可复用单元（代码+配置+推理逻辑），类比"App 应用"（完整功能）
+3. **MCP（连接层）**：标准化连接模型与工具生态的协议，类比"USB-C"（设备连接标准）
+4. **Function Calling（基础层）**：模型输出函数调用指令的能力，类比"电流"（底层能力）
+
+**四者关系**：Function Calling 是能力，MCP 是连接协议，Skills 是功能单元，A2A 是协作协议。四层叠加，缺一不可。一个 Skill 内部可能通过 MCP 调用多个工具，多个 Agent 通过 A2A 协作时交换 Skills。
+
 ---
 
-## 📚 相关章节
+### 高频题8（2026年新题）：生产环境部署 Agent，你会考虑哪些安全风险？怎么防范？
+
+**参考答案**：
+
+五大安全防线：
+
+| 防线 | 风险 | 防范方案 |
+|------|------|---------|
+| **死循环** | Agent 反复尝试同一动作 | 最大步数限制 + 相同动作检测 + 震荡模式检测 |
+| **工具幻觉** | 模型编造不存在的工具 | 工具名白名单 + Schema 严格校验 + 必填参数检查 |
+| **上下文污染** | 历史记录干扰当前任务 | 滑动窗口 + 任务分隔符 + 历史摘要替代 |
+| **Token 爆炸** | 输出超长导致成本失控 | 输出截断 + Token 预算 + 分页机制 |
+| **Prompt Injection** | 用户输入覆盖系统指令 | 输入过滤（危险模式检测）+ 权限隔离 + 长度限制 |
+
+**面试加分**：提到"全链路审计日志"——每个工具调用记录 who/what/when/result，便于事后追溯。
+
+---
+
+### 高频题9（2026年新题）：如果让你设计一个电商客服 Agent，你会怎么设计？
+
+**参考答案**（开放题，考察架构思维）：
+
+```
+1. 能力拆解（Skills 设计）
+   - 订单查询 Skill：query_order + 状态解释
+   - 政策咨询 Skill：query_policy + 多轮澄清
+   - 退款处理 Skill：校验条件 + refund_request + 结果通知
+   - 情感安抚 Skill：analyze_sentiment + 安抚话术 + 转人工判断
+
+2. 工具层（MCP 接入）
+   - order-mcp-server：订单相关工具
+   - policy-mcp-server：政策相关工具
+   - payment-mcp-server：退款相关工具
+
+3. 安全机制
+   - 死循环：最大 5 轮工具调用
+   - 转人工：情感强度 > 0.8 或问题超出范围
+   - 敏感操作：退款需二次确认 + 金额上限
+
+4. 记忆设计
+   - 短期：当前对话（最近 6 轮）
+   - 工作：用户当前意图 + 订单号缓存
+   - 长期：用户偏好 + 常见问题模式
+
+5. 监控
+   - 解决率、平均轮次、转人工率、用户满意度
+```
+
+---
+
+### 高频题10（2026年新题）：MCP Server 从 5 个增长到 100 个，怎么管理？
+
+**参考答案**：
+
+工程化管理五要素：
+
+1. **注册中心（Registry）**：Server 启动时注册，Client 运行时查询
+2. **健康检查（Health Check）**：心跳检测，自动剔除不可用 Server
+3. **权限控制（RBAC）**：不同角色访问不同工具集（客服只读，管理员可写）
+4. **版本管理**：语义化版本，灰度升级（先 10% 流量切到新版本）
+5. **审计追踪**：每个工具调用记录 Trace ID、调用者、参数、结果、耗时
+
+**代码要点**：动态加载（热插拔不停机）、工具发现（运行时拉取 tools/list）、权限过滤（根据用户角色过滤可见工具）。
+
+---
+
+### 高频题11（2026年新题）：Claude Code Agent Teams 和传统 Multi-Agent 有什么区别？
+
+**参考答案**：
+
+| 维度 | 传统 Multi-Agent | Claude Code Agent Teams（研究预览） |
+|------|-----------------|-------------------------|
+| **执行模式** | 串行（Manager→Worker→Manager） | 并行（Team Lead + 多 Teammate 同时执行） |
+| **上下文** | 共享/透传 | 每个 Teammate 独立上下文 |
+| **生命周期** | 随任务创建销毁 | 团队运行期间的独立会话 |
+| **通信** | 直接函数调用 | Mailbox + Shared Task List |
+| **类比** | 工厂流水线 | 敏捷开发团队 |
+
+**核心区别**：Agent Teams 的 Teammates 在一次团队运行中保持独立上下文，通过
+Shared Task List 同步状态、通过 Mailbox 异步通信；这是 Claude Code 的研究预览能力，
+不应泛化成任意模型或框架的固定语义。
+
+---
+
+### 高频题12（2026年新题）：Skills 和 Few-shot Prompting 有什么区别？什么时候用 Skills？
+
+**参考答案**：
+
+| 维度 | Few-shot Prompting | Skills |
+|------|-------------------|--------|
+| **本质** | 教模型"格式" | 教模型"方法论" |
+| **内容** | 输入输出示例对 | 完整推理逻辑 + 工具编排 + 验证闭环 |
+| **复用性** | 低（每次都要带示例） | 高（封装后可复用） |
+| **类比** | 照着例题做题 | 掌握解题方法论 |
+
+**什么时候用 Skills**：任务需要多步推理、涉及工具调用链、需要错误处理和回退策略时。简单的格式模仿用 Few-shot，复杂的业务功能用 Skills。
+
+---
+
+### 高频题13（2026年新题）：Agent 调用工具时模型"幻觉"了怎么办？（编造工具名或参数）
+
+**参考答案**：
+
+三层防护：
+
+1. **Schema 校验**：工具调用前严格校验参数类型、必填字段、取值范围
+2. **白名单机制**：工具名必须在预定义列表中，拒绝任何未知工具调用
+3. **重试+降级**：校验失败时返回明确错误 + 让模型重试；连续失败则人工接管
+
+```python
+# 伪代码
+def validate_tool_call(tool_name, args):
+    if tool_name not in ALLOWED_TOOLS:
+        return False, f"工具 '{tool_name}' 不存在"
+    schema = TOOL_SCHEMAS[tool_name]
+    for param in schema["required"]:
+        if param not in args:
+            return False, f"缺少必填参数 '{param}'"
+    return True, "校验通过"
+```
+
+---
+
+### 高频题14（2026年新题）：AGENTS.md 是什么？为什么要制定这个开放标准？
+
+**参考答案**：
+
+**AGENTS.md** 是 2026 年提出的**开放标准**，用于描述 Agent 的能力、工具依赖、执行流程和回退策略，类比：
+- `README.md` → 描述项目
+- `API.md` → 描述接口  
+- `AGENTS.md` → 描述 Agent 的能力和行为规范
+
+**内容结构**：
+1. **Skill 定义**：名称、描述、适用场景
+2. **工具依赖**：需要的 MCP Server 和工具列表
+3. **执行流程**：任务处理的工作流
+4. **回退策略**：异常情况的处理方式
+
+**为什么要制定**：不同团队开发的 Agent 需要互操作时，AGENTS.md 提供了统一的能力描述格式，降低集成成本。类似于 OpenAPI 对 API 文档标准化的作用。
+
+```mermaid
+graph TD
+    subgraph "Agent 技术栈总结"
+        A["Agent 基础"] --> B["ReAct 框架<br/>Thought-Action-Observation"]
+        B --> C["Function Calling<br/>结构化工具调用"]
+        C --> D["MCP 协议<br/>标准化工具接入"]
+        D --> E["记忆管理<br/>STM + LTM"]
+        E --> F["多 Agent 协作<br/>AutoGen / A2A"]
+    end
+```
+
+| 知识点 | 面试频率 | 关键要点 |
+|--------|---------|---------|
+| Agent 四大模块 | ⭐⭐⭐⭐⭐ | 感知、规划、执行、反思 |
+| ReAct 框架 | ⭐⭐⭐⭐⭐ | Thought→Action→Observation 循环 |
+| Function Calling | ⭐⭐⭐⭐⭐ | 工具定义→模型判断→生成调用→执行 |
+| MCP 协议 | ⭐⭐⭐⭐⭐ | Client-Server、Tools/Resources/Prompts |
+| MCP vs Function Calling | ⭐⭐⭐⭐⭐ | 协议 vs 能力 |
+| Agent 记忆管理 | ⭐⭐⭐⭐ | 短期+长期+工作记忆 |
+| 多 Agent 协作 | ⭐⭐⭐⭐ | AutoGen、CrewAI、A2A、Agent Teams |
+| Skills 设计 | ⭐⭐⭐⭐⭐ | 能力拆解、工具编排、验证闭环 |
+| MCP 工程化管理 | ⭐⭐⭐⭐⭐ | Registry、RBAC、审计追踪、健康检查 |
+| Agent 安全防护 | ⭐⭐⭐⭐⭐ | 死循环+幻觉+污染+Token+注入 五道防线 |
+
+**下一步**：Agent 赋予了大模型"行动能力"，但要在生产环境高效运行，还需要掌握模型微调、推理优化和部署技术。
+
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| ReAct 框架 | Thought → Action → Observation 循环；推理与行动交织；通过 Prompt 模板让 LLM 输出可解析的 Action 指令 |
+| Function Calling | 模型原生能力；输出结构化函数调用；通常比文本正则解析可靠，但仍需 Schema 校验、权限控制与错误处理（如 GPT-5.6、Claude、Qwen） |
+| MCP 协议 | Anthropic 开放标准；Client-Server 架构；JSON-RPC 2.0 over stdio/SSE；动态工具发现（tools/list）；三大能力 Tools/Resources/Prompts |
+| Agent 记忆系统 | 短期记忆（Sliding Window 滑动窗口）+ 工作记忆（任务关键信息）+ 长期记忆（向量数据库 + 知识图谱） |
+| 多 Agent 协作模式 | 层级协作（Manager-Worker）+ 流水线（Pipeline）+ 去中心化（Hub 消息总线）；主流框架 AutoGen / MetaGPT / CrewAI |
+| A2A 协议 | Google 2025 推出；Agent ↔ Agent 通信；Agent Card 能力描述；Push Notification 异步状态更新；与 MCP 互补 |
+| Agent Teams | Claude Code 研究预览；Team Lead + Teammates 并行协作；Shared Task List + Mailbox 异步通信；适合可独立拆分的任务 |
+| Agent 安全防线 | 死循环防范（max_steps + 动作去重）+ 工具幻觉（Schema 校验 + 白名单）+ 上下文污染（截断重置）+ Token 爆炸（输出分页）+ Prompt Injection（输入过滤 + 权限隔离） |
+| 配套代码 | `code/ch15_agent/llm/*.py`；默认离线 mock，可由章节 runner 批量验收；真实 API/框架示例需显式 `LLM_MOCK=0`、对应依赖与 Provider Key |
+
+## 🔗 相关章节
 
 - [[12_Transformer与大模型原理]] — Agent Teams、大模型工具调用能力与涌现能力
 - [[13_Prompt_Engineering]] — ReAct 模式、CoT 推理是 Agent 的核心思维框架
@@ -4304,3 +4311,9 @@ python scripts/run_all_examples.py --tier llm --chapter ch15
 - [[30_高效序列架构SSM与Mamba]] — 高效序列建模与长上下文 Agent
 - [[35_生产级Agent记忆框架]] — Mem0/Zep/Letta 四层记忆框架集成
 - [[39_ComputerUse与GUIAgent训练]] — GUI Agent 训练范式与 OSWorld 基准
+
+## 📖 一手参考资料
+
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
+
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

@@ -1,7 +1,7 @@
 # ---
 # chapter: 13
 # topic: Prompt Engineering
-# section: 13.7.2 Gemini Explicit Caching
+# section: 13.5.2 Gemini Explicit Caching
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: google-genai

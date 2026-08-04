@@ -4,6 +4,7 @@ topic: Context Engineering
 difficulty: 中高
 interview_frequency: 4
 created: 2026-06-06T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - Context Engineering
   - Haystack
@@ -17,8 +18,21 @@ tags:
 
 # 第 29 章 Context Engineering ⭐⭐⭐⭐
 
-> **面试频率**：高 | **难度**：⭐⭐⭐⭐ | **核验日期**：2026-07-31
+> [!abstract] 本章导航
+> **定位**：把上下文视为有限系统资源，统一 Prompt、检索、记忆和缓存设计。
 >
+> **先修**：[[13_Prompt_Engineering]]、[[14_RAG检索增强生成]]、[[15_Agent智能体开发]]。
+>
+> **学习目标**：
+> - 解释上下文组成、注意力退化和窗口经济学。
+> - 设计压缩、裁剪、记忆和缓存策略。
+> - 根据坏例诊断上下文缺失、污染和顺序问题。
+>
+> **建议路径**：从 Prompt 到 Context → Context 的四大组成 → 上下文窗口经济学 → … → Haystack 2.x Context-Engineered Pipelines。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：`code/ch29_context_engineering/`。
+
+> [!info] 阅读提示
 > **定义边界**：Context Engineering 关注推理时进入上下文窗口的全部 token，而不只是
 > prompt 文案；实践包括检索、工具结果、消息历史、状态、压缩与记忆。参见
 > [Anthropic 的定义](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)。
@@ -26,8 +40,6 @@ tags:
 Context Engineering 是 Prompt Engineering 的自然演进。它解决的问题是：在有限窗口和成本预算内，
 每一步应该给模型哪些高信号信息、按什么顺序给、何时检索或压缩，以及哪些内容不应进入上下文。
 其收益必须用目标任务评测，不能笼统承诺“小模型一定超过大模型”。
-
----
 
 ## 29.1 从 Prompt 到 Context
 
@@ -48,8 +60,6 @@ graph TB
 ```
 
 **核心洞察**: Context = Prompt + History + Tools + RAG + Memory + State。
-
----
 
 ## 29.2 Context 的四大组成
 
@@ -80,8 +90,6 @@ graph TB
 - Long-term memory
 - Structured state (LangGraph)
 - Sub-agent results
-
----
 
 ## 29.3 上下文窗口经济学
 
@@ -134,8 +142,6 @@ graph LR
 4. 连贯与打乱的 haystack；
 5. 多个样本/随机种子，并报告准确率、拒答率、置信区间、延迟和实际 token 成本。
 
----
-
 ## 29.4 压缩与裁剪策略
 
 ### 29.4.1 三大策略对比
@@ -169,8 +175,6 @@ config = {"configurable": {"thread_id": "user-123"}}
 result1 = app.invoke({"messages": [...]}, config)
 result2 = app.invoke({"messages": [...]}, config)  # 状态保留
 ```
-
----
 
 ## 29.5 记忆系统设计
 
@@ -207,8 +211,6 @@ run 是无状态的：应用负责持久化 `all_messages()`，下一轮通过 `
 长期偏好、向量检索和删除策略仍属于应用层设计。客户端提交的历史是不可信输入，进入 agent 前应清洗。
 参见 [Pydantic AI Messages and chat history](https://ai.pydantic.dev/message-history/)。
 
----
-
 ## 29.6 Sub-Agent 模式
 
 ```mermaid
@@ -230,8 +232,6 @@ graph TB
 
 **代表实现**: Claude Code / Cursor Agent / Devin。
 
----
-
 ## 29.7 Context Caching (提示缓存)
 
 以下为 2026-07-31 官方文档口径；上线前仍需重新核对模型与价格页：
@@ -251,8 +251,6 @@ graph TB
 记录 cache-write/cache-read token、命中率和 TTL。`0.1×` 只表示 Anthropic **已命中的输入 token**
 相对基础输入价便宜 90%，不等于整次请求或整套系统总成本下降 90%；首次写入、未命中输入、
 输出、存储、工具和基础设施仍会计费。
-
----
 
 ## 29.8 Haystack 2.x Context-Engineered Pipelines
 
@@ -279,93 +277,22 @@ result = pipe.run({
 })
 ```
 
----
-
-## 29.9 面试真题精讲 🎯
-
-### 🎯 高频题1: Context Engineering 与 Prompt Engineering 区别？
-
-**答案**: Prompt Engineering 关注**单次指令**的优化；Context Engineering 关注模型在每一步推理时**所看到的所有信息**的管理——包括 history、tools、memory、RAG、state。一个优秀的 Context Engineer 关注 4 件事：放什么 (what)、何时放 (when)、怎么放 (how)、何时不放 (when not)。
-
-### 🎯 高频题2: 200K context 是否真的能用？
-
-**答案**：先区分“API 可接收长度”和“目标任务有效长度”。后者没有跨模型通用的
-`64K/200K` 阈值，且同时受证据位置、语义相似度、干扰项和结构影响。应在目标模型快照上做
-长度 × 位置 × 干扰项评测，再决定直接长上下文、RAG、压缩或分工给 sub-agent。
-
-### 🎯 高频题3: Sub-Agent 模式优缺点？
-
-**答案**:
-- 优点: 干净 context、可并行、错误隔离、减少主 agent 的上下文污染
-- 缺点: 额外调用可能增加总 token/延迟，协调、调试和共享状态更复杂
-- 适用: 复杂多步任务；不适用: 简单单步任务
-
-### 🎯 高频题4: Prompt Caching 的最佳实践？
-
-**答案**:
-1. 缓存前缀放稳定的 system prompt + few-shot
-2. 把变化的部分放在缓存前缀之后
-3. 保证缓存边界前完全一致，并按提供方设置 key / breakpoint / TTL
-4. 监控写入、读取、未命中和输出成本；不能把“命中 token 折扣”当成“总成本折扣”
-
-### 🎯 高频题5: Context Compaction 怎么做？
-
-**答案**:
-1. **触发条件**: token 超过窗口 X% 时
-2. **方法**: LLM 总结历史 + 关键事实抽取
-3. **保留**: 用户偏好/关键事实/最近 N 轮
-4. **LangGraph 实现**: 持久化 state + summarization node
-
-### 🎯 高频题6: Agent 记忆系统的设计原则？
-
-**答案**:
-1. 分层: 短期/长期/情景/程序
-2. 选择性: 不是所有信息都值得记忆
-3. 可检索: 向量化 + metadata
-4. 可更新: 记忆会过时，需要清理
-5. 隐私: 敏感信息需脱敏
-
-### 🎯 高频题7: Haystack 与 LangChain/LlamaIndex 区别？
-
-**答案**:
-- **Haystack 2.x**: 组件化 Pipeline，适合显式连接检索、模板和生成器
-- **LangChain**: 通用 LLM 框架，覆盖面广
-- **LlamaIndex**: 专注 RAG
-- 选型需用团队维护能力、连接器、可观测性、部署边界和基准验证，不凭未经来源支持的“份额”判断
-
-### 🎯 高频题8: 如何设计一个高效的 Context Pipeline？
-
-**答案**:
-1. **输入层**: 清洗/分类查询意图
-2. **检索层**: RAG + Rerank，Top-3
-3. **压缩层**: 长文档分块+摘要
-4. **组装层**: Template + Few-shot + RAG + Memory
-5. **输出层**: 结构化 + 后处理
-
----
-
-## 29.10 本章小结
+## 🧭 本章小结
 
 > **章节小结**：Context Engineering 管理推理时可见的指令、知识、工具结果、历史和状态。
 > 标称窗口不等于任务有效窗口；Context Rot 与 Lost in the Middle 都必须绑定模型、任务和评测条件。
 > 长会话可组合 checkpoint、检索、compaction、结构化笔记与 sub-agent。Prompt Caching
 > 只能复用完全匹配的稳定前缀，收益取决于写入成本、命中率、TTL、输出与存储等总账。
 
-## 29.11 本章速查表
+## ✅ 自测与练习
 
-| 概念 | 关键点 |
-|------|--------|
-| **Context Engineering** | 超越 Prompt Engineering 的全栈方法 |
-| **Context Rot** | 长度增加时性能可能非均匀退化；没有通用 token 阈值 |
-| **Sub-Agent** | 干净 context 的子代理 |
-| **Compaction** | 历史摘要压缩 |
-| **Prompt Caching** | 复用稳定前缀；按提供方规则核算写入、读取、存储与未命中 |
-| **LangGraph Checkpointer** | 持久化 state |
-| **Haystack 2.x** | context-engineered pipelines |
-| **Memory Layers** | 短/长/情景/程序记忆 |
-| **配套代码** | `ch29_context_engineering/llm/*.py`；默认离线验收，真实 API 需显式配置 |
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
 
-## 29.x 配套代码与验收边界
+1. 你能否解释上下文组成、注意力退化和窗口经济学？
+2. 你能否设计压缩、裁剪、记忆和缓存策略？
+3. 你能否根据坏例诊断上下文缺失、污染和顺序问题？
+
+## 🧪 配套代码与验收
 
 本章包含两类示例：纯离线教学模型，以及需要可选依赖/真实提供方配置的集成示例。
 离线计算不冒充线上模型测量；其中 `03_context_rot_demo.py` 明确输出合成位置偏差示意，
@@ -382,9 +309,82 @@ python ch29_context_engineering/llm/10_prompt_caching.py       # Prompt Caching
 
 真实 API、外部数据库和远程模型不属于默认离线验收；启用前请显式配置目标提供方、模型与凭据。
 
----
+## 🎯 面试题精讲
 
-## 📚 相关章节
+### 高频题1: Context Engineering 与 Prompt Engineering 区别？
+
+**答案**: Prompt Engineering 关注**单次指令**的优化；Context Engineering 关注模型在每一步推理时**所看到的所有信息**的管理——包括 history、tools、memory、RAG、state。一个优秀的 Context Engineer 关注 4 件事：放什么 (what)、何时放 (when)、怎么放 (how)、何时不放 (when not)。
+
+### 高频题2: 200K context 是否真的能用？
+
+**答案**：先区分“API 可接收长度”和“目标任务有效长度”。后者没有跨模型通用的
+`64K/200K` 阈值，且同时受证据位置、语义相似度、干扰项和结构影响。应在目标模型快照上做
+长度 × 位置 × 干扰项评测，再决定直接长上下文、RAG、压缩或分工给 sub-agent。
+
+### 高频题3: Sub-Agent 模式优缺点？
+
+**答案**:
+- 优点: 干净 context、可并行、错误隔离、减少主 agent 的上下文污染
+- 缺点: 额外调用可能增加总 token/延迟，协调、调试和共享状态更复杂
+- 适用: 复杂多步任务；不适用: 简单单步任务
+
+### 高频题4: Prompt Caching 的最佳实践？
+
+**答案**:
+1. 缓存前缀放稳定的 system prompt + few-shot
+2. 把变化的部分放在缓存前缀之后
+3. 保证缓存边界前完全一致，并按提供方设置 key / breakpoint / TTL
+4. 监控写入、读取、未命中和输出成本；不能把“命中 token 折扣”当成“总成本折扣”
+
+### 高频题5: Context Compaction 怎么做？
+
+**答案**:
+1. **触发条件**: token 超过窗口 X% 时
+2. **方法**: LLM 总结历史 + 关键事实抽取
+3. **保留**: 用户偏好/关键事实/最近 N 轮
+4. **LangGraph 实现**: 持久化 state + summarization node
+
+### 高频题6: Agent 记忆系统的设计原则？
+
+**答案**:
+1. 分层: 短期/长期/情景/程序
+2. 选择性: 不是所有信息都值得记忆
+3. 可检索: 向量化 + metadata
+4. 可更新: 记忆会过时，需要清理
+5. 隐私: 敏感信息需脱敏
+
+### 高频题7: Haystack 与 LangChain/LlamaIndex 区别？
+
+**答案**:
+- **Haystack 2.x**: 组件化 Pipeline，适合显式连接检索、模板和生成器
+- **LangChain**: 通用 LLM 框架，覆盖面广
+- **LlamaIndex**: 专注 RAG
+- 选型需用团队维护能力、连接器、可观测性、部署边界和基准验证，不凭未经来源支持的“份额”判断
+
+### 高频题8: 如何设计一个高效的 Context Pipeline？
+
+**答案**:
+1. **输入层**: 清洗/分类查询意图
+2. **检索层**: RAG + Rerank，Top-3
+3. **压缩层**: 长文档分块+摘要
+4. **组装层**: Template + Few-shot + RAG + Memory
+5. **输出层**: 结构化 + 后处理
+
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| **Context Engineering** | 超越 Prompt Engineering 的全栈方法 |
+| **Context Rot** | 长度增加时性能可能非均匀退化；没有通用 token 阈值 |
+| **Sub-Agent** | 干净 context 的子代理 |
+| **Compaction** | 历史摘要压缩 |
+| **Prompt Caching** | 复用稳定前缀；按提供方规则核算写入、读取、存储与未命中 |
+| **LangGraph Checkpointer** | 持久化 state |
+| **Haystack 2.x** | context-engineered pipelines |
+| **Memory Layers** | 短/长/情景/程序记忆 |
+| **配套代码** | `ch29_context_engineering/llm/*.py`；默认离线验收，真实 API 需显式配置 |
+
+## 🔗 相关章节
 
 - [[13_Prompt_Engineering]] — Prompt Engineering 基础，Context Engineering 的前置
 - [[15_Agent智能体开发]] — Agent 上下文管理，ReAct/Function Calling 的 Context 组装
@@ -392,3 +392,9 @@ python ch29_context_engineering/llm/10_prompt_caching.py       # Prompt Caching
 - [[20_LLMOps与模型可观测性]] — Token 成本监控，Context 大小直接影响成本
 - [[18_LLM工程框架实战]] — Haystack/LangGraph 框架实现 context-engineered pipelines
 - [[25_推理引擎与高性能服务]] — 推理引擎如何高效管理 Context (KV Cache, Prefix Cache)
+
+## 📖 一手参考资料
+
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
+
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

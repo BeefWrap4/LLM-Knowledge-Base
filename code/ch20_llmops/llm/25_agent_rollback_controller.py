@@ -1,7 +1,7 @@
 # ---
 # chapter: 20
 # topic: LLMOps与模型可观测性
-# section: 20.10.10 Agent 回滚策略
+# section: 20.8.10 Agent 回滚策略
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: opentelemetry-api, opentelemetry-sdk

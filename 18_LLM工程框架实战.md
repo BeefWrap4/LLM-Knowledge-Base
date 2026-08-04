@@ -4,6 +4,7 @@ topic: LLM工程框架实战
 difficulty: 中高
 interview_frequency: 5
 created: 2026-06-01T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - LangChain
   - LangGraph
@@ -16,29 +17,26 @@ tags:
   - Agent
   - RAG
 ---
-# 第18章 LLM 工程框架实战 ⭐⭐⭐⭐⭐
+# 第 18 章 LLM 工程框架实战 ⭐⭐⭐⭐⭐
 
-> **面试频率**：极高（2025-2026年大模型应用开发方向必考）| **技术热度**：★★★★★
+> [!abstract] 本章导航
+> **定位**：把 RAG、Agent 和微调能力映射到主流框架，重点训练抽象与选型判断。
 >
-> 从 LangChain 到 LangGraph，从 LlamaIndex 到 Dify，从 LLaMA-Factory 到 AutoGen/CrewAI —— 大模型工程框架生态在 2025-2026 年经历了爆炸式增长与洗牌。本章深入解析六大核心框架的设计哲学、核心抽象、实战代码和面试考点，帮助你建立完整的框架选型知识体系。
+> **先修**：[[13_Prompt_Engineering]]、[[14_RAG检索增强生成]]、[[15_Agent智能体开发]]。
 >
-> 🆕 **2026年更新**：新增 LangGraph v1.0 稳定版 API、Dify 1.0 工作流引擎、CrewAI 企业级 Flow 模式、LlamaIndex Agent Workflow、LLaMA-Factory 多模态微调支持等最新内容。
+> **学习目标**：
+> - 比较主流 LLM 框架的核心抽象和版本边界。
+> - 运行一个最小框架示例并识别状态与数据流。
+> - 根据可控性、生态和运维成本做出选型。
+>
+> **建议路径**：LangChain 核心 → LangGraph 状态图工作流 → LlamaIndex 数据索引与检索 → … → 框架选型决策树。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：`code/ch18_llm_frameworks/`。
 
----
-
-## 📊 框架全景速查表
-
-| 框架 | 定位 | 核心抽象 | 适用场景 | 学习曲线 | 生态成熟度 |
-|------|------|---------|---------|---------|-----------|
-| **LangChain** | LLM应用编排 | Chain, Tool, Memory | 对话系统、工具调用、RAG | ⭐⭐ 中等 | ★★★★★ 最成熟 |
-| **LangGraph** | 状态图Agent | State, Node, Edge | 复杂Agent、多步推理、人机协同 | ⭐⭐⭐ 较陡 | ★★★★☆ 快速增长 |
-| **LlamaIndex** | 数据索引与检索 | Document, Index, Node | 企业文档问答、知识库 | ⭐⭐ 中等 | ★★★★★ 成熟 |
-| **LLaMA-Factory** | 模型微调工厂 | Model, Dataset, Trainer | 全栈微调、LoRA/QLoRA | ⭐ 简单 | ★★★★☆ 成熟 |
-| **Dify** | 低代码Agent平台 | 工作流、知识库、工具 | 快速搭建AI应用 | ⭐ 简单 | ★★★★☆ 快速增长 |
-| **AutoGen** | 多Agent对话 | ConversableAgent, GroupChat | 多Agent协作、代码生成 | ⭐⭐ 中等 | ★★★☆☆ 发展中 |
-| **CrewAI** | 角色分工Agent | Agent, Task, Crew | 团队协作、角色扮演 | ⭐ 简单 | ★★★☆☆ 快速增长 |
-
----
+> [!info] 阅读提示
+> 从 LangChain 到 LangGraph，从 LlamaIndex 到 Dify，从 LLaMA-Factory 到 AutoGen/CrewAI —— 大模型工程框架生态在 2025-2026 年经历了持续演进。本章深入解析六大核心框架的设计哲学、核心抽象、实战代码和面试考点，帮助你建立完整的框架选型知识体系。
+>
+> **版本与范围**：新增 LangGraph v1.0 稳定版 API、Dify 1.0 工作流引擎、CrewAI 企业级 Flow 模式、LlamaIndex Agent Workflow、LLaMA-Factory 多模态微调支持等最新内容。
 
 ## 18.1 LangChain 核心 ⭐⭐⭐⭐⭐
 
@@ -492,8 +490,6 @@ if __name__ == "__main__":
 
 > 📚 **相关章节**：Agent 理论原理见 [[15_Agent智能体开发]]；RAG 系统设计见 [[14_RAG检索增强生成]]。
 
----
-
 ## 18.2 LangGraph 状态图工作流 ⭐⭐⭐⭐⭐
 
 ### 18.2.1 为什么需要 LangGraph
@@ -795,8 +791,6 @@ result = graph.invoke(
 ```
 
 > 📚 **相关章节**：Agent 设计模式详见 [[15_Agent智能体开发]]。
-
----
 
 ## 18.3 LlamaIndex 数据索引与检索 ⭐⭐⭐⭐⭐
 
@@ -1116,8 +1110,6 @@ while True:
 
 > 📚 **相关章节**：RAG 理论与高级技巧详见 [[14_RAG检索增强生成]]；向量数据库选型详见第14章。
 
----
-
 ## 18.4 LLaMA-Factory 全栈微调 ⭐⭐⭐⭐⭐
 
 ### 18.4.1 为什么选择 LLaMA-Factory
@@ -1344,13 +1336,11 @@ llamafactory-cli chat \
 
 > 📚 **相关章节**：微调理论详解见 [[16_模型微调与推理优化]]。
 
----
-
 ## 18.5 Dify 低代码 Agent 平台 ⭐⭐⭐⭐⭐
 
 ### 18.5.1 平台架构概览
 
-Dify 是一个开源的 **LLM 应用开发平台**，核心定位是"让非技术人员也能构建 AI 应用"。2026 年 Dify 1.0 发布后，平台成熟度大幅提升。
+Dify 是一个开源的 **LLM 应用开发平台**，提供工作流、知识库、模型接入和应用发布等能力。版本号本身不能代表生产成熟度，仍需按可观测性、权限、扩展点和升级成本评估。
 
 ```mermaid
 graph TD
@@ -1509,8 +1499,6 @@ def query_stock_price(symbol: str, period: str = "1d") -> str:
 ```
 
 > 📚 **相关章节**：知识库设计原理见 [[14_RAG检索增强生成]]；Agent 设计见 [[15_Agent智能体开发]]。
-
----
 
 ## 18.6 AutoGen / CrewAI 多 Agent 框架 ⭐⭐⭐⭐
 
@@ -1782,16 +1770,14 @@ def choose_multi_agent_framework(scenario: str) -> str:
 
 > 📚 **相关章节**：Agent 理论与设计模式详见 [[15_Agent智能体开发]]。
 
----
-
-## 18.8 2026年新框架 ⭐⭐⭐⭐⭐
+## 18.7 2026年新框架 ⭐⭐⭐⭐⭐
 
 > **重要趋势**：Agent 框架正在按约束分化：有的强调模型与工具集成，有的强调状态图和持久化，
 > 有的强调 Python 类型校验，也有的与特定云或模型 API 深度集成。LangChain、LangGraph、
 > Pydantic AI、Strands、OpenAI Agents 等都仍有适用场景；选型应基于状态恢复、类型边界、
 > 提供商、部署环境、可观测性和团队经验，而不是按“新旧”或流行度一票否决。
 
-### 18.8.1 Pydantic AI — 类型安全的 Pythonic Agent 框架
+### 18.7.1 Pydantic AI — 类型安全的 Pythonic Agent 框架
 
 Pydantic AI 是 Pydantic 团队推出的 Python Agent 框架，强调 Pydantic 模型、依赖注入和结构化输出。
 当团队已经使用 Pydantic/FastAPI、希望把输入输出契约纳入类型检查与运行时校验时，它是值得优先验证的候选；
@@ -1856,7 +1842,7 @@ async def main():
 asyncio.run(main())
 ```
 
-### 18.8.2 Strands Agents SDK — AWS 开源的 model-driven Agent SDK
+### 18.7.2 Strands Agents SDK — AWS 开源的 model-driven Agent SDK
 
 Strands Agents SDK 由 AWS 于 2025 年开源，采用 model-driven 设计：开发者提供模型、系统提示和工具，
 SDK 负责 Agent loop。它与 Bedrock/AWS 部署集成较深，同时通过 provider 抽象支持 Anthropic、Google、
@@ -1920,7 +1906,7 @@ with mcp_client:
             print(f"\n[调用工具: {event['tool_use']['name']}]")
 ```
 
-### 18.8.3 OpenAI Agents SDK — 官方出品的轻量级 Agent 运行时
+### 18.7.3 OpenAI Agents SDK — 官方出品的轻量级 Agent 运行时
 
 OpenAI Agents SDK（前身 OpenAI Swarm）是 OpenAI 2025 年开源的轻量级 agent 运行时，强调**多 agent handoff（交接）、会话管理、可观测 tracing**。v0.14.0 加入了仍处于 beta 的 Sandbox Agents；其入口是 `agents.sandbox`，sandbox client 和会话来源放在 `SandboxRunConfig`，不要沿用旧扩展路径。
 
@@ -1989,7 +1975,7 @@ async def main():
 asyncio.run(main())
 ```
 
-### 18.8.4 AG2 — ex-AutoGen 的现代化重写
+### 18.7.4 AG2 — ex-AutoGen 的现代化重写
 
 AG2 是 AutoGen 核心团队（Chi Wang 等）在 2025 年底启动的 **AutoGen 全面重写版本**。原 AutoGen 0.2.x 进入维护模式，AG2 1.0 主打**模块化、类型安全、与 LangGraph 互操作**。
 
@@ -2048,7 +2034,7 @@ manager = GroupChatManager(groupchat=chat, llm_config=llm_config)
 user.initiate_chat(manager, message="实现一个分布式任务调度系统")
 ```
 
-### 18.8.5 Haystack 2.x — deepset 的 context-engineered pipeline 框架
+### 18.7.5 Haystack 2.x — deepset 的 context-engineered pipeline 框架
 
 Haystack（deepset 公司）从 1.x 全面重写为 2.x，定位"**production-ready、context-engineered pipelines**"。2026 年 2.x 稳定，配合 **Hayhooks**（HTTP / gRPC API 包装器）+ **MCP Server** 提供端到端 RAG 部署方案。
 
@@ -2102,7 +2088,7 @@ pipe.connect("prompt_builder.prompt", "llm.messages")
 # hayhooks mcp run
 ```
 
-### 18.8.6 Smolagents — HuggingFace 极简 code-agents
+### 18.7.6 Smolagents — HuggingFace 极简 code-agents
 
 Smolagents 是 HuggingFace 2025 年推出的"**极简主义**"agent 框架。整个核心代码 < 1000 行，但功能完整。
 
@@ -2141,7 +2127,7 @@ result = agent.run("查询北京和上海的天气，并告诉我哪个更适合
 print(result)
 ```
 
-### 18.8.7 Agno — ex-Phidata 的高性能多模态 Agent 平台
+### 18.7.7 Agno — ex-Phidata 的高性能多模态 Agent 平台
 
 Agno（原名 Phidata，2025 年改名）是**最快**的 Python agent 框架之一，benchmark 显示其 agent 启动时间比 LangGraph 快约 10x。
 
@@ -2184,7 +2170,7 @@ agent = Agent(
 agent.run("分析这张图，并联网搜索相关最新研究", images=["./chart.png"])
 ```
 
-### 18.8.8 Mastra — TypeScript 原生 AI 工程框架
+### 18.7.8 Mastra — TypeScript 原生 AI 工程框架
 
 Mastra 是 2025 年出现的 **TypeScript 优先** agent 框架，定位"**AI 工程框架**"（区别于单纯 agent library），对前端 / 全栈 Node.js 工程师极其友好。
 
@@ -2227,7 +2213,7 @@ const result = await researcher.generate(
 console.log(result.object.summary); // 类型安全
 ```
 
-### 18.8.9 2026 框架约束矩阵
+### 18.7.9 2026 框架约束矩阵
 
 > **核心结论**：不存在跨团队通用的“最佳 Agent 框架”。LangChain 适合复用其模型、工具和检索集成，
 > LangGraph 适合显式状态图与恢复，Pydantic AI 适合强类型 Python 边界，Strands 适合 AWS/Bedrock
@@ -2247,11 +2233,9 @@ console.log(result.object.summary); // 类型安全
 
 > 📚 **相关章节**：详细 Agent 理论见 [[15_Agent智能体开发]]；MCP / A2A 协议见 [[17_大模型评估体系]]。
 
----
+## 18.8 框架选型决策树 ⭐⭐⭐⭐⭐
 
-## 18.7 框架选型决策树 ⭐⭐⭐⭐⭐
-
-### 18.7.1 场景化决策流程
+### 18.8.1 场景化决策流程
 
 ```mermaid
 graph TD
@@ -2288,7 +2272,7 @@ graph TD
     style CA fill:#b3e5fc,stroke:#0288d1
 ```
 
-### 18.7.2 框架优劣全面对比表
+### 18.8.2 框架优劣全面对比表
 
 | 评估维度 | LangChain | LangGraph | LlamaIndex | LLaMA-Factory | Dify | AutoGen | CrewAI |
 |---------|-----------|-----------|------------|---------------|------|---------|--------|
@@ -2304,7 +2288,7 @@ graph TD
 | **文档质量** | ★★★★☆ | ★★★☆☆ | ★★★★☆ | ★★★★☆ | ★★★★★ | ★★★☆☆ | ★★★☆☆ |
 | **人机协同** | ★★☆☆☆ | ★★★★★ | ☆☆☆☆☆ | ☆☆☆☆☆ | ★★★★☆ | ★★★★☆ | ★★★☆☆ |
 
-### 18.7.3 常见组合方案
+### 18.8.3 常见组合方案
 
 ```python
 # 推荐框架组合方案
@@ -2352,9 +2336,70 @@ SCENARIO_D = {
 }
 ```
 
----
+## 🧭 本章小结
 
-## 🎯 面试真题精选
+本章应形成以下可复述结论：
+
+- 比较主流 LLM 框架的核心抽象和版本边界。
+- 运行一个最小框架示例并识别状态与数据流。
+- 根据可控性、生态和运维成本做出选型。
+
+## ✅ 自测与练习
+
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
+
+1. 你能否比较主流 LLM 框架的核心抽象和版本边界？
+2. 你能否运行一个最小框架示例并识别状态与数据流？
+3. 你能否根据可控性、生态和运维成本做出选型？
+
+## 🧪 配套代码与验收
+
+本章共有 **37 个** Python 示例，包含可连接真实提供商的路径、纯本地算法演示、离线结构示意和
+可选依赖探测。它们不是“配置一个 Key 即全部真跑”的同一种程序。
+
+### 18.9.1 默认离线验收
+
+```bash
+cd code/
+make install-llm
+LLM_MOCK=1 python scripts/run_all_examples.py --tier llm --chapter ch18
+```
+
+离线验收只证明导入、配置结构和本地控制流可执行。输出 `[SKIP]` 表示缺少可选依赖或主动避开远端
+服务，不等价于真实 API、Dify 实例、Bedrock、模型下载或训练已通过。
+
+### 18.9.2 真实调用必须显式开启
+
+以 OpenAI LCEL 示例为例：
+
+```bash
+LLM_MOCK=0 OPENAI_API_KEY=... OPENAI_MODEL=gpt-5.6 \
+  python ch18_llm_frameworks/llm/01_langchain_basic_chain.py
+```
+
+- OpenAI 模型由 `OPENAI_MODEL` 覆盖；选择低成本档时先查看当前模型目录，再做质量、延迟和成本评测。
+- Strands/Bedrock 必须设置目标区域中已获授权的 `BEDROCK_MODEL_ID`，不能复用教程中的历史 Claude ID。
+- Dify、AutoGen/AG2、CrewAI、Hayhooks、Hugging Face 等示例分别需要对应服务、凭据和安全边界。
+- 不要在同一次验收中批量开启所有真实外部调用；逐个示例验证并检查费用、远端资源和清理策略。
+
+### 18.9.3 示例分组
+
+| 区间 | 数量 | 默认验收含义 |
+|------|-----:|--------------|
+| `01-09`（含两个 `01`） | 10 | LCEL 与 LangChain Classic 迁移示例；Classic 缺失时允许 `[SKIP]` |
+| `10-12, 34, 36` | 5 | LangGraph 状态、HITL 与 checkpoint 的本地控制流 |
+| `13-18` | 6 | LlamaIndex 离线索引/检索契约；真实 embedding/LLM 另验 |
+| `19-20` | 2 | LLaMA-Factory 数据和配置生成；训练不在离线 runner 范围内 |
+| `21-24` | 4 | Dify、AutoGen、CrewAI 的 SDK/配置示意 |
+| `25-33, 35` | 10 | Pydantic AI、Strands、OpenAI Agents、AG2、Haystack、Smolagents、Agno 等结构示例 |
+
+### 18.9.4 资源边界
+
+框架结构和云 API 示例通常不需要本地 GPU；LLaMA-Factory 真训练、本地大模型推理和首次模型下载则
+需要独立评估 GPU/内存/磁盘。仓库中的小模型或适配器只能用于对应的本地示例，不代表与当前云模型
+等价，也不能作为整章真实验收的替代。
+
+## 🎯 面试题精讲
 
 ### 真题 18-1：LangChain 的 Chain 和 Agent 有什么区别？
 > **来源**：字节跳动 / 2025年 / 大模型应用开发工程师
@@ -2530,72 +2575,21 @@ states = list(graph.get_state_history(config))
 4. **可观测性**：LangSmith / Phoenix / 内置日志
 5. **团队技能匹配**：低代码选 Dify，全栈选 LangChain + LangGraph
 
----
-
-## 📚 延伸阅读与资源
-
-| 资源 | 链接 | 说明 |
-|------|------|------|
-| LangChain 官方文档 | https://python.langchain.com | 最全面的 LangChain 教程 |
-| LangGraph 文档 | https://langchain-ai.github.io/langgraph/ | 状态图 Agent 官方指南 |
-| LlamaIndex 文档 | https://docs.llamaindex.ai | 数据索引框架权威参考 |
-| LLaMA-Factory | https://github.com/hiyouga/LLaMA-Factory | 微调工厂 GitHub |
-| Dify 文档 | https://docs.dify.ai | 开源 LLM 应用平台 |
-| AutoGen 官方 | https://microsoft.github.io/autogen/ | 多 Agent 框架 |
-| CrewAI 文档 | https://docs.crewai.com | 角色分工 Agent 框架 |
-
----
-
-## 18.9 配套代码的运行与验收边界 ⭐⭐⭐⭐⭐
-
-本章共有 **37 个** Python 示例，包含可连接真实提供商的路径、纯本地算法演示、离线结构示意和
-可选依赖探测。它们不是“配置一个 Key 即全部真跑”的同一种程序。
-
-### 18.9.1 默认离线验收
-
-```bash
-cd code/
-make install-llm
-LLM_MOCK=1 python scripts/run_all_examples.py --tier llm --chapter ch18
-```
-
-离线验收只证明导入、配置结构和本地控制流可执行。输出 `[SKIP]` 表示缺少可选依赖或主动避开远端
-服务，不等价于真实 API、Dify 实例、Bedrock、模型下载或训练已通过。
-
-### 18.9.2 真实调用必须显式开启
-
-以 OpenAI LCEL 示例为例：
-
-```bash
-LLM_MOCK=0 OPENAI_API_KEY=... OPENAI_MODEL=gpt-5.6 \
-  python ch18_llm_frameworks/llm/01_langchain_basic_chain.py
-```
-
-- OpenAI 模型由 `OPENAI_MODEL` 覆盖；选择低成本档时先查看当前模型目录，再做质量、延迟和成本评测。
-- Strands/Bedrock 必须设置目标区域中已获授权的 `BEDROCK_MODEL_ID`，不能复用教程中的历史 Claude ID。
-- Dify、AutoGen/AG2、CrewAI、Hayhooks、Hugging Face 等示例分别需要对应服务、凭据和安全边界。
-- 不要在同一次验收中批量开启所有真实外部调用；逐个示例验证并检查费用、远端资源和清理策略。
-
-### 18.9.3 示例分组
-
-| 区间 | 数量 | 默认验收含义 |
-|------|-----:|--------------|
-| `01-09`（含两个 `01`） | 10 | LCEL 与 LangChain Classic 迁移示例；Classic 缺失时允许 `[SKIP]` |
-| `10-12, 34, 36` | 5 | LangGraph 状态、HITL 与 checkpoint 的本地控制流 |
-| `13-18` | 6 | LlamaIndex 离线索引/检索契约；真实 embedding/LLM 另验 |
-| `19-20` | 2 | LLaMA-Factory 数据和配置生成；训练不在离线 runner 范围内 |
-| `21-24` | 4 | Dify、AutoGen、CrewAI 的 SDK/配置示意 |
-| `25-33, 35` | 10 | Pydantic AI、Strands、OpenAI Agents、AG2、Haystack、Smolagents、Agno 等结构示例 |
-
-### 18.9.4 资源边界
-
-框架结构和云 API 示例通常不需要本地 GPU；LLaMA-Factory 真训练、本地大模型推理和首次模型下载则
-需要独立评估 GPU/内存/磁盘。仓库中的小模型或适配器只能用于对应的本地示例，不代表与当前云模型
-等价，也不能作为整章真实验收的替代。
-
----
-
 ## 📋 本章速查表
+
+### 框架全景速查表
+
+| 框架 | 定位 | 核心抽象 | 适用场景 | 学习曲线 | 生态成熟度 |
+|------|------|---------|---------|---------|-----------|
+| **LangChain** | LLM应用编排 | Chain, Tool, Memory | 对话系统、工具调用、RAG | ⭐⭐ 中等 | ★★★★★ 最成熟 |
+| **LangGraph** | 状态图Agent | State, Node, Edge | 复杂Agent、多步推理、人机协同 | ⭐⭐⭐ 较陡 | ★★★★☆ 快速增长 |
+| **LlamaIndex** | 数据索引与检索 | Document, Index, Node | 企业文档问答、知识库 | ⭐⭐ 中等 | ★★★★★ 成熟 |
+| **LLaMA-Factory** | 模型微调工厂 | Model, Dataset, Trainer | 全栈微调、LoRA/QLoRA | ⭐ 简单 | ★★★★☆ 成熟 |
+| **Dify** | 低代码Agent平台 | 工作流、知识库、工具 | 快速搭建AI应用 | ⭐ 简单 | ★★★★☆ 快速增长 |
+| **AutoGen** | 多Agent对话 | ConversableAgent, GroupChat | 多Agent协作、代码生成 | ⭐⭐ 中等 | ★★★☆☆ 发展中 |
+| **CrewAI** | 角色分工Agent | Agent, Task, Crew | 团队协作、角色扮演 | ⭐ 简单 | ★★★☆☆ 快速增长 |
+
+### 本章速查表
 
 | 概念 | 关键点 |
 |------|--------|
@@ -2624,3 +2618,27 @@ LLM_MOCK=0 OPENAI_API_KEY=... OPENAI_MODEL=gpt-5.6 \
 > - [[20_LLMOps与模型可观测性]] — LangSmith/LangFuse 监控
 > - [[25_推理引擎与高性能服务]] — 框架与推理引擎的集成
 > - [[29_Context_Engineering]] — Context 设计与框架选型
+
+## 🔗 相关章节
+
+- [[13_Prompt_Engineering]]：提供本章依赖的前置概念。
+- [[14_RAG检索增强生成]]：提供本章依赖的前置概念。
+- [[15_Agent智能体开发]]：提供本章依赖的前置概念。
+- [[20_LLMOps与模型可观测性]]：承接本章方法并进入下一层应用或工程问题。
+- [[24_云原生部署与工程化]]：承接本章方法并进入下一层应用或工程问题。
+
+## 📖 一手参考资料
+
+| 资源 | 链接 | 说明 |
+|------|------|------|
+| LangChain 官方文档 | https://python.langchain.com | 最全面的 LangChain 教程 |
+| LangGraph 文档 | https://langchain-ai.github.io/langgraph/ | 状态图 Agent 官方指南 |
+| LlamaIndex 文档 | https://docs.llamaindex.ai | 数据索引框架权威参考 |
+| LLaMA-Factory | https://github.com/hiyouga/LLaMA-Factory | 微调工厂 GitHub |
+| Dify 文档 | https://docs.dify.ai | 开源 LLM 应用平台 |
+| AutoGen 官方 | https://microsoft.github.io/autogen/ | 多 Agent 框架 |
+| CrewAI 文档 | https://docs.crewai.com | 角色分工 Agent 框架 |
+
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
+
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

@@ -1,6 +1,9 @@
 # Docker 排除文件 (减小 build context)
 .git/
-.github/
+.github/*
+!.github/workflows/
+.github/workflows/*
+!.github/workflows/ci-llm-doctor.yml
 .vscode/
 .idea/
 .claudian/

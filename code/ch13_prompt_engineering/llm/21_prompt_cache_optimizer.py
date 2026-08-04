@@ -1,7 +1,7 @@
 # ---
 # chapter: 13
 # topic: Prompt Engineering
-# section: 13.7.5 自适应缓存前缀管理器
+# section: 13.5.5 自适应缓存前缀管理器
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: 无外部依赖

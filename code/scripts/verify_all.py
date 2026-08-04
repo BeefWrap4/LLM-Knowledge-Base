@@ -37,6 +37,17 @@ EXPECTED_CHAPTERS = 40
 EXPECTED_CODE_CHAPTERS = 29
 EXPECTED_EXAMPLES = 433
 NUMBERED_HEADING_RE = re.compile(r"^#{2,6}\s+(\d{1,2}(?:\.\d+)+)\b")
+CHAPTER_NAVIGATION_HEADING = "> [!abstract] 本章导航"
+CHAPTER_APPENDIX_HEADINGS = (
+    "## 🧭 本章小结",
+    "## ✅ 自测与练习",
+    "## 🧪 配套代码与验收",
+    "## 🎯 面试题精讲",
+    "## 📋 本章速查表",
+    "## 🔗 相关章节",
+    "## 📖 一手参考资料",
+)
+CHAPTER_OPTIONAL_APPENDIX_HEADING = "## 🗺️ 知识地图"
 PYTHON_REFERENCE_RE = re.compile(
     r"(?<![A-Za-z0-9_./\\-])"
     r"((?:code[\\/])?ch\d{2}_[A-Za-z0-9_.-]+[\\/]"
@@ -155,9 +166,7 @@ def _inspect_sequence_semantics(markdown_name: str, body: list[tuple[int, str]])
         if participant_match:
             participants[participant_match.group("identifier")] = participant_match.group("label")
 
-    participant_roles = {
-        _sequence_participant_role(identifier, participants) for identifier in participants
-    }
+    participant_roles = {_sequence_participant_role(identifier, participants) for identifier in participants}
     has_agent_and_tool = {"agent", "tool"}.issubset(participant_roles)
 
     for line_no, line in body:
@@ -171,8 +180,7 @@ def _inspect_sequence_semantics(markdown_name: str, body: list[tuple[int, str]])
 
         if normalized_label.startswith("action:") and target_role == "user":
             failures.append(
-                f"{markdown_name}:{line_no} ReAct Action is routed to the user; "
-                "route it to the tool/runtime"
+                f"{markdown_name}:{line_no} ReAct Action is routed to the user; route it to the tool/runtime"
             )
         if normalized_label.startswith("observation:") and target_role == "user":
             failures.append(
@@ -200,6 +208,156 @@ def canonical_chapters() -> list[Path]:
         for path in sorted(REPO.glob("[0-9][0-9]_*.md"))
         if path.name not in {"00_目录索引.md", "99_库健康检查报告.md"}
     ]
+
+
+def _outside_fence_lines(lines: list[str]) -> list[tuple[int, str]]:
+    """Return one-based Markdown lines while ignoring all fenced code examples."""
+
+    visible: list[tuple[int, str]] = []
+    fence_char: str | None = None
+    fence_length = 0
+    for line_no, line in enumerate(lines, 1):
+        if fence_char is not None:
+            if re.match(rf"^\s{{0,3}}{re.escape(fence_char)}{{{fence_length},}}\s*$", line):
+                fence_char = None
+                fence_length = 0
+            continue
+        fence_match = MARKDOWN_FENCE_START_RE.match(line)
+        if fence_match:
+            marker = fence_match.group(1)
+            fence_char = marker[0]
+            fence_length = len(marker)
+            continue
+        visible.append((line_no, line))
+    return visible
+
+
+def inspect_chapter_narratives() -> tuple[int, list[str]]:
+    """Validate the 40-chapter learning contract and appendix ordering."""
+
+    chapters = canonical_chapters()
+    failures: list[str] = []
+    for chapter in chapters:
+        chapter_number = int(chapter.name[:2])
+        lines = chapter.read_text(encoding="utf-8").splitlines()
+        visible = _outside_fence_lines(lines)
+        h1_lines = [(line_no, line) for line_no, line in visible if line.startswith("# ")]
+        expected_h1 = re.compile(rf"^# 第 {chapter_number} 章(?:\s|$)")
+        if len(h1_lines) != 1 or not expected_h1.match(h1_lines[0][1]):
+            failures.append(
+                f"{chapter.name} must contain exactly one H1 starting with '# 第 {chapter_number} 章'"
+            )
+
+        navigation_lines = [
+            line_no for line_no, line in visible if line.strip() == CHAPTER_NAVIGATION_HEADING
+        ]
+        h2_lines = [(line_no, line) for line_no, line in visible if line.startswith("## ")]
+        if len(navigation_lines) != 1:
+            failures.append(f"{chapter.name} must contain exactly one chapter navigation callout")
+        elif h2_lines and navigation_lines[0] > h2_lines[0][0]:
+            failures.append(
+                f"{chapter.name}:{navigation_lines[0]} chapter navigation must precede H2 content"
+            )
+        else:
+            start = navigation_lines[0] - 1
+            end = start + 1
+            while end < len(lines) and lines[end].startswith(">"):
+                end += 1
+            objective_count = sum(bool(re.match(r"^>\s+-\s+\S", line)) for line in lines[start:end])
+            if objective_count != 3:
+                failures.append(
+                    f"{chapter.name}:{navigation_lines[0]} chapter navigation has "
+                    f"{objective_count} learning objectives; expected 3"
+                )
+            first_h2_line = h2_lines[0][0] if h2_lines else len(lines) + 1
+            intro = [
+                line for line in lines[end : first_h2_line - 1] if line.strip() and line.strip() != "---"
+            ]
+            if not intro:
+                failures.append(f"{chapter.name} has no chapter introduction after navigation")
+
+        if not any(line.startswith("updated:") for _, line in visible):
+            failures.append(f"{chapter.name} is missing updated frontmatter")
+
+        heading_positions: dict[str, list[int]] = {
+            heading: [line_no for line_no, line in h2_lines if line == heading]
+            for heading in (*CHAPTER_APPENDIX_HEADINGS, CHAPTER_OPTIONAL_APPENDIX_HEADING)
+        }
+        for heading in CHAPTER_APPENDIX_HEADINGS:
+            positions = heading_positions[heading]
+            if len(positions) != 1:
+                failures.append(
+                    f"{chapter.name} must contain exactly one {heading.removeprefix('## ')} section"
+                )
+        optional_positions = heading_positions[CHAPTER_OPTIONAL_APPENDIX_HEADING]
+        if len(optional_positions) > 1:
+            failures.append(
+                f"{chapter.name} contains duplicate "
+                f"{CHAPTER_OPTIONAL_APPENDIX_HEADING.removeprefix('## ')} sections"
+            )
+
+        present_appendices = [
+            (line_no, heading) for line_no, heading in h2_lines if heading in heading_positions
+        ]
+        actual_appendix_order = [heading for _, heading in present_appendices]
+        expected_appendix_order = list(CHAPTER_APPENDIX_HEADINGS[:5])
+        if optional_positions:
+            expected_appendix_order.append(CHAPTER_OPTIONAL_APPENDIX_HEADING)
+        expected_appendix_order.extend(CHAPTER_APPENDIX_HEADINGS[5:])
+        if actual_appendix_order != expected_appendix_order:
+            failures.append(f"{chapter.name} fixed ending sections are missing, duplicated, or out of order")
+
+        first_appendix_line = present_appendices[0][0] if present_appendices else len(lines) + 1
+        main_h2 = [(line_no, line) for line_no, line in h2_lines if line_no < first_appendix_line]
+        main_numbers: list[int] = []
+        for line_no, heading in main_h2:
+            match = re.match(rf"^## {chapter_number}\.(\d+)\s+\S", heading)
+            if match is None:
+                failures.append(f"{chapter.name}:{line_no} main H2 must use chapter-scoped numbering")
+                continue
+            main_numbers.append(int(match.group(1)))
+        if main_numbers != list(range(1, len(main_numbers) + 1)):
+            failures.append(f"{chapter.name} main H2 numbering is not contiguous from 1")
+
+        active_main_prefix: str | None = None
+        for line_no, heading in visible:
+            if line_no >= first_appendix_line:
+                break
+            h2_match = re.match(rf"^## ({chapter_number}\.\d+)\s+", heading)
+            if h2_match:
+                active_main_prefix = h2_match.group(1)
+                continue
+            descendant_match = re.match(r"^(#{3,6})\s+(\d+(?:\.\d+)+)\s+", heading)
+            if descendant_match is None:
+                continue
+            marker, number = descendant_match.groups()
+            if (
+                active_main_prefix is None
+                or not number.startswith(f"{active_main_prefix}.")
+                or len(number.split(".")) != len(marker)
+            ):
+                failures.append(
+                    f"{chapter.name}:{line_no} numbered descendant heading does not inherit its parent"
+                )
+
+        for line_no, heading in h2_lines + [
+            (line_no, line) for line_no, line in visible if re.match(r"^#{3,6}\s+", line)
+        ]:
+            if heading == "## 🎯 面试题精讲":
+                continue
+            if "🆕" in heading or "🎯" in heading:
+                failures.append(
+                    f"{chapter.name}:{line_no} decorative heading icons are reserved for fixed sections"
+                )
+        for line_no, heading in h2_lines:
+            if line_no <= first_appendix_line or heading in heading_positions:
+                continue
+            if re.match(rf"^## {chapter_number}\.\d+\s+", heading):
+                failures.append(f"{chapter.name}:{line_no} numbered H2 appears after fixed ending sections")
+            elif heading not in heading_positions:
+                failures.append(f"{chapter.name}:{line_no} unexpected H2 after fixed ending sections")
+
+    return len(chapters), failures
 
 
 def markdown_documents() -> list[Path]:
@@ -251,6 +409,7 @@ def check_repo_consistency() -> bool:
     dynamic_execution_failures = find_dynamic_execution_failures(examples)
     mermaid_blocks, mermaid_format_failures = inspect_mermaid_blocks()
     markdown_count, markdown_format_failures = inspect_markdown_rendering()
+    narrative_count, narrative_failures = inspect_chapter_narratives()
 
     duplicate_headings: list[str] = []
     for chapter in chapters:
@@ -287,6 +446,7 @@ def check_repo_consistency() -> bool:
     print(f"  Builtin eval/exec calls: {len(dynamic_execution_failures)}")
     print(f"  Mermaid blocks/format failures: {mermaid_blocks}/{len(mermaid_format_failures)}")
     print(f"  Markdown documents/format failures: {markdown_count}/{len(markdown_format_failures)}")
+    print(f"  Chapter narratives/contract failures: {narrative_count}/{len(narrative_failures)}")
     for issue in (
         duplicate_headings
         + missing_metadata
@@ -296,6 +456,7 @@ def check_repo_consistency() -> bool:
         + dynamic_execution_failures
         + mermaid_format_failures
         + markdown_format_failures
+        + narrative_failures
     )[:20]:
         print(f"  [FAIL] {issue}")
 
@@ -312,6 +473,7 @@ def check_repo_consistency() -> bool:
             not dynamic_execution_failures,
             not mermaid_format_failures,
             not markdown_format_failures,
+            not narrative_failures,
         ]
     )
 
@@ -968,7 +1130,9 @@ def check_source_ledger() -> bool:
         print("  [FAIL] docs/AUTHORITATIVE_SOURCES.md is missing")
         return False
     text = ledger.read_text(encoding="utf-8")
-    missing = [f"Ch{number:02d}" for number in range(1, EXPECTED_CHAPTERS + 1) if f"| Ch{number:02d} |" not in text]
+    missing = [
+        f"Ch{number:02d}" for number in range(1, EXPECTED_CHAPTERS + 1) if f"| Ch{number:02d} |" not in text
+    ]
     rows_without_links = [
         line.split("|")[1].strip()
         for line in text.splitlines()
@@ -988,7 +1152,7 @@ def check_doc_snapshot() -> bool:
         "README.md": ("40 章节", "433 个可运行代码示例"),
         "code/README.md": ("29 章", "433"),
         "00_目录索引.md": ("40 章", "7 大板块"),
-        "99_库健康检查报告.md": ("2026-07-31", "433"),
+        "99_库健康检查报告.md": ("2026-08-04", "433"),
         "Python到大模型应用_面试教程_2026版_思维导图.xmind.md": ("40 章", "433"),
     }
     failures = []

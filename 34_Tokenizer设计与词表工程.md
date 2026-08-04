@@ -4,7 +4,7 @@ topic: Tokenizer设计与词表工程
 difficulty: 中高
 interview_frequency: 3
 created: 2026-06-24T00:00:00.000Z
-updated: 2026-07-31T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - Tokenizer
   - BPE
@@ -13,10 +13,23 @@ tags:
   - Unigram
   - 词表
 ---
-# 第34章 Tokenizer 设计与词表工程：BPE、BBPE、SentencePiece ⭐⭐⭐
+# 第 34 章 Tokenizer 设计与词表工程：BPE、BBPE、SentencePiece ⭐⭐⭐
 
-> **面试频率**：中（算法/数据工程岗较常见）| **技术热度**：★★★☆☆
+> [!abstract] 本章导航
+> **定位**：解释文本如何进入模型，并把词表设计连接到成本、多语言和领域效果。
 >
+> **先修**：[[01_Python编程基础]]、[[12_Transformer与大模型原理]]、[[22_大模型数据工程]]。
+>
+> **学习目标**：
+> - 解释 BPE、Unigram 和 SentencePiece 的训练与解码。
+> - 测量压缩率、未知词和多语言 token 效率。
+> - 根据领域数据与兼容性设计词表适配。
+>
+> **建议路径**：BPE/BBPE 算法原理 → SentencePiece 与 Unigram LM → 词表大小权衡：压缩率 vs 下游性能 → … → 主流 Tokenizer 对比。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：本章暂无独立代码目录，使用正文推导、自测题和决策表验收。
+
+> [!info] 阅读提示
 > Tokenizer 决定文本如何映射为模型序列，会共同影响序列长度、词表参数、语言覆盖、成本与
 > 下游质量；不存在只看“压缩率”就能选出的单一最佳方案。本章梳理
 > BPE/BBPE/SentencePiece/Unigram 原理、词表大小权衡与多语言覆盖工程。
@@ -24,8 +37,6 @@ tags:
 > 🆕 **截至 2026-07-31**：多语言 byte-level BPE 与 SentencePiece 仍广泛使用，但不存在
 > “Qwen-LLaMA Tokenizer”这一统一标准。Tokenizer 评估除压缩率外，还必须覆盖 Unicode
 > normalization、特殊 token/chat template、byte fallback、跨语言成本和下游任务回归。
-
----
 
 ## 34.1 BPE/BBPE 算法原理 ⭐⭐⭐⭐
 
@@ -134,8 +145,6 @@ BBPE = Byte-level BPE（字节级 BPE），是 GPT-2 用的方案：
   映射；“无需预处理”并不准确
 - 罕见脚本可能被拆成很多字节 token，能表示不等于跨语言效率或效果公平
 
----
-
 ## 34.2 SentencePiece 与 Unigram LM ⭐⭐⭐⭐
 
 ### 34.2.1 SentencePiece 简介
@@ -195,8 +204,6 @@ SentencePiece 用 U+2581 `▁`（LOWER ONE EIGHTH BLOCK，不是 ASCII 下划线
 - 无需预分词（如 spaCy/NLTK）
 - 能恢复规范化文本中的空格位置；若 normalizer 改写了原始文本，则不能逐码点还原原文
 
----
-
 ## 34.3 词表大小权衡：压缩率 vs 下游性能 ⭐⭐⭐
 
 ### 34.3.1 Pareto 最优选择
@@ -226,8 +233,6 @@ def compression_ratio(text: str, tokenized: list[str]):
 
 Parity（跨语言成本与质量）不能简化为“各语言压缩率必须相同”。应按每种语言合适的单位比较
 fertility/bytes/token、请求成本与下游质量，识别某些语言是否被系统性过度切分或成本异常。
-
----
 
 ## 34.4 多语言与领域适配工程 ⭐⭐⭐
 
@@ -260,8 +265,6 @@ Tokenizer Drift（漂移）：预训练用 tokenizer A，微调/推理用 tokeni
   token 及其 ID、normalizer、pre-tokenizer、chat template，并记录仓库 revision 与文件 hash
 - 建立 encode/decode round-trip、特殊 token、Unicode 边界和固定语料 token IDs 回归测试
 
----
-
 ## 34.5 主流 Tokenizer 对比 ⭐⭐⭐
 
 | Tokenizer | 代表实现 | 算法 | 空格处理 | 核验边界 |
@@ -274,23 +277,29 @@ Tokenizer Drift（漂移）：预训练用 tokenizer A，微调/推理用 tokeni
 
 表中是代表实现，不是品牌级永久承诺；同一模型家族的后续版本也可能更换算法、词表或模板。
 
----
+## 🧭 本章小结
 
-## 📋 本章速查表
+本章应形成以下可复述结论：
 
-| 知识点 | 核心概念/公式 | 面试考察重点 |
-|-------|-------------|-------------|
-| BPE 训练步骤 | 初始字符、迭代合并最高频字节对、达到词表大小停止 | 合并逻辑的代码实现 |
-| BBPE | 先转 UTF-8 字节，再对字节做 BPE | Unicode 全覆盖的优点 |
-| SentencePiece | 支持 Unigram/BPE，空格记为 `▁` | normalization 与可逆边界 |
-| Unigram LM | Viterbi 分词、迭代剪枝最不重要 token | 与 BPE 的对比 |
-| 词表权衡 | Pareto：压缩率 vs 下游性能 vs 参数量 | 固定预算扫描候选并测端到端指标 |
-| 多语言配比 | 温度/指数采样 $p_i \propto n_i^\alpha$ | 明确定义并用开发集调参 |
-| Tokenizer Drift | 预训练与微调 tokenizer 不一致 → 性能下降 | 严格版本控制 |
+- 解释 BPE、Unigram 和 SentencePiece 的训练与解码。
+- 测量压缩率、未知词和多语言 token 效率。
+- 根据领域数据与兼容性设计词表适配。
 
----
+## ✅ 自测与练习
 
-## 🎯 面试真题精讲
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
+
+1. 你能否解释 BPE、Unigram 和 SentencePiece 的训练与解码？
+2. 你能否测量压缩率、未知词和多语言 token 效率？
+3. 你能否根据领域数据与兼容性设计词表适配？
+
+## 🧪 配套代码与验收
+
+本章暂无独立代码目录。验收时应完成正文中的推导或决策题，并能在自测中说明适用边界。
+
+成功标准：概念、输入输出、关键指标和失败条件能够相互对应，不用未经验证的性能数字代替结论。
+
+## 🎯 面试题精讲
 
 ### 真题 1：解释 BPE 训练与推理的完整流程，手写最小实现
 
@@ -371,18 +380,32 @@ Tokenizer Drift：预训练用 tokenizer A，微调/推理用 tokenizer B（略�
 - 保存完整 tokenizer artifacts、chat template、revision 与 hashes
 - 自动化测试验证 tokenization 一致性
 
----
+## 📋 本章速查表
 
-## 📚 相关章节
+| 知识点 | 核心概念/公式 | 面试考察重点 |
+|-------|-------------|-------------|
+| BPE 训练步骤 | 初始字符、迭代合并最高频字节对、达到词表大小停止 | 合并逻辑的代码实现 |
+| BBPE | 先转 UTF-8 字节，再对字节做 BPE | Unicode 全覆盖的优点 |
+| SentencePiece | 支持 Unigram/BPE，空格记为 `▁` | normalization 与可逆边界 |
+| Unigram LM | Viterbi 分词、迭代剪枝最不重要 token | 与 BPE 的对比 |
+| 词表权衡 | Pareto：压缩率 vs 下游性能 vs 参数量 | 固定预算扫描候选并测端到端指标 |
+| 多语言配比 | 温度/指数采样 $p_i \propto n_i^\alpha$ | 明确定义并用开发集调参 |
+| Tokenizer Drift | 预训练与微调 tokenizer 不一致 → 性能下降 | 严格版本控制 |
+
+## 🔗 相关章节
 
 - [[12_Transformer与大模型原理]]：embedding 层与 tokenizer 的关系
 - [[22_大模型数据工程]]：预训练数据 pipeline 与 tokenizer 的配合
 - [[28_端侧与边缘LLM]]：端侧上的 tokenizer 轻量化
 
-## 📖 一手参考资料（核验至 2026-07-31）
+## 📖 一手参考资料
 
 - Google, [SentencePiece 官方仓库](https://github.com/google/sentencepiece)
 - Hugging Face, [Tokenizers pipeline 与组件](https://huggingface.co/docs/tokenizers/main/pipeline)
 - Hugging Face Transformers, [Tokenizer API 与 save_pretrained](https://huggingface.co/docs/transformers/main_classes/tokenizer)
 - Meta Llama, [Llama 3 tokenizer 实现](https://github.com/meta-llama/llama3/blob/main/llama/tokenizer.py)
 - QwenLM, [Qwen tokenization note](https://github.com/QwenLM/Qwen/blob/main/tokenization_note.md)
+
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
+
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

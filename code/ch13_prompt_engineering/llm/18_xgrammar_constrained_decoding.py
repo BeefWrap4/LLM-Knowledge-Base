@@ -1,7 +1,7 @@
 # ---
 # chapter: 13
 # topic: Prompt Engineering
-# section: 13.7.4 xgrammar 词表级约束解码
+# section: 13.5.4 xgrammar 词表级约束解码
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: xgrammar, transformers, torch

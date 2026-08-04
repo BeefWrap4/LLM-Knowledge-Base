@@ -1,7 +1,7 @@
 # ---
 # chapter: 13
 # topic: Prompt Engineering
-# section: 13.7.1 Anthropic Extended Thinking
+# section: 13.5.1 Anthropic Extended Thinking
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: anthropic

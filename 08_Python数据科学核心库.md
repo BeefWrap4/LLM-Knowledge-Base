@@ -4,6 +4,7 @@ topic: 数据科学核心库
 difficulty: 中
 interview_frequency: 5
 created: 2026-06-01T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - python
   - NumPy
@@ -11,13 +12,23 @@ tags:
   - 数据科学
   - 数据可视化
 ---
-# 第8章 Python 数据科学核心库 ⭐⭐⭐⭐⭐
+# 第 8 章 Python 数据科学核心库 ⭐⭐⭐⭐⭐
 
-> **面试频率**：高（数据科学/AI 方向必问） | **难度**：中 | **建议学习时长**：6-8 小时
+> [!abstract] 本章导航
+> **定位**：把 Python 基础扩展到可复现的数据处理与特征分析流程。
+>
+> **先修**：[[01_Python编程基础]]、[[07_Python数据结构与算法]]。
+>
+> **学习目标**：
+> - 使用 NumPy、Pandas 和可视化工具处理结构化数据。
+> - 构建从读取、清洗到分析输出的可复现流程。
+> - 诊断副本、缺失值、泄漏和统计口径问题。
+>
+> **建议路径**：NumPy → Pandas → 数据可视化 → 综合实战：数据分析完整流程。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：`code/ch08_data_science/`。
 
 NumPy 和 Pandas 是 Python 数据科学生态的基石，也是数据处理和 AI 开发面试的高频考点。本章深入讲解两大核心库的原理和面试重点，配合完整代码示例和性能优化技巧。
-
----
 
 ## 8.1 NumPy ⭐⭐⭐⭐
 
@@ -216,8 +227,6 @@ batch_x = np.random.randn(10, 3, 1)  # 10 个向量
 # 广播后逐元素矩阵乘法
 batch_result = batch_A @ batch_x  # (10, 3, 1)
 ```
-
----
 
 ## 8.2 Pandas ⭐⭐⭐⭐⭐
 
@@ -603,8 +612,6 @@ sparse_data = csr_matrix(df.values)  # 内存大幅减少
 > 4. **迭代器模式**：用 `iterator=True` 配合 `get_chunk()`
 > 5. **换工具**：Dask（分布式 Pandas）、Polars（Rust 实现，更快更省内存）
 
----
-
 ## 8.3 数据可视化
 
 ### 8.3.1 Matplotlib 基础
@@ -731,8 +738,6 @@ ts.head(10).plot.bar(figsize=(10, 5), title='Bar Chart')
 ts.iloc[-1].plot.pie(figsize=(6, 6), autopct='%1.1f%%', title='Composition')
 ```
 
----
-
 ## 8.4 综合实战：数据分析完整流程
 
 ```python
@@ -827,9 +832,62 @@ print(f"会员比例: {df['is_member'].mean()*100:.1f}%")
 print(f"最热门品类: {df['category'].mode()[0]}")
 ```
 
----
+## 🧭 本章小结
 
-## 🎯 面试真题精讲
+```text
+数据科学核心库
+├── NumPy
+│   ├── ndarray — 连续内存/向量化运算
+│   ├── 广播机制 — 维度匹配规则
+│   ├── 花式索引与布尔掩码
+│   └── 矩阵运算与线性代数
+├── Pandas
+│   ├── Series / DataFrame 核心结构
+│   ├── loc vs iloc — 标签索引 vs 位置索引
+│   ├── groupby / apply / map / applymap
+│   ├── 缺失值处理 — dropna/fillna/interpolate
+│   └── 大数据集优化 — 类型优化/分块读取/Dask
+├── 数据可视化
+│   ├── Matplotlib — 基础图表绘制
+│   ├── Seaborn — 统计可视化
+│   └── Pandas 内置绘图
+└── 综合实战
+    ├── 数据分析完整流程
+    ├── 数据清洗 → 探索 → 可视化
+    └── 性能优化 checklist
+```
+
+| 知识点 | 面试频率 | 掌握要求 |
+|--------|---------|---------|
+| ndarray vs Python List | ⭐⭐⭐⭐ | 理解内存布局和性能差异 |
+| 广播机制 | ⭐⭐⭐⭐⭐ | 能判断两个数组是否可广播 |
+| loc vs iloc | ⭐⭐⭐⭐⭐ | 区分标签和位置索引 |
+| groupby 聚合 | ⭐⭐⭐⭐⭐ | 掌握 agg/transform/filter |
+| apply/map/applymap 区别 | ⭐⭐⭐⭐⭐ | 区分使用场景 |
+| 缺失值处理 | ⭐⭐⭐⭐⭐ | 完整清洗流程 |
+| 内存优化技巧 | ⭐⭐⭐⭐ | 类型优化、分块读取 |
+| 数据可视化 | ⭐⭐⭐ | 基础图表 + 箱线图含义 |
+
+## ✅ 自测与练习
+
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
+
+1. 你能否使用 NumPy、Pandas 和可视化工具处理结构化数据？
+2. 你能否构建从读取、清洗到分析输出的可复现流程？
+3. 你能否诊断副本、缺失值、泄漏和统计口径问题？
+
+## 🧪 配套代码与验收
+
+配套目录：`code/ch08_data_science/`。从 `code/` 目录运行：
+
+```powershell
+python scripts/run_all_examples.py --tier core --chapter ch08 --parallel 1 --timeout 60
+```
+
+成功标准：命令退出码为 0，示例输出 `OK`；缺少可选依赖时必须给出明确 `[SKIP]`，而不是 traceback。
+真实 API、GPU、模型下载和付费调用不属于默认离线验收，必须按示例 metadata 与章节说明单独确认。
+
+## 🎯 面试题精讲
 
 ### 题目 1：NumPy 数组和 Python 列表的区别？
 
@@ -872,45 +930,6 @@ print(f"最热门品类: {df['category'].mode()[0]}")
 > 4. **惰性计算**：使用 Dask 或 Polars 替代 Pandas
 > 5. **迭代器**：`iterator=True` + `get_chunk()`
 
----
-
-## 本章小结
-```text
-数据科学核心库
-├── NumPy
-│   ├── ndarray — 连续内存/向量化运算
-│   ├── 广播机制 — 维度匹配规则
-│   ├── 花式索引与布尔掩码
-│   └── 矩阵运算与线性代数
-├── Pandas
-│   ├── Series / DataFrame 核心结构
-│   ├── loc vs iloc — 标签索引 vs 位置索引
-│   ├── groupby / apply / map / applymap
-│   ├── 缺失值处理 — dropna/fillna/interpolate
-│   └── 大数据集优化 — 类型优化/分块读取/Dask
-├── 数据可视化
-│   ├── Matplotlib — 基础图表绘制
-│   ├── Seaborn — 统计可视化
-│   └── Pandas 内置绘图
-└── 综合实战
-    ├── 数据分析完整流程
-    ├── 数据清洗 → 探索 → 可视化
-    └── 性能优化 checklist
-```
-
-| 知识点 | 面试频率 | 掌握要求 |
-|--------|---------|---------|
-| ndarray vs Python List | ⭐⭐⭐⭐ | 理解内存布局和性能差异 |
-| 广播机制 | ⭐⭐⭐⭐⭐ | 能判断两个数组是否可广播 |
-| loc vs iloc | ⭐⭐⭐⭐⭐ | 区分标签和位置索引 |
-| groupby 聚合 | ⭐⭐⭐⭐⭐ | 掌握 agg/transform/filter |
-| apply/map/applymap 区别 | ⭐⭐⭐⭐⭐ | 区分使用场景 |
-| 缺失值处理 | ⭐⭐⭐⭐⭐ | 完整清洗流程 |
-| 内存优化技巧 | ⭐⭐⭐⭐ | 类型优化、分块读取 |
-| 数据可视化 | ⭐⭐⭐ | 基础图表 + 箱线图含义 |
-
----
-
 ## 📋 本章速查表
 
 | 概念 | 关键点 |
@@ -926,10 +945,14 @@ print(f"最热门品类: {df['category'].mode()[0]}")
 | **Matplotlib 绘图骨架** | `fig, axes = plt.subplots(nrows, ncols)`；常用 `plot/scatter/bar/hist`；`tight_layout` 调整；`savefig(dpi, bbox_inches='tight')` |
 | **Seaborn 统计图** | `boxplot` 展示 5 数概括（Min/Q1/Median/Q3/Max + 1.5×IQR 异常值）；`heatmap` 看相关系数矩阵；`histplot(kde=True)` 分布+密度 |
 
----
-
-## 📚 相关章节
+## 🔗 相关章节
 
 - [[01_Python编程基础]] — 列表推导式、生成器等 NumPy/Pandas 操作的前置基础
 - [[07_Python数据结构与算法]] — 哈希表、排序等算法在数据科学库中的底层应用
 - [[10_机器学习基础]] — NumPy/Pandas 是机器学习的核心数据处理工具
+
+## 📖 一手参考资料
+
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
+
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

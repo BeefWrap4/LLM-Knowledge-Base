@@ -1,7 +1,7 @@
 # ---
 # chapter: 17
 # topic: 大模型评估体系
-# section: 17.11.3 Phoenix tracing and client-side evals
+# section: 17.10.3 Phoenix tracing and client-side evals
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: arize-phoenix-otel, arize-phoenix-evals>=3, pandas

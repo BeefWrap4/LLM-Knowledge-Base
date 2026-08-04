@@ -1,7 +1,7 @@
 # ---
 # chapter: 16
 # topic: GRPO Loss (真实可微 PyTorch 实现)
-# section: 16.10.1
+# section: 16.9.1
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: gpu
 # mock_safe: true

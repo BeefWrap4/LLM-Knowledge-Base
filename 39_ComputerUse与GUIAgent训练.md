@@ -4,7 +4,7 @@ topic: ComputerUse与GUIAgent训练
 difficulty: 高
 interview_frequency: 2
 created: 2026-06-24T00:00:00.000Z
-updated: 2026-07-31T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - Computer-Use
   - GUI-Agent
@@ -13,10 +13,23 @@ tags:
   - AutoGLM-OS
   - GLM-ComputerRL
 ---
-# 第39章 Computer-Use 与 GUI Agent 训练：OSWorld、ComputerRL 与版本化评测 ⭐⭐
+# 第 39 章 Computer-Use 与 GUI Agent 训练：OSWorld、ComputerRL 与版本化评测 ⭐⭐
 
-> **面试频率**：低（Computer-Use/Agent 研究岗位更常见）| **技术热度**：★★★☆☆
+> [!abstract] 本章导航
+> **定位**：把 Agent 扩展到真实 GUI 环境，连接数据、策略学习、沙箱和安全评测。
 >
+> **先修**：[[15_Agent智能体开发]]、[[21_多模态大模型]]、[[23_AI安全与伦理]]。
+>
+> **学习目标**：
+> - 解释 Computer-Use 任务、环境和评测协议。
+> - 设计从轨迹数据、SFT 到 RL 的训练闭环。
+> - 评估权限隔离、动作副作用和基准有效性。
+>
+> **建议路径**：Computer-Use 任务定义与基准 → OSWorld 基准详解 → 从 SFT 到 RL：GUI Agent 训练范式 → … → 与现有 Agent 框架的集成。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：本章暂无独立代码目录，使用正文推导、自测题和决策表验收。
+
+> [!info] 阅读提示
 > Computer-Use（计算机使用）让 Agent 通过截图、可访问性树或程序化 API 感知并操作桌面/网页。
 > 本章梳理 OSWorld/WebArena、ComputerRL 及其论文模型，并说明环境、评测和安全边界。
 >
@@ -26,8 +39,6 @@ tags:
 > 并报告 `48.1 ± 1.0`，ICLR 2026 官方页面使用 **GLM-ComputerRL-9B** 并报告 `48.9%`。
 > 引用时必须带来源/版本，不能把二者拼成同一结果；该工作也不属于字节跳动项目。不同 OSWorld
 > 版本、任务集与 agent scaffold 的成绩不可直接横向排名。
-
----
 
 ## 39.1 Computer-Use 任务定义与基准 ⭐⭐⭐⭐
 
@@ -48,8 +59,6 @@ Computer-Use = 让 Agent 像人一样操作计算机：
 | **WebArena** | 网页操作 | 可独立部署、可复现的网站环境，不是任意线上真实网站 | 环境版本、任务版本、文本/视觉观察 |
 | **WindowsAgentArena** | Windows 桌面 | Windows 11 VM，150+ 任务 | VM 快照、任务集、agent 与评测器版本 |
 | **Mind2Web** | 网页轨迹/泛化评测 | 以离线网页交互数据为主，不等同于完整在线 OS 环境 | task split、元素候选与评测指标 |
-
----
 
 ## 39.2 OSWorld 基准详解 ⭐⭐⭐⭐
 
@@ -86,8 +95,6 @@ ActionSpace = {
     "key": {"key": "ctrl+a/enter/esc"}
 }
 ```
-
----
 
 ## 39.3 从 SFT 到 RL：GUI Agent 训练范式 ⭐⭐⭐⭐
 
@@ -127,8 +134,6 @@ flowchart TD
     RL --> Policy
     SFT --> Policy
 ```
-
----
 
 ## 39.4 AutoGLM-OS / GLM-ComputerRL-9B：先分清发布版本 ⭐⭐⭐⭐
 
@@ -183,8 +188,6 @@ def validate_action(action: GUIAction, *, width: int, height: int) -> None:
 模型输出必须先做 schema、坐标系、当前窗口和策略校验，再交给执行器；转账、发送、删除、安装软件、
 上传文件等外部副作用还要单独审批，不能把“能解析”视为“已授权”。
 
----
-
 ## 39.5 工程栈：环境模拟、沙箱隔离、安全 ⭐⭐⭐
 
 ### 39.5.1 无头桌面环境模拟
@@ -209,8 +212,6 @@ GUI Agent 同时接触不可信屏幕内容和高权限执行通道。容器能�
 - **审计与回滚**：记录 observation/action、模型/提示版本、审批人和外部结果，敏感字段脱敏；
 - **抗提示注入**：网页、邮件、文档中的指令一律视为不可信数据，不能覆盖系统策略或泄露秘密。
 
----
-
 ## 39.6 与现有 Agent 框架的集成 ⭐⭐⭐
 
 ### 39.6.1 稳定的工具边界
@@ -224,23 +225,29 @@ Computer-Use 工具都应暴露一个小而稳定的契约：
 4. 对 timeout/未知结果先查询外部状态，不盲目重复 click/type；
 5. 模型无法直接读取宿主秘密或绕过策略层调用底层自动化驱动。
 
----
+## 🧭 本章小结
 
-## 📋 本章速查表
+本章应形成以下可复述结论：
 
-| 知识点 | 核心概念 | 面试考察重点 |
-|-------|---------|-------------|
-| Computer-Use 定义 | 观察（截图）→ 行动（click/type/scroll/drag）→ 目标 | 完整流程 |
-| OSWorld 基准 | v1/Verified/2.0 的任务与 release 不同 | 版本化、不可跨协议比较 |
-| SFT 范式 | 人工/合成/成功 rollout 轨迹的行为克隆 | 分布偏移与错误累积 |
-| ComputerRL | API-GUI、并行虚拟桌面、异步在线 RL、Entropulse | 论文组件与复现边界 |
-| 论文模型命名 | arXiv：AutoGLM-OS-9B；ICLR 页面：GLM-ComputerRL-9B | 分别为 48.1±1.0 与 48.9；来源不可混用，均非 OSWorld 2.0 |
-| 环境模拟 | VM/QEMU、Xvfb、浏览器自动化、OS 控件 API | 隔离层与动作层要区分 |
-| 沙箱隔离 | 一次性 VM、最小权限、审批、审计、网络隔离 | 容器本身不充分 |
+- 解释 Computer-Use 任务、环境和评测协议。
+- 设计从轨迹数据、SFT 到 RL 的训练闭环。
+- 评估权限隔离、动作副作用和基准有效性。
 
----
+## ✅ 自测与练习
 
-## 🎯 面试真题精讲
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
+
+1. 你能否解释 Computer-Use 任务、环境和评测协议？
+2. 你能否设计从轨迹数据、SFT 到 RL 的训练闭环？
+3. 你能否评估权限隔离、动作副作用和基准有效性？
+
+## 🧪 配套代码与验收
+
+本章暂无独立代码目录。验收时应完成正文中的推导或决策题，并能在自测中说明适用边界。
+
+成功标准：概念、输入输出、关键指标和失败条件能够相互对应，不用未经验证的性能数字代替结论。
+
+## 🎯 面试题精讲
 
 ### 真题 1：Computer-Use 任务有什么特殊？为什么比对话 Agent 难？
 
@@ -325,9 +332,28 @@ OSWorld 2.0 分数，不能自行推断它们只是同一模型的简单改名�
 4. SFT/RL 数据与训练系统；具体算法以实验为准
 5. 独立授权、审批、审计、失败恢复和观测指标
 
----
+## 📋 本章速查表
 
-## 📚 截至 2026-07-31 的权威资料
+| 知识点 | 核心概念 | 面试考察重点 |
+|-------|---------|-------------|
+| Computer-Use 定义 | 观察（截图）→ 行动（click/type/scroll/drag）→ 目标 | 完整流程 |
+| OSWorld 基准 | v1/Verified/2.0 的任务与 release 不同 | 版本化、不可跨协议比较 |
+| SFT 范式 | 人工/合成/成功 rollout 轨迹的行为克隆 | 分布偏移与错误累积 |
+| ComputerRL | API-GUI、并行虚拟桌面、异步在线 RL、Entropulse | 论文组件与复现边界 |
+| 论文模型命名 | arXiv：AutoGLM-OS-9B；ICLR 页面：GLM-ComputerRL-9B | 分别为 48.1±1.0 与 48.9；来源不可混用，均非 OSWorld 2.0 |
+| 环境模拟 | VM/QEMU、Xvfb、浏览器自动化、OS 控件 API | 隔离层与动作层要区分 |
+| 沙箱隔离 | 一次性 VM、最小权限、审批、审计、网络隔离 | 容器本身不充分 |
+
+## 🔗 相关章节
+
+- [[15_Agent智能体开发]]：Agent 基础，GUI Agent 是其中一类
+- [[26_世界模型与具身AI]]：具身 AI 与 GUI Agent 的关系（具身=物理机器人，GUI=数字具身）
+- [[27_推理模型与Test-Time_Compute]]：推理模型用于复杂任务规划
+- [[35_生产级Agent记忆框架]]：GUI Agent 的记忆（记住之前操作过什么）
+
+## 📖 一手参考资料
+
+### 截至 2026-07-31 的权威资料
 
 - [OSWorld 2.0 官方仓库与 release 说明](https://github.com/xlang-ai/OSWorld-V2)
 - [OSWorld 2.0 论文（arXiv:2606.29537）](https://arxiv.org/abs/2606.29537)
@@ -339,11 +365,8 @@ OSWorld 2.0 分数，不能自行推断它们只是同一模型的简单改名�
 - [ComputerRL（ICLR 2026 官方页面）](https://iclr.cc/virtual/2026/poster/10007435)
 - [ComputerRL 官方代码](https://github.com/THUDM/ComputerRL)
 
----
+### 一手参考资料
 
-## 📚 相关章节
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
 
-- [[15_Agent智能体开发]]：Agent 基础，GUI Agent 是其中一类
-- [[26_世界模型与具身AI]]：具身 AI 与 GUI Agent 的关系（具身=物理机器人，GUI=数字具身）
-- [[27_推理模型与Test-Time_Compute]]：推理模型用于复杂任务规划
-- [[35_生产级Agent记忆框架]]：GUI Agent 的记忆（记住之前操作过什么）
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

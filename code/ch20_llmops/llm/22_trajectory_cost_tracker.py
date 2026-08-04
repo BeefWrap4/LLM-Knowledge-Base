@@ -1,7 +1,7 @@
 # ---
 # chapter: 20
 # topic: LLMOps与模型可观测性
-# section: 20.10.7 Per-Trajectory Cost Attribution
+# section: 20.8.7 Per-Trajectory Cost Attribution
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: opentelemetry-api, opentelemetry-sdk

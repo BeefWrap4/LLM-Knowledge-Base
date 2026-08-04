@@ -4,6 +4,7 @@ topic: Prompt Engineering
 difficulty: 中
 interview_frequency: 4
 created: 2026-06-01T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - Prompt工程
   - 大模型
@@ -11,13 +12,24 @@ tags:
   - ReAct
   - 提示词设计
 ---
-# 第13章 Prompt Engineering 提示工程 ⭐⭐⭐⭐
+# 第 13 章 Prompt Engineering 提示工程 ⭐⭐⭐⭐
 
-> **面试频率**：高（约80%面试涉及）| **技术热度**：★★★★☆
+> [!abstract] 本章导航
+> **定位**：从模型原理进入可控交互，建立 Prompt、上下文和生成参数的设计方法。
 >
-> 提示工程（Prompt Engineering）是驾驭大模型能力的第一道门槛，也是成本最低、见效最快的优化手段。从基础指令设计到 CoT、ReAct、ToT 等高级范式，再到采样参数的精确控制和 Prompt 安全防护，本章将系统覆盖面试高频考点，助你从容应对各类 Prompt 相关问题。
+> **先修**：[[12_Transformer与大模型原理]]。
+>
+> **学习目标**：
+> - 设计目标明确、约束可检验的 Prompt。
+> - 评估采样、缓存、推理模式和注入防御的效果。
+> - 根据任务风险与成本选择提示和生成策略。
+>
+> **建议路径**：Prompt 设计基础 → 高级 Prompt 技巧 → 采样参数与生成控制 → … → Extended Thinking 与 Prompt Caching (2026年新)。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：`code/ch13_prompt_engineering/`。
 
----
+> [!info] 阅读提示
+> 提示工程（Prompt Engineering）是驾驭大模型能力的第一道门槛，也是成本最低、见效最快的优化手段。从基础指令设计到 CoT、ReAct、ToT 等高级范式，再到采样参数的精确控制和 Prompt 安全防护，本章将系统覆盖面试高频考点，助你从容应对各类 Prompt 相关问题。
 
 ## 13.1 Prompt 设计基础 ⭐⭐⭐
 
@@ -105,7 +117,7 @@ prompt = """
 
 **原则4：让模型先思考再回答（Think Step by Step）**
 
-即使是简单任务，加入推理步骤要求也能显著提升质量：
+要求模型展示中间步骤有时有助于复杂推理，但也可能增加冗余、延迟或错误传播；是否有效应按任务评测：
 
 ```markdown
 请先分析每个选项的优缺点，然后给出最终推荐。
@@ -122,11 +134,10 @@ prompt = """
 | **分步指令** | 复杂多步任务 | "第一步：... 第二步：... 第三步：..." |
 | **对比分析** | 需要权衡决策 | "请对比方案 A 和方案 B，从成本、效率、风险三个维度分析" |
 
----
-
 ## 13.2 高级 Prompt 技巧 ⭐⭐⭐⭐⭐
 
-> **面试频率**：极高（~90%面试涉及）| 这是区分初级和高级 Prompt 工程师的核心知识点。
+> [!tip] 学习重点
+> 本节不只关注提示词模板，还要说明示例、推理过程、结构约束和评测方法如何共同影响输出。
 
 ### 13.2.1 Few-shot Prompting ⭐⭐⭐⭐
 
@@ -211,7 +222,7 @@ relevant_examples = selector.retrieve("物流速度很快", top_k=2)
 
 ### 13.2.2 Chain-of-Thought（CoT）⭐⭐⭐⭐⭐
 
-CoT 是 Prompt Engineering 领域最重要的突破之一，核心思想是**引导模型逐步推理**，而非直接输出答案。
+思维链提示（Chain-of-Thought，CoT）的核心思想是**为多步任务提供或触发中间推理结构**，而不是只要求直接输出答案。
 
 #### Zero-shot-CoT：零示例触发推理
 
@@ -281,7 +292,7 @@ $$
 P(\text{answer} | q) \rightarrow P(r_1 | q) \cdot P(r_2 | q, r_1) \cdot ... \cdot P(\text{answer} | q, r_1, ..., r_k)
 $$
 
-每步的条件空间变小，累积误差降低，最终准确率显著提升。
+分步可以缩小单步决策范围，但也会累积早期错误；最终效果取决于模型、任务、示例和评分口径。
 
 ```mermaid
 graph LR
@@ -578,8 +589,6 @@ class TreeOfThoughts:
 | **复杂度** | 低 | 中 | 高 |
 | **Token 消耗** | 少 | 中 | 多 |
 
----
-
 ## 13.3 采样参数与生成控制 ⭐⭐⭐⭐
 
 ### 13.3.1 Temperature（温度）
@@ -695,8 +704,6 @@ graph TD
 | **故事创作** | 0.8-1.2 | 0.8 | 60 | 最大化创意 |
 
 **重要**：参数是否可用及取值范围由模型/API 决定，表中数值只能作为实验起点。`temperature=0` 与 `seed` 通常只能**降低方差**，不能承诺跨请求、模型快照或后端升级后的逐 token 严格一致；外部工具、检索结果和并发也会引入变化。格式正确性应使用 Structured Outputs/约束解码，业务正确性应依赖测试、校验与评测集。
-
----
 
 ## 13.4 Prompt 安全与防御 ⭐⭐⭐⭐
 
@@ -833,98 +840,12 @@ defensive_system_prompt = """
 
 系统提示不应存放密码或当作秘密保险箱；即使提示文本没有泄露，应用也必须假设外部网页、邮件、文档和工具返回都可能携带间接注入。权威参考（核验日期：2026-07-31）：[OpenAI：Designing agents to resist prompt injection](https://openai.com/index/designing-agents-to-resist-prompt-injection/)、[OWASP Prompt Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html)、[OWASP LLM07:2025 System Prompt Leakage](https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/)。
 
----
+## 13.5 Extended Thinking 与 Prompt Caching (2026年新) ⭐⭐⭐⭐⭐
 
-## 13.5 面试题精讲 🎯
+> [!info] 版本与范围
+> 本节涵盖 Extended Thinking、Prompt Caching、Computer Use 和结构化输出。各厂商接口与限制变化较快，代码和结论以就近官方链接及核验日期为准。
 
-### 🎯 高频题1：CoT 为什么有效？它的本质是什么？
-
-**参考答案**：
-
-CoT（Chain-of-Thought）有效的本质原因是它利用了 Transformer 的自回归生成机制，将一个**高不确定性的直接跳跃**分解为多个**低不确定性的逐步推理**。
-
-从数学上看：
-
-直接回答：$P(A|Q)$ —— 条件空间巨大，模型容易"猜错"
-
-CoT 推理：$P(R_1|Q) \times P(R_2|Q,R_1) \times ... \times P(A|Q,R_1,...,R_k)$
-
-每一步的条件分布更尖锐（entropy 更低），错误累积更少。
-
-此外，预训练数据中包含大量推理文本（教科书、教程、论文），CoT Prompt 激活了模型在这些数据上学到的**隐式推理模式**。
-
-**扩展**：Zero-shot-CoT 只需加"Let's think step by step"即可触发，说明模型本身就具备推理能力，只是需要被"激活"。
-
----
-
-### 🎯 高频题2：ReAct 模式中 Thought、Action、Observation 各自的作用是什么？
-
-**参考答案**：
-
-- **Thought（思考）**：模型内部的推理过程，决定下一步需要获取什么信息或执行什么操作。是"策略制定"环节。
-- **Action（行动）**：具体的工具调用，如 search()、calculator() 等。是"信息获取"环节。
-- **Observation（观察）**：工具返回的外部世界信息，为下一轮 Thought 提供依据。是"反馈输入"环节。
-
-三者形成**闭环**：Thought 指导 Action，Action 产生 Observation，Observation 更新 Thought。循环直到 Thought 认为已获得足够信息，输出 Final Answer。
-
----
-
-### 🎯 高频题3：Temperature、Top-p、Top-k 的区别和使用场景？
-
-**参考答案**：
-
-| 参数 | 控制维度 | 原理 | 典型值 |
-|------|---------|------|--------|
-| Temperature | 整体随机性 | 对 logits 做除法缩放 | 0.0-1.0 |
-| Top-p | 累积概率阈值 | 只从累积概率>p的"核"中采样 | 0.85-0.95 |
-| Top-k | 候选数量 | 只保留概率最高的k个 | 40-50 |
-
-**使用建议**：代码生成 T=0；创意写作 T=0.8+；一般任务 T=0.3-0.5。Top-p 和 Top-k 可以联合使用（先 Top-k 截断，再 Top-p 筛选）。
-
----
-
-### 🎯 高频题4：如何防御 Prompt 注入攻击？
-
-**参考答案**（分层防御）：
-
-1. **先定义信任边界**：外部网页、邮件、RAG 文档和工具返回均视为不可信数据，并保留其来源
-2. **应用层确定性授权**：工具 allowlist、参数 Schema、租户/对象级权限检查，不让模型决定自己能做什么
-3. **限制影响半径**：沙箱、凭据隔离、网络出口限制、调用次数/金额/时间上限
-4. **关键动作人工确认**：支付、删除、发送、提交前展示具体目标和参数，确认不能被模型代替
-5. **验证与监控**：输出 Schema/业务规则校验、内容审核、审计日志、注入红队与回归评测
-6. **检测与 role 分离作为辅助手段**：正则/分类器会漏报，role 也不是不可跨越的安全边界
-
-最核心的原则是：**模型输出是建议而不是授权；真正的权限和副作用必须由模型之外的应用代码控制。**
-
----
-
-### 🎯 高频题5：Few-shot 示例数量多少合适？多了会怎样？
-
-**参考答案**：
-
-不存在跨模型、跨任务通用的“2-5 个最佳”或固定提升百分比。示例的标签正确性、覆盖边界、排列顺序、与查询的相似度以及占用 token 都会影响结果；更多示例可能提高覆盖，也可能引入冲突、顺序偏差或挤压有效上下文。
-
-更好的做法是先建立 zero-shot 基线，再在固定评测集上比较 1、2、4、8 个示例及不同排列。动态 Few-shot 也要评测检索质量，防止错误示例被高相似度放大。
-
----
-
-### 🎯 高频题6：ToT 和 CoT 的本质区别是什么？
-
-**参考答案**：
-
-CoT 是**线性推理链** —— 单一路径，从左到右逐步推导，不能回溯。
-
-ToT 是**树状搜索** —— 在每个推理步骤生成多个候选（分支），通过评估函数选择最优路径，可以回溯和重新探索。
-
-ToT 适用于需要探索多种可能性的问题（如 24 点游戏、创意写作、组合优化），CoT 适用于有明确推导步骤的问题（如数学计算）。
-
----
-
-## 13.7 Extended Thinking 与 Prompt Caching (2026年新) ⭐⭐⭐⭐⭐
-
-> **面试频率**：高（2026年新增热点）| 涵盖 Extended Thinking 推理控制、Prompt Caching 成本优化、Computer Use 智能体控制、结构化输出约束等 2026 年大模型应用前沿技术。
-
-### 13.7.1 Extended Thinking 与 Reasoning Prompts
+### 13.5.1 Extended Thinking 与 Reasoning Prompts
 
 Extended Thinking/Reasoning 是模型厂商提供的**推理强度控制机制**。它能在部分任务上改善质量，但参数语义、是否返回 thinking block、计费方式和可用档位均是**模型版本相关**的，不能把它理解为可精确分配“真实思考 token”的统一标准。
 
@@ -987,7 +908,7 @@ print(f"输出 tokens:  {response.usage.output_tokens}")
 
 ---
 
-### 13.7.2 Prompt Caching：成本优化的关键
+### 13.5.2 Prompt Caching：成本优化的关键
 
 Prompt Caching 可复用大段相同前缀（如 system prompt、few-shot 示例、长文档）的计算。是否省钱取决于前缀长度、复用次数、写入/读取单价、TTL 和命中率；不存在跨厂商通用的“节省 50%-90%”保证。
 
@@ -1154,7 +1075,7 @@ graph TB
 
 ---
 
-### 13.7.3 Computer Use Prompts
+### 13.5.3 Computer Use Prompts
 
 Computer Use 让模型**提出**点击、输入、滚动等 GUI 动作；真正读取截图、执行动作并返回结果的是宿主程序。协议不是“模型获得了桌面权限”，权限、隔离、审计和审批仍由应用控制。
 
@@ -1244,7 +1165,7 @@ for item in response.output:
 
 ---
 
-### 13.7.4 Structured Outputs：约束解码
+### 13.5.4 Structured Outputs：约束解码
 
 Structured Outputs 在解码阶段约束输出结构。它解决的是“能否按受支持的 Schema 解析”，不保证字段内容真实、数值在业务上合理，也不替代权限、安全审核或事实校验。
 
@@ -1368,7 +1289,7 @@ print(data.model_dump())
 
 ---
 
-### 13.7.5 Prompt Cache 命中率优化实战
+### 13.5.5 Prompt Cache 命中率优化实战
 
 缓存只复用**从开头连续相同的前缀**。不能为了命中而重排 system/user/assistant 消息，否则会改变对话语义。也不要用“4 字符约等于 1 token”估算中文；应调用目标模型的 tokenizer/token-count API。
 
@@ -1453,9 +1374,9 @@ class CacheMetrics:
 
 ---
 
-### 13.7.6 面试真题精讲
+### 13.5.6 面试真题精讲
 
-#### 🎯 高频题1：Extended Thinking 和普通 CoT Prompt 的区别是什么？
+#### 高频题1：Extended Thinking 和普通 CoT Prompt 的区别是什么？
 
 **参考答案**：
 
@@ -1471,7 +1392,7 @@ class CacheMetrics:
 
 ---
 
-#### 🎯 高频题2：Anthropic / OpenAI / Gemini 的 Prompt Caching 有什么区别？
+#### 高频题2：Anthropic / OpenAI / Gemini 的 Prompt Caching 有什么区别？
 
 **参考答案**：
 
@@ -1485,16 +1406,14 @@ class CacheMetrics:
 
 ---
 
-#### 🎯 高频题3：xgrammar 和传统 JSON Mode 的核心差异？
+#### 高频题3：xgrammar 和传统 JSON Mode 的核心差异？
 
 **参考答案**：
 
 - **JSON Mode**：由支持它的 API 在解码时约束为合法 JSON，但不保证符合业务 Schema；它不是“只靠 Prompt + 修复”。
 - **XGrammar**：在**词表级别屏蔽不符合已编译文法的 token**，保证受支持的结构约束。它仍不保证字段事实和业务语义正确；性能影响必须按 tokenizer、Schema、批量和推理后端实测。
 
----
-
-## 13.6 本章小结
+## 🧭 本章小结
 
 | 知识点 | 面试频率 | 关键要点 |
 |--------|---------|---------|
@@ -1508,7 +1427,109 @@ class CacheMetrics:
 
 **下一步**：掌握了 Prompt Engineering 后，我们将进入大模型应用的核心架构 —— RAG（检索增强生成），学习如何让大模型"读懂"你的私有文档。
 
+## ✅ 自测与练习
+
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
+
+1. 你能否设计目标明确、约束可检验的 Prompt？
+2. 你能否评估采样、缓存、推理模式和注入防御的效果？
+3. 你能否根据任务风险与成本选择提示和生成策略？
+
+## 🧪 配套代码与验收
+
+本章包含纯本地教学示例、需要真实 API 的 provider 示例和需要 CUDA/模型权重的约束解码示例。运行前先阅读文件头的 `tier`、`deps` 与环境变量说明。
+
+```bash
+# 从 code/ 目录运行无网络示例
+python ch13_prompt_engineering/llm/07_react_loop.py
+python ch13_prompt_engineering/llm/11_prompt_injection_defense.py
+python ch13_prompt_engineering/llm/21_prompt_cache_optimizer.py
+```
+
+真实 API 示例分别读取 `ANTHROPIC_API_KEY`、`OPENAI_API_KEY` 或 `GEMINI_API_KEY`；未配置时应输出 `[SKIP]` 并正常退出，不能伪造调用成功。
+
+## 🎯 面试题精讲
+
+### 高频题1：CoT 为什么有效？它的本质是什么？
+
+**参考答案**：
+
+CoT（Chain-of-Thought）有效的本质原因是它利用了 Transformer 的自回归生成机制，将一个**高不确定性的直接跳跃**分解为多个**低不确定性的逐步推理**。
+
+从数学上看：
+
+直接回答：$P(A|Q)$ —— 条件空间巨大，模型容易"猜错"
+
+CoT 推理：$P(R_1|Q) \times P(R_2|Q,R_1) \times ... \times P(A|Q,R_1,...,R_k)$
+
+每一步的条件分布更尖锐（entropy 更低），错误累积更少。
+
+此外，预训练数据中包含大量推理文本（教科书、教程、论文），CoT Prompt 激活了模型在这些数据上学到的**隐式推理模式**。
+
+**扩展**：Zero-shot-CoT 只需加"Let's think step by step"即可触发，说明模型本身就具备推理能力，只是需要被"激活"。
+
 ---
+
+### 高频题2：ReAct 模式中 Thought、Action、Observation 各自的作用是什么？
+
+**参考答案**：
+
+- **Thought（思考）**：模型内部的推理过程，决定下一步需要获取什么信息或执行什么操作。是"策略制定"环节。
+- **Action（行动）**：具体的工具调用，如 search()、calculator() 等。是"信息获取"环节。
+- **Observation（观察）**：工具返回的外部世界信息，为下一轮 Thought 提供依据。是"反馈输入"环节。
+
+三者形成**闭环**：Thought 指导 Action，Action 产生 Observation，Observation 更新 Thought。循环直到 Thought 认为已获得足够信息，输出 Final Answer。
+
+---
+
+### 高频题3：Temperature、Top-p、Top-k 的区别和使用场景？
+
+**参考答案**：
+
+| 参数 | 控制维度 | 原理 | 典型值 |
+|------|---------|------|--------|
+| Temperature | 整体随机性 | 对 logits 做除法缩放 | 0.0-1.0 |
+| Top-p | 累积概率阈值 | 只从累积概率>p的"核"中采样 | 0.85-0.95 |
+| Top-k | 候选数量 | 只保留概率最高的k个 | 40-50 |
+
+**使用建议**：代码生成 T=0；创意写作 T=0.8+；一般任务 T=0.3-0.5。Top-p 和 Top-k 可以联合使用（先 Top-k 截断，再 Top-p 筛选）。
+
+---
+
+### 高频题4：如何防御 Prompt 注入攻击？
+
+**参考答案**（分层防御）：
+
+1. **先定义信任边界**：外部网页、邮件、RAG 文档和工具返回均视为不可信数据，并保留其来源
+2. **应用层确定性授权**：工具 allowlist、参数 Schema、租户/对象级权限检查，不让模型决定自己能做什么
+3. **限制影响半径**：沙箱、凭据隔离、网络出口限制、调用次数/金额/时间上限
+4. **关键动作人工确认**：支付、删除、发送、提交前展示具体目标和参数，确认不能被模型代替
+5. **验证与监控**：输出 Schema/业务规则校验、内容审核、审计日志、注入红队与回归评测
+6. **检测与 role 分离作为辅助手段**：正则/分类器会漏报，role 也不是不可跨越的安全边界
+
+最核心的原则是：**模型输出是建议而不是授权；真正的权限和副作用必须由模型之外的应用代码控制。**
+
+---
+
+### 高频题5：Few-shot 示例数量多少合适？多了会怎样？
+
+**参考答案**：
+
+不存在跨模型、跨任务通用的“2-5 个最佳”或固定提升百分比。示例的标签正确性、覆盖边界、排列顺序、与查询的相似度以及占用 token 都会影响结果；更多示例可能提高覆盖，也可能引入冲突、顺序偏差或挤压有效上下文。
+
+更好的做法是先建立 zero-shot 基线，再在固定评测集上比较 1、2、4、8 个示例及不同排列。动态 Few-shot 也要评测检索质量，防止错误示例被高相似度放大。
+
+---
+
+### 高频题6：ToT 和 CoT 的本质区别是什么？
+
+**参考答案**：
+
+CoT 是**线性推理链** —— 单一路径，从左到右逐步推导，不能回溯。
+
+ToT 是**树状搜索** —— 在每个推理步骤生成多个候选（分支），通过评估函数选择最优路径，可以回溯和重新探索。
+
+ToT 适用于需要探索多种可能性的问题（如 24 点游戏、创意写作、组合优化），CoT 适用于有明确推导步骤的问题（如数学计算）。
 
 ## 📋 本章速查表
 
@@ -1526,25 +1547,16 @@ class CacheMetrics:
 | **Extended Thinking** | 参数随模型代际变化：Claude 4.7+ adaptive+effort、GPT-5.6 `reasoning.effort`、Gemini 3+ thinking level；用评测选择档位 |
 | **配套代码** | `ch13_prompt_engineering/llm/*.py`；无凭据/依赖的真实 API 或 GPU 示例应清晰 `[SKIP]` |
 
-## 13.x 配套代码运行说明
-
-本章包含纯本地教学示例、需要真实 API 的 provider 示例和需要 CUDA/模型权重的约束解码示例。运行前先阅读文件头的 `tier`、`deps` 与环境变量说明。
-
-```bash
-# 从 code/ 目录运行无网络示例
-python ch13_prompt_engineering/llm/07_react_loop.py
-python ch13_prompt_engineering/llm/11_prompt_injection_defense.py
-python ch13_prompt_engineering/llm/21_prompt_cache_optimizer.py
-```
-
-真实 API 示例分别读取 `ANTHROPIC_API_KEY`、`OPENAI_API_KEY` 或 `GEMINI_API_KEY`；未配置时应输出 `[SKIP]` 并正常退出，不能伪造调用成功。
-
----
-
-## 📚 相关章节
+## 🔗 相关章节
 
 - [[12_Transformer与大模型原理]] — 理解 Transformer 和 In-Context Learning 原理是 Prompt 设计的理论基础
 - [[14_RAG检索增强生成]] — RAG 系统中的 Prompt 组装策略与检索结果融合
 - [[15_Agent智能体开发]] — ReAct 模式是 Agent 的核心推理框架，Prompt 驱动工具调用
 - [[29_Context_Engineering]] — Context Engineering 包含但超越 Prompt Engineering，涵盖工具/记忆/状态管理
 - [[27_推理模型与Test-Time_Compute]] — Extended Thinking 是一种更高级的 Prompt 模式
+
+## 📖 一手参考资料
+
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
+
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

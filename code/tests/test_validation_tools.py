@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import run_all_examples, sync_links, verify_all
+from scripts import normalize_chapter_narrative, run_all_examples, sync_links, verify_all
 
 
 def test_tutorial_section_parser_supports_four_levels() -> None:
@@ -27,9 +27,7 @@ def test_code_section_parser_supports_four_levels() -> None:
 def test_llm_runner_defaults_to_mock(monkeypatch, tmp_path: Path) -> None:
     script = tmp_path / "example.py"
     script.write_text(
-        "import os\n"
-        "assert os.environ.get('LLM_MOCK') == '1'\n"
-        "print('OK')\n",
+        "import os\nassert os.environ.get('LLM_MOCK') == '1'\nprint('OK')\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(run_all_examples, "CODE", tmp_path)
@@ -46,9 +44,7 @@ def test_llm_runner_overrides_parent_real_mode(monkeypatch, tmp_path: Path) -> N
     """批量验收不能继承父进程的真实 API 开关。"""
     script = tmp_path / "example.py"
     script.write_text(
-        "import os\n"
-        "assert os.environ.get('LLM_MOCK') == '1'\n"
-        "print('OK')\n",
+        "import os\nassert os.environ.get('LLM_MOCK') == '1'\nprint('OK')\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(run_all_examples, "CODE", tmp_path)
@@ -63,8 +59,7 @@ def test_llm_runner_overrides_parent_real_mode(monkeypatch, tmp_path: Path) -> N
 def test_runner_preserves_skip_marker_before_truncation(monkeypatch, tmp_path: Path) -> None:
     script = tmp_path / "example.py"
     script.write_text(
-        "print('[SKIP] ' + 'requirement-' * 30)\n"
-        "print('OK')\n",
+        "print('[SKIP] ' + 'requirement-' * 30)\nprint('OK')\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(run_all_examples, "CODE", tmp_path)
@@ -91,20 +86,14 @@ def test_runner_rejects_silent_success_without_ok(monkeypatch, tmp_path: Path) -
 def test_gpu_runner_mock_flag_is_explicitly_disableable(monkeypatch, tmp_path: Path) -> None:
     script = tmp_path / "example.py"
     script.write_text(
-        "import sys\n"
-        "print('MOCK=' + str('--mock' in sys.argv))\n"
-        "print('OK')\n",
+        "import sys\nprint('MOCK=' + str('--mock' in sys.argv))\nprint('OK')\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(run_all_examples, "CODE", tmp_path)
     monkeypatch.setattr(run_all_examples, "PY", sys.executable)
 
-    _, default_passed, default_output, _ = run_all_examples.run_one(
-        script, timeout=10, tier="gpu"
-    )
-    _, real_passed, real_output, _ = run_all_examples.run_one(
-        script, timeout=10, tier="gpu", real_gpu=True
-    )
+    _, default_passed, default_output, _ = run_all_examples.run_one(script, timeout=10, tier="gpu")
+    _, real_passed, real_output, _ = run_all_examples.run_one(script, timeout=10, tier="gpu", real_gpu=True)
 
     assert default_passed and "MOCK=True" in default_output
     assert real_passed and "MOCK=False" in real_output
@@ -153,8 +142,49 @@ def test_current_mermaid_blocks_are_obsidian_safe() -> None:
 def test_current_markdown_documents_are_obsidian_safe() -> None:
     total, failures = verify_all.inspect_markdown_rendering()
 
-    assert total == 99
+    assert total == 101
     assert failures == []
+
+
+def test_current_chapter_narratives_follow_learning_contract() -> None:
+    total, failures = verify_all.inspect_chapter_narratives()
+
+    assert total == 40
+    assert failures == []
+
+
+def test_chapter_normalizer_is_idempotent() -> None:
+    for chapter in verify_all.canonical_chapters():
+        assert normalize_chapter_narrative.normalize_chapter(chapter) == chapter.read_text(encoding="utf-8")
+
+
+def test_chapter_narrative_gate_rejects_incomplete_learning_contract(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "01_Test.md").write_text(
+        "---\n"
+        "chapter: 1\n"
+        "updated: 2026-08-04T00:00:00.000Z\n"
+        "---\n"
+        "# 第 1 章 Test\n\n"
+        "> [!abstract] 本章导航\n"
+        "> **学习目标**：\n"
+        "> - 解释机制。\n"
+        "> - 完成实现。\n\n"
+        "## 1.2 跳号正文\n\n"
+        "### 9.9.1 错误父级\n\n"
+        "正文。\n\n"
+        "## 📖 一手参考资料\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_chapter_narratives()
+
+    assert total == 1
+    assert any("2 learning objectives; expected 3" in failure for failure in failures)
+    assert any("has no chapter introduction" in failure for failure in failures)
+    assert any("main H2 numbering is not contiguous from 1" in failure for failure in failures)
+    assert any("numbered descendant heading does not inherit" in failure for failure in failures)
+    assert any("fixed ending sections are missing" in failure for failure in failures)
 
 
 @pytest.mark.parametrize(
@@ -196,9 +226,7 @@ def test_markdown_render_gate_rejects_table_column_mismatch(monkeypatch, tmp_pat
     )
 
 
-def test_markdown_render_gate_rejects_math_crossing_table_cells(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_markdown_render_gate_rejects_math_crossing_table_cells(monkeypatch, tmp_path: Path) -> None:
     (tmp_path / "bad.md").write_text(
         "| Kernel | Formula start | Midpoint | Formula end | Use |\n"
         "|---|---|---|---|---|\n"
@@ -209,9 +237,7 @@ def test_markdown_render_gate_rejects_math_crossing_table_cells(
 
     _, failures = verify_all.inspect_markdown_rendering()
 
-    assert failures == [
-        "bad.md:3 inline math crosses table cell boundaries at columns 2, 4"
-    ]
+    assert failures == ["bad.md:3 inline math crosses table cell boundaries at columns 2, 4"]
 
 
 def test_markdown_render_gate_rejects_unescaped_underscore_inside_latex_text(
@@ -232,13 +258,9 @@ def test_markdown_render_gate_rejects_unescaped_underscore_inside_latex_text(
     )
 
 
-def test_markdown_render_gate_rejects_multiple_empty_table_headers(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_markdown_render_gate_rejects_multiple_empty_table_headers(monkeypatch, tmp_path: Path) -> None:
     (tmp_path / "bad.md").write_text(
-        "| Kernel | Formula | | | Use |\n"
-        "|---|---|---|---|---|\n"
-        "| RBF | expression | x | y | general |\n",
+        "| Kernel | Formula | | | Use |\n|---|---|---|---|---|\n| RBF | expression | x | y | general |\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(verify_all, "REPO", tmp_path)
@@ -350,11 +372,7 @@ def test_mermaid_gate_rejects_unknown_diagram(monkeypatch, tmp_path: Path) -> No
 def test_mermaid_gate_rejects_html_break_in_timeline(monkeypatch, tmp_path: Path) -> None:
     """Obsidian 会显示 timeline 条目中的 <br/>，并把长文本压进窄列。"""
     (tmp_path / "bad.md").write_text(
-        "```mermaid\n"
-        "timeline\n"
-        "    title 演进路线\n"
-        "    2026 : RAG-as-a-Tool<br/>多模态 RAG + 端云协同\n"
-        "```\n",
+        "```mermaid\ntimeline\n    title 演进路线\n    2026 : RAG-as-a-Tool<br/>多模态 RAG + 端云协同\n```\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(verify_all, "REPO", tmp_path)
@@ -368,9 +386,7 @@ def test_mermaid_gate_rejects_html_break_in_timeline(monkeypatch, tmp_path: Path
     ]
 
 
-def test_mermaid_gate_rejects_react_messages_routed_through_user(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_mermaid_gate_rejects_react_messages_routed_through_user(monkeypatch, tmp_path: Path) -> None:
     (tmp_path / "bad.md").write_text(
         "```mermaid\n"
         "sequenceDiagram\n"
@@ -465,9 +481,7 @@ def test_mermaid_gate_rejects_unsupported_markdown_at_label_start(
     assert "unsupported Mermaid Markdown" in failures[0]
 
 
-def test_mermaid_gate_accepts_quoted_labels_and_cylinder_shape(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_mermaid_gate_accepts_quoted_labels_and_cylinder_shape(monkeypatch, tmp_path: Path) -> None:
     (tmp_path / "good.md").write_text(
         "```mermaid\n"
         "flowchart TD\n"
@@ -486,11 +500,7 @@ def test_mermaid_gate_accepts_quoted_labels_and_cylinder_shape(
 
 def test_mermaid_gate_accepts_state_diagram_terminal_nodes(monkeypatch, tmp_path: Path) -> None:
     (tmp_path / "state.md").write_text(
-        "```mermaid\n"
-        "stateDiagram-v2\n"
-        "[*] --> Plan\n"
-        "Plan --> [*]\n"
-        "```\n",
+        "```mermaid\nstateDiagram-v2\n[*] --> Plan\nPlan --> [*]\n```\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(verify_all, "REPO", tmp_path)
@@ -508,9 +518,7 @@ def test_python_reference_gate_detects_missing_file(monkeypatch, tmp_path: Path)
     monkeypatch.setattr(verify_all, "REPO", tmp_path)
     monkeypatch.setattr(verify_all, "CODE", code)
 
-    assert verify_all.find_broken_python_references() == [
-        ("README.md", 1, "ch15_agent/llm/01_missing.py")
-    ]
+    assert verify_all.find_broken_python_references() == [("README.md", 1, "ch15_agent/llm/01_missing.py")]
 
 
 def test_python_reference_gate_accepts_existing_code_prefix(monkeypatch, tmp_path: Path) -> None:
@@ -536,9 +544,7 @@ def test_gpu_mock_contract_rejects_unmarked_script(monkeypatch, tmp_path: Path) 
     assert "missing skip_if_mock" in verify_all.find_gpu_mock_contract_failures()[0]
 
 
-def test_gpu_mock_safe_metadata_rejects_network_like_call(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_gpu_mock_safe_metadata_rejects_network_like_call(monkeypatch, tmp_path: Path) -> None:
     script = tmp_path / "ch25_demo/gpu/01_demo.py"
     script.parent.mkdir(parents=True)
     script.write_text(

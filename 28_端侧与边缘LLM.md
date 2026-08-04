@@ -4,6 +4,7 @@ topic: 端侧与边缘LLM
 difficulty: 中
 interview_frequency: 3
 created: 2026-06-06T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - 端侧
   - 边缘计算
@@ -18,13 +19,24 @@ tags:
 
 # 第 28 章 端侧与边缘 LLM ⭐⭐⭐⭐
 
-> **面试频率**：中（2026年新热点）| **难度**：⭐⭐⭐ | **核心**：把大模型从云端搬到端侧
+> [!abstract] 本章导航
+> **定位**：把模型部署约束下沉到个人设备、浏览器和边缘节点。
 >
+> **先修**：[[12_Transformer与大模型原理]]、[[16_模型微调与推理优化]]、[[25_推理引擎与高性能服务]]。
+>
+> **学习目标**：
+> - 比较 MLX、llama.cpp、WebGPU 和移动端推理栈。
+> - 估算端侧模型的内存、功耗和延迟需求。
+> - 根据隐私、体验和维护成本选择端云方案。
+>
+> **建议路径**：端侧 LLM 全景 → 量化与压缩 → Apple MLX 框架 → … → 端云协同部署模式。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：`code/ch28_edge_llm/`。
+
+> [!info] 阅读提示
 > **🆕 2026年新主题**：Apple MLX、Ollama、WebGPU/WASM 浏览器推理、Snapdragon Hexagon NPU、Ascend CANN，以及 confidential computing/TEE 隐私推理的边界。
 
-将大模型部署到边缘设备（手机、PC、嵌入式）是 2026 年最热的方向之一。原因：隐私（数据不出端）、低延迟（无网络往返）、成本（无需 GPU 云）、离线可用。本章系统介绍端侧 LLM 推理的关键技术和框架。
-
----
+将大模型部署到手机、PC 和嵌入式设备，是持续发展的端侧工程方向。原因：隐私（数据不出端）、低延迟（无网络往返）、成本（无需 GPU 云）、离线可用。本章系统介绍端侧 LLM 推理的关键技术和框架。
 
 ## 28.1 端侧 LLM 全景
 
@@ -54,8 +66,6 @@ graph TB
     Engine1 -->|嵌入式| L4["llama.cpp / TFLite"]
 ```
 
----
-
 ## 28.2 量化与压缩
 
 ### 28.2.1 GGUF 格式
@@ -80,8 +90,6 @@ GGUF (GPT-Generated Unified Format) 是 llama.cpp 的标准模型格式：
 | 16GB Apple Silicon | 7B 4-bit 可作为候选 | 统一内存压力、KV cache、实际速度 |
 | 24GB NVIDIA GPU | 7B–14B 高精度或更大量化模型候选 | 权重 + KV cache + workspace + 并发；不能据此宣称 70B Q4 可单卡运行 |
 | 12GB Snapdragon 设备 | 先从已验证的 1B–3B 模型开始 | Hexagon 后端支持矩阵、CPU/GPU 回退和真机日志 |
-
----
 
 ## 28.3 Apple MLX 框架
 
@@ -112,8 +120,6 @@ print(text)
 | 常见工作流 | Python 研究、微调、推理 | 转换/编译后在 App 内推理 | 复用 PyTorch 训练与推理代码 |
 | 训练能力 | 支持自动微分与训练 | 以部署为主，更新能力受模型/任务约束 | 支持，但算子覆盖和 fallback 需核对 |
 | 内存说明 | 面向 Apple 统一内存设计 | 运行在统一内存硬件上，由 Core ML 管理 | 同样运行在统一内存硬件上；张量迁移/算子语义仍由 PyTorch 管理 |
-
----
 
 ## 28.4 llama.cpp 多平台
 
@@ -148,8 +154,6 @@ PARAMETER top_p 0.9
 SYSTEM "You are a helpful assistant."
 ```
 
----
-
 ## 28.5 WebGPU / WASM 浏览器推理
 
 ### 28.5.1 WebLLM / MLC-LLM
@@ -177,8 +181,6 @@ console.log(response.choices[0].message.content);
 | 限制 | adapter、驱动、浏览器和显存/共享内存差异大 | 大模型张量计算通常受 CPU 与内存带宽限制 |
 | 选型 | 运行时 feature detection + 目标设备实测 | 作为实现组成或受控 fallback，不给固定模型上限 |
 
----
-
 ## 28.6 Minions Secure Chat：Confidential Computing 研究原型
 
 Stanford Hazy Research 于 **2025-05-12**公开了 Minions Secure Chat Protocol 研究原型。它不是“本地小模型生成加密嵌入、云端只看嵌入、本地解码”，而是使用远程证明与 confidential CPU/GPU **TEE** 建立可信执行边界：
@@ -201,8 +203,6 @@ graph LR
 
 来源：[Stanford Hazy Research: Mind the Trust Gap](https://hazyresearch.stanford.edu/blog/2025-05-12-security)（截至 2026-07-31）。
 
----
-
 ## 28.7 端云协同部署模式
 
 | 模式 | 描述 | 适用 |
@@ -213,90 +213,19 @@ graph LR
 | **Confidential TEE 推理** | 远程证明 + 加密传输 + TEE 内推理 | 需可信硬件、证明链与安全审计 |
 | **端侧缓存** | 重复 query 本地缓存 | 客服/工具类 |
 
----
-
-## 28.8 本章小结
+## 🧭 本章小结
 
 > **章节小结**：本章介绍端侧与边缘 LLM 的主要技术栈。Apple MLX 利用 Apple Silicon 统一内存；GGUF + llama.cpp 面向跨平台本地推理；Ollama 提供本地模型管理与 API；WebLLM/WebGPU 支持浏览器推理。敏感数据场景仍需威胁建模：纯端侧、可信云 TEE、普通云 API 的安全边界不同，研究原型不能直接等同于生产级隐私保证。
 
-## 28.9 面试真题精讲 🎯
+## ✅ 自测与练习
 
-### 🎯 高频题1: Apple MLX 与 PyTorch MPS 区别？
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
 
-**答案**: 
-- **MLX**：Apple 面向 Apple Silicon 的数组/模型框架，围绕统一内存和惰性计算设计。
-- **MPS**：PyTorch 的 Metal 后端，便于复用 PyTorch 生态；并非“模拟 CUDA API”。
-- 不能笼统断言 MLX 一定更快；需比较相同模型、精度、batch、上下文和算子 fallback。
+1. 你能否比较 MLX、llama.cpp、WebGPU 和移动端推理栈？
+2. 你能否估算端侧模型的内存、功耗和延迟需求？
+3. 你能否根据隐私、体验和维护成本选择端云方案？
 
-### 🎯 高频题2: WebGPU 浏览器推理的局限性？
-
-**答案**:
-1. 浏览器/adapter：必须运行时检查 `navigator.gpu`、adapter 特性和所需扩展，不能锁死旧版本号；
-2. 容量：受权重、KV cache、浏览器进程和 GPU/共享内存共同限制，无通用“<7B”上限；
-3. 首次加载：模型工件可能从数百 MB 到多 GB，应显示进度、校验完整性并设计缓存；
-4. 生命周期：Web Worker/Service Worker 可改善体验，但 Service Worker 仍可能被浏览器终止，必须可恢复。
-
-### 🎯 高频题3: 端侧 LLM 与云端 LLM 的核心权衡？
-
-**答案**:
-- 端侧: 隐私、延迟、离线；但模型小、显存受限
-- 云端: 大模型、强能力；但需联网、隐私风险
-- 端云协同需结合路由、数据最小化、远程证明和供应商/硬件信任边界
-
-### 🎯 高频题4: GGUF 格式的核心优势？
-
-**答案**:
-1. 单文件部署 (模型+配置+元数据)
-2. 支持 mmap 等加载方式，可能减少复制；启动时间仍取决于存储、模型和后端
-3. 同一 GGUF 可被多个 llama.cpp 后端使用，但具体算子/量化兼容性需核对
-4. 量化粒度细 (Q2-Q8)
-5. llama.cpp 生态完善
-
-### 🎯 高频题5: Ollama vs llama.cpp 直接调用？
-
-**答案**:
-- **Ollama**: 包装层，提供原生 HTTP API、部分 OpenAI-compatible 端点、Modelfile 与模型管理
-- **llama.cpp**: C++ 库，需自行集成
-- 选型: 快速原型用 Ollama；产品嵌入用 llama.cpp
-
-### 🎯 高频题6: Snapdragon NPU (Hexagon) 与 GPU 推理区别？
-
-**答案**:
-- **NPU**：擅长受支持的低精度矩阵算子与能效优化，但可能发生 CPU/GPU 回退。
-- **GPU**：算子覆盖通常更灵活，具体性能/功耗取决于芯片、后端和模型。
-- 选型不能只看 TOPS；要分别测 prefill、decode、内存、温控，并从日志确认真实卸载路径。
-
-### 🎯 高频题7: Minions Secure Chat 的核心思想与限制？
-
-**答案**：客户端先验证 confidential CPU/GPU 的远程证明，再建立加密会话；Prompt 只在通过验证的 TEE 内解密并完成推理。它不依赖“不可逆嵌入 + 本地解码”。截至 2026-07-31，该方案仍是未经第三方审计的研究原型，生产落地还需供应链、证明服务、镜像测量、密钥轮换和事件响应审计。
-
-### 🎯 高频题8: 端侧 LLM 的 KV Cache 显存挑战？
-
-**答案**：端侧可用内存通常同时被 OS、权重、运行时 workspace 与 KV cache 占用。候选手段包括：
-1. **KV Cache 量化**：仅在后端和模型支持时采用，并评估质量；
-2. **分页/分块管理**：降低碎片，但具体端侧后端未必支持 vLLM 的 PagedAttention；
-3. **高效 Attention kernel**：主要减少中间激活/访存，不会消除 KV 本体；
-4. **Sliding Window / context truncation**：直接限制保留历史，需接受能力损失。
-
----
-
-## 28.10 本章速查表
-
-| 概念 | 关键点 |
-|------|--------|
-| **Apple MLX** | 统一内存，Apple Silicon 原生 |
-| **GGUF** | llama.cpp 标准格式，Q2-Q8 量化 |
-| **Ollama** | llama.cpp 包装，OpenAI 兼容 API |
-| **WebLLM** | MLC-LLM 浏览器推理，WebGPU |
-| **WebGPU** | 浏览器 GPU 加速 |
-| **Hexagon NPU** | Qualcomm 端侧 NPU |
-| **Minions Secure Chat** | 远程证明 + confidential CPU/GPU TEE；研究原型 |
-| **端云协同** | 路由分流 / KV cache 复用 |
-| **配套代码（W4）** | `01-02` MLX；`03-04` llama.cpp；`05-06` Ollama；`07` WebLLM；`08` wasmtime；`09` Hexagon NPU 教学；`10` 仅演示 TLS 信道及 TEE 威胁模型，不冒充远程证明实现。 |
-
----
-
-## 28.11 配套代码与验收边界 ⭐⭐⭐⭐⭐
+## 🧪 配套代码与验收
 
 > 本章包含 10 个 GPU tier 示例。默认 runner 会传 `--mock`，因此 MLX、llama.cpp、Ollama、
 > WebLLM、wasmtime、证书生成和本地服务路径应 `[SKIP]`；这能验证“离线不产生外部副作用”，
@@ -336,12 +265,89 @@ python scripts/run_all_examples.py --tier gpu --chapter ch28 --real-gpu
 > 工作区中出现模型或 adapter 文件，只说明本地存在相应文件；使用前仍需校验 hash、完整性、
 > 基座兼容性、许可证和模型卡。不得由目录存在推断“已预置可在固定时间启动”。
 
----
+## 🎯 面试题精讲
 
-## 📚 相关章节
+### 高频题1: Apple MLX 与 PyTorch MPS 区别？
+
+**答案**: 
+- **MLX**：Apple 面向 Apple Silicon 的数组/模型框架，围绕统一内存和惰性计算设计。
+- **MPS**：PyTorch 的 Metal 后端，便于复用 PyTorch 生态；并非“模拟 CUDA API”。
+- 不能笼统断言 MLX 一定更快；需比较相同模型、精度、batch、上下文和算子 fallback。
+
+### 高频题2: WebGPU 浏览器推理的局限性？
+
+**答案**:
+1. 浏览器/adapter：必须运行时检查 `navigator.gpu`、adapter 特性和所需扩展，不能锁死旧版本号；
+2. 容量：受权重、KV cache、浏览器进程和 GPU/共享内存共同限制，无通用“<7B”上限；
+3. 首次加载：模型工件可能从数百 MB 到多 GB，应显示进度、校验完整性并设计缓存；
+4. 生命周期：Web Worker/Service Worker 可改善体验，但 Service Worker 仍可能被浏览器终止，必须可恢复。
+
+### 高频题3: 端侧 LLM 与云端 LLM 的核心权衡？
+
+**答案**:
+- 端侧: 隐私、延迟、离线；但模型小、显存受限
+- 云端: 大模型、强能力；但需联网、隐私风险
+- 端云协同需结合路由、数据最小化、远程证明和供应商/硬件信任边界
+
+### 高频题4: GGUF 格式的核心优势？
+
+**答案**:
+1. 单文件部署 (模型+配置+元数据)
+2. 支持 mmap 等加载方式，可能减少复制；启动时间仍取决于存储、模型和后端
+3. 同一 GGUF 可被多个 llama.cpp 后端使用，但具体算子/量化兼容性需核对
+4. 量化粒度细 (Q2-Q8)
+5. llama.cpp 生态完善
+
+### 高频题5: Ollama vs llama.cpp 直接调用？
+
+**答案**:
+- **Ollama**: 包装层，提供原生 HTTP API、部分 OpenAI-compatible 端点、Modelfile 与模型管理
+- **llama.cpp**: C++ 库，需自行集成
+- 选型: 快速原型用 Ollama；产品嵌入用 llama.cpp
+
+### 高频题6: Snapdragon NPU (Hexagon) 与 GPU 推理区别？
+
+**答案**:
+- **NPU**：擅长受支持的低精度矩阵算子与能效优化，但可能发生 CPU/GPU 回退。
+- **GPU**：算子覆盖通常更灵活，具体性能/功耗取决于芯片、后端和模型。
+- 选型不能只看 TOPS；要分别测 prefill、decode、内存、温控，并从日志确认真实卸载路径。
+
+### 高频题7: Minions Secure Chat 的核心思想与限制？
+
+**答案**：客户端先验证 confidential CPU/GPU 的远程证明，再建立加密会话；Prompt 只在通过验证的 TEE 内解密并完成推理。它不依赖“不可逆嵌入 + 本地解码”。截至 2026-07-31，该方案仍是未经第三方审计的研究原型，生产落地还需供应链、证明服务、镜像测量、密钥轮换和事件响应审计。
+
+### 高频题8: 端侧 LLM 的 KV Cache 显存挑战？
+
+**答案**：端侧可用内存通常同时被 OS、权重、运行时 workspace 与 KV cache 占用。候选手段包括：
+1. **KV Cache 量化**：仅在后端和模型支持时采用，并评估质量；
+2. **分页/分块管理**：降低碎片，但具体端侧后端未必支持 vLLM 的 PagedAttention；
+3. **高效 Attention kernel**：主要减少中间激活/访存，不会消除 KV 本体；
+4. **Sliding Window / context truncation**：直接限制保留历史，需接受能力损失。
+
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| **Apple MLX** | 统一内存，Apple Silicon 原生 |
+| **GGUF** | llama.cpp 标准格式，Q2-Q8 量化 |
+| **Ollama** | llama.cpp 包装，OpenAI 兼容 API |
+| **WebLLM** | MLC-LLM 浏览器推理，WebGPU |
+| **WebGPU** | 浏览器 GPU 加速 |
+| **Hexagon NPU** | Qualcomm 端侧 NPU |
+| **Minions Secure Chat** | 远程证明 + confidential CPU/GPU TEE；研究原型 |
+| **端云协同** | 路由分流 / KV cache 复用 |
+| **配套代码（W4）** | `01-02` MLX；`03-04` llama.cpp；`05-06` Ollama；`07` WebLLM；`08` wasmtime；`09` Hexagon NPU 教学；`10` 仅演示 TLS 信道及 TEE 威胁模型，不冒充远程证明实现。 |
+
+## 🔗 相关章节
 
 - [[24_云原生部署与工程化]] — 云端部署基础，Docker/K8s 与端侧镜像构建对比
 - [[16_模型微调与推理优化]] — 量化技术 (FP4/INT4/AWQ)，端侧量化的上游方法
 - [[25_推理引擎与高性能服务]] — 云端推理引擎 (vLLM/SGLang) 与端侧 (llama.cpp) 的能力对比
 - [[21_多模态大模型]] — 多模态端侧部署，CoreML / TFLite 加速
 - [[15_Agent智能体开发]] — 端侧 Agent 趋势，Edge AI Agent 框架
+
+## 📖 一手参考资料
+
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
+
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

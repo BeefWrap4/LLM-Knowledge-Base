@@ -1,7 +1,7 @@
 # ---
 # chapter: 20
 # topic: LLMOps与模型可观测性
-# section: 20.10.3 OpenTelemetry SDK + GenAI 语义约定
+# section: 20.8.3 OpenTelemetry SDK + GenAI 语义约定
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: opentelemetry-api, opentelemetry-sdk, opentelemetry-exporter-otlp-proto-grpc

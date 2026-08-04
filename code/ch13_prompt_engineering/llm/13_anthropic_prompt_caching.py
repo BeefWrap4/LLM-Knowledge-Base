@@ -1,7 +1,7 @@
 # ---
 # chapter: 13
 # topic: Prompt Engineering
-# section: 13.7.2 Anthropic Prompt Caching
+# section: 13.5.2 Anthropic Prompt Caching
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: anthropic

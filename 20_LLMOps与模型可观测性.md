@@ -4,6 +4,7 @@ topic: LLMOps与模型可观测性
 difficulty: 中
 interview_frequency: 4
 created: 2026-06-01T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - LLMOps
   - MLflow
@@ -13,10 +14,23 @@ tags:
   - Token计量
   - CI/CD
 ---
-# 第20章 LLMOps与模型可观测性 ⭐⭐⭐⭐
+# 第 20 章 LLMOps与模型可观测性 ⭐⭐⭐⭐
 
-> **面试重要度**：高（定性判断，不代表岗位样本统计）| **审校日期**：2026-07-31
+> [!abstract] 本章导航
+> **定位**：把实验、调用、成本和质量证据串成生产运行闭环。
 >
+> **先修**：[[09_Web开发与FastAPI]]、[[15_Agent智能体开发]]、[[17_大模型评估体系]]。
+>
+> **学习目标**：
+> - 设计覆盖 trace、metric、log、eval 和 cost 的观测模型。
+> - 实现默认离线且可回归的 LLMOps 流程。
+> - 根据链路证据定位质量、延迟和成本异常。
+>
+> **建议路径**：LLMOps 全景概述 → 实验追踪 → LLM可观测性 → … → OpenTelemetry GenAI 语义约定（截至 2026-07-31）。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：`code/ch20_llmops/`。
+
+> [!info] 阅读提示
 > LLMOps（Large Language Model Operations）覆盖实验追踪、Prompt 与配置版本、评估、可观测性、
 > 成本治理和发布回滚。本章聚焦可验证的工程方法；模型名称、价格、上下文上限和平台能力都可能变化，
 > 使用前必须复核供应商当前文档与账户账单。
@@ -26,8 +40,6 @@ tags:
 > [OpenTelemetry GenAI spans](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md) 与
 > [GenAI metrics](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md)。
 > OTel GenAI 约定已迁移到独立仓库，相关定义仍可能处于 Development，生产中应锁定版本。
-
----
 
 ## 20.1 LLMOps 全景概述 ⭐⭐⭐⭐
 
@@ -146,8 +158,6 @@ graph LR
 | **L4: 智能化** | 自动 Prompt 优化 + 自适应路由 + 异常自愈 | DSPy + 端云协同 | 大规模部署 |
 
 > 📚 **交叉引用**：LLMOps 中涉及到的模型部署方案（vLLM、TensorRT-LLM），请参考 [第16章 模型微调与推理优化](16_模型微调与推理优化.md#167-模型部署与服务化) 的部署章节。
-
----
 
 ## 20.2 实验追踪 ⭐⭐⭐⭐
 
@@ -303,11 +313,9 @@ print(f"最佳准确率: {best_run.iloc[0]['metrics.accuracy']}")
 
 > 📚 **交叉引用**：模型的超参数选择（temperature、top_p 等）直接影响输出质量，具体原理请参考 [[13_Prompt_Engineering]] 中的推理参数详解。
 
----
-
 ## 20.3 LLM可观测性 ⭐⭐⭐⭐⭐
 
-> 可观测性（Observability）是 LLMOps 中最核心、最被面试官关注的能力维度。如果说实验追踪是"记录做了什么"，可观测性就是"看清发生了什么"。
+> 可观测性（Observability）连接线上请求、模型调用、检索、工具、成本和评测证据。实验追踪回答“做过什么实验”，运行时可观测性回答“这次请求发生了什么以及为何失败”。
 
 ### 20.3.1 什么是 LLM 可观测性
 
@@ -556,7 +564,7 @@ def evaluate_response_quality(trace_id: str, score: float) -> None:
 
 ### 20.3.4 Prompt 调试与优化 ⭐⭐⭐
 
-可观测性工具最重要的应用场景之一就是 **Prompt 调试**。在面试中，能够清晰描述如何使用 Trace 工具定位 Prompt 问题是重要加分项。
+**Prompt 调试**是可观测性工具的常见场景。应说明如何用 Trace 区分模板、上下文、模型、工具和输出解析问题，而不只展示一条调用链。
 
 **Prompt 调试工作流**：
 
@@ -689,8 +697,6 @@ budget_tracker.record(model=model, cost_usd=cost_usd, rate_source=rates.source)
 必须把缓存读写、批处理、推理 Token 等供应商特定计费项纳入 Rate Card；未知模型应失败并告警，
 不能静默按 0 元或套用其他模型价格。完整实现见
 `code/ch20_llmops/llm/08_token_tracker.py`，预算、告警比率和教学费率均可配置。
-
----
 
 ## 20.4 Prompt 版本管理与A/B测试 ⭐⭐⭐⭐
 
@@ -1209,8 +1215,6 @@ print(f"每组需要 {n_required} 个样本")
 
 > 📚 **交叉引用**：A/B 测试中使用的评估方法（正确率、用户满意度等），请参考 [[13_Prompt_Engineering]] 中的 LLM 评估体系。
 
----
-
 ## 20.5 成本监控与Token计量 ⭐⭐⭐
 
 ### 20.5.1 API 成本 Rate Card（运行时配置）
@@ -1411,8 +1415,6 @@ def cached_llm_call(prompt: str, model: str, **params) -> str:
     cache.set(prompt, model, response, **params)
     return response
 ```
-
----
 
 ## 20.6 模型监控与告警 ⭐⭐⭐⭐
 
@@ -1782,8 +1784,6 @@ async def chat(request: dict):
 
 这里使用独立 `CollectorRegistry`，避免测试或应用工厂重复构建时注册同名指标。成本应由 Provider usage
 与版本化 Rate Card/账单归因后记录，不能在请求路径凭固定单价伪造“日成本” Gauge。
-
----
 
 ## 20.7 持续集成与持续部署（ML CI/CD）⭐⭐⭐⭐
 
@@ -2288,247 +2288,11 @@ jobs:
           fi
 ```
 
----
-
-## 🎯 面试真题精讲
-
-### 🎯 面试题1：MLOps 和 LLMOps 的核心区别是什么？面试官为什么问这个问题？
-
-**参考答案**：
-
-MLOps 和 LLMOps 的本质区别在于**被运维的对象发生了根本变化**：
-
-1. **从"自己训练的模型"到"调用的基础模型"**：MLOps 管理的是自己训练/微调的模型权重；LLMOps 管理的更多是 Prompt、RAG 配置、API 版本和服务编排。
-
-2. **从"确定性评估"到"模糊性评估"**：传统 MLOps 有明确的指标（Accuracy/F1），LLMOps 的"好"是主观的，需要 LLM-as-Judge + 人工评估。
-
-3. **从"固定成本推理"到"可变 Token 成本"**：传统推理成本固定，LLM 推理成本随 Token 用量波动，成本管理成为运维核心。
-
-4. **从"模型版本"到"Prompt + 模型 + 检索配置"的多维版本**：LLM 应用的"版本"是 Prompt 版本、模型版本、检索配置版本的笛卡尔积。
-
-**面试金句**："MLOps 管的是模型，LLMOps 管的是 Prompt 驱动的智能应用 —— Prompt 变成了代码，模型变成了外部依赖。"
-
----
-
-### 🎯 面试题2：在大模型应用中，为什么要做实验追踪？如果不做会有什么问题？
-
-**参考答案**：
-
-LLM 实验的变量空间极大（Prompt 措辞、模型选择、temperature、检索 top_k 等），而且**变量之间的交互复杂**。不做实验追踪会导致：
-
-1. **无法复现**：无法确定某次结果对应的 Prompt、模型快照、参数与数据集版本
-2. **无法对比**：不知道改 Prompt 后是提升还是回退
-3. **无法归因**：效果好/坏不知道是哪个变量导致的
-4. **无法协作**：团队成员各自试验，无法共享知识
-
-**推荐工具**：MLflow（开源，适合自建）或 W&B（商业，适合团队协作）。
-
-**回答要点**：Prompt 改动的影响方向和幅度都要通过同版本数据集与指标测量；没有实验记录就无法复现或归因。
-
----
-
-### 🎯 面试题3：LangSmith 的 Trace、Run、Feedback 分别是什么？你在项目中怎么用的？
-
-**参考答案**：
-
-- **Trace**：一次完整 LLM 调用的**端到端链路**（用户输入 → 检索 → LLM → 后处理 → 输出），是 LangSmith 的一级抽象。
-- **Run**：Trace 中的**单个步骤**（如一次 Embedding 计算、一次 LLM API 调用），有输入、输出、耗时、Token 用量。
-- **Feedback**：对 Run 的**评价标签**（👍/👎、5星、正确/错误），可以是人工标注，也可以是自动评估。
-
-**项目经验示例**：
-"我在项目中用 LangSmith 做了三件事：
-1. 用 `@traceable` 装饰器自动追踪 QA Pipeline 的每个步骤，快速定位到 Prompt 渲染阶段的 bug
-2. 建立 Evaluation Dataset（200 个标注问答），每次改 Prompt 后自动跑一遍，对比准确率变化
-3. 接入用户反馈（👍/👎），统计不同 Prompt 版本的用户满意度"
-
----
-
-### 🎯 面试题4：如何设计 LLM 应用的 A/B 测试？需要注意什么？
-
-**参考答案**：
-
-LLM A/B 测试的核心挑战是**输出的主观性**和**多维度权衡**。设计时需要注意：
-
-**1. 流量分配策略**：
-- 使用**用户 ID 哈希**做确定性分配（同一用户始终看到同一版本）
-- 避免随机分配导致同一用户在不同请求中看到不同行为
-
-**2. 指标设计（三层）**：
-- **北极星指标**：用户满意度（👍/👎 比例）、任务完成率
-- **质量指标**：准确率、幻觉率（自动检测 + 人工抽检）
-- **Guardrail 指标**：延迟（P95/P99）、Token 消耗、错误率
-
-**3. 统计显著性**：
-- 使用双比例 Z 检验（二分类指标）
-- 使用 Welch's T 检验（连续指标）
-- 样本量由基线率、最小可检测效应、显著性水平、检验功效和方差决定，不存在通用“100+”下限
-
-**4. 陷阱注意**：
-- 不要只看准确率忽略延迟/成本（可能有 Guardrail 劣化）
-- 样本量不足时不要过早下结论
-- 避免"Peeking"（频繁检查 P 值）
-
----
-
-### 🎯 面试题5：如何计算 LLM 应用的成本？有哪些优化策略？
-
-**参考答案**：
-
-**成本计算**：
-$$\text{单次成本} = \frac{\text{输入Token} \times \text{输入单价} + \text{输出Token} \times \text{输出单价}}{1,000,000}$$
-
-**优化策略**：先建立按模型、任务和 trajectory 的账单基线，再依次验证应用/Provider 缓存、模型路由、
-上下文压缩、输出上限与 Batch/异步服务等级。每项都同时报告质量 Guardrail、延迟、命中/升级率和
-净成本差额；没有自己的流量与账单数据，就不承诺固定节省比例。
-
----
-
-### 🎯 面试题6：LLM 应用需要监控哪些指标？怎么设计告警？
-
-**参考答案**：
-
-**四大类监控指标**：
-
-1. **金指标（Golden Signals）**：
-   - 延迟（P50/P95/P99）
-   - 错误率
-   - 吞吐量（QPS/RPM）
-
-2. **LLM 特有指标**：
-   - Token 用量（输入/输出 Token 趋势）
-   - Token 成本（每日/每用户）
-   - 缓存命中率
-
-3. **质量指标**：
-   - 用户满意度（👍/👎 比例）
-   - 幻觉检测命中率
-   - LLM-as-Judge 自动评分
-
-4. **基础设施指标**：
-   - GPU 利用率（自部署）
-   - API Rate Limit 余量
-   - 模型可用性（Health Check）
-
-**告警设计原则**：
-- 错误率与延迟：相对业务 SLO 和错误预算告警，并要求持续窗口，避免瞬时抖动
-- 成本：相对已配置预算、预测和历史基线告警
-- 缓存：命中率只作诊断，还要联看陈旧率、误命中率和净节省
-- 严重级别、阈值、窗口和路由对象均由业务风险与 runbook 决定
-
-**工具选择**：Prometheus（指标收集） + Grafana（可视化） + PagerDuty/钉钉（告警通知）
-
----
-
-### 🎯 面试题7：什么是数据漂移？如何检测 LLM 应用中的数据漂移？
-
-**参考答案**：
-
-**数据漂移**（Data Drift）指模型服务的数据分布（用户输入）随时间发生变化。在 LLM 应用中表现为：用户提问的话题、语言风格、复杂度分布发生变化。
-
-**检测方法**：
-
-1. **Embedding 漂移检测**：对比参考期和当前期的 Embedding 质心余弦距离
-2. **KS 检验**：逐维度检验 Embedding 分布是否一致
-3. **话题分布变化**：定期聚类用户问题，对比话题分布
-4. **Token/长度分布变化**：监控输入 Prompt 的长度分布变化
-
-**面试要点强调**："数据漂移在 LLM 应用中同样存在，但不是传统的特征漂移（Feature Drift），而是**语义漂移（Semantic Drift）**——用户问的问题变了。检测手段也从特征分布对比变成了 Embedding 空间分析。"
-
----
-
-### 🎯 面试题8：如何设计 LLM 应用的 CI/CD Pipeline？评估门禁怎么做？
-
-**参考答案**：
-
-**LLM CI/CD Pipeline 核心阶段**：
-
-1. **代码检查**：Lint + 单元测试 + Prompt 模板验证
-2. **评估门禁**（核心差异点）：在 Regression Test Dataset 上运行评估
-3. **Staging 部署**：部署到预发布环境
-4. **分阶段发布**：按变更风险配置初始流量、观察窗口、样本量和升级条件
-5. **全量上线**：质量、可靠性、安全和成本 Guardrail 达标后再扩大流量
-
-**评估门禁检查项**：
-- 准确率不低于基线（防止回归）
-- 幻觉率不超过阈值
-- P95 延迟不超过上限
-- 单次查询成本不超过预算
-- 安全检查通过
-
-**回答边界**：自动门禁适合确定性检查和稳定量表，但不能消除 Judge 偏差或替代高风险场景的人工复核；
-应保留标注集版本、置信区间、bad case 和人工仲裁记录。
-
----
-
-### 🎯 面试题9：Langfuse 和 LangSmith 怎么选？
-
-**参考答案**：
-
-| 维度 | 核验问题 |
-|------|---------|
-| **部署与数据边界** | 是否必须自托管、数据驻留与备份如何做；Langfuse 核心 OSS 可自托管，但基础设施并非零成本 |
-| **框架/SDK 集成** | 对当前 LangChain、OpenAI、Anthropic、OTel 版本做最小 PoC，不按品牌推断 |
-| **评估与 Prompt** | 数据集、在线/离线评估、Prompt 发布标签和回滚是否覆盖团队流程 |
-| **权限与合规** | SSO、RBAC、审计、保留策略在哪个套餐/版本提供 |
-| **成本与运维** | SaaS 费用与自托管 ClickHouse/PostgreSQL、升级、备份、值班成本一起算 |
-| **可迁移性** | 能否以 OTLP/开放 schema 导出，避免观测数据锁定 |
-
-**面试边界**：如果没有亲自使用，不要声称“真实使用经验”；可以说明依据官方文档完成了哪些 PoC，
-验证了哪些版本、数据流和故障场景。
-
----
-
-### 🎯 面试题10：截至 2026-07-31，LLMOps 应重点关注哪些变化？
-
-**参考答案**：
-
-1. **缓存计费更复杂**：按模型区分 cache write/read、TTL 和显式断点，直接读取 usage 与账单。
-2. **GenAI 语义约定持续演进**：OTel GenAI 已迁至独立仓库且仍有 Development 定义，必须锁版本。
-3. **Tracing 与评估融合**：MLflow、LangSmith、Langfuse、Weave 等都覆盖更多 Trace/Eval 流程，选型需实时核验。
-4. **推理用量进入成本模型**：reasoning Token 是 output 的子集，观测时避免重复累计。
-5. **Agent 需要轨迹级治理**：按 trajectory 归因 LLM、Tool、重试和回滚，内容字段默认关闭。
-6. **路由与 Gateway 需可验证**：模型 fallback 不能只看成本，还要测质量、升级率、幂等与故障恢复。
-
-回答时给出官方文档日期、版本与自身验证数据，比列“热点名词”更可信。
-
----
-
-## 20.8 速查表
-
-### LLMOps 工具矩阵
-
-| 类别 | 工具示例 | 当前核验重点 |
-|------|---------|-------------|
-| **实验/Trace/Eval** | MLflow | GenAI Trace、Scorer、Dataset、Prompt Registry 与 OTel 兼容版本 |
-| **实验/Trace/Eval** | W&B / Weave | Traces、Evaluations、Datasets、版本与套餐 |
-| **可观测/评估** | LangSmith | Trace、Dataset、Experiment、Feedback 与数据/权限边界 |
-| **可观测/Prompt** | Langfuse | OSS/Cloud 功能差异、Server/SDK 兼容、存储与运维 |
-| **评估框架** | Ragas / DeepEval | 指标定义、Judge 模型、校准集与版本 |
-| **Gateway/推理** | LiteLLM / vLLM | Provider/模型兼容、路由、限流、用量与回滚 |
-| **通用遥测** | OpenTelemetry / Prometheus / Grafana | SemConv 版本、基数、采样、保留与告警 |
-| **CI/CD** | GitHub Actions 等 | 密钥隔离、离线门禁、真实 API opt-in 与制品追溯 |
-
-工具功能、许可和套餐变化快；本表用于列选型维度，不替代各项目当前官方文档和 PoC。
-
-### 关键公式速查
-
-| 公式 | 用途 |
-|------|------|
-| $\text{单次成本} = \frac{I \times P_i + O \times P_o}{10^6}$ | API 调用成本 |
-| $\text{KV Cache} = 2 \times B \times L \times H \times T \times D \times \text{sizeof}$ | KV Cache 显存 |
-| $\text{Z-score} = \frac{p_t - p_c}{\sqrt{p_{\text{pool}}(1-p_{\text{pool}})(1/n_c+1/n_t)}}$ | A/B 测试显著性 |
-| $n = 2(\frac{Z_{\alpha/2} + Z_{\beta}}{h})^2$ | 最小样本量 |
-
-首行只是最简 Token 计费式；实际 Rate Card 还应包含 cache write/read、reasoning、Batch、区域、
-服务等级与工具费用，且 reasoning Token 若已计入 output 不可重复相加。
-
----
-
-## 20.10 OpenTelemetry GenAI 语义约定（截至 2026-07-31）⭐⭐⭐⭐⭐
+## 20.8 OpenTelemetry GenAI 语义约定（截至 2026-07-31）⭐⭐⭐⭐⭐
 
 > 🆕 **截至 2026-07-31**：OpenTelemetry 已形成 GenAI 语义约定，但相关定义已迁移到独立的 GenAI semantic-conventions 仓库，部分信号/属性仍处于 Development 或迁移阶段。工程中必须锁定 semconv 与 instrumentation 版本，不能笼统宣称“全部 Stable 1.x”。
 
-### 20.10.1 背景：从私有 Trace 到 OTLP `gen_ai.*` 标准
+### 20.8.1 背景：从私有 Trace 到 OTLP `gen_ai.*` 标准
 
 过去 LLM 可观测性高度依赖各厂商私有协议（LangSmith Trace、Langfuse Span），导致：
 
@@ -2573,7 +2337,7 @@ graph TD
     style RES fill:#e3f2fd,stroke:#1976d2
 ```
 
-### 20.10.2 OTLP `gen_ai.*` 核心字段
+### 20.8.2 OTLP `gen_ai.*` 核心字段
 
 OTel GenAI 语义约定对通用调用字段进行了建模。下表只列截至 2026-07-31 可在官方 registry 中核验的字段；成本、RAG 命中和业务评分应放入自有命名空间，并在团队内维护 schema。
 
@@ -2609,7 +2373,7 @@ OTel GenAI 语义约定对通用调用字段进行了建模。下表只列截至
 > 💡 **面试回答边界**：OTel 解决跨后端的信号命名和导出，LangSmith/Langfuse 等平台提供
 > 调试、评估与协作能力；二者可以组合，不能据少量岗位或面经断言前者正在替代后者。
 
-### 20.10.3 代码示例 1：OpenTelemetry SDK + GenAI 语义约定
+### 20.8.3 代码示例 1：OpenTelemetry SDK + GenAI 语义约定
 
 ```python
 """
@@ -2830,7 +2594,7 @@ telemetry.record_llm_call(
 [OpenTelemetry Python SDK：PeriodicExportingMetricReader](https://opentelemetry-python.readthedocs.io/en/latest/sdk/metrics.export.html#opentelemetry.sdk.metrics.export.PeriodicExportingMetricReader)
 （截至 2026-07-31）。
 
-### 20.10.4 代码示例 2：OpenInference + OTLP 双规范导出
+### 20.8.4 代码示例 2：OpenInference + OTLP 双规范导出
 
 OpenInference 在 RAG / Agent 场景下提供更细粒度的 SpanKind，二者可以并存导出：
 
@@ -2930,7 +2694,7 @@ def instrument_agent_step(
         return decision
 ```
 
-### 20.10.5 in-prod Eval Pipeline 模式
+### 20.8.5 in-prod Eval Pipeline 模式
 
 离线 Eval 使用固定测试集，**in-prod eval（生产中评估）** 则对经过权限控制与采样的线上 Trace
 运行评分。它能发现真实分布中的问题，但会引入成本、隐私、选择偏差和 Judge 漂移，不能替代离线回归与人工复核。
@@ -3007,7 +2771,7 @@ def with_judge(llm_call_span, response_text: str, query: str, ground_truth: str 
 `0.01` 与 `0.7` 只是可覆盖的教学默认值，不是行业基准；生产值应由隐私政策、Judge 预算、
 标注集校准结果和 bad-case 人工复核能力共同决定。
 
-### 20.10.6 成本遥测作为 SLO 维度（Cost Telemetry as SLO）
+### 20.8.6 成本遥测作为 SLO 维度（Cost Telemetry as SLO）
 
 成本可以作为服务治理维度，但目标应来自业务预算与错误成本。`reasoning.output_tokens` 是 `output_tokens` 的子集，不能再按一份独立 token 重复计费；缓存、batch、图片和音频价格也必须按提供商账单口径拆分。
 
@@ -3076,7 +2840,7 @@ spec:
 `app_llm_cost_p95_budget_usd` 与 `app_llm_hourly_budget_usd` 由财务/配置系统发布，
 示例不内置美元阈值。用户级审计放在低基数以外的日志/Trace 或专用分析存储中。
 
-### 20.10.7 Per-Trajectory Cost Attribution（按轨迹成本归因）
+### 20.8.7 Per-Trajectory Cost Attribution（按轨迹成本归因）
 
 Agent 应用的"一次请求"可能是 5-20 次 LLM 调用，需要把成本按 **trajectory（轨迹）** 归因：
 
@@ -3205,7 +2969,7 @@ with tracker.trajectory("帮我写一个 Python 装饰器") as (traj_id, cost_at
     )
 ```
 
-### 20.10.8 Reasoning Usage Guardrail（推理用量护栏）
+### 20.8.8 Reasoning Usage Guardrail（推理用量护栏）
 
 不同提供商的控制面并不等价：有的暴露显式 token budget，有的只提供 `reasoning_effort` 档位。统一观测时记录实际 `gen_ai.usage.reasoning.output_tokens`，预算/档位和业务判定放在 `app.*` 字段。
 
@@ -3290,7 +3054,7 @@ def record_thinking_usage(
 | **Underuse Rate** | underuse / reasoning_requests | 仅作诊断，不设跨业务通用阈值 |
 | **Median Utilization** | histogram_quantile(0.5, utilization_ratio) | 按模型、档位和任务分桶 |
 
-### 20.10.9 Cascade / Router 模型成本模式
+### 20.8.9 Cascade / Router 模型成本模式
 
 Cascade Router（级联路由器）先用便宜模型，复杂 case 升级到贵模型。需要**分段成本监控**：
 
@@ -3368,7 +3132,7 @@ def record_upgrade(
 | **升级率** | count(upgrade) / total | 由路由标注集与质量 Guardrail 校准 |
 | **加权成本** | Σ(observed_cost) / requests | 不超过业务预算且质量不退化 |
 
-### 20.10.10 Agent 回滚策略（Agent Rollback）
+### 20.8.10 Agent 回滚策略（Agent Rollback）
 
 Agent 应用的回滚可能涉及 Prompt、Tool allowlist、模型路由和编排策略的多版本组合。
 可以用 OTel Span/Event 保留决策证据，但回滚层级和时限必须结合系统架构与风险建模，不能宣称唯一“最佳实践”。
@@ -3479,7 +3243,7 @@ def cost_overrun_auto_rollback(
 | 工具失败或风险策略触发 | L3 Tool Allowlist | 工具风险等级与审计策略 | 最小安全白名单 |
 | 模型延迟/错误/行为回归 | L4 Model | 模型分桶 SLO 与回归集 | 已验证模型快照 |
 
-### 20.10.11 面试实战建议
+### 20.8.11 面试实战建议
 
 **Q1：你们团队如何统一 LLM 可观测性的字段？**
 - 答：使用 OTel GenAI 语义约定，LLM 调用记录 `gen_ai.usage.input_tokens`、`gen_ai.usage.output_tokens` 和 `gen_ai.response.finish_reasons`；成本与轨迹不是标准 GenAI 字段，分别放入团队维护的 `app.llm.cost.usd`、`app.agent.trajectory_id`。配合 OpenInference 的 `SpanKind`（LLM/RETRIEVER/TOOL/AGENT）做 RAG/Agent 场景细分。
@@ -3497,9 +3261,7 @@ def cost_overrun_auto_rollback(
 - 答：先把流量、Prompt、工具策略和模型快照分别版本化，再按故障归因选择最小影响的回滚层级。
   OTel Span/Event 提供证据和关联 ID，控制面执行仍需幂等、权限、审计、冷却时间和人工接管。
 
----
-
-## 20.9 本章小结
+## 🧭 本章小结
 
 本章系统讲解了 LLMOps 与模型可观测性的核心知识体系：
 
@@ -3512,7 +3274,15 @@ def cost_overrun_auto_rollback(
 - **20.6 模型监控与告警**：四维监控体系（金指标/LLM特有/质量/基础设施）；数据漂移检测从特征空间转向 Embedding 空间。
 - **20.7 CI/CD**：自动化评估门禁是 LLM CI/CD 的核心；金丝雀发布配合自动回滚保障生产安全。
 
-## 20.x 配套代码与运行边界
+## ✅ 自测与练习
+
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
+
+1. 你能否设计覆盖 trace、metric、log、eval 和 cost 的观测模型？
+2. 你能否实现默认离线且可回归的 LLMOps 流程？
+3. 你能否根据链路证据定位质量、延迟和成本异常？
+
+## 🧪 配套代码与验收
 
 本章示例默认离线：不会读取模型 API Key，也不会发起模型或可观测平台网络请求。真实 OpenAI/W&B、
 LangSmith、Langfuse 或外部 MLflow/OTLP 连接必须同时显式设置 `LLM_MOCK=0` 与
@@ -3527,7 +3297,237 @@ python ch20_llmops/llm/09_ab_test_framework.py
 python ch20_llmops/llm/08_token_tracker.py
 ```
 
-## 📚 相关章节
+## 🎯 面试题精讲
+
+### 面试题1：MLOps 和 LLMOps 的核心区别是什么？面试官为什么问这个问题？
+
+**参考答案**：
+
+MLOps 和 LLMOps 的本质区别在于**被运维的对象发生了根本变化**：
+
+1. **从"自己训练的模型"到"调用的基础模型"**：MLOps 管理的是自己训练/微调的模型权重；LLMOps 管理的更多是 Prompt、RAG 配置、API 版本和服务编排。
+
+2. **从"确定性评估"到"模糊性评估"**：传统 MLOps 有明确的指标（Accuracy/F1），LLMOps 的"好"是主观的，需要 LLM-as-Judge + 人工评估。
+
+3. **从"固定成本推理"到"可变 Token 成本"**：传统推理成本固定，LLM 推理成本随 Token 用量波动，成本管理成为运维核心。
+
+4. **从"模型版本"到"Prompt + 模型 + 检索配置"的多维版本**：LLM 应用的"版本"是 Prompt 版本、模型版本、检索配置版本的笛卡尔积。
+
+**回答要点**："MLOps 管的是模型，LLMOps 管的是 Prompt 驱动的智能应用 —— Prompt 变成了代码，模型变成了外部依赖。"
+
+---
+
+### 面试题2：在大模型应用中，为什么要做实验追踪？如果不做会有什么问题？
+
+**参考答案**：
+
+LLM 实验的变量空间极大（Prompt 措辞、模型选择、temperature、检索 top_k 等），而且**变量之间的交互复杂**。不做实验追踪会导致：
+
+1. **无法复现**：无法确定某次结果对应的 Prompt、模型快照、参数与数据集版本
+2. **无法对比**：不知道改 Prompt 后是提升还是回退
+3. **无法归因**：效果好/坏不知道是哪个变量导致的
+4. **无法协作**：团队成员各自试验，无法共享知识
+
+**推荐工具**：MLflow（开源，适合自建）或 W&B（商业，适合团队协作）。
+
+**回答要点**：Prompt 改动的影响方向和幅度都要通过同版本数据集与指标测量；没有实验记录就无法复现或归因。
+
+---
+
+### 面试题3：LangSmith 的 Trace、Run、Feedback 分别是什么？你在项目中怎么用的？
+
+**参考答案**：
+
+- **Trace**：一次完整 LLM 调用的**端到端链路**（用户输入 → 检索 → LLM → 后处理 → 输出），是 LangSmith 的一级抽象。
+- **Run**：Trace 中的**单个步骤**（如一次 Embedding 计算、一次 LLM API 调用），有输入、输出、耗时、Token 用量。
+- **Feedback**：对 Run 的**评价标签**（👍/👎、5星、正确/错误），可以是人工标注，也可以是自动评估。
+
+**项目经验示例**：
+"我在项目中用 LangSmith 做了三件事：
+1. 用 `@traceable` 装饰器自动追踪 QA Pipeline 的每个步骤，快速定位到 Prompt 渲染阶段的 bug
+2. 建立 Evaluation Dataset（200 个标注问答），每次改 Prompt 后自动跑一遍，对比准确率变化
+3. 接入用户反馈（👍/👎），统计不同 Prompt 版本的用户满意度"
+
+---
+
+### 面试题4：如何设计 LLM 应用的 A/B 测试？需要注意什么？
+
+**参考答案**：
+
+LLM A/B 测试的核心挑战是**输出的主观性**和**多维度权衡**。设计时需要注意：
+
+**1. 流量分配策略**：
+- 使用**用户 ID 哈希**做确定性分配（同一用户始终看到同一版本）
+- 避免随机分配导致同一用户在不同请求中看到不同行为
+
+**2. 指标设计（三层）**：
+- **北极星指标**：用户满意度（👍/👎 比例）、任务完成率
+- **质量指标**：准确率、幻觉率（自动检测 + 人工抽检）
+- **Guardrail 指标**：延迟（P95/P99）、Token 消耗、错误率
+
+**3. 统计显著性**：
+- 使用双比例 Z 检验（二分类指标）
+- 使用 Welch's T 检验（连续指标）
+- 样本量由基线率、最小可检测效应、显著性水平、检验功效和方差决定，不存在通用“100+”下限
+
+**4. 陷阱注意**：
+- 不要只看准确率忽略延迟/成本（可能有 Guardrail 劣化）
+- 样本量不足时不要过早下结论
+- 避免"Peeking"（频繁检查 P 值）
+
+---
+
+### 面试题5：如何计算 LLM 应用的成本？有哪些优化策略？
+
+**参考答案**：
+
+**成本计算**：
+$$\text{单次成本} = \frac{\text{输入Token} \times \text{输入单价} + \text{输出Token} \times \text{输出单价}}{1,000,000}$$
+
+**优化策略**：先建立按模型、任务和 trajectory 的账单基线，再依次验证应用/Provider 缓存、模型路由、
+上下文压缩、输出上限与 Batch/异步服务等级。每项都同时报告质量 Guardrail、延迟、命中/升级率和
+净成本差额；没有自己的流量与账单数据，就不承诺固定节省比例。
+
+---
+
+### 面试题6：LLM 应用需要监控哪些指标？怎么设计告警？
+
+**参考答案**：
+
+**四大类监控指标**：
+
+1. **金指标（Golden Signals）**：
+   - 延迟（P50/P95/P99）
+   - 错误率
+   - 吞吐量（QPS/RPM）
+
+2. **LLM 特有指标**：
+   - Token 用量（输入/输出 Token 趋势）
+   - Token 成本（每日/每用户）
+   - 缓存命中率
+
+3. **质量指标**：
+   - 用户满意度（👍/👎 比例）
+   - 幻觉检测命中率
+   - LLM-as-Judge 自动评分
+
+4. **基础设施指标**：
+   - GPU 利用率（自部署）
+   - API Rate Limit 余量
+   - 模型可用性（Health Check）
+
+**告警设计原则**：
+- 错误率与延迟：相对业务 SLO 和错误预算告警，并要求持续窗口，避免瞬时抖动
+- 成本：相对已配置预算、预测和历史基线告警
+- 缓存：命中率只作诊断，还要联看陈旧率、误命中率和净节省
+- 严重级别、阈值、窗口和路由对象均由业务风险与 runbook 决定
+
+**工具选择**：Prometheus（指标收集） + Grafana（可视化） + PagerDuty/钉钉（告警通知）
+
+---
+
+### 面试题7：什么是数据漂移？如何检测 LLM 应用中的数据漂移？
+
+**参考答案**：
+
+**数据漂移**（Data Drift）指模型服务的数据分布（用户输入）随时间发生变化。在 LLM 应用中表现为：用户提问的话题、语言风格、复杂度分布发生变化。
+
+**检测方法**：
+
+1. **Embedding 漂移检测**：对比参考期和当前期的 Embedding 质心余弦距离
+2. **KS 检验**：逐维度检验 Embedding 分布是否一致
+3. **话题分布变化**：定期聚类用户问题，对比话题分布
+4. **Token/长度分布变化**：监控输入 Prompt 的长度分布变化
+
+**面试要点强调**："数据漂移在 LLM 应用中同样存在，但不是传统的特征漂移（Feature Drift），而是**语义漂移（Semantic Drift）**——用户问的问题变了。检测手段也从特征分布对比变成了 Embedding 空间分析。"
+
+---
+
+### 面试题8：如何设计 LLM 应用的 CI/CD Pipeline？评估门禁怎么做？
+
+**参考答案**：
+
+**LLM CI/CD Pipeline 核心阶段**：
+
+1. **代码检查**：Lint + 单元测试 + Prompt 模板验证
+2. **评估门禁**（核心差异点）：在 Regression Test Dataset 上运行评估
+3. **Staging 部署**：部署到预发布环境
+4. **分阶段发布**：按变更风险配置初始流量、观察窗口、样本量和升级条件
+5. **全量上线**：质量、可靠性、安全和成本 Guardrail 达标后再扩大流量
+
+**评估门禁检查项**：
+- 准确率不低于基线（防止回归）
+- 幻觉率不超过阈值
+- P95 延迟不超过上限
+- 单次查询成本不超过预算
+- 安全检查通过
+
+**回答边界**：自动门禁适合确定性检查和稳定量表，但不能消除 Judge 偏差或替代高风险场景的人工复核；
+应保留标注集版本、置信区间、bad case 和人工仲裁记录。
+
+---
+
+### 面试题9：Langfuse 和 LangSmith 怎么选？
+
+**参考答案**：
+
+| 维度 | 核验问题 |
+|------|---------|
+| **部署与数据边界** | 是否必须自托管、数据驻留与备份如何做；Langfuse 核心 OSS 可自托管，但基础设施并非零成本 |
+| **框架/SDK 集成** | 对当前 LangChain、OpenAI、Anthropic、OTel 版本做最小 PoC，不按品牌推断 |
+| **评估与 Prompt** | 数据集、在线/离线评估、Prompt 发布标签和回滚是否覆盖团队流程 |
+| **权限与合规** | SSO、RBAC、审计、保留策略在哪个套餐/版本提供 |
+| **成本与运维** | SaaS 费用与自托管 ClickHouse/PostgreSQL、升级、备份、值班成本一起算 |
+| **可迁移性** | 能否以 OTLP/开放 schema 导出，避免观测数据锁定 |
+
+**面试边界**：如果没有亲自使用，不要声称“真实使用经验”；可以说明依据官方文档完成了哪些 PoC，
+验证了哪些版本、数据流和故障场景。
+
+---
+
+### 面试题10：截至 2026-07-31，LLMOps 应重点关注哪些变化？
+
+**参考答案**：
+
+1. **缓存计费更复杂**：按模型区分 cache write/read、TTL 和显式断点，直接读取 usage 与账单。
+2. **GenAI 语义约定持续演进**：OTel GenAI 已迁至独立仓库且仍有 Development 定义，必须锁版本。
+3. **Tracing 与评估融合**：MLflow、LangSmith、Langfuse、Weave 等都覆盖更多 Trace/Eval 流程，选型需实时核验。
+4. **推理用量进入成本模型**：reasoning Token 是 output 的子集，观测时避免重复累计。
+5. **Agent 需要轨迹级治理**：按 trajectory 归因 LLM、Tool、重试和回滚，内容字段默认关闭。
+6. **路由与 Gateway 需可验证**：模型 fallback 不能只看成本，还要测质量、升级率、幂等与故障恢复。
+
+回答时给出官方文档日期、版本与自身验证数据，比列“热点名词”更可信。
+
+## 📋 本章速查表
+
+### LLMOps 工具矩阵
+
+| 类别 | 工具示例 | 当前核验重点 |
+|------|---------|-------------|
+| **实验/Trace/Eval** | MLflow | GenAI Trace、Scorer、Dataset、Prompt Registry 与 OTel 兼容版本 |
+| **实验/Trace/Eval** | W&B / Weave | Traces、Evaluations、Datasets、版本与套餐 |
+| **可观测/评估** | LangSmith | Trace、Dataset、Experiment、Feedback 与数据/权限边界 |
+| **可观测/Prompt** | Langfuse | OSS/Cloud 功能差异、Server/SDK 兼容、存储与运维 |
+| **评估框架** | Ragas / DeepEval | 指标定义、Judge 模型、校准集与版本 |
+| **Gateway/推理** | LiteLLM / vLLM | Provider/模型兼容、路由、限流、用量与回滚 |
+| **通用遥测** | OpenTelemetry / Prometheus / Grafana | SemConv 版本、基数、采样、保留与告警 |
+| **CI/CD** | GitHub Actions 等 | 密钥隔离、离线门禁、真实 API opt-in 与制品追溯 |
+
+工具功能、许可和套餐变化快；本表用于列选型维度，不替代各项目当前官方文档和 PoC。
+
+### 关键公式速查
+
+| 公式 | 用途 |
+|------|------|
+| $\text{单次成本} = \frac{I \times P_i + O \times P_o}{10^6}$ | API 调用成本 |
+| $\text{KV Cache} = 2 \times B \times L \times H \times T \times D \times \text{sizeof}$ | KV Cache 显存 |
+| $\text{Z-score} = \frac{p_t - p_c}{\sqrt{p_{\text{pool}}(1-p_{\text{pool}})(1/n_c+1/n_t)}}$ | A/B 测试显著性 |
+| $n = 2(\frac{Z_{\alpha/2} + Z_{\beta}}{h})^2$ | 最小样本量 |
+
+首行只是最简 Token 计费式；实际 Rate Card 还应包含 cache write/read、reasoning、Batch、区域、
+服务等级与工具费用，且 reasoning Token 若已计入 output 不可重复相加。
+
+## 🔗 相关章节
 
 - [[13_Prompt_Engineering]] — Prompt 设计的最佳实践
 - [[14_RAG检索增强生成]] — RAG 系统的可观测性
@@ -3536,3 +3536,9 @@ python ch20_llmops/llm/08_token_tracker.py
 - [[25_推理引擎与高性能服务]] — vLLM/SGLang 推理引擎的 Prometheus 指标
 - [[29_Context_Engineering]] — Token 成本与 Context Rot 监控
 - [[28_端侧与边缘LLM]] — 端侧 LLM 的监控与可观测性挑战
+
+## 📖 一手参考资料
+
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
+
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

@@ -54,8 +54,8 @@ def test_chapter_uses_published_deepseek_distill_scope_and_values():
 
 def test_chapter_section_numbers_are_monotonic_at_the_end():
     text = CHAPTER.read_text(encoding="utf-8")
-    assert text.index("## 16.10 RL Post-Training") < text.index("## 16.11 本章小结")
-    assert "### 16.10.7 章节速记卡" in text
+    assert text.index("## 16.9 RL Post-Training") < text.index("## 🧭 本章小结")
+    assert "### 16.9.7 章节速记卡" in text
 
 
 def test_grpo_loss_is_grouped_differentiable_and_uses_k3_direction():
