@@ -360,6 +360,13 @@ def inspect_mermaid_blocks() -> tuple[int, list[str]]:
                                 failures.append(
                                     f"{markdown.name}:{body_line_no} {description}; {recommendation}"
                                 )
+                if diagram == "timeline":
+                    for body_line_no, body_line in body:
+                        if re.search(r"<br\s*/?>", body_line, flags=re.IGNORECASE):
+                            failures.append(
+                                f"{markdown.name}:{body_line_no} unsupported Mermaid HTML line break "
+                                "in timeline; use a flowchart for multi-line stage descriptions"
+                            )
                 if diagram == "sequenceDiagram":
                     failures.extend(_inspect_sequence_semantics(markdown.name, body))
                 inside = False

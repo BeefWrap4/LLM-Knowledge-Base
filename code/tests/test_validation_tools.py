@@ -329,6 +329,27 @@ def test_mermaid_gate_rejects_unknown_diagram(monkeypatch, tmp_path: Path) -> No
     assert failures == ["bad.md:2 unsupported Mermaid diagram: tree"]
 
 
+def test_mermaid_gate_rejects_html_break_in_timeline(monkeypatch, tmp_path: Path) -> None:
+    """Obsidian 会显示 timeline 条目中的 <br/>，并把长文本压进窄列。"""
+    (tmp_path / "bad.md").write_text(
+        "```mermaid\n"
+        "timeline\n"
+        "    title 演进路线\n"
+        "    2026 : RAG-as-a-Tool<br/>多模态 RAG + 端云协同\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(verify_all, "REPO", tmp_path)
+
+    total, failures = verify_all.inspect_mermaid_blocks()
+
+    assert total == 1
+    assert failures == [
+        "bad.md:4 unsupported Mermaid HTML line break in timeline; "
+        "use a flowchart for multi-line stage descriptions"
+    ]
+
+
 def test_mermaid_gate_rejects_react_messages_routed_through_user(
     monkeypatch, tmp_path: Path
 ) -> None:

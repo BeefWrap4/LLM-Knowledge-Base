@@ -68,14 +68,22 @@ graph LR
 ### 14.1.3 RAG 演进路线
 
 ```mermaid
-timeline
-    title RAG 技术演进时间线
-    2020 : Naive RAG<br/>基础检索+生成拼接
-    2023 : Advanced RAG<br/>查询重写+重排序+混合检索
-    2024 : Modular RAG<br/>模块化设计+自适应路由
-    2024 : Graph RAG<br/>知识图谱增强+多跳推理
-    2025 : Agentic RAG<br/>Agent自主决策检索策略
-    2026 : RAG-as-a-Tool 🆕<br/>RAG成为Agent的标准工具<br/>多模态RAG+端云协同
+flowchart TB
+    R2020["2020｜Naive RAG<br/>基础检索 + 生成拼接"]
+    R2023["2023｜Advanced RAG<br/>查询重写 + 重排序<br/>混合检索"]
+    R2024M["2024｜Modular RAG<br/>模块化设计 + 自适应路由"]
+    R2024G["2024｜Graph RAG<br/>知识图谱增强 + 多跳推理"]
+    R2025["2025｜Agentic RAG<br/>Agent 自主决策检索策略"]
+    R2026["2026｜RAG-as-a-Tool<br/>RAG 成为 Agent 的<br/>标准工具<br/>多模态 RAG + 端云协同"]
+
+    R2020 --> R2023 --> R2024M --> R2024G --> R2025 --> R2026
+
+    style R2020 fill:#e0e7ff,stroke:#4f46e5,color:#111827
+    style R2023 fill:#fef3c7,stroke:#d97706,color:#111827
+    style R2024M fill:#dcfce7,stroke:#16a34a,color:#111827
+    style R2024G fill:#f3e8ff,stroke:#9333ea,color:#111827
+    style R2025 fill:#cffafe,stroke:#0891b2,color:#111827
+    style R2026 fill:#fce7f3,stroke:#db2777,color:#111827
 ```
 
 | 阶段 | 特点 | 关键技术 |
