@@ -1,7 +1,7 @@
 # ---
 # chapter: 20
 # topic: LLMOps与模型可观测性
-# section: 20.10.8 Thinking-Budget SLO
+# section: 20.8.8 Thinking-Budget SLO
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: opentelemetry-api, opentelemetry-sdk

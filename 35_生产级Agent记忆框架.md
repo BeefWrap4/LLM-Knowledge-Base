@@ -4,7 +4,7 @@ topic: 生产级Agent记忆框架
 difficulty: 中高
 interview_frequency: 4
 created: 2026-06-24T00:00:00.000Z
-updated: 2026-07-31T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - Agent-memory
   - Mem0
@@ -13,10 +13,23 @@ tags:
   - Episodic
   - Semantic
 ---
-# 第35章 生产级 Agent 记忆框架：Mem0、Zep、Letta 四层记忆 ⭐⭐⭐⭐
+# 第 35 章 生产级 Agent 记忆框架：Mem0、Zep、Letta 四层记忆 ⭐⭐⭐⭐
 
-> **面试频率**：中高（应用/Agent 岗常见）| **技术热度**：★★★★☆
+> [!abstract] 本章导航
+> **定位**：把 Agent 记忆从单一聊天历史升级为可治理的生产级状态系统。
 >
+> **先修**：[[15_Agent智能体开发]]、[[29_Context_Engineering]]、[[31_知识编辑与模型记忆]]。
+>
+> **学习目标**：
+> - 设计工作、情景、语义和程序四层记忆。
+> - 比较 Mem0、Zep、Graphiti 与 Letta 的数据模型。
+> - 处理检索、冲突、一致性、隐私和遗忘问题。
+>
+> **建议路径**：四层记忆架构 → Mem0 框架集成 → Zep 框架与 Graphiti → … → 上线前的安全与质量门禁。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：本章暂无独立代码目录，使用正文推导、自测题和决策表验收。
+
+> [!info] 阅读提示
 > 本章用 Session、User Profile、Episodic、Semantic 四层拆解 Agent 记忆，并比较
 > Mem0、Zep/Graphiti、Letta 的公开抽象、代码集成与选型边界。
 >
@@ -24,8 +37,6 @@ tags:
 > 标准认定为“事实标准”。“四层记忆”是本教程的设计分解，不是三款产品共同内置的标准功能。
 > 相关性、时间与重要性是常见候选特征，不是固定三因子公式。生产设计
 > 还必须覆盖 consent、tenant/ACL、provenance、TTL/delete、冲突、安全写入与离线评测。
-
----
 
 ## 35.1 四层记忆架构 ⭐⭐⭐⭐⭐
 
@@ -67,8 +78,6 @@ graph TD
 1. 用户提问，提取检索意图
 2. 并行检索各层（Session：最新 K 轮；其他：语义 + 时序 + 重要性）
 3. 重排序 + RAG 风格注入到 Prompt
-
----
 
 ## 35.2 Mem0 框架集成 ⭐⭐⭐⭐⭐
 
@@ -167,8 +176,6 @@ mem0_config = {
 }
 ```
 
----
-
 ## 35.3 Zep 框架与 Graphiti ⭐⭐⭐⭐
 
 ### 35.3.1 Zep 简介
@@ -194,8 +201,6 @@ Graphiti 的核心洞察：记忆之间有连接（不是孤立向量）。
 
 查询时用图谱遍历 + 向量搜索混合，召回更准。
 
----
-
 ## 35.4 Letta（MemGPT）：操作系统式记忆 ⭐⭐⭐⭐
 
 ### 35.4.1 Letta 简介
@@ -212,8 +217,6 @@ Letta（源自 MemGPT 项目）保留了操作系统式类比，但当前文档�
 “page fault”是 MemGPT 论文帮助理解的类比。当前工程实现是 agent 调用 search/open 等工具，把外部
 结果放入有限 context；memory blocks 则始终驻留。它不等同于操作系统自动缺页中断，也不能假设
 框架会无损换入/换出任意历史。
-
----
 
 ## 35.5 记忆检索三因子 ⭐⭐⭐⭐⭐
 
@@ -286,8 +289,6 @@ def hybrid_search(query_vec: np.ndarray,
 生产中应在标注 query-memory 对上学习/校准融合，并做候选召回与 rerank 分层评测；不要把不同来源、
 不同量纲的原始分数直接相加。
 
----
-
 ## 35.6 记忆写入冲突与一致性 ⭐⭐⭐
 
 ### 35.6.1 冲突场景
@@ -306,8 +307,6 @@ def hybrid_search(query_vec: np.ndarray,
 | **Versioned** | 保留所有版本，检索时返回带时间戳 | 历史回溯 |
 | **User Vote** | 用户确认正确版本 | 高价值场景 |
 
----
-
 ## 35.7 选型决策：Mem0 vs Zep vs Letta ⭐⭐⭐
 
 | 维度 | Mem0 | Zep | Letta |
@@ -324,22 +323,39 @@ def hybrid_search(query_vec: np.ndarray,
 - 需要显式时序事实与关系：评估 **Zep/Graphiti**
 - 需要 agent 可编辑的常驻 blocks 与 context hierarchy：评估 **Letta**
 
----
+## 35.8 上线前的安全与质量门禁
 
-## 📋 本章速查表
+1. **作用域与权限**：所有 CRUD 都绑定 tenant/user/agent/run，并做服务端 ACL；
+2. **写入门禁**：区分用户原话、模型推断和工具事实，记录 provenance/confidence/version；
+3. **隐私生命周期**：consent、PII 分类、TTL、delete/export、加密和数据驻留；
+4. **冲突与并发**：optimistic version、去重、事实有效期和用户确认，不让 LLM 静默覆盖；
+5. **Prompt injection**：检索 memory 视为不可信数据，工具权限不由 memory 文本提升；
+6. **评测**：写入 precision、检索 Recall@n/nDCG、回答增益、错误记忆率、删除验证和成本/延迟；
+7. **观测与回滚**：记录抽取模型、prompt、source memory IDs 与最终引用，可禁用/回滚坏 memory。
 
-| 知识点 | 核心概念/公式 | 面试考察重点 |
-|-------|-------------|-------------|
-| 四层记忆架构 | Session/User Profile/Episodic/Semantic | 各层的作用与实现方式 |
-| Mem0 集成 | 显式使用稳定的 user/agent/run 等 scope；tenant/ACL 另行强制 | SDK 版本、scope 与 schema 测试 |
-| Zep Graphiti | 时序知识图谱 | 图谱遍历 + 向量搜索混合 |
-| Letta context | messages + blocks + files/archival tools | OS 类比的边界 |
-| 多因子检索 | 相关性/重要性/时间等候选特征 | 归一化、校准与离线评测 |
-| 冲突解决 | Latest Wins/Merge/Versioned/User Vote | 多 Agent 共享记忆的一致性 |
+## 🧭 本章小结
 
----
+本章应形成以下可复述结论：
 
-## 🎯 面试真题精讲
+- 设计工作、情景、语义和程序四层记忆。
+- 比较 Mem0、Zep、Graphiti 与 Letta 的数据模型。
+- 处理检索、冲突、一致性、隐私和遗忘问题。
+
+## ✅ 自测与练习
+
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
+
+1. 你能否设计工作、情景、语义和程序四层记忆？
+2. 你能否比较 Mem0、Zep、Graphiti 与 Letta 的数据模型？
+3. 你能否处理检索、冲突、一致性、隐私和遗忘问题？
+
+## 🧪 配套代码与验收
+
+本章暂无独立代码目录。验收时应完成正文中的推导或决策题，并能在自测中说明适用边界。
+
+成功标准：概念、输入输出、关键指标和失败条件能够相互对应，不用未经验证的性能数字代替结论。
+
+## 🎯 面试题精讲
 
 ### 真题 1：Agent 记忆为什么要分层？请设计一个四层记忆架构
 
@@ -409,26 +425,27 @@ Letta 当前可按 context hierarchy 理解：
 
 “Page fault”只是历史类比；实际流程是模型/编排器调用搜索工具，将外部结果加入有限 context。
 
-## 35.8 上线前的安全与质量门禁
+## 📋 本章速查表
 
-1. **作用域与权限**：所有 CRUD 都绑定 tenant/user/agent/run，并做服务端 ACL；
-2. **写入门禁**：区分用户原话、模型推断和工具事实，记录 provenance/confidence/version；
-3. **隐私生命周期**：consent、PII 分类、TTL、delete/export、加密和数据驻留；
-4. **冲突与并发**：optimistic version、去重、事实有效期和用户确认，不让 LLM 静默覆盖；
-5. **Prompt injection**：检索 memory 视为不可信数据，工具权限不由 memory 文本提升；
-6. **评测**：写入 precision、检索 Recall@n/nDCG、回答增益、错误记忆率、删除验证和成本/延迟；
-7. **观测与回滚**：记录抽取模型、prompt、source memory IDs 与最终引用，可禁用/回滚坏 memory。
+| 知识点 | 核心概念/公式 | 面试考察重点 |
+|-------|-------------|-------------|
+| 四层记忆架构 | Session/User Profile/Episodic/Semantic | 各层的作用与实现方式 |
+| Mem0 集成 | 显式使用稳定的 user/agent/run 等 scope；tenant/ACL 另行强制 | SDK 版本、scope 与 schema 测试 |
+| Zep Graphiti | 时序知识图谱 | 图谱遍历 + 向量搜索混合 |
+| Letta context | messages + blocks + files/archival tools | OS 类比的边界 |
+| 多因子检索 | 相关性/重要性/时间等候选特征 | 归一化、校准与离线评测 |
+| 冲突解决 | Latest Wins/Merge/Versioned/User Vote | 多 Agent 共享记忆的一致性 |
 
----
-
-## 📚 相关章节
+## 🔗 相关章节
 
 - [[15_Agent智能体开发]]：Agent 基础，记忆是其中一部分
 - [[14_RAG检索增强生成]]：记忆检索与 RAG 检索的关系
 - [[29_Context_Engineering]]：Context 管理与记忆分层
 - [[18_LLM工程框架实战]]：LangChain/LlamaIndex 与记忆框架的集成
 
-## 📖 官方资料（核验至 2026-07-31）
+## 📖 一手参考资料
+
+### 官方资料（核验至 2026-07-31）
 
 - Mem0, [Add memories](https://docs.mem0.ai/core-concepts/memory-operations/add)
 - Mem0, [Search memories](https://docs.mem0.ai/core-concepts/memory-operations/search)
@@ -437,3 +454,9 @@ Letta 当前可按 context hierarchy 理解：
 - Graphiti, [Getting started](https://help.getzep.com/graphiti/getting-started/welcome)
 - Letta, [Memory blocks](https://docs.letta.com/guides/core-concepts/memory/memory-blocks)
 - Letta, [Context hierarchy](https://docs.letta.com/guides/core-concepts/memory/context-hierarchy)
+
+### 一手参考资料
+
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
+
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

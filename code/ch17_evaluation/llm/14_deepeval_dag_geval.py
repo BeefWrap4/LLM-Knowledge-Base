@@ -1,7 +1,7 @@
 # ---
 # chapter: 17
 # topic: 大模型评估体系
-# section: 17.11.4 DeepEval DAG + G-Eval
+# section: 17.10.4 DeepEval DAG + G-Eval
 # difficulty: ⭐⭐⭐⭐⭐
 # tier: llm
 # deps: deepeval

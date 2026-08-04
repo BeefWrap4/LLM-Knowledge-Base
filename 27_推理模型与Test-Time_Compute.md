@@ -4,13 +4,27 @@ topic: 推理模型与Test-Time Compute
 difficulty: 极高
 interview_frequency: 5
 created: 2026-06-06T00:00:00.000Z
-tags: [推理模型, Test-Time Compute, GPT-5.6 Sol, Claude Fable 5, o3, DeepSeek-R1, GRPO, PRM, s1, 推理时计算, 面试必考]
+updated: 2026-08-04T00:00:00.000Z
+tags: [推理模型, Test-Time Compute, GPT-5.6 Sol, Claude Fable 5, o3, DeepSeek-R1, GRPO, PRM, s1, 推理时计算, 面试重点]
 ---
 
 # 第 27 章 推理模型与 Test-Time Compute ⭐⭐⭐⭐⭐
 
-> **面试频率**：极高（2026年最热门方向）| **难度**：⭐⭐⭐⭐⭐ | **核心范式**：Scaling 在推理阶段
+> [!abstract] 本章导航
+> **定位**：分析推理模型如何在推理时分配计算，并把能力提升转化为可评估预算。
 >
+> **先修**：[[12_Transformer与大模型原理]]、[[16_模型微调与推理优化]]。
+>
+> **学习目标**：
+> - 解释 Test-Time Compute、过程奖励和搜索式推理。
+> - 设计同时约束正确率、延迟与 token 预算的评估。
+> - 判断增加推理计算何时产生净收益。
+>
+> **建议路径**：推理模型范式 → Reasoning Effort API → 推理时计算扩展 (Test-Time Compute Scaling) → … → 推理模型的部署挑战。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：`code/ch27_reasoning_ttc/`。
+
+> [!info] 阅读提示
 > **时效基线（2026-07-31）**：当前托管 API 示例采用 OpenAI GPT-5.6 Sol + Responses API，以及
 > Anthropic Claude Fable 5 + always-on adaptive thinking。o3/o4、Claude 4.5 的手动 Extended
 > Thinking 保留为历史演进，不再作为当前默认接口。
@@ -18,8 +32,6 @@ tags: [推理模型, Test-Time Compute, GPT-5.6 Sol, Claude Fable 5, o3, DeepSee
 推理模型 (Reasoning Model) 的核心思想，是在推理阶段按任务分配额外计算，与训练阶段扩展参数、
 数据和算力形成互补。2024-2025 年的 o 系列、DeepSeek-R1 与早期 Extended Thinking 推动了范式形成；
 2026 年的托管接口进一步转向统一 Responses API、自适应推理和 effort 级别控制。
-
----
 
 ## 27.1 推理模型范式
 
@@ -53,8 +65,6 @@ graph TB
 | **当前可用** | DeepSeek-R1 系列 | 开放权重/托管版本需分别核验模型卡、许可证和 API |
 | **历史节点** | OpenAI o3 / o4-mini | 早期 reasoning effort 接口；不作为本章当前默认 |
 | **历史节点** | Claude 4.5 手动 Extended Thinking | `budget_tokens` 属旧式接口；Fable 5 不支持 |
-
----
 
 ## 27.2 Reasoning Effort API
 
@@ -100,8 +110,6 @@ thinking。`thinking.display="summarized"` 返回的是可读**摘要**，`"omit
 [Claude Fable 5 接口变化](https://platform.claude.com/docs/en/about-claude/models/introducing-claude-fable-5-and-claude-mythos-5)、
 [Claude effort](https://platform.claude.com/docs/en/build-with-claude/effort)。
 
----
-
 ## 27.3 推理时计算扩展 (Test-Time Compute Scaling)
 
 ### 27.3.1 三大扩展方法
@@ -146,8 +154,6 @@ graph TB
 - 推理时用 `<|im_start|>think\n...<|im_end|>\n<|im_start|>answer\n` 强制结束
 - **Wait token**: 让模型"再多想想"再给答案
 
----
-
 ## 27.4 过程奖励模型 (PRM)
 
 推理时扩展需要**验证**每一步是否正确。
@@ -165,8 +171,6 @@ graph TB
 - **Math-Shepherd**: 自动逐步验证
 - **rStar-Math**: MCTS 构造
 - **OmegaPRM**: 2025 自动化
-
----
 
 ## 27.5 搜索式推理
 
@@ -195,8 +199,6 @@ best = answers[argmax(scores)]
 ```
 
 **2026 关键**: N 越大，效果越好（直到 verifier 饱和）。
-
----
 
 ## 27.6 推理模型的训练
 
@@ -227,18 +229,6 @@ graph TB
 - **R1-Zero**: 纯 RL，无 SFT，"涌现"推理
 - **R1**: SFT (冷启动) + RL，更稳定
 
----
-
-## 27.6.5 本章小结
-
-> **章节小结**：Test-Time Compute (TTC) 通过 effort、采样/验证或搜索在推理阶段分配更多计算。
-> o3、DeepSeek-R1 与早期 Extended Thinking 是重要历史节点；截至 2026-07-31，本章托管接口以
-> GPT-5.6 Sol Responses API 和 Claude Fable 5 adaptive thinking 为当前基线。核心训练与推理技术
-> 还包括 GRPO、RLVR、budget forcing 和 PRM 引导搜索。面试回答应区分历史接口、当前接口、
-> 可见摘要与不可见原始推理，并用任务级评测选择 effort。
-
----
-
 ## 27.7 推理模型的部署挑战
 
 | 挑战 | 原因 | 解决方案 |
@@ -248,98 +238,23 @@ graph TB
 | **成本高** | 更多推理/输出 token，幅度依模型和任务而变 | 按难度分级、模型路由、预算与超时 |
 | **可观测性有限** | 托管 API 通常不返回原始思维链 | 记录结果、工具轨迹、usage 与 verifier；谨慎处理摘要 |
 
----
+## 🧭 本章小结
 
-## 27.8 面试真题精讲 🎯
+> **章节小结**：Test-Time Compute (TTC) 通过 effort、采样/验证或搜索在推理阶段分配更多计算。
+> o3、DeepSeek-R1 与早期 Extended Thinking 是重要历史节点；截至 2026-07-31，本章托管接口以
+> GPT-5.6 Sol Responses API 和 Claude Fable 5 adaptive thinking 为当前基线。核心训练与推理技术
+> 还包括 GRPO、RLVR、budget forcing 和 PRM 引导搜索。面试回答应区分历史接口、当前接口、
+> 可见摘要与不可见原始推理，并用任务级评测选择 effort。
 
-### 🎯 高频题1: 什么是 Test-Time Compute Scaling？和预训练 Scaling Law 区别？
+## ✅ 自测与练习
 
-**答案**: 预训练 Scaling Law 关注训练时通过**更多参数/数据/算力**提升能力。Test-Time Compute
-Scaling 关注**推理时**通过额外内部推理、采样/验证或搜索提升能力。两者可组合，但不能笼统声称
-“小模型 + 大推理计算必然等于大模型”；这种比较只在特定任务、模型、verifier 和固定计算口径下成立。
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
 
-### 🎯 高频题2: DeepSeek-R1 的训练流程是什么？
+1. 你能否解释 Test-Time Compute、过程奖励和搜索式推理？
+2. 你能否设计同时约束正确率、延迟与 token 预算的评估？
+3. 你能否判断增加推理计算何时产生净收益？
 
-**答案**:
-1. **R1-Zero**: Base 模型 + 纯 GRPO RL，推理能力"涌现"（无 SFT）
-2. **R1**: R1-Zero 蒸馏 + 冷启动 SFT 数据 + 第二阶段 RL
-3. **蒸馏**: 用 R1 生成 800K CoT 样本，蒸馏到 Qwen/Llama 系列
-
-### 🎯 高频题3: GRPO 和 PPO 的核心区别？
-
-**答案**:
-- PPO 需要 Critic 网络估计 Value
-- GRPO **去 Critic 化**，对同一问题采样 G 个回答，优势 = (r_i - mean) / std
-- 减少约 50% 参数量，更适合 reasoning 类任务
-
-### 🎯 高频题4: 推理时扩展有哪些方法？效果如何？
-
-**答案**:
-1. **CoT 扩展**：在明确上限内增加推理预算
-2. **采样投票**：Self-Consistency，多次采样后聚合
-3. **树搜索**: MCTS + PRM (AlphaProof 风格)
-4. **Verifier 引导**: Best-of-N
-
-Snell et al. 2024 的结论是方法效果依赖题目难度；应比较固定 FLOPs 下的 Best-of-N、搜索与
-自适应分配，报告模型、数据子集、verifier、采样和预算，而不是背一个固定提升数字。
-
-### 🎯 高频题5: Reasoning Effort 等级如何设置？
-
-**答案**：先核验所选模型的支持集合，再以任务分层建立质量、成本和 P95/P99 延迟曲线，按 SLO
-选择。GPT-5.6 支持 `none/low/medium/high/xhigh/max`，Fable 5 支持
-`low/medium/high/xhigh/max`；两者的 effort 都不是固定 token 数或固定延迟，增加预算也不保证质量
-单调提升。
-
-### 🎯 高频题6: 什么是 Process Reward Model (PRM)？如何训练？
-
-**答案**: PRM 对推理的**每一步**打分，而非只看最终结果。训练:
-1. MCTS 收集大量 step-level 标注
-2. 训练分类器: step → correct/incorrect
-3. 推理时: 引导 beam search 选择高分步骤
-
-代表数据: PRM800K, Math-Shepherd。
-
-### 🎯 高频题7: Claude Fable 5 与 OpenAI GPT-5.6 的当前推理接口有何区别？
-
-**答案**:
-- **OpenAI GPT-5.6**：推荐 Responses API，以 `reasoning={"effort": ...}` 控制推理强度；
-  应消费最终文本、usage 和需要的 reasoning summary，而不是假设能读取原始思维链。
-- **Claude Fable 5**：adaptive thinking 始终开启，以 `output_config={"effort": ...}` 控制深度；
-  `thinking.display` 只能选择 summarized 或 omitted，原始思维链从不返回。
-- **历史边界**：o3/o3-mini 与 Claude 4.5 的 `budget_tokens` 可作为演进背景，但不得写成 2026 当前默认。
-- **工具调用**：Fable 5 的 adaptive thinking 自动支持 interleaved thinking；多轮和工具循环中必须
-  原样回传 thinking block，不能自行改写摘要或签名。
-
-### 🎯 高频题8: 推理模型的未来发展方向？
-
-**答案**:
-1. **自适应推理**: 根据问题难度自动分配算力
-2. **Verifier 增强**: 更强的 PRM
-3. **多模态推理**: 视觉推理（GPT-5.6 支持图像输入）
-4. **长链推理**：在上下文、成本和超时边界内延长或压缩推理
-5. **推理蒸馏**: 小模型学会大模型推理
-
----
-
-## 27.9 本章速查表
-
-| 概念 | 关键点 |
-|------|--------|
-| **Test-Time Compute** | 增加预算可能提升、饱和或退化，必须按难度分桶评测 |
-| **Reasoning Effort** | 档位因模型而异；GPT-5.6 与 Fable 5 均不是固定 token 预算 |
-| **GRPO** | 去 Critic，组内相对优势 |
-| **RLVR** | Verifiable Rewards (数学/代码) |
-| **PRM** | 逐步奖励，训练 step-level 打分 |
-| **MCTS + PRM** | 树搜索 + 验证器 |
-| **s1 / s1.1** | 简单 TTC scaling，budget forcing |
-| **R1-Zero → R1** | 纯 RL → SFT+RL |
-| **R1 蒸馏** | 800K CoT 数据到小模型 |
-| **CoT 思维链** | 长度由模型、任务、预算与服务上限共同决定 |
-| **配套代码** | 14 个 `.py`；`01/02` GPT-5.6 Responses，`03` Fable 5，`04/07/08` DeepSeek，其他为本地算法。API 脚本默认 mock；真实调用必须显式 `LLM_MOCK=0` + 对应 key。 |
-
----
-
-## 27.10 配套代码与安全运行边界 ⭐⭐⭐⭐⭐
+## 🧪 配套代码与验收
 
 > 本章共 **14 个 `.py` 文件**。`01/02/03/04/07/08` 提供托管 API 路径，其余是本地算法演示。
 > 为避免误产生网络请求和费用，`01/02/03` 默认 `LLM_MOCK=1`；只有显式设置 `LLM_MOCK=0`
@@ -440,12 +355,101 @@ PowerShell 可先设置 `$env:LLM_MOCK="0"` 与对应 key，再运行相同 Pyth
 > 不要直接修改共享客户端来“伪装”提供商；应新增可配置 provider/base URL 并做协议兼容测试。
 > 工作区中的 Qwen2.5-0.5B-Instruct 不是推理模型，也不能替代上述真实 API 验收。
 
----
+## 🎯 面试题精讲
 
-## 📚 相关章节
+### 高频题1: 什么是 Test-Time Compute Scaling？和预训练 Scaling Law 区别？
+
+**答案**: 预训练 Scaling Law 关注训练时通过**更多参数/数据/算力**提升能力。Test-Time Compute
+Scaling 关注**推理时**通过额外内部推理、采样/验证或搜索提升能力。两者可组合，但不能笼统声称
+“小模型 + 大推理计算必然等于大模型”；这种比较只在特定任务、模型、verifier 和固定计算口径下成立。
+
+### 高频题2: DeepSeek-R1 的训练流程是什么？
+
+**答案**:
+1. **R1-Zero**: Base 模型 + 纯 GRPO RL，推理能力"涌现"（无 SFT）
+2. **R1**: R1-Zero 蒸馏 + 冷启动 SFT 数据 + 第二阶段 RL
+3. **蒸馏**: 用 R1 生成 800K CoT 样本，蒸馏到 Qwen/Llama 系列
+
+### 高频题3: GRPO 和 PPO 的核心区别？
+
+**答案**:
+- PPO 需要 Critic 网络估计 Value
+- GRPO **去 Critic 化**，对同一问题采样 G 个回答，优势 = (r_i - mean) / std
+- 减少约 50% 参数量，更适合 reasoning 类任务
+
+### 高频题4: 推理时扩展有哪些方法？效果如何？
+
+**答案**:
+1. **CoT 扩展**：在明确上限内增加推理预算
+2. **采样投票**：Self-Consistency，多次采样后聚合
+3. **树搜索**: MCTS + PRM (AlphaProof 风格)
+4. **Verifier 引导**: Best-of-N
+
+Snell et al. 2024 的结论是方法效果依赖题目难度；应比较固定 FLOPs 下的 Best-of-N、搜索与
+自适应分配，报告模型、数据子集、verifier、采样和预算，而不是背一个固定提升数字。
+
+### 高频题5: Reasoning Effort 等级如何设置？
+
+**答案**：先核验所选模型的支持集合，再以任务分层建立质量、成本和 P95/P99 延迟曲线，按 SLO
+选择。GPT-5.6 支持 `none/low/medium/high/xhigh/max`，Fable 5 支持
+`low/medium/high/xhigh/max`；两者的 effort 都不是固定 token 数或固定延迟，增加预算也不保证质量
+单调提升。
+
+### 高频题6: 什么是 Process Reward Model (PRM)？如何训练？
+
+**答案**: PRM 对推理的**每一步**打分，而非只看最终结果。训练:
+1. MCTS 收集大量 step-level 标注
+2. 训练分类器: step → correct/incorrect
+3. 推理时: 引导 beam search 选择高分步骤
+
+代表数据: PRM800K, Math-Shepherd。
+
+### 高频题7: Claude Fable 5 与 OpenAI GPT-5.6 的当前推理接口有何区别？
+
+**答案**:
+- **OpenAI GPT-5.6**：推荐 Responses API，以 `reasoning={"effort": ...}` 控制推理强度；
+  应消费最终文本、usage 和需要的 reasoning summary，而不是假设能读取原始思维链。
+- **Claude Fable 5**：adaptive thinking 始终开启，以 `output_config={"effort": ...}` 控制深度；
+  `thinking.display` 只能选择 summarized 或 omitted，原始思维链从不返回。
+- **历史边界**：o3/o3-mini 与 Claude 4.5 的 `budget_tokens` 可作为演进背景，但不得写成 2026 当前默认。
+- **工具调用**：Fable 5 的 adaptive thinking 自动支持 interleaved thinking；多轮和工具循环中必须
+  原样回传 thinking block，不能自行改写摘要或签名。
+
+### 高频题8: 推理模型的未来发展方向？
+
+**答案**:
+1. **自适应推理**: 根据问题难度自动分配算力
+2. **Verifier 增强**: 更强的 PRM
+3. **多模态推理**: 视觉推理（GPT-5.6 支持图像输入）
+4. **长链推理**：在上下文、成本和超时边界内延长或压缩推理
+5. **推理蒸馏**: 小模型学会大模型推理
+
+## 📋 本章速查表
+
+| 概念 | 关键点 |
+|------|--------|
+| **Test-Time Compute** | 增加预算可能提升、饱和或退化，必须按难度分桶评测 |
+| **Reasoning Effort** | 档位因模型而异；GPT-5.6 与 Fable 5 均不是固定 token 预算 |
+| **GRPO** | 去 Critic，组内相对优势 |
+| **RLVR** | Verifiable Rewards (数学/代码) |
+| **PRM** | 逐步奖励，训练 step-level 打分 |
+| **MCTS + PRM** | 树搜索 + 验证器 |
+| **s1 / s1.1** | 简单 TTC scaling，budget forcing |
+| **R1-Zero → R1** | 纯 RL → SFT+RL |
+| **R1 蒸馏** | 800K CoT 数据到小模型 |
+| **CoT 思维链** | 长度由模型、任务、预算与服务上限共同决定 |
+| **配套代码** | 14 个 `.py`；`01/02` GPT-5.6 Responses，`03` Fable 5，`04/07/08` DeepSeek，其他为本地算法。API 脚本默认 mock；真实调用必须显式 `LLM_MOCK=0` + 对应 key。 |
+
+## 🔗 相关章节
 
 - [[12_Transformer与大模型原理]] — 模型架构基础：推理模型仍基于 Transformer 架构，Self-Attention 与 KV Cache 是长思维链推理的底层支撑。
 - [[15_Agent智能体开发]] — Agent 与推理融合：ReAct/Reflexion 等 Agent 范式将推理模型作为决策大脑，实现多步工具调用推理。
 - [[16_模型微调与推理优化]] — 训练技术详解：GRPO、RLVR、SFT 蒸馏等推理模型训练方法属于微调与对齐工程范畴。
 - [[17_大模型评估体系]] — 推理能力评估：AIME/MATH/HumanEval 等基准用于衡量推理模型在不同 effort 配置下的准确率。
 - [[25_推理引擎与高性能服务]] — 部署关键：vLLM/SGLang/TensorRT-LLM 对长 CoT 输出做 KV Cache 复用、连续批处理与 speculative decoding 优化。
+
+## 📖 一手参考资料
+
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
+
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

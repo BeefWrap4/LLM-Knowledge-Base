@@ -1,7 +1,7 @@
 # ---
 # chapter: 13
 # topic: Prompt Engineering
-# section: 13.7.4 guidance 模板引导生成
+# section: 13.5.4 guidance 模板引导生成
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: guidance

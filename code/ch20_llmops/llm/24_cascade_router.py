@@ -1,7 +1,7 @@
 # ---
 # chapter: 20
 # topic: LLMOps与模型可观测性
-# section: 20.10.9 Cascade / Router 模型成本模式
+# section: 20.8.9 Cascade / Router 模型成本模式
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: opentelemetry-api, opentelemetry-sdk

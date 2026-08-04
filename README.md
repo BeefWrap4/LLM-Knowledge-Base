@@ -2,7 +2,7 @@
 
 > **面向 2026 年大模型算法/工程岗位的 Python 全栈面试准备库**
 >
-> 40 章节 · 300+ 面试题 · 433 个可运行代码示例 · 最近核验：2026-07-31
+> 40 章节 · 300+ 面试题 · 433 个可运行代码示例 · 事实基线：2026-07-31 · 结构审校：2026-08-04
 
 [![Verify](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/verify.yml/badge.svg)](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/verify.yml)
 [![Integration](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/integration-test.yml/badge.svg)](https://github.com/BeefWrap4/LLM-Knowledge-Base/actions/workflows/integration-test.yml)
@@ -134,6 +134,10 @@ Ollama 或浏览器环境兼容的子集。`--real-gpu` 不授权模型下载、
 2. 打开本仓库目录作为 Vault
 3. 从 `00_目录索引.md` 开始浏览
 4. 利用 Obsidian 的图谱视图（Graph View）查看知识关联
+
+每章采用同一学习闭环：**本章导航 → 编号主线 → 本章小结 → 自测与练习 → 配套代码与验收 →
+面试题精讲 → 速查表 → 相关章节 → 一手参考资料**。先按导航卡完成三项目标，再用章末自测做
+主动回忆；需要复查格式时参见 [`docs/CHAPTER_STYLE_GUIDE.md`](docs/CHAPTER_STYLE_GUIDE.md)。
 
 ### 在其他 Markdown 阅读器中
 
@@ -333,7 +337,8 @@ cd /app/code && make ci-quick   # 10 项离线检查，不调用真实 LLM
 - 每月一次全库健康审计（见 `99_库健康检查报告.md`）
 - 每新增 5 章做一次内容质量评估
 - 章节命名严格遵循 `NN_TopicName.md` 两位数字前缀
-- 新章节必须包含：YAML frontmatter / Mermaid 图 / 面试题 / 速查表 / 交叉引用
+- 新章节遵循[章节叙事与格式规范](docs/CHAPTER_STYLE_GUIDE.md)，从
+  [章节模板](docs/CHAPTER_TEMPLATE.md)开始；图表仅在能显著降低理解成本时使用
 - 模型、API、法规和 benchmark 结论必须登记到权威来源索引并注明核验日期
 
 ## 📜 许可
@@ -342,6 +347,7 @@ cd /app/code && make ci-quick   # 10 项离线检查，不调用真实 LLM
 
 ## 🆕 更新日志
 
+- **2026-08-04** — 统一 40 章导航、正文编号与学习闭环，新增章节结构门禁和维护模板
 - **2026-07-31** — 全库事实、API、安全与可运行性审校；统计统一为 40 章、433 个示例，并启用 10 项 fail-closed 验收
 - **2026-06-07** — code/ 伴侣 Phase 0-3 完成：29 个章节 README + 3 层 tier 依赖 + tutorial/ junction
 - **2026-06-06** — 新增 Ch25-29 五个 2026 年新主题章节；库扩展至 29 章，健康评分 95/100

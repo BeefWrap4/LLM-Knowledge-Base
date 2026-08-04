@@ -4,6 +4,7 @@ topic: Web开发与FastAPI
 difficulty: 中
 interview_frequency: 4
 created: 2026-06-01T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - python
   - FastAPI
@@ -14,11 +15,21 @@ tags:
 ---
 # 第 9 章 Web 开发与 FastAPI ⭐⭐⭐⭐
 
-> **面试频率**：高 | **难度**：⭐⭐⭐ | **实战权重**：高
+> [!abstract] 本章导航
+> **定位**：将 Python 能力组织成可部署 API，为 RAG、Agent 和模型服务提供入口。
+>
+> **先修**：[[01_Python编程基础]]、[[05_Python并发编程]]。
+>
+> **学习目标**：
+> - 解释 FastAPI 请求生命周期、类型校验和依赖注入。
+> - 实现包含异步、鉴权和错误处理的 API。
+> - 设计具备观测、限流和安全边界的服务接口。
+>
+> **建议路径**：Python Web 框架对比 → FastAPI 核心特性 → 实战：构建 API 服务。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：`code/ch09_fastapi/`。
 
-大模型应用开发的最后一公里是将模型能力封装为可调用的 API 服务。无论是构建 RAG 系统、Agent 服务还是模型部署，Web 框架都是不可或缺的工程基础。本章聚焦 **FastAPI** —— 2025 年大模型应用开发的首选 Web 框架。
-
----
+大模型能力需要通过可调用的 API 服务进入可集成、可运维的应用系统。无论是构建 RAG 系统、Agent 服务还是模型部署，Web 框架都是不可或缺的工程基础。本章聚焦 **FastAPI** —— 2025 年大模型应用开发的首选 Web 框架。
 
 ## 9.1 Python Web 框架对比
 
@@ -55,8 +66,6 @@ FastAPI 在大模型时代的崛起并非偶然：
 2. **异步架构适配 I/O 密集型场景**：模型推理存在大量 I/O 等待（网络传输、模型加载），FastAPI 的异步模型可并发处理更多请求
 3. **Pydantic 数据验证**：LLM 的输入输出需要严格的结构定义（JSON Schema），Pydantic 提供了类型安全的序列化/反序列化
 4. **依赖注入系统**：清晰管理数据库连接、模型实例、认证等依赖，特别适合 LLM 服务中的资源管理
-
----
 
 ## 9.2 FastAPI 核心特性 ⭐⭐⭐⭐
 
@@ -169,8 +178,6 @@ graph LR
     style E fill:#8BA3C7,stroke:#2E4A62,color:#fff
     style F fill:#8BA3C7,stroke:#2E4A62,color:#fff
 ```
-
----
 
 ## 9.3 实战：构建 API 服务
 
@@ -478,11 +485,36 @@ llm_api_service/
 └── Dockerfile
 ```
 
----
+## 🧭 本章小结
 
-## 9.4 本章面试题精讲 🎯
+本章应形成以下可复述结论：
 
-### 🎯 面试题 1：FastAPI 为什么比 Flask/Django 更适合大模型 API 开发？
+- 解释 FastAPI 请求生命周期、类型校验和依赖注入。
+- 实现包含异步、鉴权和错误处理的 API。
+- 设计具备观测、限流和安全边界的服务接口。
+
+## ✅ 自测与练习
+
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
+
+1. 你能否解释 FastAPI 请求生命周期、类型校验和依赖注入？
+2. 你能否实现包含异步、鉴权和错误处理的 API？
+3. 你能否设计具备观测、限流和安全边界的服务接口？
+
+## 🧪 配套代码与验收
+
+配套目录：`code/ch09_fastapi/`。从 `code/` 目录运行：
+
+```powershell
+python scripts/run_all_examples.py --tier core --chapter ch09 --parallel 1 --timeout 60
+```
+
+成功标准：命令退出码为 0，示例输出 `OK`；缺少可选依赖时必须给出明确 `[SKIP]`，而不是 traceback。
+真实 API、GPU、模型下载和付费调用不属于默认离线验收，必须按示例 metadata 与章节说明单独确认。
+
+## 🎯 面试题精讲
+
+### 面试题 1：FastAPI 为什么比 Flask/Django 更适合大模型 API 开发？
 
 **答题要点**：
 1. **异步架构**：基于 ASGI + Starlette，原生支持 `async/await`，可并发处理大量 I/O 密集型请求（模型推理等待）
@@ -490,16 +522,16 @@ llm_api_service/
 3. **OpenAPI 原生**：自动生成 OpenAPI 文档，LangChain 等工具可直接消费，降低集成成本
 4. **性能**：Pydantic v2（Rust 重写）+ Uvicorn（uvloop）带来接近 Node.js 的吞吐量
 
-### 🎯 面试题 2：FastAPI 的依赖注入系统有什么优势？
+### 面试题 2：FastAPI 的依赖注入系统有什么优势？
 
 **答题要点**：
 1. **声明式依赖**：通过 `Depends()` 在参数中声明，与路径参数统一处理
 2. **生命周期管理**：使用 `yield` 支持资源的创建和清理（如数据库连接）
 3. **依赖嵌套**：依赖可以依赖其他依赖，形成清晰的依赖图
 4. **请求级缓存**：同请求内同一依赖只计算一次，自动缓存结果
-5. **可测试性**：依赖可以轻松 mock，便于单元测试
+5. **可测试性**：依赖可替换为 mock 或 fake，便于单元测试
 
-### 🎯 面试题 3：Pydantic v1 和 v2 的主要区别？
+### 面试题 3：Pydantic v1 和 v2 的主要区别？
 
 **答题要点**：
 1. **性能**：v2 核心用 Rust 重写，校验速度提升 5-50 倍
@@ -507,7 +539,7 @@ llm_api_service/
 3. **验证器装饰器**：v1 `@validator` → v2 `@field_validator`（字段级）/`@model_validator`（模型级）
 4. **类型注解**：v2 更严格地遵循 Python 类型系统，`Optional` 需显式标注
 
-### 🎯 面试题 4：如何实现 LLM API 的流式输出？
+### 面试题 4：如何实现 LLM API 的流式输出？
 
 **答题要点**：
 1. 使用 `StreamingResponse` 返回异步生成器
@@ -516,7 +548,7 @@ llm_api_service/
 4. 与 WebSocket 的区别：SSE 是单向推送，基于 HTTP；WebSocket 是全双工，需要协议升级
 5. 流式输出的意义：降低首 token 延迟，提升用户体验
 
-### 🎯 面试题 5：FastAPI 中如何优雅处理异步数据库操作？
+### 面试题 5：FastAPI 中如何优雅处理异步数据库操作？
 
 **答题要点**：
 1. 使用 SQLAlchemy 的异步扩展：`create_async_engine` + `AsyncSession`
@@ -524,9 +556,7 @@ llm_api_service/
 3. 通过 `Depends` 注入会话，利用 `yield` 管理事务提交和回滚
 4. 查询使用 `await db.execute(select(...))`，配合 `scalars().all()` 获取结果
 
----
-
-## 9.5 本章速查表
+## 📋 本章速查表
 
 | 特性 | 代码 / 配置 |
 |------|-----------|
@@ -545,10 +575,14 @@ llm_api_service/
 
 > **下一章**：第 10 章 机器学习基础 ⭐⭐⭐⭐⭐ — 从经典算法到模型评估的完整知识体系。
 
----
-
-## 📚 相关章节
+## 🔗 相关章节
 
 - [[14_RAG检索增强生成]] — RAG 系统的 API 服务层通常使用 FastAPI 构建
 - [[15_Agent智能体开发]] — Agent 服务的 API 接口设计与 MCP 协议集成
 - [[16_模型微调与推理优化]] — 模型部署服务的工程实现，vLLM API 封装
+
+## 📖 一手参考资料
+
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
+
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

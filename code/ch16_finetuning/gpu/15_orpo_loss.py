@@ -1,7 +1,7 @@
 # ---
 # chapter: 16
 # topic: ORPO Loss (真实可微 PyTorch 实现)
-# section: 16.10.5
+# section: 16.9.5
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
 # mock_safe: true

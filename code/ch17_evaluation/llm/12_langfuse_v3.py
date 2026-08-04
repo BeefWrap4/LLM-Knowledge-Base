@@ -1,7 +1,7 @@
 # ---
 # chapter: 17
 # topic: 大模型评估体系
-# section: 17.11.2 Langfuse Experiment Runner
+# section: 17.10.2 Langfuse Experiment Runner
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: langfuse, openai

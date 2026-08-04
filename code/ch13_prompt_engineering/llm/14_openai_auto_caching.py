@@ -1,7 +1,7 @@
 # ---
 # chapter: 13
 # topic: Prompt Engineering
-# section: 13.7.2 OpenAI Automatic Caching
+# section: 13.5.2 OpenAI Automatic Caching
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: openai

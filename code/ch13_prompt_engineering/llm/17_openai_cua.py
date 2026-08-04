@@ -1,7 +1,7 @@
 # ---
 # chapter: 13
 # topic: Prompt Engineering
-# section: 13.7.3 OpenAI Computer-Using Agent (CUA)
+# section: 13.5.3 OpenAI Computer-Using Agent (CUA)
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: openai

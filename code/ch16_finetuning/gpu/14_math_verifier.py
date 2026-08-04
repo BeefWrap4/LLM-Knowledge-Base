@@ -1,7 +1,7 @@
 # ---
 # chapter: 16
 # topic: 数学表达式验证器 (RLVR Verifier, 纯 stdlib)
-# section: 16.10.4
+# section: 16.9.4
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
 # mock_safe: true

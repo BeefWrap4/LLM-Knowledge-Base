@@ -1,7 +1,7 @@
 # ---
 # chapter: 13
 # topic: Prompt Engineering
-# section: 13.7.5 缓存命中率监控与告警
+# section: 13.5.5 缓存命中率监控与告警
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: 无外部依赖

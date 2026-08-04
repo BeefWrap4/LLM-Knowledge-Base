@@ -4,7 +4,7 @@ topic: 模型合并MergeKit
 difficulty: 中
 interview_frequency: 2
 created: 2026-06-24T00:00:00.000Z
-updated: 2026-07-31T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - MergeKit
   - SLERP
@@ -12,10 +12,23 @@ tags:
   - DARE
   - Task-Arithmetic
 ---
-# 第38章 模型合并 MergeKit：SLERP、TIES、DARE 算法 ⭐⭐
+# 第 38 章 模型合并 MergeKit：SLERP、TIES、DARE 算法 ⭐⭐
 
-> **面试频率**：低中（模型研究/开源工程场景较常见）| **技术热度**：★★★☆☆
+> [!abstract] 本章导航
+> **定位**：建立无需完整再训练的权重组合方法，并强调评测与许可边界。
 >
+> **先修**：[[16_模型微调与推理优化]]、[[17_大模型评估体系]]。
+>
+> **学习目标**：
+> - 解释 Linear、SLERP、Task Arithmetic、TIES 和 DARE。
+> - 设计可复现的 MergeKit 合并与回滚计划。
+> - 评估能力干扰、安全、许可和部署收益。
+>
+> **建议路径**：模型合并动机：权重空间组合 → 基础算法：Linear Merge 与 SLERP → 高级算法：Task Arithmetic、TIES、DARE → … → 合并评测与最佳实践。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：本章暂无独立代码目录，使用正文推导、自测题和决策表验收。
+
+> [!info] 阅读提示
 > 模型合并（Model Merging）通常不做梯度训练，而是在权重空间组合兼容 checkpoint。它可能转移或组合能力，
 > 也可能造成干扰、遗忘或安全退化，不能从“数学模型 + 代码模型”直接推出“两者兼顾”。本章梳理
 > MergeKit、SLERP/TIES/DARE/Task Arithmetic，以及上线前的兼容、评测与许可门禁。
@@ -23,8 +36,6 @@ tags:
 > 🆕 **截至 2026-07-31**：PyPI 上 MergeKit 最新正式包为 **0.1.4（2025-10-31）**，并没有可核验的
 > “v1.0 已发布”；GitHub `main` 可能领先于 PyPI。算法没有跨模型、跨任务的统一首选，必须锁定
 > package/commit，并用同一评测协议选择方法和超参数。
-
----
 
 ## 38.1 模型合并动机：权重空间组合 ⭐⭐⭐
 
@@ -56,8 +67,6 @@ flowchart TD
     H -->|否| I["回滚或换方法/权重"]
     H -->|是| J["许可证复核、模型卡、灰度发布"]
 ```
-
----
 
 ## 38.2 基础算法：Linear Merge 与 SLERP ⭐⭐⭐⭐
 
@@ -117,8 +126,6 @@ def slerp(theta1: torch.Tensor, theta2: torch.Tensor, lam: float = 0.5, dot_thre
 
 SLERP 也不天然“更好”，且不同实现可能按 tensor、层或全模型计算方向；近反向向量的路径并不唯一。
 必须与 linear 在同一评测集上比较。
-
----
 
 ## 38.3 高级算法：Task Arithmetic、TIES、DARE ⭐⭐⭐⭐
 
@@ -180,8 +187,6 @@ DARE-TIES 将随机 pruning/rescale 与 TIES 的符号共识结合：
 1. DARE 稀疏化
 2. TIES 修剪-符号-合并
 
----
-
 ## 38.4 MergeKit 工具链完整使用 ⭐⭐⭐⭐
 
 ### 38.4.1 MergeKit 配置 YAML
@@ -237,8 +242,6 @@ mergekit-extract-lora \
 MergeKit 没有官方 `mergekit-lora` 命令。要把一个或多个 LoRA adapter 合入 base，应使用与这些 adapter
 兼容的 PEFT 流程，明确顺序/权重后调用其 merge API，再保存完整模型；仍需重新评测。
 
----
-
 ## 38.5 MoE 合并：新热点 ⭐⭐⭐
 
 ### 38.5.1 合并多个模型为 MoE
@@ -254,8 +257,6 @@ MergeKit 提供 `mergekit-moe`，可把多个**兼容的稠密模型**组装为 
 它避免直接平均每个专家的全部权重，但不能保证“完全保留各自能力”：共享层、tokenizer、路由选择、
 专家负载和推理引擎支持都会影响结果。运行 `mergekit-moe --help` 并按所锁定版本的官方配置执行，
 不要把普通 `mergekit-yaml` 的参数套到 MoE 命令。
-
----
 
 ## 38.6 合并评测与最佳实践 ⭐⭐⭐
 
@@ -287,24 +288,29 @@ MergeKit 提供 `mergekit-moe`，可把多个**兼容的稠密模型**组装为 
 5. 审核每个源模型的许可证、acceptable-use 条款、归属、再分发和衍生模型限制；
 6. 保存源 revision/hash、MergeKit 版本/commit、YAML、随机种子、日志和评测结果，失败可回滚。
 
----
+## 🧭 本章小结
 
-## 📋 本章速查表
+本章应形成以下可复述结论：
 
-| 知识点 | 核心概念/公式 | 面试考察重点 |
-|-------|-------------|-------------|
-| Linear Merge | $\theta_{\text{merged}} = (1-\lambda)\theta_1 + \lambda\theta_2$ | 简单但可能产生干扰 |
-| SLERP | 球面插值公式 | 数值边界与“不保证更好” |
-| Task Arithmetic | $\theta_{\text{base}} + \sum \alpha_i (\theta_i - \theta_{\text{base}})$ | 任务向量直觉 |
-| TIES | Trim, Elect Sign & Merge | 三步流程 |
-| DARE | Drop-And-REscale（$\rho$ 为丢弃率） | 冗余、期望保持与调参 |
-| DARE-TIES | DARE + TIES | 与其他方法同协议比较 |
-| MergeKit 工具 | YAML 配置、命令行使用 | 完整代码示例 |
-| MoE 合并 | 将兼容稠密模型组装为专家 | 路由、共享层与推理引擎兼容 |
+- 解释 Linear、SLERP、Task Arithmetic、TIES 和 DARE。
+- 设计可复现的 MergeKit 合并与回滚计划。
+- 评估能力干扰、安全、许可和部署收益。
 
----
+## ✅ 自测与练习
 
-## 🎯 面试真题精讲
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
+
+1. 你能否解释 Linear、SLERP、Task Arithmetic、TIES 和 DARE？
+2. 你能否设计可复现的 MergeKit 合并与回滚计划？
+3. 你能否评估能力干扰、安全、许可和部署收益？
+
+## 🧪 配套代码与验收
+
+本章暂无独立代码目录。验收时应完成正文中的推导或决策题，并能在自测中说明适用边界。
+
+成功标准：概念、输入输出、关键指标和失败条件能够相互对应，不用未经验证的性能数字代替结论。
+
+## 🎯 面试题精讲
 
 ### 真题 1：Linear Merge 与 SLERP 有什么区别？SLERP 是否一定更好？
 
@@ -365,9 +371,28 @@ Task Arithmetic = base + 各任务向量之和（任务向量 = 任务微调减 
 3. **数值与加载异常**：使用浮点权重、逐 tensor 检查 shape/NaN/Inf，验证目标引擎；
 4. **许可问题**：逐一检查源许可证和衍生/再分发条款，不能只看 MergeKit 自身许可证。
 
----
+## 📋 本章速查表
 
-## 📚 截至 2026-07-31 的权威资料
+| 知识点 | 核心概念/公式 | 面试考察重点 |
+|-------|-------------|-------------|
+| Linear Merge | $\theta_{\text{merged}} = (1-\lambda)\theta_1 + \lambda\theta_2$ | 简单但可能产生干扰 |
+| SLERP | 球面插值公式 | 数值边界与“不保证更好” |
+| Task Arithmetic | $\theta_{\text{base}} + \sum \alpha_i (\theta_i - \theta_{\text{base}})$ | 任务向量直觉 |
+| TIES | Trim, Elect Sign & Merge | 三步流程 |
+| DARE | Drop-And-REscale（$\rho$ 为丢弃率） | 冗余、期望保持与调参 |
+| DARE-TIES | DARE + TIES | 与其他方法同协议比较 |
+| MergeKit 工具 | YAML 配置、命令行使用 | 完整代码示例 |
+| MoE 合并 | 将兼容稠密模型组装为专家 | 路由、共享层与推理引擎兼容 |
+
+## 🔗 相关章节
+
+- [[16_模型微调与推理优化]]：LoRA 合并与模型合并的关系
+- [[32_DeepSeek风格MoE与MLA深度解析]]：MoE 合并与 DeepSeek MoE 的关系
+- [[17_大模型评估体系]]：合并后的评测方法
+
+## 📖 一手参考资料
+
+### 截至 2026-07-31 的权威资料
 
 - [MergeKit 官方仓库与命令说明](https://github.com/arcee-ai/mergekit)
 - [MergeKit PyPI 发布记录（0.1.4）](https://pypi.org/project/mergekit/)
@@ -376,10 +401,8 @@ Task Arithmetic = base + 各任务向量之和（任务向量 = 任务微调减 
 - [TIES-Merging（NeurIPS 2023）](https://arxiv.org/abs/2306.01708)
 - [Language Models are Super Mario / DARE（ICML 2024）](https://proceedings.mlr.press/v235/yu24p.html)
 
----
+### 一手参考资料
 
-## 📚 相关章节
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
 
-- [[16_模型微调与推理优化]]：LoRA 合并与模型合并的关系
-- [[32_DeepSeek风格MoE与MLA深度解析]]：MoE 合并与 DeepSeek MoE 的关系
-- [[17_大模型评估体系]]：合并后的评测方法
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

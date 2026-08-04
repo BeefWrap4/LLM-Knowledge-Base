@@ -4,7 +4,7 @@ topic: PD分离推理架构与KV池化
 difficulty: 高
 interview_frequency: 3
 created: 2026-06-24T00:00:00.000Z
-updated: 2026-07-31T00:00:00.000Z
+updated: 2026-08-04T00:00:00.000Z
 tags:
   - PD分离
   - KV-Cache
@@ -12,10 +12,23 @@ tags:
   - Mooncake
   - RDMA
 ---
-# 第37章 PD 分离推理架构与跨节点 KV 传输：DistServe、Mooncake、RDMA ⭐⭐⭐
+# 第 37 章 PD 分离推理架构与跨节点 KV 传输：DistServe、Mooncake、RDMA ⭐⭐⭐
 
-> **面试频率**：中（推理/系统岗较常见）| **技术热度**：★★★★☆
+> [!abstract] 本章导航
+> **定位**：深入 Prefill/Decode 分离与 KV 池化，分析跨节点推理的数据路径。
 >
+> **先修**：[[19_分布式训练系统]]、[[25_推理引擎与高性能服务]]。
+>
+> **学习目标**：
+> - 解释 PD 分离、KV 传输和资源池化的系统动机。
+> - 建立计算、网络、排队与命中率的延迟模型。
+> - 根据流量和基础设施判断分离部署是否值得。
+>
+> **建议路径**：PD 分离动机：Prefill vs Decode 差异 → DistServe：早期代表性 PD 分离系统（OSDI 2024） → Mooncake：KV Cache 池化与 RDMA 传输 → … → 与 Chunked Prefill 的协同。先完成主线，再按需要阅读进阶内容。
+>
+> **配套代码**：本章暂无独立代码目录，使用正文推导、自测题和决策表验收。
+
+> [!info] 阅读提示
 > 自回归推理通常可分为 Prefill（常偏计算密集）与 Decode（常偏显存带宽/访存密集）。
 > PD 分离把两阶段部署到可独立配置的资源池。本章梳理 DistServe/Mooncake、跨节点 KV
 > 传输、SGLang PD 实操，以及何时额外网络跳和双份权重并不划算。
@@ -23,8 +36,6 @@ tags:
 > 🆕 **截至 2026-07-31**：Mooncake 已开源 Transfer Engine 与 Mooncake Store；SGLang 支持
 > Mooncake、NIXL 等 PD 传输后端；NVIDIA Dynamo 也提供分离式服务方案。RDMA 是跨节点高性能路径之一，
 > 但是否值得分离必须由具体模型、输入/输出分布、TTFT/TPOT SLO、网络拓扑和故障成本共同决定。
-
----
 
 ## 37.1 PD 分离动机：Prefill vs Decode 差异 ⭐⭐⭐⭐⭐
 
@@ -53,8 +64,6 @@ graph TD
     style KVPath fill:#ffccff,stroke:#cc00cc
 ```
 
----
-
 ## 37.2 DistServe：早期代表性 PD 分离系统（OSDI 2024）⭐⭐⭐⭐
 
 ### 37.2.1 DistServe 核心思想
@@ -78,8 +87,6 @@ DistServe（OSDI 2024）：
 - Prefill/Decode 可采用不同的资源数量和模型并行策略
 - 消除长 prefill 对进行中 decode 的调度干扰
 - 两个池可分别按 TTFT、TPOT 和到达率扩缩容
-
----
 
 ## 37.3 Mooncake：KV Cache 池化与 RDMA 传输 ⭐⭐⭐⭐
 
@@ -123,8 +130,6 @@ class KVTransfer(Protocol):
         ...
 ```
 
----
-
 ## 37.4 SGLang PD 模式：工程实操 ⭐⭐⭐⭐
 
 ### 37.4.1 SGLang PD 模式配置
@@ -162,8 +167,6 @@ python -m sglang_router.launch_router \
 跨节点 RDMA 还需在两端配置相容的 `--disaggregation-ib-device`、bootstrap 端口、驱动/容器权限和网络；
 安装、参数名及支持矩阵随 SGLang release 变化，应锁定版本后再生成部署清单。
 
----
-
 ## 37.5 工程权衡：跨节点延迟 vs 池化收益 ⭐⭐⭐
 
 ### 37.5.1 何时该用 PD 分离？
@@ -187,8 +190,6 @@ KV 压缩：
 
 池化收益 = 更好的利用率 - 网络传输开销
 
----
-
 ## 37.6 与 Chunked Prefill 的协同 ⭐⭐⭐
 
 Chunked Prefill 把长 prompt 切成若干 chunk，以限制单次 prefill 对其他请求 decode 的阻塞。在支持增量 KV
@@ -205,23 +206,29 @@ Chunked Prefill 把长 prompt 切成若干 chunk，以限制单次 prefill 对�
 - 监控 TTFT、TPOT/ITL、goodput、传输字节/带宽/P95-P99、KV 命中、排队与传输失败；
 - 验证 RDMA 设备、UCX/NIXL/Mooncake 日志、容器权限、网络隔离和跨租户数据清理。
 
----
+## 🧭 本章小结
 
-## 📋 本章速查表
+本章应形成以下可复述结论：
 
-| 知识点 | 核心概念 | 面试考察重点 |
-|-------|---------|-------------|
-| Prefill vs Decode | 计算密集 vs 访存密集 | 本质差异表 |
-| PD 分离架构 | Prefill 池、Decode 池、KV 传输路径 | TTFT/TPOT 与 goodput |
-| DistServe | OSDI 2024、特定实验最高 7.4× 请求率或 12.6× 更严 SLO | 基线与适用边界 |
-| Mooncake | Transfer Engine、Mooncake Store、多种传输 | 不等于单一集中式 RDMA 池 |
-| SGLang PD 模式 | worker CLI + PD Router | 版本、后端和部署门禁 |
-| 工程权衡 | 何时用 PD 分离、传输 vs 池化 | 场景选择法则 |
-| 与 Chunked Prefill 协同 | 流水线并行 | 延迟降低原理 |
+- 解释 PD 分离、KV 传输和资源池化的系统动机。
+- 建立计算、网络、排队与命中率的延迟模型。
+- 根据流量和基础设施判断分离部署是否值得。
 
----
+## ✅ 自测与练习
 
-## 🎯 面试真题精讲
+先合上正文，再回答以下问题；无法说明证据或边界时，回到对应小节复习。
+
+1. 你能否解释 PD 分离、KV 传输和资源池化的系统动机？
+2. 你能否建立计算、网络、排队与命中率的延迟模型？
+3. 你能否根据流量和基础设施判断分离部署是否值得？
+
+## 🧪 配套代码与验收
+
+本章暂无独立代码目录。验收时应完成正文中的推导或决策题，并能在自测中说明适用边界。
+
+成功标准：概念、输入输出、关键指标和失败条件能够相互对应，不用未经验证的性能数字代替结论。
+
+## 🎯 面试题精讲
 
 ### 真题 1：Prefill 与 Decode 有什么本质区别？为什么要分离？
 
@@ -289,9 +296,27 @@ Mooncake 组件边界和 SGLang 当前版本的兼容矩阵。
 前面 chunk 的 KV 可以在后续 chunk 计算时增量传输；这可隐藏部分通信并限制长 prefill 的调度阻塞。
 但 decode 必须等完整 prompt 处理完成后才能开始该请求的自回归生成。收益需按 chunk 大小和传输重叠率实测。
 
----
+## 📋 本章速查表
 
-## 📚 截至 2026-07-31 的权威资料
+| 知识点 | 核心概念 | 面试考察重点 |
+|-------|---------|-------------|
+| Prefill vs Decode | 计算密集 vs 访存密集 | 本质差异表 |
+| PD 分离架构 | Prefill 池、Decode 池、KV 传输路径 | TTFT/TPOT 与 goodput |
+| DistServe | OSDI 2024、特定实验最高 7.4× 请求率或 12.6× 更严 SLO | 基线与适用边界 |
+| Mooncake | Transfer Engine、Mooncake Store、多种传输 | 不等于单一集中式 RDMA 池 |
+| SGLang PD 模式 | worker CLI + PD Router | 版本、后端和部署门禁 |
+| 工程权衡 | 何时用 PD 分离、传输 vs 池化 | 场景选择法则 |
+| 与 Chunked Prefill 协同 | 流水线并行 | 延迟降低原理 |
+
+## 🔗 相关章节
+
+- [[25_推理引擎与高性能服务]]：vLLM/SGLang 基础、Continuous Batching
+- [[16_模型微调与推理优化]]：KV Cache、量化、Speculative Decoding
+- [[24_云原生部署与工程化]]：K8s GPU 调度、模型网关
+
+## 📖 一手参考资料
+
+### 截至 2026-07-31 的权威资料
 
 - [DistServe（OSDI 2024 / arXiv）](https://arxiv.org/abs/2401.09670)
 - [Mooncake 官方仓库](https://github.com/kvcache-ai/Mooncake)
@@ -299,10 +324,8 @@ Mooncake 组件边界和 SGLang 当前版本的兼容矩阵。
 - [SGLang：PD Disaggregation 官方文档](https://docs.sglang.io/docs/advanced_features/pd_disaggregation)
 - [NVIDIA Dynamo：Disaggregated Serving](https://docs.nvidia.com/dynamo/latest/user-guides/disaggregated-serving)
 
----
+### 一手参考资料
 
-## 📚 相关章节
+> 核验日期：2026-08-04。版本、价格、法规、模型能力和 benchmark 以链接页面当前状态为准。
 
-- [[25_推理引擎与高性能服务]]：vLLM/SGLang 基础、Continuous Batching
-- [[16_模型微调与推理优化]]：KV Cache、量化、Speculative Decoding
-- [[24_云原生部署与工程化]]：K8s GPU 调度、模型网关
+- [[docs/AUTHORITATIVE_SOURCES|章节权威来源索引]]：按章节维护的官方文档、标准、原论文和官方仓库。

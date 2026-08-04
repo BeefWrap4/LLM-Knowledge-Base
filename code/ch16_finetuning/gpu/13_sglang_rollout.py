@@ -1,7 +1,7 @@
 # ---
 # chapter: 16
 # topic: SGLang Rollout (OpenAI-compatible local service)
-# section: 16.10.3
+# section: 16.9.3
 # difficulty: ⭐⭐⭐⭐
 # tier: gpu
 # deps: (stdlib client; SGLang server is an external prerequisite)

@@ -1,7 +1,7 @@
 # ---
 # chapter: 13
 # topic: Prompt Engineering
-# section: 13.7.3 Claude Computer Use
+# section: 13.5.3 Claude Computer Use
 # difficulty: ⭐⭐⭐⭐
 # tier: llm
 # deps: anthropic
