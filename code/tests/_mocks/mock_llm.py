@@ -13,7 +13,7 @@ Mock LLM 客户端 (CI-only).
   原位于 code/shared/mock_llm.py, 因 MockLLM 类属于测试辅助, 不应混入主流程,
   故迁移至 tests/_mocks/mock_llm.py (W1-T5).
 
-See: tutorial/Ch15_Agent智能体开发, Ch17_大模型评估体系, Ch18_LLM工程框架实战
+See: tutorial/Ch22_Agent基础与工具调用, Ch36_大模型评估基础, Ch27_LLM框架与平台选型
 """
 
 from typing import Any

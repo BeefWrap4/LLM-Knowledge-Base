@@ -66,10 +66,10 @@ GGUF 仓库只走 Hugging Face 接口。镜像是否可用和实际速度取决�
 | embedding | `BAAI/bge-small-zh-v1.5` | Ch14/17/20/22 | 默认集合 |
 | reranker | `BAAI/bge-reranker-v2-m3` | Ch17/22 | 默认集合 |
 | llm-small | `Qwen/Qwen2.5-0.5B-Instruct` | 教学加载/训练 | 默认集合；能力不代表生产模型 |
-| llm-medium | Qwen2.5-7B、Llama 3.1 8B | Ch25 | 需确认；Llama 还可能要求 Hub 授权 |
-| world-model/VLA | `nvidia/Cosmos3-Nano`、`lerobot/pi0_base` | Ch26 | 需确认；接口、硬件和许可分别核验 |
-| reasoner | DeepSeek-R1-Distill-Qwen-1.5B | Ch27 | 蒸馏模型不等于云端 DeepSeek-R1 |
-| edge | MLX Qwen 4-bit、单个 Llama GGUF | Ch28 | MLX 仅适合 Apple Silicon；GGUF 精确筛选 |
+| llm-medium | Qwen2.5-7B、Llama 3.1 8B | Ch40–Ch41 | 需确认；Llama 还可能要求 Hub 授权 |
+| world-model/VLA | `nvidia/Cosmos3-Nano`、`lerobot/pi0_base` | Ch49 | 需确认；接口、硬件和许可分别核验 |
+| reasoner | DeepSeek-R1-Distill-Qwen-1.5B | Ch32 | 蒸馏模型不等于云端 DeepSeek-R1 |
+| edge | MLX Qwen 4-bit、单个 Llama GGUF | Ch46 | MLX 仅适合 Apple Silicon；GGUF 精确筛选 |
 
 表中模型选择是教学注册表，不是质量排名或生产推荐。
 

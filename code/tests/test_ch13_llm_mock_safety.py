@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 CODE_ROOT = Path(__file__).resolve().parent.parent
-EXAMPLE_ROOT = CODE_ROOT / "ch13_prompt_engineering" / "llm"
+EXAMPLE_ROOT = CODE_ROOT / "ch17_prompt_engineering" / "llm"
 CASES = [
     ("12_anthropic_extended_thinking.py", "call_anthropic", ("test",), "anthropic", "ANTHROPIC_API_KEY"),
     (

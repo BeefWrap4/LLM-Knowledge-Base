@@ -11,7 +11,7 @@
 仅暴露无副作用的纯函数, 避免主流程反向依赖 tests/ 目录.
 更复杂的 MockLLM 客户端类位于 tests/_mocks/mock_llm.py (仅 CI/测试可见).
 
-See: tutorial/Ch15_Agent智能体开发, Ch17_大模型评估体系, Ch18_LLM工程框架实战
+See: tutorial/Ch22_Agent基础与工具调用, Ch36_大模型评估基础, Ch27_LLM框架与平台选型
 """
 
 import hashlib

@@ -14,8 +14,11 @@ import pytest
 
 CODE_ROOT = Path(__file__).resolve().parent.parent
 REPO_ROOT = CODE_ROOT.parent
-EXAMPLE_ROOT = CODE_ROOT / "ch17_evaluation" / "llm"
-CHAPTER = REPO_ROOT / "17_大模型评估体系.md"
+EXAMPLE_ROOT = CODE_ROOT / "ch36_evaluation" / "llm"
+CHAPTERS = (
+    REPO_ROOT / "36_大模型评估基础.md",
+    REPO_ROOT / "37_RAG_Agent与安全评估.md",
+)
 SOURCE_LEDGER = REPO_ROOT / "docs" / "AUTHORITATIVE_SOURCES.md"
 
 OPTIONAL_IMPORT_ROOTS = {
@@ -205,7 +208,7 @@ def test_each_ch17_script_finishes_offline(filename: str) -> None:
 
 def test_ch17_sources_and_current_api_markers() -> None:
     scripts = "\n".join(path.read_text(encoding="utf-8") for path in sorted(EXAMPLE_ROOT.glob("*.py")))
-    chapter = CHAPTER.read_text(encoding="utf-8")
+    chapter = "\n".join(path.read_text(encoding="utf-8") for path in CHAPTERS)
     ledger = SOURCE_LEDGER.read_text(encoding="utf-8")
 
     assert len(list(EXAMPLE_ROOT.glob("*.py"))) == 14
@@ -233,6 +236,6 @@ def test_ch17_sources_and_current_api_markers() -> None:
     assert "$0.95^{10}\\approx 0.599$" in chapter
     assert "lm-eval run" in chapter
     assert "权重不由 OpenAI API 或 ChatGPT 托管" in chapter
-    assert "| Ch17 |" in ledger
+    assert "| Ch36 |" in ledger and "| Ch37 |" in ledger
     assert "migrate_from_v03_to_v04" in ledger
     assert "experiments-via-sdk" in ledger

@@ -72,7 +72,7 @@ make run-all TIER=gpu PARALLEL=1
 # expected_output: 注意力权重 shape
 # ---
 #
-# See: ../tutorial/12_Transformer与大模型原理.md §12.2.5
+# See: ../../../14_Attention数学与张量形状.md
 # Cross-refs: §12.3.2 MHA, Ch16.4 Flash Attention
 # Interview hooks: "为什么除以 sqrt(d_k)?"
 

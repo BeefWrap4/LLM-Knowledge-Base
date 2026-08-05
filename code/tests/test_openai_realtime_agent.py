@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 MODULE_PATH = (
-    Path(__file__).parents[1] / "ch15_agent" / "llm" / "18_openai_realtime_agent.py"
+    Path(__file__).parents[1] / "ch22_agent_tools" / "llm" / "18_openai_realtime_agent.py"
 )
 SPEC = util.spec_from_file_location("ch15_openai_realtime_agent", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None

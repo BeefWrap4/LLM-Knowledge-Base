@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 CODE = Path(__file__).resolve().parent.parent
-GPU = CODE / "ch24_cloudnative" / "gpu"
+GPU = CODE / "ch43_cloudnative" / "gpu"
 
 
 def _run(script: str, *args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:

@@ -9,14 +9,14 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CHAPTERS = [
-    REPO_ROOT / "13_Prompt_Engineering.md",
-    REPO_ROOT / "14_RAG检索增强生成.md",
-    REPO_ROOT / "15_Agent智能体开发.md",
+    REPO_ROOT / "17_Prompt_Engineering.md",
+    REPO_ROOT / "19_RAG数据解析分块与索引.md",
+    REPO_ROOT / "22_Agent基础与工具调用.md",
 ]
 CODE_DIRS = [
-    REPO_ROOT / "code" / "ch13_prompt_engineering",
-    REPO_ROOT / "code" / "ch14_rag",
-    REPO_ROOT / "code" / "ch15_agent",
+    REPO_ROOT / "code" / "ch17_prompt_engineering",
+    REPO_ROOT / "code" / "ch19_rag_indexing",
+    REPO_ROOT / "code" / "ch22_agent_tools",
 ]
 RETIRED_OPENAI_MODEL = re.compile(
     r"(?<![\w.-])(?:gpt-4(?:-turbo)?|gpt-3\.5-turbo|gpt-4o(?:-mini)?|"
@@ -34,7 +34,7 @@ def _scoped_text_files() -> list[Path]:
 
 
 def _load_contextual_retrieval():
-    path = REPO_ROOT / "code" / "ch14_rag" / "llm" / "20_contextual_retrieval.py"
+    path = REPO_ROOT / "code" / "ch19_rag_indexing" / "llm" / "20_contextual_retrieval.py"
     spec = importlib.util.spec_from_file_location("_test_contextual_retrieval", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

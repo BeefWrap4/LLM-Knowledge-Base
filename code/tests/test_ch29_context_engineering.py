@@ -8,7 +8,7 @@ from importlib import util
 from pathlib import Path
 from types import ModuleType
 
-CHAPTER_DIR = Path(__file__).parents[1] / "ch29_context_engineering" / "llm"
+CHAPTER_DIR = Path(__file__).parents[1] / "ch18_context_engineering" / "llm"
 
 
 def load_example(filename: str) -> ModuleType:

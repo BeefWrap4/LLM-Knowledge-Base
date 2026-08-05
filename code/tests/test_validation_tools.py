@@ -135,21 +135,21 @@ def test_current_repository_snapshot() -> None:
 def test_current_mermaid_blocks_are_obsidian_safe() -> None:
     total, failures = verify_all.inspect_mermaid_blocks()
 
-    assert total == 261
+    assert total == 243
     assert failures == []
 
 
 def test_current_markdown_documents_are_obsidian_safe() -> None:
     total, failures = verify_all.inspect_markdown_rendering()
 
-    assert total == 101
+    assert total == 116
     assert failures == []
 
 
 def test_current_chapter_narratives_follow_learning_contract() -> None:
     total, failures = verify_all.inspect_chapter_narratives()
 
-    assert total == 40
+    assert total == 54
     assert failures == []
 
 
@@ -512,21 +512,23 @@ def test_python_reference_gate_detects_missing_file(monkeypatch, tmp_path: Path)
     code = tmp_path / "code"
     code.mkdir()
     (tmp_path / "README.md").write_text(
-        "python ch15_agent/llm/01_missing.py\n",
+        "python ch22_agent_tools/llm/01_missing.py\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(verify_all, "REPO", tmp_path)
     monkeypatch.setattr(verify_all, "CODE", code)
 
-    assert verify_all.find_broken_python_references() == [("README.md", 1, "ch15_agent/llm/01_missing.py")]
+    assert verify_all.find_broken_python_references() == [
+        ("README.md", 1, "ch22_agent_tools/llm/01_missing.py")
+    ]
 
 
 def test_python_reference_gate_accepts_existing_code_prefix(monkeypatch, tmp_path: Path) -> None:
-    target = tmp_path / "code/ch15_agent/llm/01_agent.py"
+    target = tmp_path / "code/ch22_agent_tools/llm/01_agent.py"
     target.parent.mkdir(parents=True)
     target.write_text("print('OK')\n", encoding="utf-8")
     (tmp_path / "README.md").write_text(
-        "python code/ch15_agent/llm/01_agent.py\n",
+        "python code/ch22_agent_tools/llm/01_agent.py\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(verify_all, "REPO", tmp_path)

@@ -9,13 +9,13 @@ Master verification script. Returns 0 iff all checks pass.
 
 Checks (10 项):
   1. Wiki link integrity: 所有 [[WikiLinks]] 都能解析
-  2. Repository consistency: 40 章、433 示例、编号唯一、示例契约
+  2. Repository consistency: 54 章、433 示例、编号唯一、示例契约
   3. Chapter README coverage: 29/29 代码章节都有 README.md
   4. Code companion health:
      - 每章都有 core/ 或 llm/ 或 gpu/
      - 每章 .py 数 >= 1
   5. Tutorial ↔ Code reference integrity + coverage baseline
-  6. Source ledger: 40 章均有权威来源入口
+  6. Source ledger: 54 章均有权威来源入口
   7. Documentation snapshot consistency
   8. CI LLM_MOCK safety
   9. Smoke test sample: 跑 5 个代表性 core 例子
@@ -33,7 +33,7 @@ from urllib.parse import unquote
 
 CODE = Path(__file__).resolve().parent.parent
 REPO = CODE.parent
-EXPECTED_CHAPTERS = 40
+EXPECTED_CHAPTERS = 54
 EXPECTED_CODE_CHAPTERS = 29
 EXPECTED_EXAMPLES = 433
 NUMBERED_HEADING_RE = re.compile(r"^#{2,6}\s+(\d{1,2}(?:\.\d+)+)\b")
@@ -202,7 +202,7 @@ def _inspect_sequence_semantics(markdown_name: str, body: list[tuple[int, str]])
 
 
 def canonical_chapters() -> list[Path]:
-    """Return Ch01-Ch40 canonical Markdown files, excluding index/report files."""
+    """Return Ch01-Ch54 canonical Markdown files, excluding index/report files."""
     return [
         path
         for path in sorted(REPO.glob("[0-9][0-9]_*.md"))
@@ -233,7 +233,7 @@ def _outside_fence_lines(lines: list[str]) -> list[tuple[int, str]]:
 
 
 def inspect_chapter_narratives() -> tuple[int, list[str]]:
-    """Validate the 40-chapter learning contract and appendix ordering."""
+    """Validate the 54-chapter learning contract and appendix ordering."""
 
     chapters = canonical_chapters()
     failures: list[str] = []
@@ -1149,11 +1149,11 @@ def check_source_ledger() -> bool:
 def check_doc_snapshot() -> bool:
     print("\n--- [7/10] Documentation snapshot consistency ---")
     requirements = {
-        "README.md": ("40 章节", "433 个可运行代码示例"),
-        "code/README.md": ("29 章", "433"),
-        "00_目录索引.md": ("40 章", "7 大板块"),
-        "99_库健康检查报告.md": ("2026-08-04", "433"),
-        "Python到大模型应用_面试教程_2026版_思维导图.xmind.md": ("40 章", "433"),
+        "README.md": ("54 章节", "433 个可运行代码示例"),
+        "code/README.md": ("29 个代码运行分组", "433"),
+        "00_目录索引.md": ("54 章", "8 大部分"),
+        "99_库健康检查报告.md": ("2026-08-05", "433"),
+        "Python到大模型应用_面试教程_2026版_思维导图.xmind.md": ("54 章", "433"),
     }
     failures = []
     for rel, needles in requirements.items():
@@ -1165,6 +1165,23 @@ def check_doc_snapshot() -> bool:
         missing = [needle for needle in needles if needle not in head]
         if missing:
             failures.append(f"{rel}: missing {missing}")
+    generators = (
+        (
+            "chapter narrative",
+            [
+                sys.executable,
+                str(CODE / "scripts" / "normalize_chapter_narrative.py"),
+                "--check",
+            ],
+        ),
+        ("topic manifest", [sys.executable, str(CODE / "scripts" / "build_topic_manifest.py")]),
+        ("catalog documents", [sys.executable, str(CODE / "scripts" / "rebuild_catalog_docs.py"), "--check"]),
+    )
+    for label, command in generators:
+        result = subprocess.run(command, capture_output=True, text=True, cwd=str(REPO))
+        if result.returncode != 0:
+            detail = (result.stdout or result.stderr).strip().splitlines()
+            failures.append(f"{label}: {detail[0] if detail else 'check failed'}")
     for failure in failures:
         print(f"  [FAIL] {failure}")
     if not failures:
@@ -1197,11 +1214,11 @@ def check_ci_llm_mock_safety() -> bool:
 def check_smoke() -> bool:
     print("\n--- [9/10] Smoke test sample (5 core/ files) ---")
     sample = [
-        "ch01_python_basics/core/22_list_dict_basics.py",
-        "ch02_mutability/core/01_is_vs_equals.py",
-        "ch03_oop/core/01_singleton.py",
-        "ch06_memory_gc/core/01_pymalloc_object_size.py",
-        "ch07_data_structures/core/01_linked_list.py",
+        "ch01_python_runtime/core/22_list_dict_basics.py",
+        "ch02_object_model/core/01_is_vs_equals.py",
+        "ch05_oop_data_model/core/01_singleton.py",
+        "ch06_memory_profiling/core/01_pymalloc_object_size.py",
+        "ch08_data_structures/core/01_linked_list.py",
     ]
     failures = []
     for rel in sample:

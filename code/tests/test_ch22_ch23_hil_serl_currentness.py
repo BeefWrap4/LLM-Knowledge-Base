@@ -7,10 +7,11 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CH22 = REPO_ROOT / "22_大模型数据工程.md"
-CH23 = REPO_ROOT / "23_AI安全与伦理.md"
-CH23_LLM = REPO_ROOT / "code" / "ch23_safety" / "llm"
-HIL_SERL = REPO_ROOT / "code" / "ch26_world_models" / "gpu" / "07_hil_serl.py"
+CH22 = REPO_ROOT / "29_大模型数据工程.md"
+CH23_SECURITY = REPO_ROOT / "38_大模型与Agent安全.md"
+CH23_GOVERNANCE = REPO_ROOT / "39_AI隐私伦理与治理.md"
+CH23_LLM = REPO_ROOT / "code" / "ch38_safety" / "llm"
+HIL_SERL = REPO_ROOT / "code" / "ch49_world_models" / "gpu" / "07_hil_serl.py"
 MINDMAP = REPO_ROOT / "Python到大模型应用_面试教程_2026版_思维导图.xmind.md"
 SOURCE_LEDGER = REPO_ROOT / "docs" / "AUTHORITATIVE_SOURCES.md"
 
@@ -51,7 +52,9 @@ def test_ch22_removes_unsupported_fixed_cai_and_length_claims():
 
 @pytest.mark.core
 def test_ch23_describes_current_asl_and_shieldgemma_2_correctly():
-    text = read_text(CH23)
+    security = read_text(CH23_SECURITY)
+    governance = read_text(CH23_GOVERNANCE)
+    text = security + governance
 
     for stale_claim in (
         "Claude 3.5 级别",
@@ -73,14 +76,14 @@ def test_ch23_describes_current_asl_and_shieldgemma_2_correctly():
     assert "https://www.anthropic.com/responsible-scaling-policy" in text
     assert "https://www.anthropic.com/news/responsible-scaling-policy-v3" in text
     assert "https://ai.google.dev/gemma/docs/shieldgemma/model_card_2" in text
-    assert "four-fifths rule 是就业选择 adverse impact 的实务筛查经验规则" in text
-    assert "不等同于自动违法" in text
+    assert "four-fifths rule 是就业选择 adverse impact 的实务筛查经验规则" in governance
+    assert "不等同于自动违法" in governance
     assert "合规判断:" not in text
 
 
 @pytest.mark.core
 def test_ch23_keeps_official_eu_ai_act_high_risk_timeline():
-    text = read_text(CH23)
+    text = read_text(CH23_GOVERNANCE)
 
     assert "2027-12-02" in text
     assert "Annex III所列独立高风险AI系统" in text
@@ -152,14 +155,10 @@ def test_mindmap_avoids_implementation_and_benchmark_numbers_as_constants():
     ):
         assert stale_claim not in folded
 
-    assert text.count("小整数复用: CPython 实现细节") == 2
-    assert "不背固定默认值" in text
-    assert "收益受属性、继承和版本影响，需实测" in text
-    assert "usage 缓存字段与实际账单" in text
-    assert "吞吐/尾延迟收益依工作负载而变" in text
-    assert "按当前模型目录与 API 指南核对推理控制字段" in text
-    assert "文件大小取决于模型参数与量化元数据" in text
-    assert "按模型权重、KV cache、激活、batch 与并发核算显存" in text
+    assert "54 章教程、8 大部分、433 个配套代码示例" in text
+    assert "主干依赖" in text
+    assert "稳定 `topic_id`" in text
+    assert "避免跨章复制" in text
 
 
 @pytest.mark.core

@@ -44,7 +44,7 @@ LLM_MOCK=0 bash scripts/run_real_demos.sh --confirm-real quick deepseek
 跑单个例子：
 
 ```bash
-LLM_MOCK=0 LLM_PROVIDER=deepseek python ch13_prompt_engineering/llm/06_self_consistency_cot.py
+LLM_MOCK=0 LLM_PROVIDER=deepseek python ch17_prompt_engineering/llm/06_self_consistency_cot.py
 ```
 
 PowerShell 中如需调用 Git Bash：

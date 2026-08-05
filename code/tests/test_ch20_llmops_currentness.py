@@ -14,8 +14,8 @@ import pytest
 
 CODE_ROOT = Path(__file__).resolve().parent.parent
 REPO_ROOT = CODE_ROOT.parent
-CHAPTER = REPO_ROOT / "20_LLMOps与模型可观测性.md"
-CHAPTER_ROOT = CODE_ROOT / "ch20_llmops"
+CHAPTER = REPO_ROOT / "44_LLMOps生命周期与持续交付.md"
+CHAPTER_ROOT = CODE_ROOT / "ch44_llmops"
 EXAMPLE_ROOT = CHAPTER_ROOT / "llm"
 SOURCE_LEDGER = REPO_ROOT / "docs" / "AUTHORITATIVE_SOURCES.md"
 
@@ -64,7 +64,7 @@ def test_ch20_does_not_pin_retired_model_ids_or_unsupported_savings_claims():
 
 def test_ch20_source_ledger_points_to_current_primary_sources():
     ledger = SOURCE_LEDGER.read_text(encoding="utf-8")
-    row = next(line for line in ledger.splitlines() if line.startswith("| Ch20 |"))
+    row = next(line for line in ledger.splitlines() if line.startswith("| Ch44 |"))
 
     assert "developers.openai.com/api/docs/models" in row
     assert "openai.com/api/pricing" in row

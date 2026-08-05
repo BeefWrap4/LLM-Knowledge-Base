@@ -29,7 +29,7 @@ pip install -r requirements-core.txt
 ## 3. 运行你的第一个例子
 
 ```bash
-python ch12_transformer_architecture/core/01_scaled_dot_product_attention.py
+python ch15_transformer/core/01_scaled_dot_product_attention.py
 ```
 
 预期输出：
@@ -86,9 +86,9 @@ python scripts/run_all_examples.py --tier gpu --chapter ch16 --real-gpu  # 真�
 ## 7. 探索章节目录
 
 ```bash
-ls ch01_python_basics/core/
-ls ch18_llm_frameworks/llm/
-ls ch25_inference_engines/gpu/
+ls ch01_python_runtime/core/
+ls ch27_llm_frameworks/llm/
+ls ch41_inference_engines/gpu/
 ```
 
 每个目录有 `README.md` 列出该章所有例子。

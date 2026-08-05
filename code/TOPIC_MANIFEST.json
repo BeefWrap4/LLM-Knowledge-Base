@@ -1,0 +1,3039 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-05",
+  "chapter_count": 54,
+  "example_count": 433,
+  "examples": [
+    {
+      "topic_id": "python_runtime.python_313_features",
+      "chapter": 1,
+      "chapter_file": "01_Python运行时与工程环境.md",
+      "path": "ch01_python_runtime/core/01_python_313_features.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.python_314_repl",
+      "chapter": 1,
+      "chapter_file": "01_Python运行时与工程环境.md",
+      "path": "ch01_python_runtime/core/02_python_314_repl.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.python_314_performance",
+      "chapter": 1,
+      "chapter_file": "01_Python运行时与工程环境.md",
+      "path": "ch01_python_runtime/core/03_python_314_performance.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.python_314_types",
+      "chapter": 1,
+      "chapter_file": "01_Python运行时与工程环境.md",
+      "path": "ch01_python_runtime/core/04_python_314_types.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.python_314_dx",
+      "chapter": 1,
+      "chapter_file": "01_Python运行时与工程环境.md",
+      "path": "ch01_python_runtime/core/05_python_314_dx.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.venv_conda",
+      "chapter": 1,
+      "chapter_file": "01_Python运行时与工程环境.md",
+      "path": "ch01_python_runtime/core/06_venv_conda.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.basic_data_types",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch01_python_runtime/core/07_basic_data_types.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.operators",
+      "chapter": 1,
+      "chapter_file": "01_Python运行时与工程环境.md",
+      "path": "ch01_python_runtime/core/08_operators.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.flow_control",
+      "chapter": 1,
+      "chapter_file": "01_Python运行时与工程环境.md",
+      "path": "ch01_python_runtime/core/09_flow_control.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.file_operations",
+      "chapter": 1,
+      "chapter_file": "01_Python运行时与工程环境.md",
+      "path": "ch01_python_runtime/core/10_file_operations.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.list_operations",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch01_python_runtime/core/11_list_operations.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.dict_operations",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch01_python_runtime/core/12_dict_operations.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.set_operations",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch01_python_runtime/core/13_set_operations.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.tuple_operations",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch01_python_runtime/core/14_tuple_operations.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.tuple_iadd_trap",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch01_python_runtime/core/15_tuple_iadd_trap.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.function_params",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch01_python_runtime/core/16_function_params.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.args_kwargs",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch01_python_runtime/core/17_args_kwargs.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.lambda_higher_order",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch01_python_runtime/core/18_lambda_higher_order.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.legb_rule",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch01_python_runtime/core/19_legb_rule.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.exception_handling",
+      "chapter": 1,
+      "chapter_file": "01_Python运行时与工程环境.md",
+      "path": "ch01_python_runtime/core/20_exception_handling.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.pep8_style",
+      "chapter": 1,
+      "chapter_file": "01_Python运行时与工程环境.md",
+      "path": "ch01_python_runtime/core/21_pep8_style.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "python_runtime.list_dict_basics",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch01_python_runtime/core/22_list_dict_basics.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.is_vs_equals",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/01_is_vs_equals.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.object_identity_type_value",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/01_object_identity_type_value.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.mutable_immutable_classification",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/02_mutable_immutable_classification.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.is_vs_equality",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/03_is_vs_equality.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.type_vs_isinstance",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/04_type_vs_isinstance.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.assignment_is_alias",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/05_assignment_is_alias.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.immutable_reassign",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/06_immutable_reassign.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.nested_refs_intro",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/07_nested_refs_intro.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.shallow_copy_three_ways",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/08_shallow_copy_three_ways.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.shallow_copy_nested_trap",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/09_shallow_copy_nested_trap.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.deep_copy_basics",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/10_deep_copy_basics.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.circular_reference_memo",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/11_circular_reference_memo.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.custom_deepcopy",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/12_custom_deepcopy.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.full_comparison",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/13_full_comparison.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.interview_q1_reassign",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/14_interview_q1_reassign.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.interview_q6_copy_vs_deepcopy",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/15_interview_q6_copy_vs_deepcopy.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.interview_q7_mappingproxy",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/16_interview_q7_mappingproxy.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "object_model.interview_q8_custom_copy",
+      "chapter": 2,
+      "chapter_file": "02_Python对象模型与可变性.md",
+      "path": "ch02_object_model/core/17_interview_q8_custom_copy.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.closure_basics",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch04_iteration_functional/core/01_closure_basics.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.closure_legb_nonlocal",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch04_iteration_functional/core/02_closure_legb_nonlocal.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.closure_use_cases",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch04_iteration_functional/core/03_closure_use_cases.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.decorator_basics",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch04_iteration_functional/core/04_decorator_basics.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.decorator_timer",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch04_iteration_functional/core/05_decorator_timer.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.decorator_retry_args",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch04_iteration_functional/core/06_decorator_retry_args.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.multiple_decorators",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch04_iteration_functional/core/07_multiple_decorators.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.class_decorators",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch04_iteration_functional/core/08_class_decorators.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.iterator_protocol",
+      "chapter": 4,
+      "chapter_file": "04_Python迭代协议与函数式编程.md",
+      "path": "ch04_iteration_functional/core/09_iterator_protocol.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.generators_yield",
+      "chapter": 4,
+      "chapter_file": "04_Python迭代协议与函数式编程.md",
+      "path": "ch04_iteration_functional/core/10_generators_yield.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.generator_pipeline",
+      "chapter": 4,
+      "chapter_file": "04_Python迭代协议与函数式编程.md",
+      "path": "ch04_iteration_functional/core/11_generator_pipeline.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.context_managers",
+      "chapter": 4,
+      "chapter_file": "04_Python迭代协议与函数式编程.md",
+      "path": "ch04_iteration_functional/core/12_context_managers.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.itertools",
+      "chapter": 4,
+      "chapter_file": "04_Python迭代协议与函数式编程.md",
+      "path": "ch04_iteration_functional/core/13_itertools.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.functools",
+      "chapter": 4,
+      "chapter_file": "04_Python迭代协议与函数式编程.md",
+      "path": "ch04_iteration_functional/core/14_functools.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.functional_styles",
+      "chapter": 4,
+      "chapter_file": "04_Python迭代协议与函数式编程.md",
+      "path": "ch04_iteration_functional/core/15_functional_styles.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.q02_retry_decorator",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch04_iteration_functional/core/16_q02_retry_decorator.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "iteration_functional.q09_closure_trap",
+      "chapter": 3,
+      "chapter_file": "03_Python函数作用域与装饰器.md",
+      "path": "ch04_iteration_functional/core/17_q09_closure_trap.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.class_definition",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/01_class_definition.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.singleton",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/01_singleton.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.attributes_and_property",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/02_attributes_and_property.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.encapsulation",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/03_encapsulation.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.inheritance",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/04_inheritance.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.polymorphism",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/05_polymorphism.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.diamond_problem",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/06_diamond_problem.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.c3_linearization",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/07_c3_linearization.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.super_cooperative",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/08_super_cooperative.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.new_vs_init",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/09_new_vs_init.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.singleton_patterns",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/10_singleton_patterns.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.magic_methods",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/11_magic_methods.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.getattr_vs_getattribute",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/12_getattr_vs_getattribute.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.descriptor_protocol",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/13_descriptor_protocol.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "oop_data_model.metaclass",
+      "chapter": 5,
+      "chapter_file": "05_Python面向对象与数据模型.md",
+      "path": "ch05_oop_data_model/core/14_metaclass.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "memory_profiling.pymalloc_object_size",
+      "chapter": 6,
+      "chapter_file": "06_Python内存管理与性能诊断.md",
+      "path": "ch06_memory_profiling/core/01_pymalloc_object_size.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "memory_profiling.int_object_memory_layout",
+      "chapter": 6,
+      "chapter_file": "06_Python内存管理与性能诊断.md",
+      "path": "ch06_memory_profiling/core/02_int_object_memory_layout.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "memory_profiling.getrefcount_demo",
+      "chapter": 6,
+      "chapter_file": "06_Python内存管理与性能诊断.md",
+      "path": "ch06_memory_profiling/core/03_getrefcount_demo.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "memory_profiling.cycle_reference",
+      "chapter": 6,
+      "chapter_file": "06_Python内存管理与性能诊断.md",
+      "path": "ch06_memory_profiling/core/04_cycle_reference.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "memory_profiling.mark_and_sweep",
+      "chapter": 6,
+      "chapter_file": "06_Python内存管理与性能诊断.md",
+      "path": "ch06_memory_profiling/core/05_mark_and_sweep.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "memory_profiling.generational_gc",
+      "chapter": 6,
+      "chapter_file": "06_Python内存管理与性能诊断.md",
+      "path": "ch06_memory_profiling/core/06_generational_gc.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "memory_profiling.gc_module_control",
+      "chapter": 6,
+      "chapter_file": "06_Python内存管理与性能诊断.md",
+      "path": "ch06_memory_profiling/core/07_gc_module_control.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "memory_profiling.memory_leak_detection",
+      "chapter": 6,
+      "chapter_file": "06_Python内存管理与性能诊断.md",
+      "path": "ch06_memory_profiling/core/08_memory_leak_detection.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "memory_profiling.memory_optimization",
+      "chapter": 6,
+      "chapter_file": "06_Python内存管理与性能诊断.md",
+      "path": "ch06_memory_profiling/core/09_memory_optimization.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.gil_switch_interval",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/01_gil_switch_interval.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.concurrency_selection_decision_tree",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/02_concurrency_selection_decision_tree.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.nogil_mode_detection",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/03_nogil_mode_detection.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.threading_basics",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/04_threading_basics.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.threading_sync_mechanisms",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/05_threading_sync_mechanisms.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.thread_pool_executor",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/06_thread_pool_executor.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.thread_local_storage",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/07_thread_local_storage.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.multiprocessing_basics",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/08_multiprocessing_basics.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.multiprocessing_ipc",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/09_multiprocessing_ipc.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.process_pool_executor",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/10_process_pool_executor.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.async_await_basics",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/11_async_await_basics.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.event_loop_inspection",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/12_event_loop_inspection.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.create_task_gather_taskgroup",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/13_create_task_gather_taskgroup.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.sync_blocking_in_async",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/14_sync_blocking_in_async.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.async_http_client",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/15_async_http_client.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.async_context_iter",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/16_async_context_iter.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "concurrency.mixed_concurrency_task_queue",
+      "chapter": 7,
+      "chapter_file": "07_Python并发编程.md",
+      "path": "ch07_concurrency/core/17_mixed_concurrency_task_queue.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "data_structures.linked_list",
+      "chapter": 8,
+      "chapter_file": "08_Python数据结构与算法.md",
+      "path": "ch08_data_structures/core/01_linked_list.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "data_structures.stack_queue",
+      "chapter": 8,
+      "chapter_file": "08_Python数据结构与算法.md",
+      "path": "ch08_data_structures/core/02_stack_queue.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "data_structures.hash_table",
+      "chapter": 8,
+      "chapter_file": "08_Python数据结构与算法.md",
+      "path": "ch08_data_structures/core/03_hash_table.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "data_structures.binary_tree",
+      "chapter": 8,
+      "chapter_file": "08_Python数据结构与算法.md",
+      "path": "ch08_data_structures/core/04_binary_tree.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "data_structures.bfs_dfs",
+      "chapter": 8,
+      "chapter_file": "08_Python数据结构与算法.md",
+      "path": "ch08_data_structures/core/05_bfs_dfs.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "data_structures.quicksort",
+      "chapter": 8,
+      "chapter_file": "08_Python数据结构与算法.md",
+      "path": "ch08_data_structures/core/06_quicksort.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "data_structures.merge_sort",
+      "chapter": 8,
+      "chapter_file": "08_Python数据结构与算法.md",
+      "path": "ch08_data_structures/core/07_merge_sort.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "data_structures.binary_search",
+      "chapter": 8,
+      "chapter_file": "08_Python数据结构与算法.md",
+      "path": "ch08_data_structures/core/08_binary_search.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "data_structures.two_pointers",
+      "chapter": 8,
+      "chapter_file": "08_Python数据结构与算法.md",
+      "path": "ch08_data_structures/core/09_two_pointers.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "data_structures.sliding_window",
+      "chapter": 8,
+      "chapter_file": "08_Python数据结构与算法.md",
+      "path": "ch08_data_structures/core/10_sliding_window.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "data_structures.dynamic_programming",
+      "chapter": 8,
+      "chapter_file": "08_Python数据结构与算法.md",
+      "path": "ch08_data_structures/core/11_dynamic_programming.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.ndarray_basics",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/01_ndarray_basics.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.broadcasting",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/02_broadcasting.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.matrix_linear_algebra",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/03_matrix_linear_algebra.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.series_dataframe",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/04_series_dataframe.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.loc_vs_iloc",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/05_loc_vs_iloc.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.groupby_apply_map",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/06_groupby_apply_map.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.missing_values",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/07_missing_values.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.data_cleaning_pipeline",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/08_data_cleaning_pipeline.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.memory_optimization",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/09_memory_optimization.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.matplotlib_basics",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/10_matplotlib_basics.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.seaborn",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/11_seaborn.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.pandas_plotting",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/12_pandas_plotting.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "numpy_pandas.data_analysis_pipeline",
+      "chapter": 9,
+      "chapter_file": "09_NumPy与Pandas数据处理.md",
+      "path": "ch09_numpy_pandas/core/13_data_analysis_pipeline.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "fastapi.dependency_injection",
+      "chapter": 10,
+      "chapter_file": "10_FastAPI与后端服务.md",
+      "path": "ch10_fastapi/core/01_dependency_injection.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "fastapi.routes_and_requests",
+      "chapter": 10,
+      "chapter_file": "10_FastAPI与后端服务.md",
+      "path": "ch10_fastapi/core/02_routes_and_requests.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "fastapi.pydantic_validation",
+      "chapter": 10,
+      "chapter_file": "10_FastAPI与后端服务.md",
+      "path": "ch10_fastapi/core/03_pydantic_validation.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "fastapi.async_database",
+      "chapter": 10,
+      "chapter_file": "10_FastAPI与后端服务.md",
+      "path": "ch10_fastapi/core/04_async_database.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "fastapi.middleware_cors",
+      "chapter": 10,
+      "chapter_file": "10_FastAPI与后端服务.md",
+      "path": "ch10_fastapi/core/05_middleware_cors.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "fastapi.streaming_sse",
+      "chapter": 10,
+      "chapter_file": "10_FastAPI与后端服务.md",
+      "path": "ch10_fastapi/core/06_streaming_sse.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.linear_regression",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/01_linear_regression.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.logistic_regression",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/02_logistic_regression.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.decision_tree",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/03_decision_tree.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.random_forest",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/04_random_forest.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.svm",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/05_svm.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.naive_bayes",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/06_naive_bayes.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.xgboost_lightgbm",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/07_xgboost_lightgbm.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.kmeans",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/08_kmeans.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.pca",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/09_pca.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.roc_auc_curve",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/10_roc_auc_curve.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.cross_validation",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/11_cross_validation.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.grid_search",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/12_grid_search.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "ml_basics.full_pipeline",
+      "chapter": 11,
+      "chapter_file": "11_机器学习基础.md",
+      "path": "ch11_ml_basics/core/13_full_pipeline.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "pytorch.tensor_ops",
+      "chapter": 12,
+      "chapter_file": "12_深度学习与PyTorch.md",
+      "path": "ch12_pytorch/core/01_tensor_ops.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "pytorch.autograd",
+      "chapter": 12,
+      "chapter_file": "12_深度学习与PyTorch.md",
+      "path": "ch12_pytorch/core/02_autograd.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "pytorch.nn_module_mlp",
+      "chapter": 12,
+      "chapter_file": "12_深度学习与PyTorch.md",
+      "path": "ch12_pytorch/core/03_nn_module_mlp.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "pytorch.dataloader_train",
+      "chapter": 12,
+      "chapter_file": "12_深度学习与PyTorch.md",
+      "path": "ch12_pytorch/core/04_dataloader_train.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "pytorch.conv2d",
+      "chapter": 12,
+      "chapter_file": "12_深度学习与PyTorch.md",
+      "path": "ch12_pytorch/core/05_conv2d.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "pytorch.resnet_basicblock",
+      "chapter": 12,
+      "chapter_file": "12_深度学习与PyTorch.md",
+      "path": "ch12_pytorch/core/06_resnet_basicblock.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "pytorch.lstm",
+      "chapter": 12,
+      "chapter_file": "12_深度学习与PyTorch.md",
+      "path": "ch12_pytorch/core/07_lstm.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "pytorch.init_weights",
+      "chapter": 12,
+      "chapter_file": "12_深度学习与PyTorch.md",
+      "path": "ch12_pytorch/core/08_init_weights.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "pytorch.lr_schedulers",
+      "chapter": 12,
+      "chapter_file": "12_深度学习与PyTorch.md",
+      "path": "ch12_pytorch/core/09_lr_schedulers.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "pytorch.amp_fp16",
+      "chapter": 12,
+      "chapter_file": "12_深度学习与PyTorch.md",
+      "path": "ch12_pytorch/core/10_amp_fp16.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "pytorch.adamw",
+      "chapter": 12,
+      "chapter_file": "12_深度学习与PyTorch.md",
+      "path": "ch12_pytorch/core/11_adamw.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "transformer.scaled_dot_product_attention",
+      "chapter": 14,
+      "chapter_file": "14_Attention数学与张量形状.md",
+      "path": "ch15_transformer/core/01_scaled_dot_product_attention.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "transformer.multi_head_attention",
+      "chapter": 14,
+      "chapter_file": "14_Attention数学与张量形状.md",
+      "path": "ch15_transformer/core/02_multi_head_attention.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "transformer.sinusoidal_positional_encoding",
+      "chapter": 15,
+      "chapter_file": "15_Transformer架构与实现.md",
+      "path": "ch15_transformer/core/03_sinusoidal_positional_encoding.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "transformer.attention_masks",
+      "chapter": 15,
+      "chapter_file": "15_Transformer架构与实现.md",
+      "path": "ch15_transformer/core/04_attention_masks.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "transformer.grpo_pseudocode",
+      "chapter": 31,
+      "chapter_file": "31_偏好对齐与强化学习.md",
+      "path": "ch15_transformer/core/05_grpo_pseudocode.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "transformer.full_transformer",
+      "chapter": 15,
+      "chapter_file": "15_Transformer架构与实现.md",
+      "path": "ch15_transformer/core/06_full_transformer.py",
+      "tier": "core"
+    },
+    {
+      "topic_id": "prompt_engineering.structured_prompt_template",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/01_structured_prompt_template.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.few_shot_sentiment",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/02_few_shot_sentiment.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.dynamic_few_shot_selector",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/03_dynamic_few_shot_selector.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.zero_shot_cot",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/04_zero_shot_cot.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.few_shot_cot",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/05_few_shot_cot.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.self_consistency_cot",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/06_self_consistency_cot.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.react_loop",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/07_react_loop.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.tree_of_thoughts",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/08_tree_of_thoughts.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.compare_temperatures",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/09_compare_temperatures.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.nucleus_sampling",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/10_nucleus_sampling.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.prompt_injection_defense",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch17_prompt_engineering/llm/11_prompt_injection_defense.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.anthropic_extended_thinking",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch17_prompt_engineering/llm/12_anthropic_extended_thinking.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.anthropic_prompt_caching",
+      "chapter": 18,
+      "chapter_file": "18_Context_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/13_anthropic_prompt_caching.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.openai_auto_caching",
+      "chapter": 18,
+      "chapter_file": "18_Context_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/14_openai_auto_caching.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.gemini_explicit_caching",
+      "chapter": 18,
+      "chapter_file": "18_Context_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/15_gemini_explicit_caching.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.claude_computer_use",
+      "chapter": 28,
+      "chapter_file": "28_ComputerUse与GUIAgent.md",
+      "path": "ch17_prompt_engineering/llm/16_claude_computer_use.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.openai_cua",
+      "chapter": 28,
+      "chapter_file": "28_ComputerUse与GUIAgent.md",
+      "path": "ch17_prompt_engineering/llm/17_openai_cua.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.xgrammar_constrained_decoding",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/18_xgrammar_constrained_decoding.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.guidance_template",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/19_guidance_template.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.openai_json_schema_strict",
+      "chapter": 17,
+      "chapter_file": "17_Prompt_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/20_openai_json_schema_strict.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.prompt_cache_optimizer",
+      "chapter": 18,
+      "chapter_file": "18_Context_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/21_prompt_cache_optimizer.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "prompt_engineering.cache_metrics_monitor",
+      "chapter": 18,
+      "chapter_file": "18_Context_Engineering.md",
+      "path": "ch17_prompt_engineering/llm/22_cache_metrics_monitor.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "context_engineering.context_engineering_intro",
+      "chapter": 18,
+      "chapter_file": "18_Context_Engineering.md",
+      "path": "ch18_context_engineering/llm/01_context_engineering_intro.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "context_engineering.token_economics",
+      "chapter": 18,
+      "chapter_file": "18_Context_Engineering.md",
+      "path": "ch18_context_engineering/llm/02_token_economics.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "context_engineering.context_rot_demo",
+      "chapter": 18,
+      "chapter_file": "18_Context_Engineering.md",
+      "path": "ch18_context_engineering/llm/03_context_rot_demo.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "context_engineering.haystack_basic_pipeline",
+      "chapter": 18,
+      "chapter_file": "18_Context_Engineering.md",
+      "path": "ch18_context_engineering/llm/04_haystack_basic_pipeline.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "context_engineering.haystack_chat_pipeline",
+      "chapter": 18,
+      "chapter_file": "18_Context_Engineering.md",
+      "path": "ch18_context_engineering/llm/05_haystack_chat_pipeline.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "context_engineering.langgraph_checkpointer",
+      "chapter": 26,
+      "chapter_file": "26_Agent记忆与个性化.md",
+      "path": "ch18_context_engineering/llm/06_langgraph_checkpointer.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "context_engineering.langgraph_compaction",
+      "chapter": 26,
+      "chapter_file": "26_Agent记忆与个性化.md",
+      "path": "ch18_context_engineering/llm/07_langgraph_compaction.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "context_engineering.pydantic_ai_memory",
+      "chapter": 26,
+      "chapter_file": "26_Agent记忆与个性化.md",
+      "path": "ch18_context_engineering/llm/08_pydantic_ai_memory.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "context_engineering.sub_agent_pattern",
+      "chapter": 24,
+      "chapter_file": "24_Agent工作流编排与多智能体.md",
+      "path": "ch18_context_engineering/llm/09_sub_agent_pattern.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "context_engineering.prompt_caching",
+      "chapter": 18,
+      "chapter_file": "18_Context_Engineering.md",
+      "path": "ch18_context_engineering/llm/10_prompt_caching.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "context_engineering.sliding_window",
+      "chapter": 26,
+      "chapter_file": "26_Agent记忆与个性化.md",
+      "path": "ch18_context_engineering/llm/11_sliding_window.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "context_engineering.full_context_pipeline",
+      "chapter": 18,
+      "chapter_file": "18_Context_Engineering.md",
+      "path": "ch18_context_engineering/llm/12_full_context_pipeline.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.rag_indexing_pipeline",
+      "chapter": 19,
+      "chapter_file": "19_RAG数据解析分块与索引.md",
+      "path": "ch19_rag_indexing/llm/01_rag_indexing_pipeline.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.rag_pipeline_class",
+      "chapter": 19,
+      "chapter_file": "19_RAG数据解析分块与索引.md",
+      "path": "ch19_rag_indexing/llm/02_rag_pipeline_class.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.recursive_text_splitter",
+      "chapter": 19,
+      "chapter_file": "19_RAG数据解析分块与索引.md",
+      "path": "ch19_rag_indexing/llm/03_recursive_text_splitter.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.semantic_chunking",
+      "chapter": 19,
+      "chapter_file": "19_RAG数据解析分块与索引.md",
+      "path": "ch19_rag_indexing/llm/04_semantic_chunking.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.metadata_enrichment",
+      "chapter": 19,
+      "chapter_file": "19_RAG数据解析分块与索引.md",
+      "path": "ch19_rag_indexing/llm/05_metadata_enrichment.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.embedding_similarity",
+      "chapter": 19,
+      "chapter_file": "19_RAG数据解析分块与索引.md",
+      "path": "ch19_rag_indexing/llm/06_embedding_similarity.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.bge_m3_usage",
+      "chapter": 19,
+      "chapter_file": "19_RAG数据解析分块与索引.md",
+      "path": "ch19_rag_indexing/llm/07_bge_m3_usage.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.hnsw_index",
+      "chapter": 19,
+      "chapter_file": "19_RAG数据解析分块与索引.md",
+      "path": "ch19_rag_indexing/llm/08_hnsw_index.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.ivf_index",
+      "chapter": 19,
+      "chapter_file": "19_RAG数据解析分块与索引.md",
+      "path": "ch19_rag_indexing/llm/09_ivf_index.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.ivfpq_index",
+      "chapter": 19,
+      "chapter_file": "19_RAG数据解析分块与索引.md",
+      "path": "ch19_rag_indexing/llm/10_ivfpq_index.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.hybrid_retriever",
+      "chapter": 20,
+      "chapter_file": "20_RAG检索重排与高级方法.md",
+      "path": "ch19_rag_indexing/llm/11_hybrid_retriever.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.bi_vs_cross_encoder",
+      "chapter": 20,
+      "chapter_file": "20_RAG检索重排与高级方法.md",
+      "path": "ch19_rag_indexing/llm/12_bi_vs_cross_encoder.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.reranker_advanced_rag",
+      "chapter": 20,
+      "chapter_file": "20_RAG检索重排与高级方法.md",
+      "path": "ch19_rag_indexing/llm/13_reranker_advanced_rag.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.hyde_rewriter",
+      "chapter": 20,
+      "chapter_file": "20_RAG检索重排与高级方法.md",
+      "path": "ch19_rag_indexing/llm/14_hyde_rewriter.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.graph_rag",
+      "chapter": 20,
+      "chapter_file": "20_RAG检索重排与高级方法.md",
+      "path": "ch19_rag_indexing/llm/15_graph_rag.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.agentic_rag",
+      "chapter": 21,
+      "chapter_file": "21_生产级RAG系统.md",
+      "path": "ch19_rag_indexing/llm/16_agentic_rag.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.rag_mcp_tool",
+      "chapter": 21,
+      "chapter_file": "21_生产级RAG系统.md",
+      "path": "ch19_rag_indexing/llm/17_rag_mcp_tool.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.multimodal_rag",
+      "chapter": 21,
+      "chapter_file": "21_生产级RAG系统.md",
+      "path": "ch19_rag_indexing/llm/18_multimodal_rag.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.colqwen_vision_rag",
+      "chapter": 21,
+      "chapter_file": "21_生产级RAG系统.md",
+      "path": "ch19_rag_indexing/llm/19_colqwen_vision_rag.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.contextual_retrieval",
+      "chapter": 21,
+      "chapter_file": "21_生产级RAG系统.md",
+      "path": "ch19_rag_indexing/llm/20_contextual_retrieval.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.late_chunking",
+      "chapter": 21,
+      "chapter_file": "21_生产级RAG系统.md",
+      "path": "ch19_rag_indexing/llm/21_late_chunking.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.colbertv2_plaid",
+      "chapter": 21,
+      "chapter_file": "21_生产级RAG系统.md",
+      "path": "ch19_rag_indexing/llm/22_colbertv2_plaid.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.mrl_embeddings",
+      "chapter": 21,
+      "chapter_file": "21_生产级RAG系统.md",
+      "path": "ch19_rag_indexing/llm/23_mrl_embeddings.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.bge_reranker_v2",
+      "chapter": 21,
+      "chapter_file": "21_生产级RAG系统.md",
+      "path": "ch19_rag_indexing/llm/24_bge_reranker_v2.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "rag_indexing.rag_evaluator",
+      "chapter": 37,
+      "chapter_file": "37_RAG_Agent与安全评估.md",
+      "path": "ch19_rag_indexing/llm/25_rag_evaluator.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.agent_tools_definition",
+      "chapter": 22,
+      "chapter_file": "22_Agent基础与工具调用.md",
+      "path": "ch22_agent_tools/llm/01_agent_tools_definition.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.react_agent_from_scratch",
+      "chapter": 22,
+      "chapter_file": "22_Agent基础与工具调用.md",
+      "path": "ch22_agent_tools/llm/02_react_agent_from_scratch.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.function_calling_agent",
+      "chapter": 22,
+      "chapter_file": "22_Agent基础与工具调用.md",
+      "path": "ch22_agent_tools/llm/03_function_calling_agent.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.mcp_server_simplified",
+      "chapter": 23,
+      "chapter_file": "23_MCP_A2A与Skills协议生态.md",
+      "path": "ch22_agent_tools/llm/04_mcp_server_simplified.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.mcp_registry_rbac",
+      "chapter": 23,
+      "chapter_file": "23_MCP_A2A与Skills协议生态.md",
+      "path": "ch22_agent_tools/llm/05_mcp_registry_rbac.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.sliding_window_memory",
+      "chapter": 26,
+      "chapter_file": "26_Agent记忆与个性化.md",
+      "path": "ch22_agent_tools/llm/06_sliding_window_memory.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.long_term_memory",
+      "chapter": 26,
+      "chapter_file": "26_Agent记忆与个性化.md",
+      "path": "ch22_agent_tools/llm/07_long_term_memory.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.agent_teams_demo",
+      "chapter": 24,
+      "chapter_file": "24_Agent工作流编排与多智能体.md",
+      "path": "ch22_agent_tools/llm/08_agent_teams_demo.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.customer_service_agent",
+      "chapter": 25,
+      "chapter_file": "25_可恢复Agent运行时.md",
+      "path": "ch22_agent_tools/llm/09_customer_service_agent.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.loop_prevention",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch22_agent_tools/llm/10_loop_prevention.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.tool_hallucination_guard",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch22_agent_tools/llm/11_tool_hallucination_guard.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.context_manager",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch22_agent_tools/llm/12_context_manager.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.token_limiter",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch22_agent_tools/llm/13_token_limiter.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.prompt_injection_guard",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch22_agent_tools/llm/14_prompt_injection_guard.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.a2a_client",
+      "chapter": 23,
+      "chapter_file": "23_MCP_A2A与Skills协议生态.md",
+      "path": "ch22_agent_tools/llm/15_a2a_client.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.skill_loader",
+      "chapter": 23,
+      "chapter_file": "23_MCP_A2A与Skills协议生态.md",
+      "path": "ch22_agent_tools/llm/16_skill_loader.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.bidi_agent",
+      "chapter": 22,
+      "chapter_file": "22_Agent基础与工具调用.md",
+      "path": "ch22_agent_tools/llm/17_bidi_agent.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.openai_realtime_agent",
+      "chapter": 22,
+      "chapter_file": "22_Agent基础与工具调用.md",
+      "path": "ch22_agent_tools/llm/18_openai_realtime_agent.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.sandbox_agent",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch22_agent_tools/llm/19_sandbox_agent.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.durable_execution",
+      "chapter": 25,
+      "chapter_file": "25_可恢复Agent运行时.md",
+      "path": "ch22_agent_tools/llm/20_durable_execution.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.aci_design_examples",
+      "chapter": 22,
+      "chapter_file": "22_Agent基础与工具调用.md",
+      "path": "ch22_agent_tools/llm/21_aci_design_examples.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "agent_tools.validate_tool_call",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch22_agent_tools/llm/22_validate_tool_call.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.langchain_basic_chain",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/01_langchain_basic_chain.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.lcel_style_basic_chain",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/01_lcel_style_basic_chain.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.llmchain_basic",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/02_llmchain_basic.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.sequential_chain",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/03_sequential_chain.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.router_chain",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/04_router_chain.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.conversation_buffer_memory",
+      "chapter": 26,
+      "chapter_file": "26_Agent记忆与个性化.md",
+      "path": "ch27_llm_frameworks/llm/05_conversation_buffer_memory.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.conversation_summary_memory",
+      "chapter": 26,
+      "chapter_file": "26_Agent记忆与个性化.md",
+      "path": "ch27_llm_frameworks/llm/06_conversation_summary_memory.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.summary_buffer_memory",
+      "chapter": 26,
+      "chapter_file": "26_Agent记忆与个性化.md",
+      "path": "ch27_llm_frameworks/llm/07_summary_buffer_memory.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.tool_definition_agent",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/08_tool_definition_agent.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.chatbot_with_memory",
+      "chapter": 26,
+      "chapter_file": "26_Agent记忆与个性化.md",
+      "path": "ch27_llm_frameworks/llm/09_chatbot_with_memory.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.langgraph_core_concepts",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/10_langgraph_core_concepts.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.langgraph_research_agent",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/11_langgraph_research_agent.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.langgraph_human_in_the_loop",
+      "chapter": 24,
+      "chapter_file": "24_Agent工作流编排与多智能体.md",
+      "path": "ch27_llm_frameworks/llm/12_langgraph_human_in_the_loop.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.llamaindex_vectorstore_index",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/13_llamaindex_vectorstore_index.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.llamaindex_summary_index",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/14_llamaindex_summary_index.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.llamaindex_tree_index",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/15_llamaindex_tree_index.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.llamaindex_keyword_index",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/16_llamaindex_keyword_index.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.llamaindex_query_chat_engine",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/17_llamaindex_query_chat_engine.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.llamaindex_enterprise_qa",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/18_llamaindex_enterprise_qa.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.llama_factory_dataset_prep",
+      "chapter": 30,
+      "chapter_file": "30_SFT_LoRA与QLoRA.md",
+      "path": "ch27_llm_frameworks/llm/19_llama_factory_dataset_prep.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.llama_factory_config_presets",
+      "chapter": 30,
+      "chapter_file": "30_SFT_LoRA与QLoRA.md",
+      "path": "ch27_llm_frameworks/llm/20_llama_factory_config_presets.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.dify_sdk_usage",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/21_dify_sdk_usage.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.dify_plugin_tool",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/22_dify_plugin_tool.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.autogen_code_review",
+      "chapter": 24,
+      "chapter_file": "24_Agent工作流编排与多智能体.md",
+      "path": "ch27_llm_frameworks/llm/23_autogen_code_review.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.crewai_market_research",
+      "chapter": 24,
+      "chapter_file": "24_Agent工作流编排与多智能体.md",
+      "path": "ch27_llm_frameworks/llm/24_crewai_market_research.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.multi_agent_framework_choice",
+      "chapter": 24,
+      "chapter_file": "24_Agent工作流编排与多智能体.md",
+      "path": "ch27_llm_frameworks/llm/25_multi_agent_framework_choice.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.pydantic_ai_research_agent",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/26_pydantic_ai_research_agent.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.strands_agents_demo",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/27_strands_agents_demo.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.openai_agents_sdk_handoff",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/28_openai_agents_sdk_handoff.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.ag2_ex_autogen",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/29_ag2_ex_autogen.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.haystack_rag_pipeline",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/30_haystack_rag_pipeline.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.smolagents_code_agent",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/31_smolagents_code_agent.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.agno_multimodal_agent",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/32_agno_multimodal_agent.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.framework_combination_presets",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/33_framework_combination_presets.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.langgraph_state_design_principles",
+      "chapter": 27,
+      "chapter_file": "27_LLM框架与平台选型.md",
+      "path": "ch27_llm_frameworks/llm/34_langgraph_state_design_principles.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.memory_token_control",
+      "chapter": 26,
+      "chapter_file": "26_Agent记忆与个性化.md",
+      "path": "ch27_llm_frameworks/llm/35_memory_token_control.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llm_frameworks.langgraph_checkpoint_demo",
+      "chapter": 26,
+      "chapter_file": "26_Agent记忆与个性化.md",
+      "path": "ch27_llm_frameworks/llm/36_langgraph_checkpoint_demo.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.minhash_lsh_dedup",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/01_minhash_lsh_dedup.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.text_quality_filter",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/02_text_quality_filter.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.pii_scrubber",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/03_pii_scrubber.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.self_instruct",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/04_self_instruct.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.evol_instruct",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/05_evol_instruct.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.back_translation",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/06_back_translation.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.data_quality_scorer",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/07_data_quality_scorer.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.rlaif_preference_pair",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/08_rlaif_preference_pair.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.agent_trajectory_sample",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/09_agent_trajectory_sample.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.reasoning_data_format",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch29_data_engineering/llm/10_reasoning_data_format.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.constitutional_ai",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/11_constitutional_ai.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.datatrove_pipeline_config",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/12_datatrove_pipeline_config.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.ray_distributed_processing",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/13_ray_distributed_processing.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "data_engineering.dvc_version_management",
+      "chapter": 29,
+      "chapter_file": "29_大模型数据工程.md",
+      "path": "ch29_data_engineering/llm/14_dvc_version_management.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "lora_qlora.lora_finetuning",
+      "chapter": 30,
+      "chapter_file": "30_SFT_LoRA与QLoRA.md",
+      "path": "ch30_lora_qlora/gpu/01_lora_finetuning.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.qlora_config",
+      "chapter": 30,
+      "chapter_file": "30_SFT_LoRA与QLoRA.md",
+      "path": "ch30_lora_qlora/gpu/02_qlora_config.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.kv_cache",
+      "chapter": 40,
+      "chapter_file": "40_推理内存量化与批处理.md",
+      "path": "ch30_lora_qlora/gpu/03_kv_cache.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.flash_attention",
+      "chapter": 40,
+      "chapter_file": "40_推理内存量化与批处理.md",
+      "path": "ch30_lora_qlora/gpu/04_flash_attention.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.awq_gptq_load",
+      "chapter": 40,
+      "chapter_file": "40_推理内存量化与批处理.md",
+      "path": "ch30_lora_qlora/gpu/05_awq_gptq_load.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.vllm_deployment",
+      "chapter": 41,
+      "chapter_file": "41_高性能推理引擎与服务.md",
+      "path": "ch30_lora_qlora/gpu/06_vllm_deployment.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.xinference_deployment",
+      "chapter": 41,
+      "chapter_file": "41_高性能推理引擎与服务.md",
+      "path": "ch30_lora_qlora/gpu/07_xinference_deployment.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.deepseek_edge",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch30_lora_qlora/gpu/08_deepseek_edge.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.confidence_router",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch30_lora_qlora/gpu/09_confidence_router.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.feature_router",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch30_lora_qlora/gpu/10_feature_router.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.adaptive_inference",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch30_lora_qlora/gpu/11_adaptive_inference.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.grpo_loss",
+      "chapter": 31,
+      "chapter_file": "31_偏好对齐与强化学习.md",
+      "path": "ch30_lora_qlora/gpu/12_grpo_loss.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.sglang_rollout",
+      "chapter": 31,
+      "chapter_file": "31_偏好对齐与强化学习.md",
+      "path": "ch30_lora_qlora/gpu/13_sglang_rollout.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.math_verifier",
+      "chapter": 31,
+      "chapter_file": "31_偏好对齐与强化学习.md",
+      "path": "ch30_lora_qlora/gpu/14_math_verifier.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "lora_qlora.orpo_loss",
+      "chapter": 31,
+      "chapter_file": "31_偏好对齐与强化学习.md",
+      "path": "ch30_lora_qlora/gpu/15_orpo_loss.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "reasoning_ttc.o3_api_basic",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/01_o3_api_basic.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.o3_streaming",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/02_o3_streaming.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.claude_extended_thinking",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/03_claude_extended_thinking.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.reasoning_effort_ladder",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/04_reasoning_effort_ladder.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.grpo_loss",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/05_grpo_loss.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.grpo_advantage",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/06_grpo_advantage.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.s1_budget_forcing",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/07_s1_budget_forcing.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.s1_wait_token",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/08_s1_wait_token.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.prm_step_scoring",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/09_prm_step_scoring.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.rlvr_rewards",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/10_rlvr_rewards.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.mcts_prm",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/11_mcts_prm.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.best_of_n",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/12_best_of_n.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.self_consistency",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/13_self_consistency.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "reasoning_ttc.ttc_scaling_law",
+      "chapter": 32,
+      "chapter_file": "32_推理模型与Test_Time_Compute.md",
+      "path": "ch32_reasoning_ttc/llm/14_ttc_scaling_law.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "distributed.dp_dataparallel",
+      "chapter": 33,
+      "chapter_file": "33_大模型分布式训练.md",
+      "path": "ch33_distributed/gpu/01_dp_dataparallel.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "distributed.ddp_training",
+      "chapter": 33,
+      "chapter_file": "33_大模型分布式训练.md",
+      "path": "ch33_distributed/gpu/02_ddp_training.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "distributed.fsdp_training",
+      "chapter": 33,
+      "chapter_file": "33_大模型分布式训练.md",
+      "path": "ch33_distributed/gpu/03_fsdp_training.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "distributed.deepspeed_zero",
+      "chapter": 33,
+      "chapter_file": "33_大模型分布式训练.md",
+      "path": "ch33_distributed/gpu/04_deepspeed_zero.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "distributed.amp_training",
+      "chapter": 33,
+      "chapter_file": "33_大模型分布式训练.md",
+      "path": "ch33_distributed/gpu/05_amp_training.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "distributed.bf16_training",
+      "chapter": 33,
+      "chapter_file": "33_大模型分布式训练.md",
+      "path": "ch33_distributed/gpu/06_bf16_training.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "distributed.nccl_topology",
+      "chapter": 33,
+      "chapter_file": "33_大模型分布式训练.md",
+      "path": "ch33_distributed/gpu/07_nccl_topology.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "distributed.bucket_manager",
+      "chapter": 33,
+      "chapter_file": "33_大模型分布式训练.md",
+      "path": "ch33_distributed/gpu/08_bucket_manager.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "distributed.comm_overlap_config",
+      "chapter": 33,
+      "chapter_file": "33_大模型分布式训练.md",
+      "path": "ch33_distributed/gpu/09_comm_overlap_config.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "distributed.muon_optimizer",
+      "chapter": 33,
+      "chapter_file": "33_大模型分布式训练.md",
+      "path": "ch33_distributed/gpu/10_muon_optimizer.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "distributed.tlx_block_attention",
+      "chapter": 33,
+      "chapter_file": "33_大模型分布式训练.md",
+      "path": "ch33_distributed/gpu/11_tlx_block_attention.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "evaluation.bleu_metric",
+      "chapter": 36,
+      "chapter_file": "36_大模型评估基础.md",
+      "path": "ch36_evaluation/llm/01_bleu_metric.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.rouge_metric",
+      "chapter": 36,
+      "chapter_file": "36_大模型评估基础.md",
+      "path": "ch36_evaluation/llm/02_rouge_metric.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.bertscore_metric",
+      "chapter": 36,
+      "chapter_file": "36_大模型评估基础.md",
+      "path": "ch36_evaluation/llm/03_bertscore_metric.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.perplexity",
+      "chapter": 36,
+      "chapter_file": "36_大模型评估基础.md",
+      "path": "ch36_evaluation/llm/04_perplexity.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.llm_as_judge",
+      "chapter": 36,
+      "chapter_file": "36_大模型评估基础.md",
+      "path": "ch36_evaluation/llm/05_llm_as_judge.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.ragas_evaluation",
+      "chapter": 37,
+      "chapter_file": "37_RAG_Agent与安全评估.md",
+      "path": "ch36_evaluation/llm/06_ragas_evaluation.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.trulens_rag_triad",
+      "chapter": 37,
+      "chapter_file": "37_RAG_Agent与安全评估.md",
+      "path": "ch36_evaluation/llm/07_trulens_rag_triad.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.deepeval_rag",
+      "chapter": 37,
+      "chapter_file": "37_RAG_Agent与安全评估.md",
+      "path": "ch36_evaluation/llm/08_deepeval_rag.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.jailbreak_detector",
+      "chapter": 37,
+      "chapter_file": "37_RAG_Agent与安全评估.md",
+      "path": "ch36_evaluation/llm/09_jailbreak_detector.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.cohens_kappa",
+      "chapter": 36,
+      "chapter_file": "36_大模型评估基础.md",
+      "path": "ch36_evaluation/llm/10_cohens_kappa.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.faithfulness_vs_relevancy",
+      "chapter": 37,
+      "chapter_file": "37_RAG_Agent与安全评估.md",
+      "path": "ch36_evaluation/llm/11_faithfulness_vs_relevancy.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.langfuse_v3",
+      "chapter": 37,
+      "chapter_file": "37_RAG_Agent与安全评估.md",
+      "path": "ch36_evaluation/llm/12_langfuse_v3.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.phoenix_auto_instrument",
+      "chapter": 37,
+      "chapter_file": "37_RAG_Agent与安全评估.md",
+      "path": "ch36_evaluation/llm/13_phoenix_auto_instrument.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "evaluation.deepeval_dag_geval",
+      "chapter": 37,
+      "chapter_file": "37_RAG_Agent与安全评估.md",
+      "path": "ch36_evaluation/llm/14_deepeval_dag_geval.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.token_smuggling_demo",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch38_safety/llm/01_token_smuggling_demo.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.prompt_injection_detector",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch38_safety/llm/02_prompt_injection_detector.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.automated_red_team",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch38_safety/llm/03_automated_red_team.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.garak_safety_scanner",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch38_safety/llm/04_garak_safety_scanner.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.bias_detector",
+      "chapter": 39,
+      "chapter_file": "39_AI隐私伦理与治理.md",
+      "path": "ch38_safety/llm/05_bias_detector.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.fairness_metrics",
+      "chapter": 39,
+      "chapter_file": "39_AI隐私伦理与治理.md",
+      "path": "ch38_safety/llm/06_fairness_metrics.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.federated_finetuning",
+      "chapter": 39,
+      "chapter_file": "39_AI隐私伦理与治理.md",
+      "path": "ch38_safety/llm/07_federated_finetuning.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.data_anonymizer",
+      "chapter": 39,
+      "chapter_file": "39_AI隐私伦理与治理.md",
+      "path": "ch38_safety/llm/08_data_anonymizer.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.ai_governance_framework",
+      "chapter": 39,
+      "chapter_file": "39_AI隐私伦理与治理.md",
+      "path": "ch38_safety/llm/09_ai_governance_framework.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.constitutional_classifier",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch38_safety/llm/10_constitutional_classifier.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.llama_guard_demo",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch38_safety/llm/11_llama_guard_demo.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.eval_awareness_probe",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch38_safety/llm/12_eval_awareness_probe.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.content_safety_system",
+      "chapter": 38,
+      "chapter_file": "38_大模型与Agent安全.md",
+      "path": "ch38_safety/llm/13_content_safety_system.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "safety.human_in_the_loop",
+      "chapter": 24,
+      "chapter_file": "24_Agent工作流编排与多智能体.md",
+      "path": "ch38_safety/llm/14_human_in_the_loop.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "inference_engines.paged_attention_block_manager",
+      "chapter": 40,
+      "chapter_file": "40_推理内存量化与批处理.md",
+      "path": "ch41_inference_engines/gpu/01_paged_attention_block_manager.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "inference_engines.continuous_batching_scheduler",
+      "chapter": 40,
+      "chapter_file": "40_推理内存量化与批处理.md",
+      "path": "ch41_inference_engines/gpu/02_continuous_batching_scheduler.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "inference_engines.radix_attention_prefix_tree",
+      "chapter": 41,
+      "chapter_file": "41_高性能推理引擎与服务.md",
+      "path": "ch41_inference_engines/gpu/03_radix_attention_prefix_tree.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "inference_engines.pd_disaggregation",
+      "chapter": 42,
+      "chapter_file": "42_PD分离推理与KV池化.md",
+      "path": "ch41_inference_engines/gpu/04_pd_disaggregation.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "inference_engines.kv_cache_memory_calculator",
+      "chapter": 40,
+      "chapter_file": "40_推理内存量化与批处理.md",
+      "path": "ch41_inference_engines/gpu/05_kv_cache_memory_calculator.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "inference_engines.speculative_decoding",
+      "chapter": 40,
+      "chapter_file": "40_推理内存量化与批处理.md",
+      "path": "ch41_inference_engines/gpu/06_speculative_decoding.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "inference_engines.moe_expert_parallel",
+      "chapter": 41,
+      "chapter_file": "41_高性能推理引擎与服务.md",
+      "path": "ch41_inference_engines/gpu/07_moe_expert_parallel.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "inference_engines.tensorrt_llm_build",
+      "chapter": 41,
+      "chapter_file": "41_高性能推理引擎与服务.md",
+      "path": "ch41_inference_engines/gpu/08_tensorrt_llm_build.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "inference_engines.fp4_quantization_ladder",
+      "chapter": 40,
+      "chapter_file": "40_推理内存量化与批处理.md",
+      "path": "ch41_inference_engines/gpu/09_fp4_quantization_ladder.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "inference_engines.vllm_async_engine",
+      "chapter": 41,
+      "chapter_file": "41_高性能推理引擎与服务.md",
+      "path": "ch41_inference_engines/gpu/10_vllm_async_engine.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "inference_engines.slo_ttft_tpot_monitor",
+      "chapter": 41,
+      "chapter_file": "41_高性能推理引擎与服务.md",
+      "path": "ch41_inference_engines/gpu/11_slo_ttft_tpot_monitor.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "inference_engines.engine_selection_decision_tree",
+      "chapter": 41,
+      "chapter_file": "41_高性能推理引擎与服务.md",
+      "path": "ch41_inference_engines/gpu/12_engine_selection_decision_tree.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "cloudnative.fastapi_vllm_server",
+      "chapter": 43,
+      "chapter_file": "43_云原生部署与模型网关.md",
+      "path": "ch43_cloudnative/gpu/01_fastapi_vllm_server.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "cloudnative.grpc_vllm_server",
+      "chapter": 43,
+      "chapter_file": "43_云原生部署与模型网关.md",
+      "path": "ch43_cloudnative/gpu/02_grpc_vllm_server.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "cloudnative.backpressure_gateway",
+      "chapter": 43,
+      "chapter_file": "43_云原生部署与模型网关.md",
+      "path": "ch43_cloudnative/gpu/03_backpressure_gateway.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "cloudnative.eval_gate",
+      "chapter": 44,
+      "chapter_file": "44_LLMOps生命周期与持续交付.md",
+      "path": "ch43_cloudnative/gpu/04_eval_gate.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "cloudnative.ollama_cloud_integration",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch43_cloudnative/gpu/05_ollama_cloud_integration.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "cloudnative.sagemaker_deploy",
+      "chapter": 43,
+      "chapter_file": "43_云原生部署与模型网关.md",
+      "path": "ch43_cloudnative/gpu/06_sagemaker_deploy.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "cloudnative.keda_gpa_autoscaler",
+      "chapter": 43,
+      "chapter_file": "43_云原生部署与模型网关.md",
+      "path": "ch43_cloudnative/gpu/07_keda_gpa_autoscaler.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "llmops.cost_comparison",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/01_cost_comparison.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.mlflow_llm_tracking",
+      "chapter": 44,
+      "chapter_file": "44_LLMOps生命周期与持续交付.md",
+      "path": "ch44_llmops/llm/02_mlflow_llm_tracking.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.wandb_llm_tracking",
+      "chapter": 44,
+      "chapter_file": "44_LLMOps生命周期与持续交付.md",
+      "path": "ch44_llmops/llm/03_wandb_llm_tracking.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.mlflow_hyperparam_search",
+      "chapter": 44,
+      "chapter_file": "44_LLMOps生命周期与持续交付.md",
+      "path": "ch44_llmops/llm/04_mlflow_hyperparam_search.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.langsmith_observability",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/05_langsmith_observability.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.langfuse_observability",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/06_langfuse_observability.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.langsmith_prompt_debug",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/07_langsmith_prompt_debug.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.token_tracker",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/08_token_tracker.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.ab_test_framework",
+      "chapter": 44,
+      "chapter_file": "44_LLMOps生命周期与持续交付.md",
+      "path": "ch44_llmops/llm/09_ab_test_framework.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.ab_statistical_tests",
+      "chapter": 44,
+      "chapter_file": "44_LLMOps生命周期与持续交付.md",
+      "path": "ch44_llmops/llm/10_ab_statistical_tests.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.token_estimator",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/11_token_estimator.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.semantic_cache",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/12_semantic_cache.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.llm_metrics_collector",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/13_llm_metrics_collector.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.embedding_drift_detector",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/14_embedding_drift_detector.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.output_quality_monitor",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/15_output_quality_monitor.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.fastapi_prometheus",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/16_fastapi_prometheus.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.llm_evaluation_gate",
+      "chapter": 44,
+      "chapter_file": "44_LLMOps生命周期与持续交付.md",
+      "path": "ch44_llmops/llm/17_llm_evaluation_gate.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.canary_controller",
+      "chapter": 44,
+      "chapter_file": "44_LLMOps生命周期与持续交付.md",
+      "path": "ch44_llmops/llm/18_canary_controller.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.otel_genai_telemetry",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/19_otel_genai_telemetry.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.openinference_dual_semconv",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/20_openinference_dual_semconv.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.inprod_eval_pipeline",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/21_inprod_eval_pipeline.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.trajectory_cost_tracker",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/22_trajectory_cost_tracker.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.thinking_budget_slo",
+      "chapter": 45,
+      "chapter_file": "45_大模型可观测性与SRE.md",
+      "path": "ch44_llmops/llm/23_thinking_budget_slo.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.cascade_router",
+      "chapter": 44,
+      "chapter_file": "44_LLMOps生命周期与持续交付.md",
+      "path": "ch44_llmops/llm/24_cascade_router.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "llmops.agent_rollback_controller",
+      "chapter": 44,
+      "chapter_file": "44_LLMOps生命周期与持续交付.md",
+      "path": "ch44_llmops/llm/25_agent_rollback_controller.py",
+      "tier": "llm"
+    },
+    {
+      "topic_id": "edge_llm.apple_mlx_basic",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch46_edge_llm/gpu/01_apple_mlx_basic.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "edge_llm.mlx_unified_memory",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch46_edge_llm/gpu/02_mlx_unified_memory.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "edge_llm.llama_cpp_gguf_quantization",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch46_edge_llm/gpu/03_llama_cpp_gguf_quantization.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "edge_llm.llama_cpp_backends",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch46_edge_llm/gpu/04_llama_cpp_backends.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "edge_llm.ollama_http_api",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch46_edge_llm/gpu/05_ollama_http_api.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "edge_llm.ollama_modelfile",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch46_edge_llm/gpu/06_ollama_modelfile.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "edge_llm.webllm_browser_inference",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch46_edge_llm/gpu/07_webllm_browser_inference.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "edge_llm.webgpu_vs_wasm",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch46_edge_llm/gpu/08_webgpu_vs_wasm.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "edge_llm.snapdragon_hexagon_npu",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch46_edge_llm/gpu/09_snapdragon_hexagon_npu.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "edge_llm.secure_minions_protocol",
+      "chapter": 46,
+      "chapter_file": "46_端侧浏览器与边缘LLM.md",
+      "path": "ch46_edge_llm/gpu/10_secure_minions_protocol.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "multimodal.openclip_zero_shot",
+      "chapter": 47,
+      "chapter_file": "47_多模态表征与多模态大模型.md",
+      "path": "ch47_multimodal/gpu/01_openclip_zero_shot.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "multimodal.simple_clip",
+      "chapter": 47,
+      "chapter_file": "47_多模态表征与多模态大模型.md",
+      "path": "ch47_multimodal/gpu/02_simple_clip.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "multimodal.vit_implementation",
+      "chapter": 47,
+      "chapter_file": "47_多模态表征与多模态大模型.md",
+      "path": "ch47_multimodal/gpu/03_vit_implementation.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "multimodal.llava_architecture",
+      "chapter": 47,
+      "chapter_file": "47_多模态表征与多模态大模型.md",
+      "path": "ch47_multimodal/gpu/04_llava_architecture.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "multimodal.ddpm_diffusion",
+      "chapter": 48,
+      "chapter_file": "48_扩散模型与生成式视觉.md",
+      "path": "ch47_multimodal/gpu/05_ddpm_diffusion.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "multimodal.lora_finetune",
+      "chapter": 47,
+      "chapter_file": "47_多模态表征与多模态大模型.md",
+      "path": "ch47_multimodal/gpu/06_lora_finetune.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "multimodal.sft_training",
+      "chapter": 47,
+      "chapter_file": "47_多模态表征与多模态大模型.md",
+      "path": "ch47_multimodal/gpu/07_sft_training.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "multimodal.cosmos_world_model",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch47_multimodal/gpu/08_cosmos_world_model.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "multimodal.sglang_diffusion_llm",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch47_multimodal/gpu/09_sglang_diffusion_llm.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "multimodal.moshi_realtime",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch47_multimodal/gpu/10_moshi_realtime.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "multimodal.multimodal_rag",
+      "chapter": 21,
+      "chapter_file": "21_生产级RAG系统.md",
+      "path": "ch47_multimodal/gpu/11_multimodal_rag.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "world_models.genie3_world_model",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch49_world_models/gpu/01_genie3_world_model.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "world_models.cosmos_physics",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch49_world_models/gpu/02_cosmos_physics.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "world_models.pi0_vla_flow_matching",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch49_world_models/gpu/03_pi0_vla_flow_matching.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "world_models.groot_n15_vla",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch49_world_models/gpu/04_groot_n15_vla.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "world_models.lerobot_act",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch49_world_models/gpu/05_lerobot_act.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "world_models.diffusion_policy",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch49_world_models/gpu/06_diffusion_policy.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "world_models.hil_serl",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch49_world_models/gpu/07_hil_serl.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "world_models.action_chunking",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch49_world_models/gpu/08_action_chunking.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "world_models.world_model_rollout",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch49_world_models/gpu/09_world_model_rollout.py",
+      "tier": "gpu"
+    },
+    {
+      "topic_id": "world_models.embodied_data_pipeline",
+      "chapter": 49,
+      "chapter_file": "49_世界模型VLA与具身智能.md",
+      "path": "ch49_world_models/gpu/10_embodied_data_pipeline.py",
+      "tier": "gpu"
+    }
+  ]
+}

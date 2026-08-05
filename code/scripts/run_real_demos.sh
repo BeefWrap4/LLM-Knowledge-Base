@@ -128,20 +128,20 @@ export LLM_MOCK=0
 unset USE_REAL_API || true
 
 QUICK_EXAMPLES=(
-    "ch13_prompt_engineering/llm/06_self_consistency_cot.py"
-    "ch13_prompt_engineering/llm/09_compare_temperatures.py"
-    "ch15_agent/llm/02_react_agent_from_scratch.py"
+    "ch17_prompt_engineering/llm/06_self_consistency_cot.py"
+    "ch17_prompt_engineering/llm/09_compare_temperatures.py"
+    "ch22_agent_tools/llm/02_react_agent_from_scratch.py"
 )
 
 ALL_EXAMPLES=(
     "${QUICK_EXAMPLES[@]}"
-    "ch17_evaluation/llm/05_llm_as_judge.py"
-    "ch18_llm_frameworks/llm/02_llmchain_basic.py"
-    "ch18_llm_frameworks/llm/03_sequential_chain.py"
-    "ch18_llm_frameworks/llm/05_conversation_buffer_memory.py"
-    "ch18_llm_frameworks/llm/09_chatbot_with_memory.py"
-    "ch18_llm_frameworks/llm/13_llamaindex_vectorstore_index.py"
-    "ch18_llm_frameworks/llm/14_llamaindex_summary_index.py"
+    "ch36_evaluation/llm/05_llm_as_judge.py"
+    "ch27_llm_frameworks/llm/02_llmchain_basic.py"
+    "ch27_llm_frameworks/llm/03_sequential_chain.py"
+    "ch27_llm_frameworks/llm/05_conversation_buffer_memory.py"
+    "ch27_llm_frameworks/llm/09_chatbot_with_memory.py"
+    "ch27_llm_frameworks/llm/13_llamaindex_vectorstore_index.py"
+    "ch27_llm_frameworks/llm/14_llamaindex_summary_index.py"
 )
 
 if [ "$MODE" = "quick" ]; then
@@ -153,8 +153,8 @@ fi
 # These examples exercise OpenAI-specific APIs and are not provider-neutral.
 if [ "$MODE" = "all" ] && [ "$PROVIDER" = "openai" ]; then
     EXAMPLES+=(
-        "ch13_prompt_engineering/llm/14_openai_auto_caching.py"
-        "ch13_prompt_engineering/llm/20_openai_json_schema_strict.py"
+        "ch17_prompt_engineering/llm/14_openai_auto_caching.py"
+        "ch17_prompt_engineering/llm/20_openai_json_schema_strict.py"
     )
 fi
 

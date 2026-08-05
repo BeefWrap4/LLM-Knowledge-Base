@@ -3,7 +3,7 @@
 # Tests for shared.gpu_guard require_* functions (Wave 1 / Task 2)
 # ---
 """
-See: tutorial/Ch25_推理引擎与高性能服务 §25.4
+See: tutorial/Ch41_高性能推理引擎与服务 §25.4
 """
 
 from unittest.mock import MagicMock, patch

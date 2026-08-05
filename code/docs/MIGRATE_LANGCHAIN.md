@@ -74,19 +74,19 @@ if llm is None:
 真实运行必须显式关闭离线模式：
 
 ```bash
-LLM_MOCK=0 LLM_PROVIDER=deepseek python ch18_llm_frameworks/llm/02_llmchain_basic.py
+LLM_MOCK=0 LLM_PROVIDER=deepseek python ch27_llm_frameworks/llm/02_llmchain_basic.py
 ```
 
 PowerShell：
 
 ```powershell
-$env:LLM_MOCK="0"; $env:LLM_PROVIDER="deepseek"; python ch18_llm_frameworks/llm/02_llmchain_basic.py
+$env:LLM_MOCK="0"; $env:LLM_PROVIDER="deepseek"; python ch27_llm_frameworks/llm/02_llmchain_basic.py
 ```
 
 离线检查则显式使用：
 
 ```bash
-LLM_MOCK=1 python ch18_llm_frameworks/llm/02_llmchain_basic.py
+LLM_MOCK=1 python ch27_llm_frameworks/llm/02_llmchain_basic.py
 ```
 
 ## 3. 当前注册表映射
