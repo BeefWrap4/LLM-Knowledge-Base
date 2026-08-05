@@ -50,7 +50,7 @@ def _has_module(module: str) -> bool:
 @pytest.mark.core
 def test_ch01_list_dict_basics():
     """Ch01: 列表字典基础."""
-    result = _run_example("ch01_python_basics/core/22_list_dict_basics.py")
+    result = _run_example("ch01_python_runtime/core/22_list_dict_basics.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -58,7 +58,7 @@ def test_ch01_list_dict_basics():
 @pytest.mark.core
 def test_ch02_is_vs_equals():
     """Ch02: is vs == 区别 + 小整数缓存."""
-    result = _run_example("ch02_mutability/core/01_is_vs_equals.py")
+    result = _run_example("ch02_object_model/core/01_is_vs_equals.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -66,7 +66,7 @@ def test_ch02_is_vs_equals():
 @pytest.mark.core
 def test_ch03_singleton():
     """Ch03: 单例模式三种实现."""
-    result = _run_example("ch03_oop/core/01_singleton.py")
+    result = _run_example("ch05_oop_data_model/core/01_singleton.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -81,14 +81,14 @@ def test_ch01_python_313_features():
     """Ch01: Python 3.13 特性 (no-GIL 实验性)."""
     if sys.version_info < (3, 13):
         pytest.skip("Requires Python 3.13+")
-    result = _run_example("ch01_python_basics/core/01_python_313_features.py")
+    result = _run_example("ch01_python_runtime/core/01_python_313_features.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
 
 
 @pytest.mark.core
 def test_ch01_legb_rule():
     """Ch01: LEGB 作用域规则."""
-    result = _run_example("ch01_python_basics/core/19_legb_rule.py")
+    result = _run_example("ch01_python_runtime/core/19_legb_rule.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -96,7 +96,7 @@ def test_ch01_legb_rule():
 @pytest.mark.core
 def test_ch02_object_identity():
     """Ch02: 对象身份/类型/值 区别."""
-    result = _run_example("ch02_mutability/core/01_object_identity_type_value.py")
+    result = _run_example("ch02_object_model/core/01_object_identity_type_value.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -104,7 +104,7 @@ def test_ch02_object_identity():
 @pytest.mark.core
 def test_ch03_class_definition():
     """Ch03: 类的定义基础."""
-    result = _run_example("ch03_oop/core/01_class_definition.py")
+    result = _run_example("ch05_oop_data_model/core/01_class_definition.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -112,7 +112,7 @@ def test_ch03_class_definition():
 @pytest.mark.core
 def test_ch04_closure():
     """Ch04: 闭包基础."""
-    result = _run_example("ch04_advanced_features/core/01_closure_basics.py")
+    result = _run_example("ch04_iteration_functional/core/01_closure_basics.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -120,7 +120,7 @@ def test_ch04_closure():
 @pytest.mark.core
 def test_ch05_gil_demo():
     """Ch05: GIL 切换间隔."""
-    result = _run_example("ch05_concurrency/core/01_gil_switch_interval.py")
+    result = _run_example("ch07_concurrency/core/01_gil_switch_interval.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -128,7 +128,7 @@ def test_ch05_gil_demo():
 @pytest.mark.core
 def test_ch06_pymalloc():
     """Ch06: pymalloc 对象大小."""
-    result = _run_example("ch06_memory_gc/core/01_pymalloc_object_size.py")
+    result = _run_example("ch06_memory_profiling/core/01_pymalloc_object_size.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -136,7 +136,7 @@ def test_ch06_pymalloc():
 @pytest.mark.core
 def test_ch07_linked_list():
     """Ch07: 链表实现."""
-    result = _run_example("ch07_data_structures/core/01_linked_list.py")
+    result = _run_example("ch08_data_structures/core/01_linked_list.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -145,7 +145,7 @@ def test_ch07_linked_list():
 @pytest.mark.skipif(not _has_module("numpy"), reason="numpy not installed")
 def test_ch08_ndarray_basics():
     """Ch08: NumPy ndarray 基础."""
-    result = _run_example("ch08_data_science/core/01_ndarray_basics.py")
+    result = _run_example("ch09_numpy_pandas/core/01_ndarray_basics.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -154,7 +154,7 @@ def test_ch08_ndarray_basics():
 @pytest.mark.skipif(not _has_module("fastapi"), reason="fastapi not installed")
 def test_ch09_dependency_injection():
     """Ch09: FastAPI 依赖注入."""
-    result = _run_example("ch09_fastapi/core/01_dependency_injection.py")
+    result = _run_example("ch10_fastapi/core/01_dependency_injection.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -164,7 +164,7 @@ def test_ch09_dependency_injection():
 @pytest.mark.skipif(not _has_module("sklearn"), reason="sklearn not installed")
 def test_ch10_linear_regression():
     """Ch10: 线性回归."""
-    result = _run_example("ch10_ml_basics/core/01_linear_regression.py", timeout=60)
+    result = _run_example("ch11_ml_basics/core/01_linear_regression.py", timeout=60)
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -173,7 +173,7 @@ def test_ch10_linear_regression():
 @pytest.mark.skipif(not _has_module("torch"), reason="torch not installed")
 def test_ch11_tensor_ops():
     """Ch11: PyTorch tensor 基础运算."""
-    result = _run_example("ch11_pytorch/core/01_tensor_ops.py")
+    result = _run_example("ch12_pytorch/core/01_tensor_ops.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -187,7 +187,7 @@ def test_ch11_tensor_ops():
 @pytest.mark.skipif(not _has_module("torch"), reason="torch not installed")
 def test_ch12_scaled_dot_product_attention():
     """Ch12: Scaled Dot-Product Attention."""
-    result = _run_example("ch12_transformer_architecture/core/01_scaled_dot_product_attention.py")
+    result = _run_example("ch15_transformer/core/01_scaled_dot_product_attention.py")
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 
@@ -196,7 +196,7 @@ def test_ch12_scaled_dot_product_attention():
 @pytest.mark.skipif(not _has_module("torch"), reason="torch not installed")
 def test_ch12_multi_head_attention():
     """Ch12: Multi-Head Attention."""
-    result = _run_example("ch12_transformer_architecture/core/02_multi_head_attention.py", timeout=60)
+    result = _run_example("ch15_transformer/core/02_multi_head_attention.py", timeout=60)
     assert result.returncode == 0, f"stderr:\n{result.stderr}"
     assert "OK" in result.stdout, f"stdout:\n{result.stdout}"
 

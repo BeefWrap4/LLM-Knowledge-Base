@@ -68,12 +68,12 @@ Every chapter MUST contain all of these sections in order:
 8. **`## 📚 相关章节`** — cross-references using `[[WikiLinks]]`
 
 Plus:
-- New 2026 chapters (Ch25-40) include a `## 章节小结` paragraph before the cheat sheet
+- All Ch01–Ch54 chapters use the appendix order defined in `docs/CHAPTER_STYLE_GUIDE.md`
 - Chapters with depth ≥ 5 may have a `## 本章思维导图` (text tree) OR `## 本章小结` table — but currently ALL chapters use the standardized `## 📋 本章速查表` table at the end
 
 ## Cross-References
 
-- **Always use Obsidian wiki links**: `[[12_Transformer与大模型原理]]` — NOT markdown `[text](file.md)`
+- **Always use Obsidian wiki links**: `[[15_Transformer架构与实现]]` — NOT markdown `[text](file.md)`
 - Every chapter must have a `📚 相关章节` section with 4-6 links to related chapters
 - Each link should have a brief description of the relationship
 - Links must use the exact filename (minus `.md`) as the target
@@ -115,21 +115,21 @@ Nested headings use `Parent::Child` syntax in section targeting.
 
 | 主题 | 章节 | 状态 |
 |------|------|------|
-| 推理引擎 (vLLM/SGLang/TensorRT-LLM) | Ch25 | ✅ |
-| 世界模型 / VLA / LeRobot | Ch26 | ✅ |
-| Reasoning Models (o3/R1) | Ch27 | ✅ |
-| 端侧 LLM (Apple MLX) | Ch28 | ✅ |
-| Context Engineering | Ch29 | ✅ |
-| MCP / A2A / Skills | Ch15 | ✅ |
-| RL Post-Training | Ch16.11 | ✅ |
-| Langfuse v3 / Phoenix / OpenInference | Ch17.11, Ch20.10 | ✅ |
-| Muon Optimizer | Ch19.9 | ✅ |
-| Pydantic AI / Strands / OpenAI Agents | Ch18.8 | ✅ |
+| 推理引擎 (vLLM/SGLang/TensorRT-LLM) | Ch41 | ✅ |
+| 世界模型 / VLA / LeRobot | Ch49 | ✅ |
+| Reasoning Models (o3/R1) | Ch32 | ✅ |
+| 端侧 LLM (Apple MLX) | Ch46 | ✅ |
+| Context Engineering | Ch18 | ✅ |
+| MCP / A2A / Skills | Ch23 | ✅ |
+| RL Post-Training | Ch31 | ✅ |
+| Langfuse v3 / Phoenix / OpenInference | Ch36, Ch45 | ✅ |
+| Muon Optimizer | Ch33 | ✅ |
+| Pydantic AI / Strands / OpenAI Agents | Ch27 | ✅ |
 
 ## Code Companion (code/ directory)
 
-The repo includes a **433-example runnable code companion** for 29 chapters in `code/`,
-reverse-referencing back to the tutorial chapters. Layout:
+The repo includes a **433-example runnable code companion** in 29 run groups under `code/`,
+reverse-referencing the 54 canonical chapters through stable `topic_id` values. Layout:
 
 ```
 code/
@@ -144,7 +144,7 @@ code/
 │   ├── gpu_guard.py                   # CUDA/MPS/None scheduler (friendly errors on Mac)
 │   ├── env.py                         # .env loader + API key validation
 │   └── fixtures/                      # 1-2KB test data
-├── ch01_python_basics/                # one dir per tutorial chapter
+├── ch01_python_runtime/               # run group; semantic ownership is in TOPIC_MANIFEST.json
 │   ├── README.md                      # tier summary + quickstart + related chapters
 │   ├── core/                          # 80% core (Ch1-11)
 │   ├── llm/                           # 70% llm (Ch12-24)

@@ -9,8 +9,8 @@ import pytest
 
 CODE_ROOT = Path(__file__).resolve().parent.parent
 REPO_ROOT = CODE_ROOT.parent
-CHAPTER = REPO_ROOT / "18_LLM工程框架实战.md"
-EXAMPLE_ROOT = CODE_ROOT / "ch18_llm_frameworks"
+CHAPTER = REPO_ROOT / "27_LLM框架与平台选型.md"
+EXAMPLE_ROOT = CODE_ROOT / "ch27_llm_frameworks"
 OFFLINE_ENTRYPOINTS = [
     "01_langchain_basic_chain.py",
     "02_llmchain_basic.py",

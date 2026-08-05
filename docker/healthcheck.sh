@@ -17,7 +17,7 @@ python -c "import langchain_core, langchain_openai" 2>/dev/null || \
 test -d /app/code || exit 1
 
 # 4. 至少 1 个 .py 例子可读
-test -f /app/code/ch12_transformer_architecture/core/01_scaled_dot_product_attention.py || exit 1
+test -f /app/code/ch15_transformer/core/01_scaled_dot_product_attention.py || exit 1
 
 # 5. (可选) Redis 健康
 if [ -n "$REDIS_URL" ]; then

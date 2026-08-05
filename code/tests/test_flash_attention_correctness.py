@@ -11,7 +11,7 @@ torch = pytest.importorskip("torch")
 
 SCRIPT = (
     Path(__file__).resolve().parents[1]
-    / "ch16_finetuning"
+    / "ch30_lora_qlora"
     / "gpu"
     / "04_flash_attention.py"
 )

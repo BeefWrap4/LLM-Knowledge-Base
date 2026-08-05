@@ -140,7 +140,7 @@ typecheck:  ## mypy 类型检查
 # 运行
 # ─────────────────────────────────────────────────────────
 
-# 例子: make run FILE=ch12_transformer_architecture/core/01_scaled_dot_product_attention.py
+# 例子: make run FILE=ch15_transformer/core/01_scaled_dot_product_attention.py
 run:  ## 跑指定 .py 文件 (FILE=path)
 	python $(FILE)
 

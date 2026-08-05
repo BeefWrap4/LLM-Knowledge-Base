@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-The repository is both a Chinese interview handbook and a runnable Python companion. Numbered root files such as `12_Transformer与大模型原理.md` are the canonical chapters; keep `00_目录索引.md`, `README.md`, and related `[[WikiLinks]]` synchronized when chapters change. Python examples live in `code/chNN_topic/{core,llm,gpu}/`. Shared provider, environment, and compatibility helpers belong in `code/shared/`; automation belongs in `code/scripts/`; pytest coverage belongs in `code/tests/`. Architecture notes and implementation plans are under `docs/`. Docker assets are split between the root compose files and `docker/`.
+The repository is both a Chinese interview handbook and a runnable Python companion. Numbered root files such as `15_Transformer架构与实现.md` are the canonical chapters; keep `00_目录索引.md`, `README.md`, and related `[[WikiLinks]]` synchronized when chapters change. Python examples live in `code/chNN_topic/{core,llm,gpu}/`; use each example's stable `topic_id` for long-lived identity because the chapter number only expresses reading order. Shared provider, environment, and compatibility helpers belong in `code/shared/`; automation belongs in `code/scripts/`; pytest coverage belongs in `code/tests/`. Architecture notes and implementation plans are under `docs/`. Docker assets are split between the root compose files and `docker/`.
 
 ## Build, Test, and Development Commands
 
@@ -16,7 +16,7 @@ make lint
 make ci
 ```
 
-`ci-quick` validates chapters, README coverage, cross-references, and smoke behavior. `test` runs pytest without GPU cases; `lint` runs Ruff; `ci` additionally executes all core and mocked LLM examples. Use `LLM_MOCK=1 make test-llm` when no API key is available. Run a single example with `make run FILE=ch12_transformer_architecture/core/01_scaled_dot_product_attention.py`. GPU and real-API targets require explicit local dependencies and credentials.
+`ci-quick` validates chapters, README coverage, cross-references, and smoke behavior. `test` runs pytest without GPU cases; `lint` runs Ruff; `ci` additionally executes all core and mocked LLM examples. Use `LLM_MOCK=1 make test-llm` when no API key is available. Run a single example with `make run FILE=ch15_transformer/core/01_scaled_dot_product_attention.py`. GPU and real-API targets require explicit local dependencies and credentials.
 
 ## Coding Style & Naming Conventions
 

@@ -12,8 +12,9 @@ import pytest
 
 CODE_ROOT = Path(__file__).resolve().parent.parent
 REPO_ROOT = CODE_ROOT.parent
-CHAPTER = REPO_ROOT / "16_模型微调与推理优化.md"
-GPU_DIR = CODE_ROOT / "ch16_finetuning" / "gpu"
+SFT_CHAPTER = REPO_ROOT / "30_SFT_LoRA与QLoRA.md"
+ALIGNMENT_CHAPTER = REPO_ROOT / "31_偏好对齐与强化学习.md"
+GPU_DIR = CODE_ROOT / "ch30_lora_qlora" / "gpu"
 
 
 def load_example(filename: str, module_name: str):
@@ -25,7 +26,7 @@ def load_example(filename: str, module_name: str):
 
 
 def test_chapter_removes_fixed_alignment_resource_and_quality_claims():
-    text = CHAPTER.read_text(encoding="utf-8")
+    text = SFT_CHAPTER.read_text(encoding="utf-8") + ALIGNMENT_CHAPTER.read_text(encoding="utf-8")
     forbidden = (
         "| **模型数量**",
         "单模型训练，省一半显存",
@@ -43,7 +44,7 @@ def test_chapter_removes_fixed_alignment_resource_and_quality_claims():
 
 
 def test_chapter_uses_published_deepseek_distill_scope_and_values():
-    text = CHAPTER.read_text(encoding="utf-8")
+    text = ALIGNMENT_CHAPTER.read_text(encoding="utf-8")
     assert "Qwen2.5-Math-1.5B" in text
     assert "Qwen2.5-Math-7B" in text
     assert "DeepSeek-R1-Distill-Qwen-14B" in text
@@ -53,9 +54,9 @@ def test_chapter_uses_published_deepseek_distill_scope_and_values():
 
 
 def test_chapter_section_numbers_are_monotonic_at_the_end():
-    text = CHAPTER.read_text(encoding="utf-8")
-    assert text.index("## 16.9 RL Post-Training") < text.index("## 🧭 本章小结")
-    assert "### 16.9.7 章节速记卡" in text
+    text = ALIGNMENT_CHAPTER.read_text(encoding="utf-8")
+    assert text.index("## 31.2 RL Post-Training") < text.index("## 🧭 本章小结")
+    assert "### 31.2.7 章节速记卡" in text
 
 
 def test_grpo_loss_is_grouped_differentiable_and_uses_k3_direction():
@@ -133,7 +134,7 @@ def test_adaptive_router_is_offline_and_product_neutral():
 
 def test_ch16_source_ledger_contains_primary_papers_and_current_docs():
     ledger = (REPO_ROOT / "docs" / "AUTHORITATIVE_SOURCES.md").read_text(encoding="utf-8")
-    row = next(line for line in ledger.splitlines() if line.startswith("| Ch16 |"))
+    row = next(line for line in ledger.splitlines() if line.startswith("| Ch31 |"))
     for marker in (
         "2402.03300",
         "2501.12948",

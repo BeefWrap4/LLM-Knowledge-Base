@@ -5,7 +5,7 @@ from importlib import util
 from pathlib import Path
 
 MODULE_PATH = (
-    Path(__file__).parents[1] / "ch23_safety" / "llm" / "10_constitutional_classifier.py"
+    Path(__file__).parents[1] / "ch38_safety" / "llm" / "10_constitutional_classifier.py"
 )
 SPEC = util.spec_from_file_location("ch23_constitutional_classifier", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None

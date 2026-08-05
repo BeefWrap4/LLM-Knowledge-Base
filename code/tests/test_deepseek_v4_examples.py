@@ -10,11 +10,11 @@ import pytest
 CODE_ROOT = Path(__file__).resolve().parent.parent
 TARGETS = [
     CODE_ROOT / "shared" / "provider_registry.py",
-    CODE_ROOT / "ch16_finetuning" / "gpu" / "08_deepseek_edge.py",
-    CODE_ROOT / "ch16_finetuning" / "gpu" / "11_adaptive_inference.py",
-    CODE_ROOT / "ch27_reasoning_ttc" / "llm" / "04_reasoning_effort_ladder.py",
-    CODE_ROOT / "ch27_reasoning_ttc" / "llm" / "07_s1_budget_forcing.py",
-    CODE_ROOT / "ch27_reasoning_ttc" / "llm" / "08_s1_wait_token.py",
+    CODE_ROOT / "ch30_lora_qlora" / "gpu" / "08_deepseek_edge.py",
+    CODE_ROOT / "ch30_lora_qlora" / "gpu" / "11_adaptive_inference.py",
+    CODE_ROOT / "ch32_reasoning_ttc" / "llm" / "04_reasoning_effort_ladder.py",
+    CODE_ROOT / "ch32_reasoning_ttc" / "llm" / "07_s1_budget_forcing.py",
+    CODE_ROOT / "ch32_reasoning_ttc" / "llm" / "08_s1_wait_token.py",
 ]
 LLM_EXAMPLES = TARGETS[3:]
 

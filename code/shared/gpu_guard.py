@@ -3,7 +3,7 @@
 # CUDA / MPS / CPU 调度器 — 友好报错而非 stack trace
 # ---
 """
-See: tutorial/Ch11_深度学习与PyTorch, Ch25_推理引擎与高性能服务 §25.4
+See: tutorial/Ch12_深度学习与PyTorch, Ch41_高性能推理引擎与服务 §25.4
 """
 
 import os

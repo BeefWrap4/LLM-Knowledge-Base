@@ -3,7 +3,7 @@
 # .env loader + API key helper (Wave 14)
 # ---
 """
-See: tutorial/Ch15.3 (token 管理), Ch18_LLM工程框架实战 §18.1
+See: tutorial/Ch15.3 (token 管理), Ch27_LLM框架与平台选型 §18.1
 """
 
 import os

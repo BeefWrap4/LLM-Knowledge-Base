@@ -40,7 +40,7 @@ tags: [ci, secrets, github-actions]
 - 点 **"Run workflow"** → 选 master → **"Run workflow"**
 - 1 分钟后看每个 provider 状态: ✅ OK / ❌ FAIL (401 错等)
 
-## Self-hosted Runner (Ch25 GPU 测试)
+## Self-hosted Runner（Ch40–Ch49 GPU 与推理测试）
 
 `gpu-verify.yml` 需 self-hosted runner:
 - 仓库管理员: https://github.com/BeefWrap4/LLM-Knowledge-Base/settings/actions/runners/new
